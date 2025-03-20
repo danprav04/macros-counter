@@ -1,9 +1,9 @@
 // navigation/AppNavigator.tsx
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
-import { ThemeProvider, createTheme, Icon } from '@rneui/themed';
+import { ThemeProvider, createTheme, Icon, useTheme } from '@rneui/themed';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -11,58 +11,93 @@ import { loadSettings } from '../services/storageService';
 
 const Tab = createBottomTabNavigator();
 
-const lightTheme = createTheme({
+// Define a custom theme interface that extends the RNE UI Theme
+interface MyTheme {
+  mode: 'light' | 'dark';
+  colors: {
+    primary: string;
+    background: string;
+    grey5: string;
+    white: string;
+    grey4: string;
+    success: string;
+    black: string;
+    // Add other custom colors if needed
+  };
+  // You can add other theme properties here if needed, like fonts, spacing, etc.
+}
+
+const lightTheme: MyTheme = {
   mode: 'light',
-  components: {
+  colors: {
+    primary: '#007bff',
+    background: '#ffffff',
+    grey5: '#f2f2f2',
+    white: '#ffffff',
+    grey4: '#cccccc',
+    success: '#28a745',
+    black: '#000000',
+  },
+};
 
-  }
-});
-
-const darkTheme = createTheme({
-    mode: 'dark',
-    components: {
-
-    }
-});
-
+const darkTheme: MyTheme = {
+  mode: 'dark',
+  colors: {
+    primary: '#007bff',
+    background: '#121212',
+    grey5: '#2c2c2c',
+    white: '#ffffff',
+    grey4: '#333333',
+    success: '#28a745',
+    black: '#000000',
+  },
+};
 
 const AppNavigator = () => {
   const [themeMode, setThemeMode] = React.useState<'light' | 'dark' | 'system'>('system');
 
-    React.useEffect(() => {
-        const loadInitialSettings = async () => {
-            const settings = await loadSettings();
-            setThemeMode(settings.theme);
-        };
-        loadInitialSettings();
-    }, []);
+  React.useEffect(() => {
+    const loadInitialSettings = async () => {
+      const settings = await loadSettings();
+      setThemeMode(settings.theme);
+    };
+    loadInitialSettings();
+  }, []);
 
   const colorScheme = useColorScheme();
-  const theme = themeMode === 'system' ? (colorScheme === 'dark' ? darkTheme : lightTheme) : (themeMode === 'dark' ? darkTheme : lightTheme);
+  const currentTheme = themeMode === 'system' ? (colorScheme === 'dark' ? darkTheme : lightTheme) : (themeMode === 'dark' ? darkTheme : lightTheme);
+
+
+    const navigationDarkTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: currentTheme.colors.primary,
+      background: currentTheme.colors.background,
+      card: currentTheme.colors.grey5,
+      text: currentTheme.colors.white,
+      border: currentTheme.colors.grey4,
+      notification: currentTheme.colors.success,
+    },
+  };
+
+    const navigationLightTheme = {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          primary: currentTheme.colors.primary,
+          background: currentTheme.colors.background,
+          card: currentTheme.colors.white,
+          text: currentTheme.colors.black,
+          border: currentTheme.colors.grey4,
+          notification: currentTheme.colors.success,
+        },
+    };
+
 
   return (
-    <ThemeProvider theme={theme}>
-      <NavigationContainer theme={theme.mode === 'dark' ? {
-        dark: true,
-        colors: {
-          primary: theme.colors.primary,
-          background: theme.colors.background,
-          card: theme.colors.grey5,
-          text: theme.colors.white,
-          border: theme.colors.grey4,
-          notification: theme.colors.success,
-        }
-      } : {
-        dark: false,
-        colors: {
-            primary: theme.colors.primary,
-            background: theme.colors.background,
-            card: theme.colors.white,
-            text: theme.colors.black,
-            border: theme.colors.grey4,
-            notification: theme.colors.success,
-        }
-      }}>
+    <ThemeProvider theme={createTheme(currentTheme)}>
+      <NavigationContainer theme={currentTheme.mode === 'dark' ? navigationDarkTheme : navigationLightTheme}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, color, size }) => {
@@ -78,8 +113,9 @@ const AppNavigator = () => {
 
               return <Icon name={iconName} type='ionicon' size={size} color={color} />;
             },
-            tabBarActiveTintColor: theme.colors.primary,
+            tabBarActiveTintColor: currentTheme.colors.primary,
             tabBarInactiveTintColor: 'gray',
+            headerShown: false,
           })}
         >
           <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
