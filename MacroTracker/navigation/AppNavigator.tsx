@@ -102,16 +102,20 @@ const AppNavigator = () => {
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, color, size }) => {
               let iconName = '';
+              let type = '';
 
               if (route.name === 'Daily Entry') {
                 iconName = 'calendar';
+                type = 'ionicon'
               } else if (route.name === 'Foods') {
                 iconName = 'fastfood';
+                type = 'material'
               } else if (route.name === 'Settings') {
                 iconName = 'settings';
+                type = 'ionicon'
               }
 
-              return <Icon name={iconName} type='ionicon' size={size} color={color} />;
+              return <Icon name={iconName} type={type} size={size} color={color} />;
             },
             tabBarActiveTintColor: currentTheme.colors.primary,
             tabBarInactiveTintColor: 'gray',
