@@ -1,11 +1,11 @@
 // screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, StyleSheet, Alert, TextInput, ScrollView } from 'react-native';
+import { View, FlatList, StyleSheet, Alert, TextInput, ScrollView, Platform } from 'react-native';
 import { createFood, getFoods, updateFood, deleteFood } from '../services/foodService';
 import { Food } from '../types/food';
 import { isValidNumberInput, isNotEmpty } from '../utils/validationUtils';
 import FoodItem from '../components/FoodItem';
-import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed'; // Import makeStyles
+import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
 import { formatDate } from '../utils/dateUtils';
 import Icon from "@rneui/base/dist/Icon/Icon";
 
@@ -98,7 +98,7 @@ const FoodListScreen: React.FC = () => {
         placeholder="Search Foods..."
         onChangeText={updateSearch}
         value={search}
-        platform="ios"
+        platform={Platform.select({ ios: 'ios', android: 'android', default: 'default' })} // Use Platform.select
       />
       <FlatList
         data={filteredFoods}
