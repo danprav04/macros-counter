@@ -57,6 +57,7 @@ const DailyEntryScreen: React.FC = () => {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [tempGrams, setTempGrams] = useState("");
     const [search, setSearch] = useState("");
+    const [editIndex, setEditIndex] = useState<number | null>(null); // Added state
 
     const { theme } = useTheme();
     const styles = useStyles();
@@ -135,24 +136,36 @@ const DailyEntryScreen: React.FC = () => {
             return;
         }
 
-        const newEntryItem: DailyEntryItem = {
-            food: selectedFood,
-            grams: parseFloat(grams),
-        };
-        const currentEntry = getCurrentEntry();
-        const updatedItems = [...currentEntry.items, newEntryItem];
-        const updatedEntry = { ...currentEntry, items: updatedItems };
-
-        const updatedEntries = dailyEntries.filter(
-            (entry) => entry.date !== selectedDate
-        );
-        updatedEntries.push(updatedEntry);
-
-        await updateAndSaveEntries(updatedEntries);
-        setSelectedFood(null);
-        setGrams("");
-        setIsOverlayVisible(false);
+    const newEntryItem: DailyEntryItem = {
+        food: selectedFood,
+        grams: parseFloat(grams),
     };
+    const currentEntry = getCurrentEntry();
+    let updatedItems;
+
+    if (editIndex !== null) {
+        // Replace existing item if editing
+        updatedItems = currentEntry.items.map((item, index) =>
+            index === editIndex ? newEntryItem : item
+        );
+    } else {
+        // Add new item if not editing
+        updatedItems = [...currentEntry.items, newEntryItem];
+    }
+
+    const updatedEntry = { ...currentEntry, items: updatedItems };
+
+    const updatedEntries = dailyEntries.filter(
+        (entry) => entry.date !== selectedDate
+    );
+    updatedEntries.push(updatedEntry);
+
+    await updateAndSaveEntries(updatedEntries);
+    setSelectedFood(null);
+    setGrams("");
+    setEditIndex(null); // Reset edit index
+    setIsOverlayVisible(false);
+};
 
 
   const handleSelectFood = (item: Food) => {
@@ -186,19 +199,24 @@ const DailyEntryScreen: React.FC = () => {
         });
     };
 
-    const handleUndoRemoveEntry = (
-        item: DailyEntryItem,
-        originalEntry: DailyEntry
-    ) => {
-        const updatedItems = [...originalEntry.items, item];
-        const updatedEntry = { ...originalEntry, items: updatedItems };
-        const updatedEntries = dailyEntries.filter(
-            (entry) => entry.date !== selectedDate
-        );
-        updatedEntries.push(updatedEntry);
-        updateAndSaveEntries(updatedEntries);
-        Toast.hide();
-    };
+        const handleUndoRemoveEntry = (
+            item: DailyEntryItem,
+            originalEntry: DailyEntry
+        ) => {
+            // Create a *new* items array with the undone item
+            const updatedItems = [...originalEntry.items, item];
+            const updatedEntry = { ...originalEntry, items: updatedItems };
+
+            const updatedEntries = dailyEntries.map(entry => {
+              if (entry.date === originalEntry.date) {
+                return updatedEntry; // Replace the original entry
+              }
+              return entry; // Keep other entries unchanged
+            });
+
+            updateAndSaveEntries(updatedEntries);
+            Toast.hide();
+          };
 
 
      const updateSearch = (search: string) => setSearch(search); //handleSearch
@@ -220,9 +238,13 @@ const DailyEntryScreen: React.FC = () => {
     };
 
 
-    const handleEditEntry = (item: DailyEntryItem) => {
-          toggleOverlay(item); // Pass the item for editing
-      };
+    const handleEditEntry = (item: DailyEntryItem, index: number) => {
+      setEditIndex(index);
+      setSelectedFood(item.food);
+      setGrams(String(item.grams));
+      setIsOverlayVisible(true); // Show modal for editing
+    };
+
 
     const handleDateChange = (event: any, selectedDateVal?: Date) => {
         setShowDatePicker(false);
@@ -309,7 +331,7 @@ const DailyEntryScreen: React.FC = () => {
                             <Button
                                 title="Edit"
                                 onPress={() => {
-                                    handleEditEntry(item); // Pass the entire item
+                                    handleEditEntry(item, index); // Pass the entire item
                                     reset();
                                 }}
                                 icon={{ name: 'edit', color: 'white' }}

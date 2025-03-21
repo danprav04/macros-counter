@@ -124,6 +124,7 @@ yarn-error.*
 ---------- App.tsx ----------
 // App.tsx (Modified for Reload)
 import 'react-native-get-random-values'; // MUST BE FIRST
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -133,6 +134,9 @@ import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Impo
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs(['Function components cannot be given refs']);
 
 declare module '@rneui/themed' {
   export interface Colors {
@@ -363,6 +367,7 @@ const App = () => {
           <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
         </NavigationContainer>
       </SafeAreaProvider>
+      <Toast />
     </ThemeProvider>
   );
 };
@@ -392,54 +397,53 @@ export default App;
 
 
 ---------- AddEntryModal.tsx ----------
-// components/AddEntryModal.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
+    View,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
 } from "react-native";
 import {
-  Button,
-  Input,
-  Text,
-  ListItem,
-  Overlay,
-  SearchBar,
-  makeStyles,
-  useTheme,
+    Button,
+    Input,
+    Text,
+    ListItem,
+    Overlay,
+    SearchBar,
+    makeStyles,
+    useTheme,
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isValidNumberInput } from "../utils/validationUtils";
+import { DailyEntryItem } from "../types/dailyEntry";
 
 interface AddEntryModalProps {
-  isVisible: boolean;
-  toggleOverlay: () => void;
-  search: string;
-  updateSearch: (search: string) => void;
-  filteredFoods: Food[];
-  handleSelectFood: (item: Food) => void;
-  grams: string;
-  setGrams: (grams: string) => void;
-  handleAddEntry: () => void;
-  selectedFood: Food | null;
+    isVisible: boolean;
+    toggleOverlay: () => void;
+    selectedFood: Food | null; // Corrected prop
+    grams: string;
+    setGrams: (grams: string) => void;
+    handleAddEntry: () => void;
+    filteredFoods: Food[]; //Foods to filter
+    handleSelectFood: (item:Food) => void; //what happens after food selected
+     updateSearch: (search: string) => void; //What happens after search
+    search: string; //The searched text
 }
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
-  isVisible,
-  toggleOverlay,
-  search,
-  updateSearch,
-  filteredFoods,
-  handleSelectFood,
-  grams,
-  setGrams,
-  handleAddEntry,
-  selectedFood
+    isVisible,
+    toggleOverlay,
+    selectedFood,
+    grams,
+    setGrams,
+    handleAddEntry,
+    filteredFoods,
+    handleSelectFood,
+    updateSearch,
+    search,
 }) => {
-
     const { theme } = useTheme();
     const styles = useStyles();
 
@@ -578,213 +582,236 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface AddFoodModalProps {
-    isVisible: boolean;
-    toggleOverlay: () => void;
-    newFood: Omit<Food, "id">;
-    editFood: Food | null;
-    errors: { [key: string]: string };
-    handleInputChange: (key: keyof Omit<Food, "id">, value: string) => void;
-    handleCreateFood: () => void;
-    handleUpdateFood: () => void;
-    validateFood: (food: Omit<Food, "id">) => { [key: string]: string } | null;
+ isVisible: boolean;
+ toggleOverlay: () => void;
+ newFood: Omit<Food, "id">;
+ editFood: Food | null;
+ errors: { [key: string]: string };
+ handleInputChange: (key: keyof Omit<Food, "id">, value: string) => void;
+ handleCreateFood: () => void;
+ handleUpdateFood: () => void;
+ validateFood: (food: Omit<Food, "id">) => { [key: string]: string } | null;
 }
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
-    isVisible,
-    toggleOverlay,
-    newFood,
-    editFood,
-    errors,
-    handleInputChange,
-    handleCreateFood,
-    handleUpdateFood,
-    validateFood
+ isVisible,
+ toggleOverlay,
+ newFood,
+ editFood,
+ errors,
+ handleInputChange,
+ handleCreateFood,
+ handleUpdateFood,
+ validateFood
 }) => {
-    const { theme } = useTheme();
-    const styles = useStyles();
+ const { theme } = useTheme();
+ const styles = useStyles();
 
-    // Helper function to get the value safely
-    const getValue = (key: keyof Omit<Food, "id">) => {
-        if (editFood) {
-            return String(editFood[key] ?? "");
-        }
-        return String(newFood[key] ?? "");
-    };
+ // Helper function to get the value safely
+ const getValue = (key: keyof Omit<Food, "id">) => {
+     if (editFood) {
+         return String(editFood[key] ?? "");
+     }
+     return String(newFood[key] ?? "");
+ };
 
-    // Dynamically determine icon and label color based on theme and errors
-    const getIconColor = (error: string | undefined) => {
-        return error ? theme.colors.error : theme.colors.grey3;
-    };
+ // Dynamically determine icon and label color based on theme and errors
+ const getIconColor = (error: string | undefined) => {
+     return error ? theme.colors.error : theme.colors.grey3;
+ };
 
-    const getLabelColor = (error: string | undefined) => {
-        return error ? theme.colors.error : theme.colors.grey1;
-    };
+ const getLabelColor = (error: string | undefined) => {
+     return error ? theme.colors.error : theme.colors.grey1;
+ };
 
 
-    return (
-        <Overlay
-            isVisible={isVisible}
-            onBackdropPress={toggleOverlay}
-            animationType="slide"
-            transparent={true}
-            statusBarTranslucent={true}
-            overlayStyle={styles.overlayStyle}
-        >
-            <SafeAreaView style={styles.modalSafeArea}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.keyboardAvoidingView}
-                >
-                    <View style={styles.overlayContent}>
-                        <View style={styles.titleContainer}>
-                            <Text h4 style={styles.overlayTitle}>
-                                {editFood ? "Edit Food" : "Add New Food"}
-                            </Text>
-                            <Icon
-                                name="close"
-                                type="material"
-                                size={24}
-                                color={theme.colors.grey3}
-                                onPress={toggleOverlay}
-                                containerStyle={styles.closeIcon}
-                            />
-                        </View>
+ return (
+     <Overlay
+         isVisible={isVisible}
+         onBackdropPress={toggleOverlay}
+         animationType="slide"
+         transparent={true}
+         statusBarTranslucent={true}
+         overlayStyle={styles.overlayStyle}
+     >
+         <SafeAreaView style={styles.modalSafeArea}>
+             <KeyboardAvoidingView
+                 behavior={Platform.OS === "ios" ? "padding" : "height"}
+                 style={styles.keyboardAvoidingView}
+             >
+                 <View style={styles.overlayContent}>
+                     <View style={styles.titleContainer}>
+                         <Text h4 style={styles.overlayTitle}>
+                             {editFood ? "Edit Food" : "Add New Food"}
+                         </Text>
+                         <Icon
+                             name="close"
+                             type="material"
+                             size={24}
+                             color={theme.colors.grey3}
+                             onPress={toggleOverlay}
+                             containerStyle={styles.closeIcon}
+                         />
+                     </View>
 
-                        <Input
-                            placeholder=""
-                            value={getValue("name")}
-                            onChangeText={(text) => handleInputChange("name", text)}
-                            errorMessage={errors.name}
-                            style={styles.input}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-                            placeholderTextColor={theme.colors.grey3}
-                            leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={theme.colors.text} style={styles.inputIcon} />}
-                            label="Food Name"
-                            labelStyle={[styles.inputLabel, { color: theme.colors.text }]}
-                        />
-                        <Input
-                            placeholder="Calories (per 100g)"
-                            keyboardType="numeric"
-                            value={getValue("calories")}
-                            onChangeText={(text) => handleInputChange("calories", text)}
-                            errorMessage={errors.calories}
-                            style={styles.input}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-                            placeholderTextColor={theme.colors.grey3}
-                            leftIcon={<MaterialCommunityIcons name="fire" size={24} color={theme.colors.text} style={styles.inputIcon} />}
-                            label="Calories (per 100g)"
-                            labelStyle={[styles.inputLabel, { color: theme.colors.text }]}
-                        />
-                        <Input
-                            placeholder="Protein (per 100g)"
-                            keyboardType="numeric"
-                            value={getValue("protein")}
-                            onChangeText={(text) => handleInputChange("protein", text)}
-                            errorMessage={errors.protein}
-                            style={styles.input}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-                            placeholderTextColor={theme.colors.grey3}
-                            leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={theme.colors.text} style={styles.inputIcon} />}
-                            label="Protein (per 100g)"
-                            labelStyle={[styles.inputLabel, { color: theme.colors.text }]}
-                        />
-                        <Input
-                            placeholder="Carbs (per 100g)"
-                            keyboardType="numeric"
-                            value={getValue("carbs")}
-                            onChangeText={(text) => handleInputChange("carbs", text)}
-                            errorMessage={errors.carbs}
-                            style={styles.input}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-                            placeholderTextColor={theme.colors.grey3}
-                            leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={theme.colors.text} style={styles.inputIcon} />}
-                            label="Carbs (per 100g)"
-                            labelStyle={[styles.inputLabel, { color: theme.colors.text }]}
-                        />
-                        <Input
-                            placeholder="Fat (per 100g)"
-                            keyboardType="numeric"
-                            value={getValue("fat")}
-                            onChangeText={(text) => handleInputChange("fat", text)}
-                            errorMessage={errors.fat}
-                            style={styles.input}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-                            placeholderTextColor={theme.colors.grey3}
-                            leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={theme.colors.text} style={styles.inputIcon} />}
-                            label="Fat (per 100g)"
-                            labelStyle={[styles.inputLabel, { color: theme.colors.text }]}
-                        />
+                     <View style={styles.inputContainer}>
+                         <Input
+                             placeholder=""
+                             value={getValue("name")}
+                             onChangeText={(text) => handleInputChange("name", text)}
+                             style={styles.input}
+                             inputContainerStyle={{ borderBottomColor: errors.name ? theme.colors.error : theme.colors.text }}
+                             placeholderTextColor={theme.colors.grey3}
+                             leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
+                             label="Food Name"
+                             labelStyle={[styles.inputLabel, { color: errors.name ? theme.colors.error : theme.colors.text }]}
+                         />
+                         {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+                     </View>
 
-                        <Button
-                            title={editFood ? "Update Food" : "Add Food"}
-                            onPress={editFood ? handleUpdateFood : handleCreateFood}
-                            disabled={editFood ? (editFood !== null && !!validateFood(editFood)) : !!validateFood(newFood)}
-                            buttonStyle={styles.button}
-                            titleStyle={{ color: theme.colors.white }}
-                        />
-                    </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </Overlay>
-    );
+                     <View style={styles.inputContainer}>
+                         <Input
+                             placeholder="Calories (per 100g)"
+                             keyboardType="numeric"
+                             value={getValue("calories")}
+                             onChangeText={(text) => handleInputChange("calories", text)}
+                             style={styles.input}
+                             inputContainerStyle={{ borderBottomColor: errors.calories ? theme.colors.error : theme.colors.text }}
+                             placeholderTextColor={theme.colors.grey3}
+                             leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
+                             label="Calories (per 100g)"
+                             labelStyle={[styles.inputLabel, { color: errors.calories ? theme.colors.error : theme.colors.text }]}
+                         />
+                          {errors.calories && <Text style={styles.errorText}>{errors.calories}</Text>}
+                     </View>
+
+                     <View style={styles.inputContainer}>
+                         <Input
+                             placeholder="Protein (per 100g)"
+                             keyboardType="numeric"
+                             value={getValue("protein")}
+                             onChangeText={(text) => handleInputChange("protein", text)}
+                             style={styles.input}
+                             inputContainerStyle={{ borderBottomColor: errors.protein ? theme.colors.error : theme.colors.text }}
+                             placeholderTextColor={theme.colors.grey3}
+                             leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
+                             label="Protein (per 100g)"
+                             labelStyle={[styles.inputLabel, { color: errors.protein ? theme.colors.error : theme.colors.text }]}
+                         />
+                         {errors.protein && <Text style={styles.errorText}>{errors.protein}</Text>}
+                     </View>
+
+                     <View style={styles.inputContainer}>
+                         <Input
+                             placeholder="Carbs (per 100g)"
+                             keyboardType="numeric"
+                             value={getValue("carbs")}
+                             onChangeText={(text) => handleInputChange("carbs", text)}
+                             style={styles.input}
+                             inputContainerStyle={{ borderBottomColor: errors.carbs ? theme.colors.error : theme.colors.text }}
+                             placeholderTextColor={theme.colors.grey3}
+                             leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
+                             label="Carbs (per 100g)"
+                             labelStyle={[styles.inputLabel, { color: errors.carbs ? theme.colors.error : theme.colors.text }]}
+                         />
+                         {errors.carbs && <Text style={styles.errorText}>{errors.carbs}</Text>}
+                     </View>
+                     <View style={styles.inputContainer}>
+                         <Input
+                             placeholder="Fat (per 100g)"
+                             keyboardType="numeric"
+                             value={getValue("fat")}
+                             onChangeText={(text) => handleInputChange("fat", text)}
+                             style={styles.input}
+                             inputContainerStyle={{ borderBottomColor: errors.fat ? theme.colors.error : theme.colors.text }}
+                             placeholderTextColor={theme.colors.grey3}
+                             leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={errors.fat ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
+                             label="Fat (per 100g)"
+                             labelStyle={[styles.inputLabel, { color: errors.fat ? theme.colors.error : theme.colors.text }]}
+                         />
+                         {errors.fat && <Text style={styles.errorText}>{errors.fat}</Text>}
+                     </View>
+
+                     <Button
+                         title={editFood ? "Update Food" : "Add Food"}
+                         onPress={editFood ? handleUpdateFood : handleCreateFood}
+                         disabled={editFood ? (editFood !== null && !!validateFood(editFood)) : !!validateFood(newFood)}
+                         buttonStyle={styles.button}
+                         titleStyle={{ color: theme.colors.white }}
+                     />
+                 </View>
+             </KeyboardAvoidingView>
+         </SafeAreaView>
+     </Overlay>
+ );
 };
 
 const useStyles = makeStyles((theme) => ({
-    overlayStyle: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        paddingTop: '33%',
-        padding: 20,
-        width: '100%',
-        height: '100%',
-        borderRadius: 10,
-    },
-    modalSafeArea: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    keyboardAvoidingView: {
-        width: "100%",
-        flex: 1,
-    },
-    overlayContent: {
-        backgroundColor: theme.colors.background,
-        width: "100%",
-        borderRadius: 10,
-        padding: 20,
-    },
-    titleContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    overlayTitle: {
-        textAlign: "center",
-        color: theme.colors.text,
-    },
-    closeIcon: {
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        padding: 5,
-    },
-    input: {
-        color: theme.colors.text,
-    },
-    inputLabel: {
-        color: theme.colors.grey1,  // Default label color
-        marginBottom: 5,
-        fontSize: 16,
-    },
-    inputIcon: {
-        marginRight: 10,
-    },
-    button: {
-        marginTop: 15,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 8,
-    },
+ overlayStyle: {
+     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+     paddingTop: '33%',
+     padding: 20,
+     width: '100%',
+     height: '100%',
+     borderRadius: 10,
+ },
+ modalSafeArea: {
+     flex: 1,
+     justifyContent: "center",
+     alignItems: "center",
+ },
+ keyboardAvoidingView: {
+     width: "100%",
+     flex: 1,
+ },
+ overlayContent: {
+     backgroundColor: theme.colors.background,
+     width: "100%",
+     borderRadius: 10,
+     padding: 20,
+ },
+ titleContainer: {
+     flexDirection: 'row',
+     justifyContent: 'space-between',
+     alignItems: 'center',
+     marginBottom: 10,
+ },
+ overlayTitle: {
+     textAlign: "center",
+     color: theme.colors.text,
+ },
+ closeIcon: {
+     position: 'absolute',
+     top: 0,
+     right: 0,
+     padding: 5,
+ },
+ input: {
+     color: theme.colors.text,
+ },
+ inputLabel: {
+     color: theme.colors.grey1,  // Default label color
+     marginBottom: 5,
+     fontSize: 16,
+ },
+ inputIcon: {
+     marginRight: 10,
+ },
+  inputContainer: {
+     marginBottom: 0, // Reduce spacing
+ },
+ errorText: {
+     color: theme.colors.error,
+     marginLeft: 10,
+     marginTop: 0,
+     marginBottom: 5
+
+ },
+ button: {
+     marginTop: 15,
+     backgroundColor: theme.colors.primary,
+     borderRadius: 8,
+ },
 }));
 
 export default AddFoodModal;
@@ -1231,23 +1258,41 @@ export default DataManagementButtons;
 
 
 ---------- FoodItem.tsx ----------
-// components/FoodItem.tsx
-import React from 'react';
+// FoodItem.tsx
+import React, { useRef } from 'react'; // Import useRef
 import { StyleSheet } from 'react-native';
 import { ListItem, Icon, useTheme, Button } from '@rneui/themed';
 import { Food } from '../types/food';
+import Toast from 'react-native-toast-message';
 
 interface FoodItemProps {
   food: Food;
   onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
+  onUndoDelete: (food: Food) => void; // Add undo prop
 }
 
-const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
+const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete, onUndoDelete }) => {
+  const { theme } = useTheme();
+  const swipeableRef = useRef<any>(null); // Ref for swipeable
 
-    const {theme} = useTheme();
+  const handleDelete = () => {
+      onDelete(food.id);
+       swipeableRef.current?.close(); // Close after delete
+      Toast.show({
+          type: 'success',
+          text1: `${food.name} deleted`,
+          text2: 'Tap to undo',
+          position: 'bottom',
+          bottomOffset: 80,
+          onPress: () => onUndoDelete(food), // Call undo function
+          visibilityTime: 3000, // Show for 3 seconds
+        });
+  };
+
   return (
     <ListItem.Swipeable
+      ref={swipeableRef} // Attach ref
       bottomDivider
       leftContent={(reset) => (
         <Button
@@ -1263,19 +1308,21 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
       rightContent={(reset) => (
         <Button
           title="Delete"
-          onPress={() => {
-            onDelete(food.id);
-            reset();
-          }}
+          onPress={handleDelete} // Call handleDelete
           icon={{ name: 'delete', color: 'white' }}
           buttonStyle={styles.swipeButtonDelete}
         />
       )}
-      containerStyle={[styles.listItemContainer, {backgroundColor: theme.colors.background}]}
+      containerStyle={[
+        styles.listItemContainer,
+        { backgroundColor: theme.colors.background },
+      ]}
     >
       <Icon name="fast-food-outline" type="ionicon" color={theme.colors.text} />
       <ListItem.Content>
-        <ListItem.Title style={[styles.title, {color: theme.colors.text}]}>{food.name}</ListItem.Title>
+        <ListItem.Title style={[styles.title, { color: theme.colors.text }]}>
+          {food.name}
+        </ListItem.Title>
         <ListItem.Subtitle style={{ color: theme.colors.text }}>
           {`Cal: ${food.calories}, P: ${food.protein}g, C: ${food.carbs}g, F: ${food.fat}g`}
         </ListItem.Subtitle>
@@ -1287,11 +1334,9 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
 
 const styles = StyleSheet.create({
     listItemContainer: {
-      paddingVertical: 15, // Add some vertical padding
-      borderRadius: 8,   // Rounded corners
-      marginVertical: 5, // Space between list items
-      //borderWidth: 1,       // Subtle border //Removed for theme
-      //borderColor: '#ddd',
+      paddingVertical: 15,
+      borderRadius: 0,
+      marginVertical: 0,
     },
     title: {
       fontWeight: 'bold',
@@ -1628,6 +1673,7 @@ export default AppNavigator;
     "expo": "~52.0.40",
     "expo-document-picker": "^13.0.3",
     "expo-file-system": "^18.0.12",
+    "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.1",
     "react": "18.3.1",
     "react-native": "0.76.7",
@@ -1636,9 +1682,9 @@ export default AppNavigator;
     "react-native-safe-area-context": "^4.14.1",
     "react-native-screens": "^4.9.2",
     "react-native-svg": "^15.11.2",
+    "react-native-toast-message": "^2.2.1",
     "react-native-webview": "^13.13.4",
-    "uuid": "^11.1.0",
-    "expo-sharing": "~13.0.1"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -1741,377 +1787,456 @@ fs.stat(projectRoot, (err, stats) => {
 
 
 ---------- DailyEntryScreen.tsx ----------
-//screens/DailyEntryScreen.tsx
-// Import necessary modules and components
 import React, { useState, useEffect, useCallback } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods } from "../services/foodService";
 import {
-  saveDailyEntries,
-  loadDailyEntries,
-  loadSettings,
+    saveDailyEntries,
+    loadDailyEntries,
+    loadSettings,
 } from "../services/storageService";
 import {
-  formatDate,
-  formatDateReadable,
-  getTodayDateString,
+    formatDate,
+    formatDateReadable,
+    getTodayDateString,
 } from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
 import DailyProgress from "../components/DailyProgress";
 import {
-  Button,
-  Text,
-  ListItem,
-  FAB,
-  SearchBar,
-  makeStyles,
-  useTheme,
-  Divider,
+    Button,
+    Text,
+    ListItem,
+    FAB,
+    makeStyles,
+    useTheme,
+    Divider,
+    Input,
 } from "@rneui/themed";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO } from "date-fns";
 import { Icon } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AddEntryModal from "../components/AddEntryModal"; // Import
+import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
-import { v4 as uuidv4 } from "uuid";
+import Toast from "react-native-toast-message";
 
-// Define the DailyGoals interface
 interface DailyGoals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
 }
 
-// DailyEntryScreen Component
 const DailyEntryScreen: React.FC = () => {
-  // State variables
-  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    getTodayDateString()
-  );
-  const [foods, setFoods] = useState<Food[]>([]);
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [grams, setGrams] = useState("");
-  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-  const [search, setSearch] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
-    calories: 2000,
-    protein: 50,
-    carbs: 200,
-    fat: 70,
-  });
-
-  // Get theme and styles
-  const { theme } = useTheme();
-  const styles = useStyles();
-
-  // Load data function (using useCallback for memoization)
-  const loadData = useCallback(async () => {
-    const loadedFoods = await getFoods();
-    const loadedEntries = await loadDailyEntries();
-    const loadedSettings = await loadSettings();
-
-    if (loadedSettings.dailyGoals) {
-      setDailyGoals((prevGoals) => ({
-        ...prevGoals,
-        ...loadedSettings.dailyGoals,
-      }));
-    }
-
-    setFoods(loadedFoods);
-    setDailyEntries(loadedEntries);
-  }, []);
-
-  // Load data on component mount
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Function to get the current entry for the selected date
-  const getCurrentEntry = (): DailyEntry => {
-    return (
-      dailyEntries.find((entry) => entry.date === selectedDate) || {
-        date: selectedDate,
-        items: [],
-      }
-    );
-  };
-
-  // Function to update and save entries
-  const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
-    await saveDailyEntries(updatedEntries);
-    setDailyEntries(updatedEntries);
-  };
-
-  // Function to handle adding a new entry
-  const handleAddEntry = async () => {
-    if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
-      Alert.alert(
-        "Invalid Input",
-        "Please select a food and enter a valid, positive number for grams."
-      );
-      return;
-    }
-
-    const newEntryItem: DailyEntryItem = {
-      food: selectedFood,
-      grams: parseFloat(grams),
-    };
-    const currentEntry = getCurrentEntry();
-    const updatedItems = [...currentEntry.items, newEntryItem];
-    const updatedEntry = { ...currentEntry, items: updatedItems };
-
-    const updatedEntries = dailyEntries.filter(
-      (entry) => entry.date !== selectedDate
-    );
-    updatedEntries.push(updatedEntry);
-
-    await updateAndSaveEntries(updatedEntries);
-    setSelectedFood(null);
-    setGrams("");
-    setIsOverlayVisible(false);
-  };
-
-  // Function to handle removing an entry
-  const handleRemoveEntry = async (index: number) => {
-    const currentEntry = getCurrentEntry();
-    const updatedItems = currentEntry.items.filter((_, i) => i !== index);
-    const updatedEntry = { ...currentEntry, items: updatedItems };
-
-    const updatedEntries = dailyEntries.filter(
-      (entry) => entry.date !== selectedDate
-    );
-    if (updatedItems.length > 0) {
-      updatedEntries.push(updatedEntry);
-    }
-
-    await updateAndSaveEntries(updatedEntries);
-  };
-
-  // Toggle the visibility of the overlay
-  const toggleOverlay = () => {
-    setIsOverlayVisible(!isOverlayVisible);
-    if (isOverlayVisible) {
-      // Corrected condition
-      setSearch("");
-      setSelectedFood(null);
-    }
-  };
-
-  // Update search text
-  const updateSearch = (search: string) => setSearch(search);
-
-  // Filter foods based on search text
-  const filteredFoods = foods.filter((food) =>
-    food.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Handle date change
-  const handleDateChange = (event: any, selectedDateVal?: Date) => {
-    setShowDatePicker(false);
-    if (event.type === "set" && selectedDateVal) {
-      setSelectedDate(formatDate(selectedDateVal));
-    }
-  };
-
-  // Navigate to previous day
-  const handlePreviousDay = () =>
-    setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
-
-  // Navigate to next day
-  const handleNextDay = () =>
-    setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
-
-  // Handle food selection
-  const handleSelectFood = (item: Food) => {
-    setSelectedFood(item);
-    setSearch("");
-  };
-
-  // Calculate total macros for the selected date
-  const calculateTotals = () => {
-    const currentEntry = getCurrentEntry();
-    let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
-
-    currentEntry.items.forEach((item) => {
-      totalCalories += (item.food.calories / 100) * item.grams;
-      totalProtein += (item.food.protein / 100) * item.grams;
-      totalCarbs += (item.food.carbs / 100) * item.grams;
-      totalFat += (item.food.fat / 100) * item.grams;
+    const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
+    const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+    const [foods, setFoods] = useState<Food[]>([]);
+    const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+    const [grams, setGrams] = useState("");
+    const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
+        calories: 2000,
+        protein: 50,
+        carbs: 200,
+        fat: 70,
     });
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [tempGrams, setTempGrams] = useState("");
+    const [search, setSearch] = useState("");
 
-    return {
-      totalCalories: Math.round(totalCalories),
-      totalProtein: Math.round(totalProtein),
-      totalCarbs: Math.round(totalCarbs),
-      totalFat: Math.round(totalFat),
+    const { theme } = useTheme();
+    const styles = useStyles();
+
+    const loadData = useCallback(async () => {
+        const loadedFoods = await getFoods();
+        const loadedEntries = await loadDailyEntries();
+        const loadedSettings = await loadSettings();
+
+        if (loadedSettings.dailyGoals) {
+            setDailyGoals(loadedSettings.dailyGoals);
+        }
+
+        setFoods(loadedFoods);
+        setDailyEntries(loadedEntries);
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const getCurrentEntry = (): DailyEntry => {
+        return (
+            dailyEntries.find((entry) => entry.date === selectedDate) || {
+                date: selectedDate,
+                items: [],
+            }
+        );
     };
-  };
 
-  // Destructure calculated totals
-  const { totalCalories, totalProtein, totalCarbs, totalFat } =
-    calculateTotals();
+    const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
+        await saveDailyEntries(updatedEntries);
+        setDailyEntries(updatedEntries);
+    };
 
-  // Return the JSX for the DailyEntryScreen
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Date Navigation */}
-      <View style={styles.dateNavigation}>
-        <Button
-          type="clear"
-          onPress={handlePreviousDay}
-          icon={
-            <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
-          }
-        />
-        <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
-          {formatDateReadable(selectedDate)}
-        </Text>
-        <Button
-          type="clear"
-          onPress={handleNextDay}
-          icon={
-            <Icon
-              name="arrow-forward"
-              type="ionicon"
-              color={theme.colors.text}
+    const handleStartEditing = (index: number, currentGrams: number) => {
+        setEditingIndex(index);
+        setTempGrams(String(currentGrams));
+    };
+
+    const handleSaveInlineEdit = async (index: number) => {
+        if (!isValidNumberInput(tempGrams) || parseFloat(tempGrams) <= 0) {
+            Alert.alert(
+                "Invalid Input",
+                "Please enter a valid, positive number for grams."
+            );
+            return;
+        }
+
+        const currentEntry = getCurrentEntry();
+        const updatedItems = [...currentEntry.items];
+        updatedItems[index] = { ...updatedItems[index], grams: parseFloat(tempGrams) };
+        const updatedEntry = { ...currentEntry, items: updatedItems };
+
+        const updatedEntries = dailyEntries.filter(
+            (entry) => entry.date !== selectedDate
+        );
+        updatedEntries.push(updatedEntry);
+
+        await updateAndSaveEntries(updatedEntries);
+        setEditingIndex(null);
+        setTempGrams("");
+    };
+
+    const handleCancelInlineEdit = () => {
+        setEditingIndex(null);
+        setTempGrams("");
+    };
+
+    const handleAddEntry = async () => {
+        if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
+            Alert.alert(
+                "Invalid Input",
+                "Please select a food and enter a valid, positive number for grams."
+            );
+            return;
+        }
+
+        const newEntryItem: DailyEntryItem = {
+            food: selectedFood,
+            grams: parseFloat(grams),
+        };
+        const currentEntry = getCurrentEntry();
+        const updatedItems = [...currentEntry.items, newEntryItem];
+        const updatedEntry = { ...currentEntry, items: updatedItems };
+
+        const updatedEntries = dailyEntries.filter(
+            (entry) => entry.date !== selectedDate
+        );
+        updatedEntries.push(updatedEntry);
+
+        await updateAndSaveEntries(updatedEntries);
+        setSelectedFood(null);
+        setGrams("");
+        setIsOverlayVisible(false);
+    };
+
+
+  const handleSelectFood = (item: Food) => {
+        setSelectedFood(item);
+    };
+
+
+    const handleRemoveEntry = async (index: number) => {
+        const currentEntry = getCurrentEntry();
+        const itemToRemove = currentEntry.items[index];
+        const updatedItems = currentEntry.items.filter((_, i) => i !== index);
+        const updatedEntry = { ...currentEntry, items: updatedItems };
+
+        const updatedEntries = dailyEntries.filter(
+            (entry) => entry.date !== selectedDate
+        );
+        if (updatedItems.length > 0) {
+            updatedEntries.push(updatedEntry);
+        }
+
+        await updateAndSaveEntries(updatedEntries);
+
+        Toast.show({
+            type: "success",
+            text1: `${itemToRemove.food.name} entry deleted`,
+            text2: "Tap to undo",
+            position: "bottom",
+            bottomOffset: 80,
+            onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
+            visibilityTime: 3000,
+        });
+    };
+
+    const handleUndoRemoveEntry = (
+        item: DailyEntryItem,
+        originalEntry: DailyEntry
+    ) => {
+        const updatedItems = [...originalEntry.items, item];
+        const updatedEntry = { ...originalEntry, items: updatedItems };
+        const updatedEntries = dailyEntries.filter(
+            (entry) => entry.date !== selectedDate
+        );
+        updatedEntries.push(updatedEntry);
+        updateAndSaveEntries(updatedEntries);
+        Toast.hide();
+    };
+
+
+     const updateSearch = (search: string) => setSearch(search); //handleSearch
+    const filteredFoods = foods.filter((food) => //handle filter
+        food.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const toggleOverlay = (foodForEdit?: DailyEntryItem) => { //add food for edit in edit mode
+        setIsOverlayVisible(!isOverlayVisible);
+        if (foodForEdit) {
+            setSelectedFood(foodForEdit.food);
+            setGrams(String(foodForEdit.grams)); // Pre-fill grams
+        }
+         else {
+             setSelectedFood(null);
+             setGrams("")
+
+         }
+    };
+
+
+    const handleEditEntry = (item: DailyEntryItem) => {
+          toggleOverlay(item); // Pass the item for editing
+      };
+
+    const handleDateChange = (event: any, selectedDateVal?: Date) => {
+        setShowDatePicker(false);
+        if (event.type === "set" && selectedDateVal) {
+            setSelectedDate(formatDate(selectedDateVal));
+        }
+    };
+
+    const handlePreviousDay = () =>
+        setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
+
+    const handleNextDay = () =>
+        setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
+
+
+    const calculateTotals = () => {
+        const currentEntry = getCurrentEntry();
+        let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
+
+        currentEntry.items.forEach((item) => {
+            totalCalories += (item.food.calories / 100) * item.grams;
+            totalProtein += (item.food.protein / 100) * item.grams;
+            totalCarbs += (item.food.carbs / 100) * item.grams;
+            totalFat += (item.food.fat / 100) * item.grams;
+        });
+
+        return {
+            totalCalories: Math.round(totalCalories),
+            totalProtein: Math.round(totalProtein),
+            totalCarbs: Math.round(totalCarbs),
+            totalFat: Math.round(totalFat),
+        };
+    };
+
+    const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.dateNavigation}>
+                <Button
+                    type="clear"
+                    onPress={handlePreviousDay}
+                    icon={<Icon name="arrow-back" type="ionicon" color={theme.colors.text} />}
+                />
+                <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
+                    {formatDateReadable(selectedDate)}
+                </Text>
+                <Button
+                    type="clear"
+                    onPress={handleNextDay}
+                    icon={<Icon name="arrow-forward" type="ionicon" color={theme.colors.text} />}
+                />
+            </View>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={parseISO(selectedDate)}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                />
+            )}
+
+            <DailyProgress
+                calories={totalCalories}
+                protein={totalProtein}
+                carbs={totalCarbs}
+                fat={totalFat}
+                goals={dailyGoals}
             />
-          }
-        />
-      </View>
+            <Divider style={styles.divider} />
 
-      {/* Date Picker (conditional rendering) */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={parseISO(selectedDate)}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
+            <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Entries:
+            </Text>
 
-      {/* Daily Progress Component */}
-      <DailyProgress
-        calories={totalCalories}
-        protein={totalProtein}
-        carbs={totalCarbs}
-        fat={totalFat}
-        goals={dailyGoals}
-      />
-      <Divider style={styles.divider} />
+            <FlatList
+                data={getCurrentEntry().items}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item, index }) => (
+                    <ListItem.Swipeable
+                        bottomDivider
+                        leftContent={(reset) => (
+                            <Button
+                                title="Edit"
+                                onPress={() => {
+                                    handleEditEntry(item); // Pass the entire item
+                                    reset();
+                                }}
+                                icon={{ name: 'edit', color: 'white' }}
+                                buttonStyle={{ minHeight: '100%', backgroundColor: 'orange' }}
+                            />
+                        )}
+                        rightContent={(reset) => (
+                            <Button
+                                title="Delete"
+                                onPress={() => {
+                                    handleRemoveEntry(index);
+                                    reset();
+                                }}
+                                icon={{ name: 'delete', color: 'white' }}
+                                buttonStyle={{ minHeight: '100%', backgroundColor: 'red' }}
+                            />
+                        )}
+                        containerStyle={{ backgroundColor: theme.colors.background }}
+                    >
+                        <Icon name="nutrition-outline" type="ionicon" color={theme.colors.text} />
+                        <ListItem.Content>
+                            <ListItem.Title style={{ color: theme.colors.text }}>
+                                {item.food.name}
+                            </ListItem.Title>
 
-      {/* Entries Section */}
-      <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Entries:
-      </Text>
-      <FlatList
-        data={getCurrentEntry().items}
-        keyExtractor={(_, index) => index.toString()}
-        renderItem={({ item, index }) => (
-          <ListItem
-            bottomDivider
-            containerStyle={{ backgroundColor: theme.colors.background }}
-          >
-            <Icon
-              name="nutrition-outline"
-              type="ionicon"
-              color={theme.colors.text}
+                            {editingIndex === index ? ( // Inline editing input
+                                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                    <Input
+                                        value={tempGrams}
+                                        onChangeText={setTempGrams}
+                                        keyboardType="numeric"
+                                        inputContainerStyle={{ borderBottomWidth: 0 }} // Remove default border
+                                        style={{ width: 80, color: theme.colors.text }} // Adjust width as needed
+                                    />
+                                    <Button
+                                        title="Save"
+                                        type="clear"
+                                        onPress={() => handleSaveInlineEdit(index)}
+                                        icon={<Icon name="checkmark" type="ionicon" color="green" />}
+                                    />
+                                    <Button
+                                        title="Cancel"
+                                        type="clear"
+                                        onPress={handleCancelInlineEdit}
+                                        icon={<Icon name="close" type="ionicon" color="red" />}
+                                    />
+                                </View>
+                            ) : ( // Regular display of grams
+                                <ListItem.Subtitle style={{ color: theme.colors.text }}>
+                                    {`${item.grams}g`}
+                                </ListItem.Subtitle>
+                            )}
+
+                        </ListItem.Content>
+                    </ListItem.Swipeable>
+                )}
             />
-            <ListItem.Content>
-              <ListItem.Title style={{ color: theme.colors.text }}>
-                {item.food.name}
-              </ListItem.Title>
-              <ListItem.Subtitle
-                style={{ color: theme.colors.text }}
-              >{`${item.grams}g`}</ListItem.Subtitle>
-            </ListItem.Content>
-            <Button
-              type="clear"
-              onPress={() => handleRemoveEntry(index)}
-              icon={<Icon name="trash" type="ionicon" color="red" />}
+
+            <FAB
+                icon={<Icon name="add" color="white" />}
+                color={theme.colors.primary}
+                onPress={() => toggleOverlay()}
+                placement="right"
+                size="large"
+                containerStyle={styles.fabContainer}
             />
-          </ListItem>
-        )}
-      />
 
-      {/* Add Entry FAB */}
-      <FAB
-        icon={<Icon name="add" color="white" />}
-        color={theme.colors.primary}
-        onPress={toggleOverlay}
-        placement="right"
-        title="Add"
-      />
-
-      {/* Add Entry Modal */}
-      <AddEntryModal
-        isVisible={isOverlayVisible}
-        toggleOverlay={toggleOverlay}
-        search={search}
-        updateSearch={updateSearch}
-        filteredFoods={filteredFoods}
-        handleSelectFood={handleSelectFood}
-        grams={grams}
-        setGrams={setGrams}
-        handleAddEntry={handleAddEntry}
-        selectedFood={selectedFood}
-      />
-    </SafeAreaView>
-  );
+            <AddEntryModal
+               isVisible={isOverlayVisible}
+                toggleOverlay={() => {
+                    toggleOverlay();
+                }}
+               selectedFood={selectedFood} //Pass the selected food
+               grams={grams} //pass the current number of grams
+               setGrams={setGrams}
+               filteredFoods={foods} // Pass all foods (no filtering in modal)
+               handleAddEntry={handleAddEntry}
+               handleSelectFood={handleSelectFood}
+               search={search}
+               updateSearch={updateSearch}
+            />
+        </SafeAreaView>
+    );
 };
 
-// StyleSheet using makeStyles
 const useStyles = makeStyles((theme) => ({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  dateNavigation: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 10,
-    paddingHorizontal: 10,
-  },
-  dateText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.text,
-  },
-  divider: {
-    marginVertical: 10,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background,
+    },
+    dateNavigation: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginVertical: 10,
+        paddingHorizontal: 10,
+    },
+    dateText: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: theme.colors.text,
+    },
+    divider: {
+        marginVertical: 10,
+    },
+    sectionTitle: {
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    fabContainer: {
+        position: "absolute",
+        bottom: -6,
+        right: -8,
+        elevation: 0,
+        zIndex: 10,
+    },
+
 }));
 
-// Export the component
 export default DailyEntryScreen;
-
 ---------- END DailyEntryScreen.tsx ----------
 
 
 ---------- FoodListScreen.tsx ----------
-// screens/FoodListScreen.tsx (Corrected with keyof Omit)
-import React, { useState, useEffect } from "react";
-import { View, FlatList, Alert, Platform } from "react-native";
-import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
-import { Food } from "../types/food";
-import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
-import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles } from "@rneui/themed";
-import { FAB } from "@rneui/base";
-import { SafeAreaView } from "react-native-safe-area-context";
-import AddFoodModal from "../components/AddFoodModal";
+ //FoodListScreen.tsx
+ import React, { useState, useEffect, useCallback } from "react"; // Import useCallback
+ import { View, FlatList, Alert, Platform } from "react-native";
+ import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
+ import { Food } from "../types/food";
+ import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
+ import FoodItem from "../components/FoodItem";
+ import { Button, SearchBar, useTheme, makeStyles } from "@rneui/themed";
+ import { FAB } from "@rneui/base";
+ import { SafeAreaView } from "react-native-safe-area-context";
+ import AddFoodModal from "../components/AddFoodModal";
+ import Toast from 'react-native-toast-message';
 
-const FoodListScreen: React.FC = () => {
+ const FoodListScreen: React.FC = () => {
  const [foods, setFoods] = useState<Food[]>([]);
  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
  const [search, setSearch] = useState("");
@@ -2127,14 +2252,14 @@ const FoodListScreen: React.FC = () => {
  const { theme } = useTheme();
  const styles = useStyles();
 
- const loadFoodData = async () => {
+ const loadFoodData = useCallback(async () => { // Use useCallback
      const loadedFoods = await getFoods();
      setFoods(loadedFoods);
- };
+ }, []);  // Empty dependency array
 
  useEffect(() => {
      loadFoodData();
- }, []);
+ }, [loadFoodData]);
 
  const validateFood = (food: Omit<Food, "id">) => {
      const newErrors: { [key: string]: string } = {};
@@ -2187,10 +2312,17 @@ const FoodListScreen: React.FC = () => {
      setFoods(foods.filter((f) => f.id !== foodId));
  };
 
+ // Add undo function
+ const handleUndoDeleteFood = (food: Food) => {
+     setFoods(prevFoods => [...prevFoods, food]); // Re-add the food
+     Toast.hide();
+ };
+
+
  const toggleOverlay = (food?: Food) => {
      if (food) {
-       setEditFood(food);
-       setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+     setEditFood(food);
+     setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
      } else {
          setEditFood(null);
          setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
@@ -2229,7 +2361,12 @@ const FoodListScreen: React.FC = () => {
              data={filteredFoods}
              keyExtractor={(item) => item.id}
              renderItem={({ item }) => (
-                 <FoodItem food={item} onEdit={toggleOverlay} onDelete={handleDeleteFood} />
+                 <FoodItem
+                     food={item}
+                     onEdit={toggleOverlay}
+                     onDelete={handleDeleteFood}
+                     onUndoDelete={handleUndoDeleteFood} // Pass undo handler
+                 />
              )}
          />
 
@@ -2238,7 +2375,8 @@ const FoodListScreen: React.FC = () => {
              color={theme.colors.primary}
              onPress={() => toggleOverlay()}
              placement="right"
-             title="Add"
+             title=""
+             style={{marginBottom:10, marginRight: 8}}
          />
 
          <AddFoodModal
@@ -2254,9 +2392,9 @@ const FoodListScreen: React.FC = () => {
          />
      </SafeAreaView>
  );
-};
+ };
 
-const useStyles = makeStyles((theme) => ({
+ const useStyles = makeStyles((theme) => ({
  container: {
      flex: 1,
      backgroundColor: theme.colors.background,
@@ -2271,9 +2409,9 @@ const useStyles = makeStyles((theme) => ({
  searchBarInputContainer: {
      borderRadius: 10,
  },
-}));
+ }));
 
-export default FoodListScreen;
+ export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
 
 
