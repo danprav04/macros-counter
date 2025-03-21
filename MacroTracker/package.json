@@ -30,7 +30,7 @@
     "react-native-safe-area-context": "^4.14.1",
     "react-native-screens": "^4.9.2",
     "react-native-svg": "^15.11.2",
-    "react-native-svg-charts": "^5.4.0",
+    "react-native-webview": "^13.13.4",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
