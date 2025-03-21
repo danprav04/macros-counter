@@ -22,8 +22,8 @@ import * as FileSystem from "expo-file-system";
 import { formatDate } from "../utils/dateUtils";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { DailyEntry } from "../types/dailyEntry";
-import { LineChart, Grid, YAxis, XAxis } from "react-native-svg-charts"; // Import the new library
-import { scaleTime } from "d3-scale"; // Import d3-scale for time scaling
+import { LineChart, Grid, YAxis, XAxis } from "react-native-svg-charts";
+import { scaleTime } from "d3-scale";
 import { parseISO } from "date-fns";
 
 const macros = ["calories", "protein", "carbs", "fat"] as const;
@@ -41,10 +41,19 @@ interface Statistics {
   fat: MacroData[];
 }
 
-const SettingsScreen: React.FC = () => {
+interface SettingsScreenProps {
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+}
+
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
-    dailyGoals: {},
+    dailyGoals: {
+      calories: 2000, // Provide default values
+      protein: 50,
+      carbs: 200,
+      fat: 70,
+    },
   });
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
@@ -61,26 +70,38 @@ const SettingsScreen: React.FC = () => {
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
     // Ensure dailyGoals is initialized, even if loadedSettings is null/undefined
-    setSettings(loadedSettings || { theme: "system", dailyGoals: {} });
+    setSettings(prevSettings => ({
+      ...prevSettings, // Keep existing settings (like theme)
+      ...loadedSettings, // Overwrite with loaded settings
+      dailyGoals: {
+        // Ensure dailyGoals exists and merge defaults
+        ...prevSettings.dailyGoals, // Start with default/previous
+        ...(loadedSettings?.dailyGoals || {}), // Overlay with loaded, if exist
+      },
+    }));
   }, []);
 
   useEffect(() => {
     loadInitialSettings();
   }, [loadInitialSettings]);
 
-  const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
-    const updatedSettings: Settings = { ...settings, theme: newTheme }; //Type assertion
-    setSettings(updatedSettings);
-    await saveSettings(updatedSettings);
-  };
+  //This is now handled by the parent component App.tsx
+  // const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
+  //   const updatedSettings: Settings = { ...settings, theme: newTheme }; //Type assertion
+  //   setSettings(updatedSettings);
+  //   await saveSettings(updatedSettings);
+  // };
 
   const handleGoalChange = async (goalType: MacroType, value: string) => {
     const numericValue = parseFloat(value) || 0;
-    // Use type assertion to ensure dailyGoals is not undefined.
     const updatedGoals = { ...settings.dailyGoals, [goalType]: numericValue };
-    const updatedSettings: Settings = { ...settings, dailyGoals: updatedGoals }; // Type assertion
-    setSettings(updatedSettings);
-    await saveSettings(updatedSettings);
+
+    // Use functional update to correctly merge with previous state
+    setSettings(prevSettings => {
+      const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals };
+      saveSettings(updatedSettings); // Save on every change
+      return updatedSettings;
+    });
   };
 
   const handleExportData = async () => {
@@ -97,7 +118,7 @@ const SettingsScreen: React.FC = () => {
             item.food.protein,
             item.food.carbs,
             item.food.fat,
-          ])
+          ]),
         ),
       ];
       const csvString = csvData.map((row) => row.join(",")).join("\n");
@@ -199,22 +220,22 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text h3 style={styles.sectionTitle}>
+      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
         General
       </Text>
-      <ListItem bottomDivider>
+      <ListItem bottomDivider containerStyle={{backgroundColor: theme.colors.background}}>
         <ListItem.Content>
-          <ListItem.Title>Dark Mode</ListItem.Title>
+          <ListItem.Title style={{ color: theme.colors.text }}>Dark Mode</ListItem.Title>
         </ListItem.Content>
         <Switch
           value={settings.theme === "dark"}
           onValueChange={() =>
-            handleThemeChange(settings.theme === "dark" ? "light" : "dark")
+            onThemeChange(settings.theme === "dark" ? "light" : "dark")
           }
         />
       </ListItem>
 
-      <Text h3 style={styles.sectionTitle}>
+      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
         Daily Goals
       </Text>
       {macros.map((macro) => (
@@ -224,10 +245,13 @@ const SettingsScreen: React.FC = () => {
           keyboardType="numeric"
           value={settings.dailyGoals?.[macro]?.toString() || ""}
           onChangeText={(value) => handleGoalChange(macro, value)}
+          style={{color: theme.colors.text}}
+          inputContainerStyle={{borderBottomColor: theme.colors.text}}
+          labelStyle={{color: theme.colors.text}}
         />
       ))}
 
-      <Text h3 style={styles.sectionTitle}>
+      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
         Statistics
       </Text>
       {macros.map((macro) => {
@@ -243,7 +267,7 @@ const SettingsScreen: React.FC = () => {
 
         return (
           <View key={macro} style={styles.chartContainer}>
-            <Text h4 style={{ textAlign: "center" }}>
+            <Text h4 style={{ textAlign: "center", color: theme.colors.text }}>
               {macro.charAt(0).toUpperCase() + macro.slice(1)}
             </Text>
             <View style={{ height: 200, flexDirection: "row" }}>
@@ -251,7 +275,7 @@ const SettingsScreen: React.FC = () => {
                 data={values}
                 contentInset={{ top: 20, bottom: 20 }}
                 svg={{
-                  fill: "grey",
+                  fill: theme.colors.text,
                   fontSize: 10,
                 }}
                 numberOfTicks={10}
@@ -278,7 +302,7 @@ const SettingsScreen: React.FC = () => {
                   contentInset={{ left: 10, right: 10 }}
                   svg={{
                     fontSize: 10,
-                    fill: "black",
+                    fill: theme.colors.text,
                     rotation: -45,
                     originY: 30,
                     y: 5,
@@ -290,18 +314,18 @@ const SettingsScreen: React.FC = () => {
         );
       })}
 
-      <Text h3 style={styles.sectionTitle}>
+      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
         Data Management
       </Text>
       <Button
         title="Export Data"
         onPress={handleExportData}
-        buttonStyle={{ marginBottom: 10 }}
+        buttonStyle={{ marginBottom: 10, backgroundColor: theme.colors.primary }}
       />
       <Button
         title="Import Data"
         onPress={handleImportData}
-        buttonStyle={{ marginBottom: 10 }}
+        buttonStyle={{ marginBottom: 10, backgroundColor: theme.colors.primary }}
       />
       <Button title="Clear All Data" onPress={handleClearData} color="error" />
 

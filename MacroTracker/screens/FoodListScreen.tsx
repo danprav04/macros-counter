@@ -1,5 +1,6 @@
 // screens/FoodListScreen.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react'; // Removed useCallback
 import { View, FlatList, StyleSheet, Alert, TextInput, ScrollView, Platform } from 'react-native';
 import { createFood, getFoods, updateFood, deleteFood } from '../services/foodService';
 import { Food } from '../types/food';
@@ -7,7 +8,6 @@ import { isValidNumberInput, isNotEmpty } from '../utils/validationUtils';
 import FoodItem from '../components/FoodItem';
 import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
 import { formatDate } from '../utils/dateUtils';
-import Icon from "@rneui/base/dist/Icon/Icon";
 
 const FoodListScreen: React.FC = () => {
   const [foods, setFoods] = useState<Food[]>([]);
@@ -24,14 +24,14 @@ const FoodListScreen: React.FC = () => {
   const { theme } = useTheme();
   const styles = useStyles();
 
-  const loadFoodData = useCallback(async () => {
+  const loadFoodData = async () => { // Removed useCallback
     const loadedFoods = await getFoods();
     setFoods(loadedFoods);
-  }, []);
+  };
 
   useEffect(() => {
     loadFoodData();
-  }, [loadFoodData]);
+  }, []); // Removed loadFoodData dependency
 
   const handleCreateFood = async () => {
     if (!isNotEmpty(newFood.name) || !isValidNumberInput(String(newFood.calories)) || !isValidNumberInput(String(newFood.protein)) || !isValidNumberInput(String(newFood.carbs)) || !isValidNumberInput(String(newFood.fat))) {
@@ -99,6 +99,8 @@ const FoodListScreen: React.FC = () => {
         onChangeText={updateSearch}
         value={search}
         platform={Platform.select({ ios: 'ios', android: 'android', default: 'default' })} // Use Platform.select
+        containerStyle={{backgroundColor: theme.colors.background}}
+        inputContainerStyle={{backgroundColor: theme.colors.grey5}}
       />
       <FlatList
         data={filteredFoods}
@@ -113,39 +115,51 @@ const FoodListScreen: React.FC = () => {
         color={theme.colors.primary}
         onPress={() => toggleOverlay()}
         placement="right"
+        title='Add'
       />
 
-      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()}>
+      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()} overlayStyle={{backgroundColor: theme.colors.background}}>
         <ScrollView>
-          <Text h4 style={{ marginBottom: 10 }}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
+          <Text h4 style={{ marginBottom: 10, color: theme.colors.text }}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
           <Input
             placeholder="Food Name"
             value={editFood ? editFood.name : newFood.name}
             onChangeText={(text) => editFood ? setEditFood({ ...editFood, name: text }) : setNewFood({ ...newFood, name: text })}
+            style={{color: theme.colors.text}}
+            inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
           <Input
             placeholder="Calories (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.calories) : String(newFood.calories)}
             onChangeText={(text) => editFood ? setEditFood({ ...editFood, calories: parseFloat(text) || 0 }) : setNewFood({ ...newFood, calories: parseFloat(text) || 0 })}
+            style={{color: theme.colors.text}}
+            inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
           <Input
             placeholder="Protein (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.protein) : String(newFood.protein)}
             onChangeText={(text) => editFood ? setEditFood({ ...editFood, protein: parseFloat(text) || 0 }) : setNewFood({ ...newFood, protein: parseFloat(text) || 0 })}
+            style={{color: theme.colors.text}}
+            inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
           <Input
             placeholder="Carbs (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.carbs) : String(newFood.carbs)}
             onChangeText={(text) => editFood ? setEditFood({ ...editFood, carbs: parseFloat(text) || 0 }) : setNewFood({ ...newFood, carbs: parseFloat(text) || 0 })}
+            style={{color: theme.colors.text}}
+            inputContainerStyle={{borderBottomColor: theme.colors.text}}
+
           />
           <Input
             placeholder="Fat (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.fat) : String(newFood.fat)}
             onChangeText={(text) => editFood ? setEditFood({ ...editFood, fat: parseFloat(text) || 0 }) : setNewFood({ ...newFood, fat: parseFloat(text) || 0 })}
+            style={{color: theme.colors.text}}
+            inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
           <Button title={editFood ? "Update Food" : "Add Food"} onPress={editFood ? handleUpdateFood : handleCreateFood} />
         </ScrollView>

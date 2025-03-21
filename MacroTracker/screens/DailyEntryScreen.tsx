@@ -11,8 +11,8 @@ import DailyProgress from '../components/DailyProgress';
 import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, makeStyles, useTheme, Divider } from '@rneui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDays, subDays, parseISO } from 'date-fns';
-import Icon from "@rneui/base/dist/Icon/Icon";  // Keep this import
-import { Icon as RNEIcon } from "@rneui/themed"; // Import Icon from @rneui/themed
+//Correct Import
+import { Icon as RNEIcon } from "@rneui/base";
 
 
 interface DailyGoals {
@@ -170,9 +170,9 @@ const DailyEntryScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <View style={styles.dateNavigation}>
-                <Button type="clear" onPress={handlePreviousDay} icon={<RNEIcon name="arrow-back" type="ionicon" />} />
+                <Button type="clear" onPress={handlePreviousDay} icon={<RNEIcon name="arrow-back" type="ionicon" color={theme.colors.text} />} />
                 <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>{formatDateReadable(selectedDate)}</Text>
-                <Button type="clear" onPress={handleNextDay} icon={<RNEIcon name="arrow-forward" type="ionicon" />} />
+                <Button type="clear" onPress={handleNextDay} icon={<RNEIcon name="arrow-forward" type="ionicon" color={theme.colors.text} />} />
             </View>
             {showDatePicker && (
                 <DateTimePicker
@@ -191,15 +191,15 @@ const DailyEntryScreen: React.FC = () => {
                 goals={dailyGoals}
             />
             <Divider style={{ marginVertical: 10 }} />
-            <Text h4>Entries:</Text>
+            <Text h4 style={{color: theme.colors.text}}>Entries:</Text>
             <FlatList
                 data={getCurrentEntry().items}
                 keyExtractor={(_, index) => index.toString()}
                 renderItem={({ item, index }) => (
-                    <ListItem bottomDivider>
+                    <ListItem bottomDivider containerStyle={{backgroundColor: theme.colors.background}}>
                         <ListItem.Content>
-                            <ListItem.Title>{item.food.name}</ListItem.Title>
-                            <ListItem.Subtitle>{`${item.grams}g`}</ListItem.Subtitle>
+                            <ListItem.Title style={{color: theme.colors.text}}>{item.food.name}</ListItem.Title>
+                            <ListItem.Subtitle style={{color: theme.colors.text}}>{`${item.grams}g`}</ListItem.Subtitle>
                         </ListItem.Content>
                         <Button type="clear" onPress={() => handleRemoveEntry(index)} icon={<RNEIcon name="trash" type="ionicon" color="red" />} />
                     </ListItem>
@@ -215,22 +215,24 @@ const DailyEntryScreen: React.FC = () => {
             />
 
 
-            <Overlay isVisible={isOverlayVisible} onBackdropPress={toggleOverlay} fullScreen={false}>
+            <Overlay isVisible={isOverlayVisible} onBackdropPress={toggleOverlay} fullScreen={false} overlayStyle={{backgroundColor: theme.colors.background}}>
                 <View style={{ flex: 1, padding: 10 }}>
-                    <Text h4 style={{ marginBottom: 10 }}>Add Entry</Text>
+                    <Text h4 style={{ marginBottom: 10, color: theme.colors.text }}>Add Entry</Text>
                     <SearchBar
                         placeholder="Search Foods..."
                         onChangeText={updateSearch}
                         value={search}
                         platform={Platform.OS === 'ios' ? 'ios' : 'android'} // Use Platform.OS
+                        containerStyle={{backgroundColor: theme.colors.background}}
+                        inputContainerStyle={{backgroundColor: theme.colors.grey5}}
                     />
                     <FlatList
                         data={filteredFoods}
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
-                            <ListItem bottomDivider onPress={() => { setSelectedFood(item); setSearch('') }}>
+                            <ListItem bottomDivider onPress={() => { setSelectedFood(item); setSearch('') }} containerStyle={{backgroundColor: theme.colors.background}}>
                                 <ListItem.Content>
-                                    <ListItem.Title>{item.name}</ListItem.Title>
+                                    <ListItem.Title style={{color: theme.colors.text}}>{item.name}</ListItem.Title>
                                 </ListItem.Content>
                             </ListItem>
                         )}
@@ -241,6 +243,8 @@ const DailyEntryScreen: React.FC = () => {
                         keyboardType="numeric"
                         value={grams}
                         onChangeText={setGrams}
+                        style={{color: theme.colors.text}}
+                        inputContainerStyle={{borderBottomColor: theme.colors.text}}
                     />
                     <Button title="Add Entry" onPress={handleAddEntry} disabled={!selectedFood} />
                 </View>
@@ -263,6 +267,7 @@ const useStyles = makeStyles((theme) => ({
     dateText: {
         fontSize: 18,
         fontWeight: 'bold',
+        color: theme.colors.text
     },
 }));
 
