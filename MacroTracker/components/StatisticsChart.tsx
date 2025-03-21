@@ -100,8 +100,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                     },
                     axes: [
                         {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
+                            stroke: "${textColor}",
+                            font: "14px ${fontFamily}",
                            grid: {
                                 stroke: "${gridColor}",
                                 width: 1
@@ -112,8 +112,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                             }
                         },
                         {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
+                            stroke: "${textColor}",
+                            font: "16px ${fontFamily}",
                             grid: {
                                 stroke: "${gridColor}",
                                 width: 1
