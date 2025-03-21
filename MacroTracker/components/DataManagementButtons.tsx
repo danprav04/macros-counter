@@ -1,4 +1,4 @@
-// components/DataManagementButtons.tsx
+// components/DataManagementButtons.tsx (Corrected)
 import React, { useState } from "react";
 import { Alert, Platform } from "react-native"; // Import Platform
 import { Button } from "@rneui/themed";
@@ -10,10 +10,17 @@ import {
   clearAllData,
   loadDailyEntries,
   saveDailyEntries,
+  loadFoods,
+  saveFoods,
+  loadSettings,
+  saveSettings
 } from "../services/storageService";
 import ConfirmationModal from "./ConfirmationModal";
 import { DailyEntry } from "../types/dailyEntry";
+import { Food } from "../types/food";
+import { Settings } from "../types/settings";
 import { useTheme } from "@rneui/themed";
+
 
 interface DataManagementButtonsProps {
   onDataCleared: () => Promise<void>;
@@ -29,26 +36,21 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleExportData = async () => {
     try {
       const dailyEntries = await loadDailyEntries();
-      const csvData = [
-        ["Date", "Food Name", "Grams", "Calories", "Protein", "Carbs", "Fat"],
-        ...dailyEntries.flatMap((entry) =>
-          entry.items.map((item) => [
-            entry.date,
-            item.food.name,
-            item.grams,
-            item.food.calories,
-            item.food.protein,
-            item.food.carbs,
-            item.food.fat,
-          ])
-        ),
-      ];
-      const csvString = csvData.map((row) => row.join(",")).join("\n");
+      const foods = await loadFoods();
+      const settings = await loadSettings();
+
+      const exportData = {
+        dailyEntries,
+        foods,
+        settings
+      };
+
+      const exportDataString = JSON.stringify(exportData);
       const formattedDate = formatDate(new Date()).replace(/\//g, '-'); // Replace slashes
-      const fileName = `macro_data_${formattedDate}.csv`;
+      const fileName = `macro_data_${formattedDate}.json`;
       const fileUri = FileSystem.documentDirectory + fileName;
 
-      await FileSystem.writeAsStringAsync(fileUri, csvString, {
+      await FileSystem.writeAsStringAsync(fileUri, exportDataString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
@@ -72,21 +74,15 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleImportData = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "text/csv",
-          "application/csv",
-          "text/comma-separated-values",
-          "application/vnd.ms-excel",
-        ],
+        type: ["application/json"], // Only accept JSON files
       });
 
-      // Corrected handling: Check for assets directly
       if (result.assets && result.assets.length > 0) {
         const file = result.assets[0];
 
         // Check file extension
-        if (!file.name?.toLowerCase().endsWith(".csv")) {
-          Alert.alert("Invalid File", "Please select a CSV file.");
+        if (!file.name?.toLowerCase().endsWith(".json")) {
+          Alert.alert("Invalid File", "Please select a JSON file.");
           return;
         }
 
@@ -94,61 +90,39 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
           encoding: FileSystem.EncodingType.UTF8,
         });
 
-        const lines = fileContent.trim().split("\n");
-        const headers = lines[0].split(",").map((h) => h.trim());
-        const data = lines.slice(1).map((line) => {
-          const values = line.split(",").map((v) => v.trim());
-          return headers.reduce((obj: any, header, index) => {
-            obj[header] = values[index];
-            return obj;
-          }, {});
-        });
 
-        const expectedHeaders = [
-          "Date",
-          "Food Name",
-          "Grams",
-          "Calories",
-          "Protein",
-          "Carbs",
-          "Fat",
-        ];
-        const missingHeaders = expectedHeaders.filter(
-          (h) => !headers.includes(h)
-        );
-        if (missingHeaders.length > 0) {
+        try {
+          const importedData = JSON.parse(fileContent);
+
+          // Basic structure validation:
+          if (
+            !importedData.hasOwnProperty("dailyEntries") ||
+            !importedData.hasOwnProperty("foods") ||
+            !importedData.hasOwnProperty("settings")
+          ) {
+            Alert.alert(
+              "Import Failed",
+              "The imported file is missing required data (dailyEntries, foods, or settings)."
+            );
+            return;
+          }
+
+
+          await saveDailyEntries(importedData.dailyEntries);
+          await saveFoods(importedData.foods);
+          await saveSettings(importedData.settings)
+          Alert.alert("Import Successful", "Data imported and saved.");
+          await onDataCleared();
+
+        } catch (parseError) {
           Alert.alert(
             "Import Failed",
-            `Missing columns: ${missingHeaders.join(", ")}`
+            "The imported file is not valid JSON."
           );
           return;
         }
 
-        const importedDailyEntries: DailyEntry[] = [];
-        data.forEach((row) => {
-          let dailyEntry = importedDailyEntries.find(
-            (entry) => entry.date === row["Date"]
-          );
-          if (!dailyEntry) {
-            dailyEntry = { date: row["Date"], items: [] };
-            importedDailyEntries.push(dailyEntry);
-          }
 
-          dailyEntry.items.push({
-            food: {
-              id: "",
-              name: row["Food Name"],
-              calories: parseFloat(row["Calories"]) || 0,
-              protein: parseFloat(row["Protein"]) || 0,
-              carbs: parseFloat(row["Carbs"]) || 0,
-              fat: parseFloat(row["Fat"]) || 0,
-            },
-            grams: parseFloat(row["Grams"]) || 0,
-          });
-        });
-
-        await saveDailyEntries(importedDailyEntries);
-        Alert.alert("Import Successful", "Data imported and saved.");
       } else {
         // Explicitly check for cancelled
         if (result.canceled) {
