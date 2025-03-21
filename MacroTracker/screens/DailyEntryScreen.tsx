@@ -1,5 +1,5 @@
 // DailyEntryScreen.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
@@ -45,7 +45,7 @@ interface DailyGoals {
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [foods, setFoods] = useState<Food[]>([]);
+  const [foods, setFoods] = useState<Food[]>([]); // Initialize as empty array
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -176,7 +176,7 @@ const DailyEntryScreen: React.FC = () => {
   };
 
 
-  const handleSelectFood = (item: Food) => {
+  const handleSelectFood = (item: Food | null) => {
     setSelectedFood(item);
   };
 
@@ -242,31 +242,34 @@ const DailyEntryScreen: React.FC = () => {
   };
 
 
-  const updateSearch = (search: string) => setSearch(search); //handleSearch
-  const filteredFoods = foods.filter((food) => //handle filter
-    food.name.toLowerCase().includes(search.toLowerCase())
-  );
+    const updateSearch = (search: string) => setSearch(search); //handleSearch
+    const filteredFoods = useMemo(() => {
+        return foods.filter((food) =>
+            food.name.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [foods]);
 
-  const toggleOverlay = (item: DailyEntryItem | null = null, index: number | null = null) => {
-    setIsOverlayVisible(!isOverlayVisible);
-    if (item) {
-      setSelectedFood(item.food);
-      setGrams(String(item.grams)); // Pre-fill grams
-      setEditIndex(index); // Store the index being edited
+    const toggleOverlay = (item: DailyEntryItem | null = null, index: number | null = null) => {
+        setIsOverlayVisible(!isOverlayVisible);
+        if (item) {
+            setSelectedFood(item.food);
+            setGrams(String(item.grams)); // Pre-fill grams
+            setEditIndex(index); // Store the index being edited
 
-    }
-    else {
-      setSelectedFood(null);
-      setGrams("");
-      setEditIndex(null);
+        }
+        else {
+            setSelectedFood(null);
+            setGrams("");
+            setEditIndex(null);
+            setSearch('')
 
 
-    }
-  };
+        }
+    };
 
-  const handleEditEntry = (item: DailyEntryItem, index: number) => {
-    toggleOverlay(item, index);
-  };
+    const handleEditEntry = (item: DailyEntryItem, index: number) => {
+        toggleOverlay(item, index);
+    };
 
 
   const handleDateChange = (event: any, selectedDateVal?: Date) => {
@@ -428,7 +431,7 @@ const DailyEntryScreen: React.FC = () => {
         selectedFood={selectedFood} //Pass the selected food
         grams={grams} //pass the current number of grams
         setGrams={setGrams}
-        filteredFoods={foods}
+        foods={foods} // Pass all foods
         handleAddEntry={handleAddEntry}
         handleSelectFood={handleSelectFood}
         search={search}

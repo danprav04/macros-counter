@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
     View,
     FlatList,
@@ -27,9 +27,9 @@ interface AddEntryModalProps {
     grams: string;
     setGrams: (grams: string) => void;
     handleAddEntry: () => void;
-    filteredFoods: Food[]; //Foods to filter
-    handleSelectFood: (item:Food) => void; //what happens after food selected
-     updateSearch: (search: string) => void; //What happens after search
+    foods: Food[]; // All Foods
+    handleSelectFood: (item: Food | null) => void; //what happens after food selected
+    updateSearch: (search: string) => void; //What happens after search
     search: string; //The searched text
     isEditMode: boolean; // Add isEditMode
 
@@ -42,7 +42,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     grams,
     setGrams,
     handleAddEntry,
-    filteredFoods,
+    foods,
     handleSelectFood,
     updateSearch,
     search,
@@ -51,13 +51,35 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
 
+    useEffect(() => {
+        if (!isVisible) {
+            // Clear selected food when the modal closes if in edit mode
+            handleSelectFood(null);
+
+        }
+    }, [isVisible, handleSelectFood]);
+
+    // Clear grams on food selection
+    useEffect(() => {
+        if (selectedFood) {
+            setGrams("");
+        }
+    }, [selectedFood, setGrams]);
+
+    const filteredFoods = useMemo(() => {
+        return foods.filter((food) =>
+            food.name.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [foods, search]);
+
+
     return (
         <Overlay
             isVisible={isVisible}
             onBackdropPress={toggleOverlay}
             animationType="slide"
             transparent={true}
-            statusBarTranslucent={true}
+            statusBarTranslucent={Platform.OS === 'android'} // Fix
             overlayStyle={styles.overlayStyle} // Apply overlayStyle here
         >
             <SafeAreaView style={styles.modalSafeArea}>
@@ -90,7 +112,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             )}
                             style={styles.foodList}
                         />
-                         <Input
+                        <Input
                             placeholder="Grams (e.g. 150)"
                             placeholderTextColor={theme.colors.text}
                             keyboardType="numeric"
@@ -105,7 +127,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             onPress={handleAddEntry}
                             disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
                             buttonStyle={styles.addButton}
-                            titleStyle={{color: theme.colors.white}} //add the correct title color
+                            titleStyle={{ color: theme.colors.white }} //add the correct title color
                         />
                     </View>
                 </KeyboardAvoidingView>
@@ -114,24 +136,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
 };
 const useStyles = makeStyles((theme) => ({
-  overlayStyle: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-    paddingTop: '33%',
-    padding: 20,  // Remove padding from the Overlay itself
-    width: '100%',
-    height: '100%', //  Control width here
-    borderRadius: 10,
-    // maxHeight: '80%' No longer needed since it is handled by overlayContent
-  },
+    overlayStyle: {
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+        paddingTop: '33%',
+        padding: 20,  // Remove padding from the Overlay itself
+        width: '100%',
+        height: '100%', //  Control width here
+        borderRadius: 10,
+        // maxHeight: '80%' No longer needed since it is handled by overlayContent
+    },
     modalSafeArea: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      // backgroundColor: "rgba(0, 0, 0, 0)", //  Removed -  Let Overlay handle the background
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        // backgroundColor: "rgba(0, 0, 0, 0)", //  Removed -  Let Overlay handle the background
     },
     keyboardAvoidingView: {
-      width: "100%",
-      flex: 1, // Important: Allow KeyboardAvoidingView to take up all available space
+        width: "100%",
+        flex: 1, // Important: Allow KeyboardAvoidingView to take up all available space
     },
     overlayContent: {
         backgroundColor: theme.colors.background,
@@ -163,8 +185,8 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 10,
         width: "100%",
     },
-    listItemContainer:{
-      backgroundColor: theme.colors.background
+    listItemContainer: {
+        backgroundColor: theme.colors.background
     },
     addButton: {
         marginTop: 10,
