@@ -15,7 +15,6 @@ import ConfirmationModal from "./ConfirmationModal";
 import { DailyEntry } from "../types/dailyEntry";
 import { useTheme } from "@rneui/themed";
 
-
 interface DataManagementButtonsProps {
   onDataCleared: () => Promise<void>;
 }
@@ -26,7 +25,6 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
   const { theme } = useTheme();
-
 
   const handleExportData = async () => {
     try {
@@ -46,7 +44,8 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
         ),
       ];
       const csvString = csvData.map((row) => row.join(",")).join("\n");
-      const fileName = `macro_data_${formatDate(new Date())}.csv`;
+      const formattedDate = formatDate(new Date()).replace(/\//g, '-'); // Replace slashes
+      const fileName = `macro_data_${formattedDate}.csv`;
       const fileUri = FileSystem.documentDirectory + fileName;
 
       await FileSystem.writeAsStringAsync(fileUri, csvString, {
@@ -61,7 +60,6 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
 
       await Sharing.shareAsync(fileUri);
 
-
     } catch (error: any) {
       console.error(error);
       Alert.alert(
@@ -70,20 +68,31 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       );
     }
   };
+
   const handleImportData = async () => {
-      try {
+    try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "text/csv",
+        type: [
+          "text/csv",
+          "application/csv",
+          "text/comma-separated-values",
+          "application/vnd.ms-excel",
+        ],
       });
 
       // Corrected handling: Check for assets directly
       if (result.assets && result.assets.length > 0) {
-        const fileContent = await FileSystem.readAsStringAsync(
-          result.assets[0].uri,
-          {
-            encoding: FileSystem.EncodingType.UTF8,
-          }
-        );
+        const file = result.assets[0];
+
+        // Check file extension
+        if (!file.name?.toLowerCase().endsWith(".csv")) {
+          Alert.alert("Invalid File", "Please select a CSV file.");
+          return;
+        }
+
+        const fileContent = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
 
         const lines = fileContent.trim().split("\n");
         const headers = lines[0].split(",").map((h) => h.trim());
@@ -141,10 +150,9 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
         await saveDailyEntries(importedDailyEntries);
         Alert.alert("Import Successful", "Data imported and saved.");
       } else {
-        //Explicitly check for cancelled
+        // Explicitly check for cancelled
         if (result.canceled) {
-          //User cancelled
-          //do nothing
+          // User cancelled, do nothing
         } else {
           Alert.alert("Import Failed", "Invalid file selected.");
         }
@@ -203,7 +211,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
         confirmationText={confirmationText}
         setConfirmationText={setConfirmationText}
         title="Clear All Data?"
-        message="This action cannot be undone. Are you absolutely sure?"
+        message="This action cannot be undone. Confirmation Text: CLEAR DATA"
       />
     </>
   );
