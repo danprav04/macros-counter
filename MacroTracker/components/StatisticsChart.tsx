@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     webView: {
-        height: 250 * (macros.length) + 50, // Explicit height, adjust as needed.
+        height: 340, // Explicit height, adjust as needed.
     },
 });
 
