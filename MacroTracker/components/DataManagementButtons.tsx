@@ -1,9 +1,10 @@
 // components/DataManagementButtons.tsx
 import React, { useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native"; // Import Platform
 import { Button } from "@rneui/themed";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
+import * as Sharing from 'expo-sharing'; // Import Sharing
 import { formatDate } from "../utils/dateUtils";
 import {
   clearAllData,
@@ -28,7 +29,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
 
 
   const handleExportData = async () => {
-      try {
+    try {
       const dailyEntries = await loadDailyEntries();
       const csvData = [
         ["Date", "Food Name", "Grams", "Calories", "Protein", "Carbs", "Fat"],
@@ -52,32 +53,15 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: false,
-        type: "*/*",
-      });
-
-      // Corrected handling:  Check for assets directly
-      if (result.assets && result.assets.length > 0) {
-        await FileSystem.copyAsync({
-          from: fileUri,
-          to: result.assets[0].uri,
-        });
-        Alert.alert(
-          "Export Successful",
-          `Data exported to ${result.assets[0].name}`
-        );
-      } else {
-        // User cancelled or an error occurred
-        await FileSystem.deleteAsync(fileUri); // Clean up the temporary file
-        if (result.canceled) {
-          //User cancelled explicitly
-          //Do nothing, user cancelled
-        } else {
-          //Other error
-          Alert.alert("Export Failed", "No file was selected.");
-        }
+      // Use expo-sharing to share the file
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Sharing is not available on your platform');
+        return;
       }
+
+      await Sharing.shareAsync(fileUri);
+
+
     } catch (error: any) {
       console.error(error);
       Alert.alert(
@@ -86,7 +70,6 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       );
     }
   };
-
   const handleImportData = async () => {
       try {
       const result = await DocumentPicker.getDocumentAsync({
