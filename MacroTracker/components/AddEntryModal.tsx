@@ -31,6 +31,8 @@ interface AddEntryModalProps {
     handleSelectFood: (item:Food) => void; //what happens after food selected
      updateSearch: (search: string) => void; //What happens after search
     search: string; //The searched text
+    isEditMode: boolean; // Add isEditMode
+
 }
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
@@ -44,6 +46,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     handleSelectFood,
     updateSearch,
     search,
+    isEditMode,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -64,7 +67,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 >
                     <View style={styles.overlayContent}>
                         <Text h4 style={styles.overlayTitle}>
-                            Add Entry
+                            {isEditMode ? "Edit Entry" : "Add Entry"}
                         </Text>
                         <SearchBar
                             placeholder="Search Foods..."
@@ -98,7 +101,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
                         />
                         <Button
-                            title="Add Entry"
+                            title={isEditMode ? "Update Entry" : "Add Entry"}
                             onPress={handleAddEntry}
                             disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
                             buttonStyle={styles.addButton}
