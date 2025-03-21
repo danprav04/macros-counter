@@ -1,6 +1,6 @@
 // screens/DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, FlatList, Alert, StyleSheet, ScrollView, Platform } from 'react-native';
 import { DailyEntry, DailyEntryItem } from '../types/dailyEntry';
 import { Food } from '../types/food';
 import { getFoods } from '../services/foodService';
@@ -216,33 +216,33 @@ const DailyEntryScreen: React.FC = () => {
 
 
             <Overlay isVisible={isOverlayVisible} onBackdropPress={toggleOverlay} fullScreen={false}>
-                <View style={{flex: 1, padding: 10}}>
-                <Text h4 style={{ marginBottom: 10 }}>Add Entry</Text>
-                <SearchBar
-                    placeholder="Search Foods..."
-                    onChangeText={updateSearch}
-                    value={search}
-                    platform="ios"
-                />
-                <FlatList
-                    data={filteredFoods}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <ListItem bottomDivider onPress={() => { setSelectedFood(item); setSearch('') }}>
-                            <ListItem.Content>
-                                <ListItem.Title>{item.name}</ListItem.Title>
-                            </ListItem.Content>
-                        </ListItem>
-                    )}
-                />
+                <View style={{ flex: 1, padding: 10 }}>
+                    <Text h4 style={{ marginBottom: 10 }}>Add Entry</Text>
+                    <SearchBar
+                        placeholder="Search Foods..."
+                        onChangeText={updateSearch}
+                        value={search}
+                        platform={Platform.OS === 'ios' ? 'ios' : 'android'} // Use Platform.OS
+                    />
+                    <FlatList
+                        data={filteredFoods}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <ListItem bottomDivider onPress={() => { setSelectedFood(item); setSearch('') }}>
+                                <ListItem.Content>
+                                    <ListItem.Title>{item.name}</ListItem.Title>
+                                </ListItem.Content>
+                            </ListItem>
+                        )}
+                    />
 
-                <Input
-                    placeholder="Grams"
-                    keyboardType="numeric"
-                    value={grams}
-                    onChangeText={setGrams}
-                />
-                <Button title="Add Entry" onPress={handleAddEntry} disabled={!selectedFood} />
+                    <Input
+                        placeholder="Grams"
+                        keyboardType="numeric"
+                        value={grams}
+                        onChangeText={setGrams}
+                    />
+                    <Button title="Add Entry" onPress={handleAddEntry} disabled={!selectedFood} />
                 </View>
             </Overlay>
         </View>
