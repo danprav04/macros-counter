@@ -64,7 +64,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                     points: { show: false }
                   },
                   {
-                    stroke: "grey",
+                    stroke: "red",
                     width: 1,
                     dash: [5, 5],
                     label: "Goal",
@@ -113,7 +113,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                         },
                         {
                             stroke: "${textColor}",
-                            font: "16px ${fontFamily}",
+                            font: "14px ${fontFamily}",
                             grid: {
                                 stroke: "${gridColor}",
                                 width: 1
