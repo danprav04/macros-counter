@@ -116,169 +116,99 @@ yarn-error.*
 
 ---------- App.tsx ----------
 // App.tsx
-import 'react-native-get-random-values'; // <-- MUST BE FIRST
+import 'react-native-get-random-values'; // MUST BE FIRST
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, createTheme } from '@rneui/themed';
-import { loadSettings, saveSettings, Settings } from './services/storageService';
+import { loadSettings, saveSettings } from './services/storageService';
 import { useColorScheme } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 
-// Module augmentation to extend the Colors interface
 declare module '@rneui/themed' {
   export interface Colors {
-    text: string; // Add custom color properties here
+    text: string;
+    card: string; // Added for better card styling
+    successLight: string; // Lighter success color
   }
 }
 
 interface MyTheme {
   mode: 'light' | 'dark';
-  colors: Colors; // Use the augmented Colors interface
+  colors: Colors;
 }
 
 const lightTheme: MyTheme = {
   mode: 'light',
   colors: {
-    primary: '#007bff',
-    background: '#ffffff',
-    grey5: '#f2f2f2',
+    primary: '#2e86de', // A more modern blue
+    secondary: '#6c757d',
+    background: '#f8f9fa', // Slightly off-white
+    grey5: '#e9ecef',
     white: '#ffffff',
-    grey4: '#cccccc',
+    grey4: '#ced4da',
     success: '#28a745',
+    successLight: '#d4edda', // Lighter success
     black: '#000000',
-    text: '#000000', // Set text color for light theme
-    secondary: '', // Required by rneui
-    warning: '', // Required by rneui
-    error: '', // Required by rneui
-    disabled: '', // Required by rneui
-    divider: '', // Required by rneui
+    text: '#212529', // Darker text for better contrast
+    card: '#ffffff',
+    error: '#dc3545',
+    warning: '#ffc107',
+    disabled: '#6c757d',
+    divider: '#ced4da',
     platform: {
-      ios: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      android: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      web: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      default: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
+      ios: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      android: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      web: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      default: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
     },
-    grey0: '',
-    grey1: '',
-    grey2: '',
-    grey3: '',
-    greyOutline: '',
-    searchBg: ''
+    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
+
   },
 };
 
 const darkTheme: MyTheme = {
   mode: 'dark',
   colors: {
-    primary: '#007bff',
+    primary: '#2e86de',
+    secondary: '#adb5bd',
     background: '#121212',
     grey5: '#2c2c2c',
     white: '#ffffff',
-    grey4: '#333333',
+    grey4: '#343a40',
     success: '#28a745',
+    successLight: '#1f5139',
     black: '#000000',
-    text: '#ffffff', // Set text color for dark theme
-    secondary: '', // Required by rneui
-    warning: '', // Required by rneui
-    error: '', // Required by rneui
-    disabled: '', // Required by rneui
-    divider: '', // Required by rneui
-    platform: {
-      ios: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      android: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      web: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
-      default: {
-        primary: '',
-        secondary: '',
-        grey: '',
-        searchBg: '',
-        success: '',
-        error: '',
-        warning: '',
-      },
+    text: '#f8f9fa', // Light text
+    card: '#1e1e1e', // Darker card
+    error: '#dc3545',
+    warning: '#ffc107',
+    disabled: '#6c757d',
+    divider: '#343a40',
+     platform: {
+      ios: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      android: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      web: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      default: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
     },
-    grey0: '',
-    grey1: '',
-    grey2: '',
-    grey3: '',
-    greyOutline: '',
-    searchBg: ''
+    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
   },
 };
 
 const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
-  const [currentTheme, setCurrentTheme] = useState<MyTheme>(lightTheme); // Initialize with light theme
+  const [currentTheme, setCurrentTheme] = useState<MyTheme>(lightTheme);
   const colorScheme = useColorScheme();
 
-  // Load settings and set theme
   useEffect(() => {
-    const loadInitialSettings = async () => {
+    const initializeApp = async () => {
       const settings = await loadSettings();
-      const initialThemeMode = settings.theme || 'system'; //default to system
+      const initialThemeMode = settings.theme || 'system';
       setThemeMode(initialThemeMode);
-
       updateTheme(initialThemeMode);
     };
-    loadInitialSettings();
+    initializeApp();
   }, []);
 
   const updateTheme = (newThemeMode: 'light' | 'dark' | 'system') => {
@@ -286,47 +216,48 @@ const App = () => {
     setCurrentTheme(isDark ? darkTheme : lightTheme);
   };
 
-  // Update theme when themeMode changes.  This is crucial for live updates.
   useEffect(() => {
     updateTheme(themeMode);
-  }, [themeMode, colorScheme]); // colorScheme is needed for "system" theme
+  }, [themeMode, colorScheme]);
 
   const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
     setThemeMode(newTheme);
-    await saveSettings({ theme: newTheme }); // Save the new theme.
+    await saveSettings({ theme: newTheme });
   };
 
-  const navigationDarkTheme = {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      primary: currentTheme.colors.primary,
-      background: currentTheme.colors.background,
-      card: currentTheme.colors.grey5,
-      text: currentTheme.colors.text,
-      border: currentTheme.colors.grey4,
-      notification: currentTheme.colors.success,
-    },
-  };
-
-  const navigationLightTheme = {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      primary: currentTheme.colors.primary,
-      background: currentTheme.colors.background,
-      card: currentTheme.colors.white,
-      text: currentTheme.colors.text,
-      border: currentTheme.colors.grey4,
-      notification: currentTheme.colors.success,
-    },
+    //Combined themes for brevity
+    const navigationTheme = {
+      dark: {
+          ...DarkTheme,
+          colors: {
+              ...DarkTheme.colors,
+              primary: currentTheme.colors.primary,
+              background: currentTheme.colors.background,
+              card: currentTheme.colors.card,
+              text: currentTheme.colors.text,
+              border: currentTheme.colors.divider,
+              notification: currentTheme.colors.successLight,
+          },
+      },
+      light: {
+          ...DefaultTheme,
+          colors: {
+              ...DefaultTheme.colors,
+              primary: currentTheme.colors.primary,
+              background: currentTheme.colors.background,
+              card: currentTheme.colors.card,
+              text: currentTheme.colors.text,
+              border: currentTheme.colors.divider,
+              notification: currentTheme.colors.success,
+          },
+      },
   };
 
   return (
     <ThemeProvider theme={createTheme(currentTheme)}>
       <SafeAreaProvider>
         <NavigationContainer
-          theme={currentTheme.mode === 'dark' ? navigationDarkTheme : navigationLightTheme}
+          theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
         >
           <AppNavigator onThemeChange={handleThemeChange} />
         </NavigationContainer>
@@ -360,53 +291,89 @@ export default App;
 
 
 ---------- ConfirmationModal.tsx ----------
+// components/ConfirmationModal.tsx
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Overlay, Button, Input, Text } from '@rneui/themed';
+import { Overlay, Button, Input, Text, useTheme } from '@rneui/themed';
 
 interface ConfirmationModalProps {
-    isVisible: boolean;
-    onCancel: () => void;
-    onConfirm: () => void;
-    confirmationText: string;
-    setConfirmationText: (text: string) => void;
+  isVisible: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  confirmationText: string;
+  setConfirmationText: (text: string) => void;
+  title?: string; // Optional title
+  message?: string;  //Optional message
 }
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isVisible, onCancel, onConfirm, confirmationText, setConfirmationText }) => {
 
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+  isVisible,
+  onCancel,
+  onConfirm,
+  confirmationText,
+  setConfirmationText,
+  title = "Confirm Action", //default title
+  message = "Are you sure you want to perform this action?"
+}) => {
+  const { theme } = useTheme();
 
-    return (
-        <Overlay isVisible={isVisible} onBackdropPress={onCancel}>
-            <View style={styles.container}>
-                <Text style={styles.text}>Type "CLEAR DATA" to confirm:</Text>
-                <Input
-                    placeholder="Enter confirmation text"
-                    value={confirmationText}
-                    onChangeText={setConfirmationText}
-                />
-                <View style={styles.buttonContainer}>
-                    <Button title="Cancel" onPress={onCancel} type="outline" buttonStyle={styles.button}/>
-                    <Button title="Confirm" onPress={onConfirm} color="error" buttonStyle={styles.button}/>
-                </View>
-            </View>
-        </Overlay>
-    );
+  return (
+    <Overlay isVisible={isVisible} onBackdropPress={onCancel} overlayStyle={styles.overlay}>
+      <View style={styles.container}>
+        <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
+        <Text style={[styles.message, {color: theme.colors.text}]}>{message}</Text>
+        <Input
+          placeholder="Enter confirmation text"
+          value={confirmationText}
+          onChangeText={setConfirmationText}
+          containerStyle={styles.inputContainer}
+          inputStyle={{ color: theme.colors.text }}
+          inputContainerStyle={{borderBottomColor: theme.colors.text}}
+        />
+        <View style={styles.buttonContainer}>
+          <Button title="Cancel" onPress={onCancel} type="outline" buttonStyle={styles.button} />
+          <Button
+            title="Confirm"
+            onPress={onConfirm}
+            color="error"
+            buttonStyle={styles.button}
+            disabled={confirmationText === ""}  //Disable when empty
+          />
+        </View>
+      </View>
+    </Overlay>
+  );
 };
+
 const styles = StyleSheet.create({
-    container: {
-        padding: 20,
-        width: 300,
+    overlay: {
+        borderRadius: 10,
+        width: '80%', // Responsive width
     },
-    text: {
-        marginBottom: 10
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginTop: 20,
-    },
-    button: {
-        width: 100
-    }
+  container: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center', //center align
+  },
+  message: {
+    marginBottom: 15,
+    textAlign: 'center'
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  button: {
+    width: 100,
+    padding: 10,
+  },
 });
 
 export default ConfirmationModal;
@@ -432,32 +399,44 @@ interface DailyProgressProps {
   };
 }
 
-const DailyProgress: React.FC<DailyProgressProps> = ({ calories, protein, carbs, fat, goals }) => {
+const DailyProgress: React.FC<DailyProgressProps> = ({
+  calories,
+  protein,
+  carbs,
+  fat,
+  goals,
+}) => {
   const { theme } = useTheme();
 
-  const calorieProgress = goals.calories ? Math.min(calories / goals.calories, 1) : 0;
-  const proteinProgress = goals.protein ? Math.min(protein / goals.protein, 1) : 0;
-  const carbsProgress = goals.carbs ? Math.min(carbs / goals.carbs, 1) : 0;
-  const fatProgress = goals.fat ? Math.min(fat / goals.fat, 1) : 0;
+  const calculateProgress = (current: number, goal?: number) => {
+    if (!goal || goal <= 0) return 0; // Avoid division by zero and handle undefined goals
+    return Math.min(current / goal, 1); // Cap at 100%
+  };
+
+  const renderProgressBar = (label: string, current: number, goal: number | undefined, color: string) => {
+      const progress = calculateProgress(current, goal);
+      return (
+          <View style={styles.macroContainer} key={label}>
+              <View style={styles.labelContainer}>
+                    <Text style={[styles.macroLabel, {color: theme.colors.text}]}>{label}:</Text>
+                    <Text style={[styles.macroValue, {color: theme.colors.text}]}>
+                        {`${Math.round(current)} / ${goal || 0}`}
+                    </Text>
+              </View>
+              <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBar, { width: `${progress * 100}%`, backgroundColor: color }]} />
+              </View>
+          </View>
+      )
+  }
+
 
   return (
     <View style={styles.container}>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroLabel}>Calories: {Math.round(calories)} / {goals.calories || 0}</Text>
-        <View style={[styles.progressBar, { width: `${calorieProgress * 100}%`, backgroundColor: theme.colors.primary }]} />
-      </View>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroLabel}>Protein: {Math.round(protein)}g / {goals.protein || 0}g</Text>
-        <View style={[styles.progressBar, { width: `${proteinProgress * 100}%`, backgroundColor: 'green' }]} />
-      </View>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroLabel}>Carbs: {Math.round(carbs)}g / {goals.carbs || 0}g</Text>
-        <View style={[styles.progressBar, { width: `${carbsProgress * 100}%`, backgroundColor: 'orange' }]} />
-      </View>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroLabel}>Fat: {Math.round(fat)}g / {goals.fat || 0}g</Text>
-        <View style={[styles.progressBar, { width: `${fatProgress * 100}%`, backgroundColor: 'blue' }]} />
-      </View>
+        {renderProgressBar('Calories', calories, goals.calories, theme.colors.primary)}
+        {renderProgressBar('Protein', protein, goals.protein, 'green')}
+        {renderProgressBar('Carbs', carbs, goals.carbs, 'orange')}
+        {renderProgressBar('Fat', fat, goals.fat, 'blue')}
     </View>
   );
 };
@@ -465,12 +444,26 @@ const DailyProgress: React.FC<DailyProgressProps> = ({ calories, protein, carbs,
 const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
+    padding: 10,
+    borderRadius: 8, // Rounded corners for the container
+    //backgroundColor: '#f0f0f0', // Light background for contrast Removed for theme consistency
   },
   macroContainer: {
     marginBottom: 10,
   },
-  macroLabel: {
+  labelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 5,
+  },
+  macroLabel: {
+    fontWeight: 'bold',
+  },
+  macroValue: {},
+  progressBarContainer: {
+      backgroundColor: '#e0e0e0', //Light grey for track
+      borderRadius: 5,
+      height: 10
   },
   progressBar: {
     height: 10,
@@ -485,9 +478,9 @@ export default DailyProgress;
 ---------- FoodItem.tsx ----------
 // components/FoodItem.tsx
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { ListItem, Icon, useTheme, Button } from '@rneui/themed';
 import { Food } from '../types/food';
-import { ListItem, Icon, Text, Button } from '@rneui/themed';
 
 interface FoodItemProps {
   food: Food;
@@ -496,36 +489,69 @@ interface FoodItemProps {
 }
 
 const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
+
+    const {theme} = useTheme();
   return (
     <ListItem.Swipeable
       bottomDivider
       leftContent={(reset) => (
-          <Button
-              title="Edit"
-              onPress={() => {onEdit(food); reset()}}
-              icon={{ name: 'edit', color: 'white' }}
-              buttonStyle={{ minHeight: '100%', backgroundColor: 'orange' }}
-          />
+        <Button
+          title="Edit"
+          onPress={() => {
+            onEdit(food);
+            reset();
+          }}
+          icon={{ name: 'edit', color: 'white' }}
+          buttonStyle={styles.swipeButtonEdit}
+        />
       )}
       rightContent={(reset) => (
         <Button
           title="Delete"
-          onPress={() => {onDelete(food.id); reset()}}
+          onPress={() => {
+            onDelete(food.id);
+            reset();
+          }}
           icon={{ name: 'delete', color: 'white' }}
-          buttonStyle={{ minHeight: '100%', backgroundColor: 'red' }}
+          buttonStyle={styles.swipeButtonDelete}
         />
       )}
+      containerStyle={[styles.listItemContainer, {backgroundColor: theme.colors.background}]}
     >
-        <ListItem.Content>
-            <ListItem.Title>{food.name}</ListItem.Title>
-            <ListItem.Subtitle>
-                {`Calories: ${food.calories}, Protein: ${food.protein}, Carbs: ${food.carbs}, Fat: ${food.fat}`}
-            </ListItem.Subtitle>
-        </ListItem.Content>
-        <ListItem.Chevron />
+      <Icon name="fast-food-outline" type="ionicon" color={theme.colors.text} />
+      <ListItem.Content>
+        <ListItem.Title style={[styles.title, {color: theme.colors.text}]}>{food.name}</ListItem.Title>
+        <ListItem.Subtitle style={{ color: theme.colors.text }}>
+          {`Cal: ${food.calories}, P: ${food.protein}g, C: ${food.carbs}g, F: ${food.fat}g`}
+        </ListItem.Subtitle>
+      </ListItem.Content>
+      <ListItem.Chevron />
     </ListItem.Swipeable>
   );
 };
+
+const styles = StyleSheet.create({
+    listItemContainer: {
+      paddingVertical: 15, // Add some vertical padding
+      borderRadius: 8,   // Rounded corners
+      marginVertical: 5, // Space between list items
+      //borderWidth: 1,       // Subtle border //Removed for theme
+      //borderColor: '#ddd',
+    },
+    title: {
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    swipeButtonEdit: {
+        minHeight: '100%',
+        backgroundColor: 'orange'
+    },
+    swipeButtonDelete: {
+        minHeight: '100%',
+        backgroundColor: 'red'
+    }
+
+  });
 
 export default FoodItem;
 ---------- END FoodItem.tsx ----------
@@ -548,55 +574,59 @@ registerRootComponent(App);
 // navigation/AppNavigator.tsx
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTheme, Icon } from '@rneui/themed'; // Import useTheme
+import { Icon, useTheme } from '@rneui/themed';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
-
 const Tab = createBottomTabNavigator();
 
 interface AppNavigatorProps {
-    onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
 }
 
 const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
-    const { theme } = useTheme(); // Use the theme
+  const { theme } = useTheme();
 
-    return (
-        <Tab.Navigator
-            screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName = '';
-                    let type = '';
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: string = '';
+          let type: string = '';
 
-                    if (route.name === 'Daily Entry') {
-                        iconName = 'calendar';
-                        type = 'ionicon'
-                    } else if (route.name === 'Foods') {
-                        iconName = 'fastfood';
-                        type = 'material'
-                    } else if (route.name === 'Settings') {
-                        iconName = 'settings';
-                        type = 'ionicon'
-                    }
+          if (route.name === 'Daily Entry') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
+            type = 'ionicon';
+          } else if (route.name === 'Foods') {
+            iconName = focused ? 'fast-food' : 'fast-food-outline';
+            type = 'ionicon'; // Consistent icon set
+          } else if (route.name === 'Settings') {
+            iconName = focused ? 'settings' : 'settings-outline';
+            type = 'ionicon';
+          }
 
-                    return <Icon name={iconName} type={type} size={size} color={color} />;
-                },
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: 'gray',
-                headerShown: false,
-                tabBarStyle: {
-                    backgroundColor: theme.colors.background
-                }
-
-            })}
-        >
-            <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
-            <Tab.Screen name="Foods" component={FoodListScreen} />
-            <Tab.Screen name="Settings" component={() => <SettingsScreen onThemeChange={onThemeChange} />} />
-        </Tab.Navigator>
-    );
+          return <Icon name={iconName} type={type} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.secondary, // Use secondary color
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.colors.background,
+          borderTopColor: theme.colors.divider, // Add a subtle border
+        },
+        tabBarLabelStyle: {
+          fontWeight: 'bold', // Make labels more prominent
+        }
+      })}
+    >
+      <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
+      <Tab.Screen name="Foods" component={FoodListScreen} />
+      <Tab.Screen name="Settings">
+        {() => <SettingsScreen onThemeChange={onThemeChange} />}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
 };
 
 export default AppNavigator;
@@ -753,264 +783,348 @@ import DailyProgress from '../components/DailyProgress';
 import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, makeStyles, useTheme, Divider } from '@rneui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDays, subDays, parseISO } from 'date-fns';
-//Correct Import
-import { Icon as RNEIcon } from "@rneui/base";
-
+import { Icon } from "@rneui/base";
 
 interface DailyGoals {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
 const DailyEntryScreen: React.FC = () => {
-    const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-    const [foods, setFoods] = useState<Food[]>([]);
-    const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-    const [grams, setGrams] = useState('');
-    const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-    const [search, setSearch] = useState('');
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dailyGoals, setDailyGoals] = useState<DailyGoals>({  // Add type annotation
-        calories: 2000,
-        protein: 50,
-        carbs: 200,
-        fat: 70
-    });
+  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  const [foods, setFoods] = useState<Food[]>([]);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [grams, setGrams] = useState('');
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
+    calories: 2000,
+    protein: 50,
+    carbs: 200,
+    fat: 70,
+  });
 
-    const { theme } = useTheme();
-    const styles = useStyles();
+  const { theme } = useTheme();
+  const styles = useStyles();
 
+  const loadData = useCallback(async () => {
+    const loadedFoods = await getFoods();
+    const loadedEntries = await loadDailyEntries();
+    const loadedSettings = await loadSettings();
 
-    const loadData = useCallback(async () => {
-        const loadedFoods = await getFoods();
-        const loadedEntries = await loadDailyEntries();
-        const loadedSettings = await loadSettings();
+    if (loadedSettings.dailyGoals) {
+      setDailyGoals((prevGoals) => ({
+        ...prevGoals,
+        ...loadedSettings.dailyGoals,
+      }));
+    }
 
-        // Merge loaded settings with defaults.  Crucial for fixing the error.
-        if (loadedSettings.dailyGoals) {
-            setDailyGoals(prevGoals => ({
-                ...prevGoals,  // Start with the current/default goals
-                ...loadedSettings.dailyGoals  // Override with any values from loadedSettings
-            }));
-        }
+    setFoods(loadedFoods);
+    setDailyEntries(loadedEntries);
+  }, []);
 
-        setFoods(loadedFoods);
-        setDailyEntries(loadedEntries);
-    }, []);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-
-    const getCurrentEntry = (): DailyEntry => {
-        return (
-            dailyEntries.find((entry) => entry.date === selectedDate) || {
-                date: selectedDate,
-                items: [],
-            }
-        );
-    };
-
-    const handleAddEntry = async () => {
-        if (!selectedFood || !isValidNumberInput(grams)) {
-            Alert.alert('Invalid Input', 'Please select a food and enter a valid weight.');
-            return;
-        }
-
-        const newEntryItem: DailyEntryItem = {
-            food: selectedFood,
-            grams: parseFloat(grams),
-        };
-
-        const currentEntry = getCurrentEntry();
-        const updatedItems = [...currentEntry.items, newEntryItem];
-        const updatedEntry: DailyEntry = { ...currentEntry, items: updatedItems };
-
-        const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
-        updatedEntries.push(updatedEntry);
-
-        try {
-            await saveDailyEntries(updatedEntries);
-            setDailyEntries(updatedEntries);
-            setSelectedFood(null);
-            setGrams('');
-            setIsOverlayVisible(false);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to add entry.');
-        }
-    };
-
-    const handleRemoveEntry = async (index: number) => {
-        const currentEntry = getCurrentEntry();
-        const updatedItems = currentEntry.items.filter((_, i) => i !== index);
-        const updatedEntry: DailyEntry = { ...currentEntry, items: updatedItems };
-
-        const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
-        if (updatedItems.length > 0) { // Only add back if there are items
-            updatedEntries.push(updatedEntry);
-        }
-
-        try {
-            await saveDailyEntries(updatedEntries);
-            setDailyEntries(updatedEntries);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to remove entry.');
-        }
-    };
-
-    const toggleOverlay = () => {
-        setIsOverlayVisible(!isOverlayVisible);
-    };
-
-    const updateSearch = (search: string) => {
-        setSearch(search);
-    };
-
-    const filteredFoods = foods.filter((food) => {
-        return food.name.toLowerCase().includes(search.toLowerCase());
-    });
-
-    const handleDateChange = (event: any, selectedDateVal?: Date) => {
-
-        const currentDate = selectedDateVal || new Date();
-
-        setShowDatePicker(false);
-
-        if (event.type === "set") {
-            setSelectedDate(formatDate(currentDate));
-        }
-    };
-    const handlePreviousDay = () => {
-        setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
-    };
-
-    const handleNextDay = () => {
-        setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
-    };
-
-    const calculateTotals = () => {
-        const currentEntry = getCurrentEntry();
-        let totalCalories = 0;
-        let totalProtein = 0;
-        let totalCarbs = 0;
-        let totalFat = 0;
-
-        currentEntry.items.forEach((item) => {
-            totalCalories += (item.food.calories / 100) * item.grams;
-            totalProtein += (item.food.protein / 100) * item.grams;
-            totalCarbs += (item.food.carbs / 100) * item.grams;
-            totalFat += (item.food.fat / 100) * item.grams;
-        });
-
-        return { totalCalories, totalProtein, totalCarbs, totalFat };
-    };
-    const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
-
+  const getCurrentEntry = (): DailyEntry => {
     return (
-        <View style={styles.container}>
-            <View style={styles.dateNavigation}>
-                <Button type="clear" onPress={handlePreviousDay} icon={<RNEIcon name="arrow-back" type="ionicon" color={theme.colors.text} />} />
-                <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>{formatDateReadable(selectedDate)}</Text>
-                <Button type="clear" onPress={handleNextDay} icon={<RNEIcon name="arrow-forward" type="ionicon" color={theme.colors.text} />} />
-            </View>
-            {showDatePicker && (
-                <DateTimePicker
-                    value={parseISO(selectedDate)}
-                    mode="date"
-                    is24Hour={true}
-                    display="default"
-                    onChange={handleDateChange}
-                />
-            )}
-            <DailyProgress
-                calories={totalCalories}
-                protein={totalProtein}
-                carbs={totalCarbs}
-                fat={totalFat}
-                goals={dailyGoals}
-            />
-            <Divider style={{ marginVertical: 10 }} />
-            <Text h4 style={{color: theme.colors.text}}>Entries:</Text>
-            <FlatList
-                data={getCurrentEntry().items}
-                keyExtractor={(_, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                    <ListItem bottomDivider containerStyle={{backgroundColor: theme.colors.background}}>
-                        <ListItem.Content>
-                            <ListItem.Title style={{color: theme.colors.text}}>{item.food.name}</ListItem.Title>
-                            <ListItem.Subtitle style={{color: theme.colors.text}}>{`${item.grams}g`}</ListItem.Subtitle>
-                        </ListItem.Content>
-                        <Button type="clear" onPress={() => handleRemoveEntry(index)} icon={<RNEIcon name="trash" type="ionicon" color="red" />} />
-                    </ListItem>
-                )}
-            />
-
-            <FAB
-                icon={<RNEIcon name="add" color="white" />}
-                color={theme.colors.primary}
-                onPress={toggleOverlay}
-                placement="right"
-                title="Add" // Add button text to pass accessibility test
-            />
-
-
-            <Overlay isVisible={isOverlayVisible} onBackdropPress={toggleOverlay} fullScreen={false} overlayStyle={{backgroundColor: theme.colors.background}}>
-                <View style={{ flex: 1, padding: 10 }}>
-                    <Text h4 style={{ marginBottom: 10, color: theme.colors.text }}>Add Entry</Text>
-                    <SearchBar
-                        placeholder="Search Foods..."
-                        onChangeText={updateSearch}
-                        value={search}
-                        platform={Platform.OS === 'ios' ? 'ios' : 'android'} // Use Platform.OS
-                        containerStyle={{backgroundColor: theme.colors.background}}
-                        inputContainerStyle={{backgroundColor: theme.colors.grey5}}
-                    />
-                    <FlatList
-                        data={filteredFoods}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <ListItem bottomDivider onPress={() => { setSelectedFood(item); setSearch('') }} containerStyle={{backgroundColor: theme.colors.background}}>
-                                <ListItem.Content>
-                                    <ListItem.Title style={{color: theme.colors.text}}>{item.name}</ListItem.Title>
-                                </ListItem.Content>
-                            </ListItem>
-                        )}
-                    />
-
-                    <Input
-                        placeholder="Grams"
-                        keyboardType="numeric"
-                        value={grams}
-                        onChangeText={setGrams}
-                        style={{color: theme.colors.text}}
-                        inputContainerStyle={{borderBottomColor: theme.colors.text}}
-                    />
-                    <Button title="Add Entry" onPress={handleAddEntry} disabled={!selectedFood} />
-                </View>
-            </Overlay>
-        </View>
+      dailyEntries.find((entry) => entry.date === selectedDate) || {
+        date: selectedDate,
+        items: [],
+      }
     );
+  };
+
+//Added this function for code clarity and reusability
+    const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
+        try {
+            await saveDailyEntries(updatedEntries);
+            setDailyEntries(updatedEntries);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update entries.');
+        }
+    }
+
+  const handleAddEntry = async () => {
+    if (!selectedFood) {
+      Alert.alert('No Food Selected', 'Please select a food.');
+      return; // Early return
+    }
+    if (!isValidNumberInput(grams)) {
+      Alert.alert('Invalid Grams', 'Please enter a valid number for grams.');
+      return; // Early return
+    }
+
+    const gramsNumber = parseFloat(grams);
+    if (gramsNumber <= 0)
+    {
+        Alert.alert('Invalid Grams', 'Grams must be greater than zero');
+        return;
+    }
+
+    const newEntryItem: DailyEntryItem = {
+      food: selectedFood,
+      grams: gramsNumber,
+    };
+
+    const currentEntry = getCurrentEntry();
+    const updatedItems = [...currentEntry.items, newEntryItem];
+    const updatedEntry: DailyEntry = { ...currentEntry, items: updatedItems };
+
+    const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
+    updatedEntries.push(updatedEntry);
+
+    await updateAndSaveEntries(updatedEntries); //Uses new function
+    setSelectedFood(null);
+    setGrams('');
+    setIsOverlayVisible(false);
+  };
+
+  const handleRemoveEntry = async (index: number) => {
+    const currentEntry = getCurrentEntry();
+    const updatedItems = currentEntry.items.filter((_, i) => i !== index);
+    const updatedEntry: DailyEntry = { ...currentEntry, items: updatedItems };
+
+    const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
+    if (updatedItems.length > 0) {
+      updatedEntries.push(updatedEntry);
+    }
+
+    await updateAndSaveEntries(updatedEntries); //Uses new function
+  };
+
+  const toggleOverlay = () => {
+    setIsOverlayVisible(!isOverlayVisible);
+    if (isOverlayVisible) {
+      //Clear when closing
+      setSearch('');
+      setSelectedFood(null);
+    }
+  };
+
+  const updateSearch = (search: string) => {
+    setSearch(search);
+  };
+
+  const filteredFoods = foods.filter((food) => {
+    return food.name.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const handleDateChange = (event: any, selectedDateVal?: Date) => {
+    setShowDatePicker(false);
+    if (event.type === 'set' && selectedDateVal) {
+      setSelectedDate(formatDate(selectedDateVal));
+    }
+  };
+
+  const handlePreviousDay = () => {
+    setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
+  };
+
+  const handleNextDay = () => {
+    setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
+  };
+
+    const handleSelectFood = (item: Food) => {
+      setSelectedFood(item);
+      setSearch('');  // Clear search on selection
+    }
+
+  const calculateTotals = () => {
+    const currentEntry = getCurrentEntry();
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    currentEntry.items.forEach((item) => {
+      totalCalories += (item.food.calories / 100) * item.grams;
+      totalProtein += (item.food.protein / 100) * item.grams;
+      totalCarbs += (item.food.carbs / 100) * item.grams;
+      totalFat += (item.food.fat / 100) * item.grams;
+    });
+
+    return {
+      totalCalories: Math.round(totalCalories), // Round for display
+      totalProtein: Math.round(totalProtein),
+      totalCarbs: Math.round(totalCarbs),
+      totalFat: Math.round(totalFat),
+    };
+  };
+
+  const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.dateNavigation}>
+        <Button
+          type="clear"
+          onPress={handlePreviousDay}
+          icon={<Icon name="arrow-back" type="ionicon" color={theme.colors.text} />}
+        />
+        <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
+          {formatDateReadable(selectedDate)}
+        </Text>
+        <Button
+          type="clear"
+          onPress={handleNextDay}
+          icon={<Icon name="arrow-forward" type="ionicon" color={theme.colors.text} />}
+        />
+      </View>
+      {showDatePicker && (
+        <DateTimePicker
+          value={parseISO(selectedDate)}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+      <DailyProgress
+        calories={totalCalories}
+        protein={totalProtein}
+        carbs={totalCarbs}
+        fat={totalFat}
+        goals={dailyGoals}
+      />
+      <Divider style={styles.divider} />
+      <Text h4 style={[styles.sectionTitle, {color: theme.colors.text}]}>Entries:</Text>
+      <FlatList
+        data={getCurrentEntry().items}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={({ item, index }) => (
+          <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
+            <Icon name="nutrition-outline" type='ionicon' color={theme.colors.text} />
+            <ListItem.Content>
+              <ListItem.Title style={{ color: theme.colors.text }}>{item.food.name}</ListItem.Title>
+              <ListItem.Subtitle style={{ color: theme.colors.text }}>
+                {`${item.grams}g`}
+              </ListItem.Subtitle>
+            </ListItem.Content>
+            <Button
+              type="clear"
+              onPress={() => handleRemoveEntry(index)}
+              icon={<Icon name="trash" type="ionicon" color="red" />}
+            />
+          </ListItem>
+        )}
+      />
+
+      <FAB
+        icon={<Icon name="add" color="white" />}
+        color={theme.colors.primary}
+        onPress={toggleOverlay}
+        placement="right"
+        title="Add"
+      />
+
+      <Overlay
+        isVisible={isOverlayVisible}
+        onBackdropPress={toggleOverlay}
+        fullScreen={false}
+        overlayStyle={[styles.overlay, {backgroundColor: theme.colors.background}]}
+      >
+        <View style={styles.overlayContent}>
+          <Text h4 style={[styles.overlayTitle, {color: theme.colors.text}]}>Add Entry</Text>
+          <SearchBar
+            placeholder="Search Foods..."
+            onChangeText={updateSearch}
+            value={search}
+            platform={Platform.OS === 'ios' ? 'ios' : 'android'}
+            containerStyle={styles.searchBarContainer}
+            inputContainerStyle={[styles.searchBarInputContainer, {backgroundColor: theme.colors.grey5}]}
+            inputStyle={{color: theme.colors.text}}
+          />
+          <FlatList
+            data={filteredFoods}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <ListItem
+                bottomDivider
+                onPress={() => handleSelectFood(item)} //Use new handler
+                containerStyle={{ backgroundColor: theme.colors.background }}
+              >
+                 <Icon name="fast-food-outline" type="ionicon" color={theme.colors.text} />
+                <ListItem.Content>
+                  <ListItem.Title style={{ color: theme.colors.text }}>{item.name}</ListItem.Title>
+                </ListItem.Content>
+              </ListItem>
+            )}
+          />
+
+            <Input
+              placeholder="Grams (e.g. 150)"
+              keyboardType="numeric"
+              value={grams}
+              onChangeText={setGrams}
+              style={{color: theme.colors.text}}
+              inputContainerStyle={{borderBottomColor: theme.colors.text}}
+              errorMessage={
+                !isValidNumberInput(grams) && grams !== '' ? 'Enter a valid number' : ''
+              } // Show error
+              />
+            <Button
+              title="Add Entry"
+              onPress={handleAddEntry}
+              disabled={!selectedFood || !isValidNumberInput(grams)} // Disable button
+              buttonStyle={{marginTop: 10}}
+            />
+        </View>
+      </Overlay>
+    </View>
+  );
 };
+
 const useStyles = makeStyles((theme) => ({
-    container: {
+  container: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: theme.colors.background,
+  },
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  divider: {
+    marginVertical: 10,
+  },
+  sectionTitle: {
+    marginBottom: 10,
+  },
+    overlay: {
+        width: '90%', // Responsive width
+        maxHeight: '80%', // Limit height
+        borderRadius: 10
+    },
+    overlayContent: {
         flex: 1,
-        padding: 10,
-        backgroundColor: theme.colors.background,
+        padding: 10
     },
-    dateNavigation: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10,
+    overlayTitle: {
+        marginBottom: 20,
+        textAlign: 'center',
     },
-    dateText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text
-    },
+  searchBarContainer: {
+    backgroundColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginBottom: 10,
+    padding: 0
+  },
+  searchBarInputContainer: {
+      borderRadius: 10
+  }
 }));
 
 export default DailyEntryScreen;
@@ -1019,15 +1133,15 @@ export default DailyEntryScreen;
 
 ---------- FoodListScreen.tsx ----------
 // screens/FoodListScreen.tsx
-
-import React, { useState, useEffect } from 'react'; // Removed useCallback
-import { View, FlatList, StyleSheet, Alert, TextInput, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, FlatList, StyleSheet, Alert, Platform } from 'react-native';
 import { createFood, getFoods, updateFood, deleteFood } from '../services/foodService';
 import { Food } from '../types/food';
 import { isValidNumberInput, isNotEmpty } from '../utils/validationUtils';
 import FoodItem from '../components/FoodItem';
-import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
-import { formatDate } from '../utils/dateUtils';
+import { Button, Input, Text, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
+import { FAB } from '@rneui/base';
+
 
 const FoodListScreen: React.FC = () => {
   const [foods, setFoods] = useState<Food[]>([]);
@@ -1041,23 +1155,43 @@ const FoodListScreen: React.FC = () => {
     fat: 0,
   });
   const [editFood, setEditFood] = useState<Food | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({}); // Error state
   const { theme } = useTheme();
   const styles = useStyles();
 
-  const loadFoodData = async () => { // Removed useCallback
+  const loadFoodData = async () => {
     const loadedFoods = await getFoods();
     setFoods(loadedFoods);
   };
 
   useEffect(() => {
     loadFoodData();
-  }, []); // Removed loadFoodData dependency
+  }, []);
+
+    //Validation function for reuse
+    const validateFood = (food: Omit<Food, 'id'>) => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!isNotEmpty(food.name)) newErrors.name = 'Name is required';
+        if (!isValidNumberInput(String(food.calories))) newErrors.calories = 'Invalid input';
+        if (!isValidNumberInput(String(food.protein))) newErrors.protein = 'Invalid input';
+        if (!isValidNumberInput(String(food.carbs))) newErrors.carbs = 'Invalid input';
+        if (!isValidNumberInput(String(food.fat))) newErrors.fat = 'Invalid input';
+
+        if (Object.keys(newErrors).length === 0) return null;
+
+        return newErrors;
+    }
 
   const handleCreateFood = async () => {
-    if (!isNotEmpty(newFood.name) || !isValidNumberInput(String(newFood.calories)) || !isValidNumberInput(String(newFood.protein)) || !isValidNumberInput(String(newFood.carbs)) || !isValidNumberInput(String(newFood.fat))) {
-      Alert.alert('Invalid Input', 'Please enter valid food data.');
-      return;
+    const validationErrors = validateFood(newFood);
+
+    if (validationErrors) {
+        setErrors(validationErrors);
+        return; // Stop if there are errors
     }
+
+    setErrors({}); // Clear previous errors
 
     try {
       const createdFood = await createFood(newFood);
@@ -1070,14 +1204,18 @@ const FoodListScreen: React.FC = () => {
   };
 
   const handleUpdateFood = async () => {
-    if (!editFood || !isNotEmpty(editFood.name) || !isValidNumberInput(String(editFood.calories)) || !isValidNumberInput(String(editFood.protein)) || !isValidNumberInput(String(editFood.carbs)) || !isValidNumberInput(String(editFood.fat))) {
-      Alert.alert('Invalid Input', 'Please enter valid food data.');
-      return;
-    }
+    if (!editFood) return; //Should not happen, but good practice
+
+    const validationErrors = validateFood(editFood);
+      if (validationErrors) {
+          setErrors(validationErrors);
+        return;
+      }
+      setErrors({});
 
     try {
       const updated = await updateFood(editFood);
-      setFoods(foods.map(f => f.id === updated.id ? updated : f));
+      setFoods(foods.map((f) => f.id === updated.id ? updated : f));
       setEditFood(null);
       setIsOverlayVisible(false);
     } catch (error) {
@@ -1097,10 +1235,11 @@ const FoodListScreen: React.FC = () => {
   const toggleOverlay = (food?: Food) => {
     if (food) {
       setEditFood(food);
+      setErrors({}); // Clear errors when editing
     } else {
       setNewFood({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
+      setErrors({}); // Clear errors and form when adding new
     }
-
     setIsOverlayVisible(!isOverlayVisible);
   };
 
@@ -1112,15 +1251,28 @@ const FoodListScreen: React.FC = () => {
     return food.name.toLowerCase().includes(search.toLowerCase());
   });
 
+    const handleInputChange = (key: keyof Omit<Food, 'id'>, value: string) => {
+        const updatedFood = editFood
+            ? { ...editFood, [key]: key === 'name' ? value : (parseFloat(value) || 0) }
+            : { ...newFood, [key]: key === 'name' ? value : (parseFloat(value) || 0) };
+
+        if(editFood) {
+            setEditFood(updatedFood as Food);
+        } else {
+            setNewFood(updatedFood);
+        }
+    }
+
   return (
     <View style={styles.container}>
       <SearchBar
         placeholder="Search Foods..."
         onChangeText={updateSearch}
         value={search}
-        platform={Platform.select({ ios: 'ios', android: 'android', default: 'default' })} // Use Platform.select
-        containerStyle={{backgroundColor: theme.colors.background}}
-        inputContainerStyle={{backgroundColor: theme.colors.grey5}}
+        platform={Platform.OS === 'ios' ? 'ios' : 'android'}
+        containerStyle={styles.searchBarContainer}
+        inputContainerStyle={[styles.searchBarInputContainer, {backgroundColor: theme.colors.grey5}]}
+        inputStyle={{color: theme.colors.text}}
       />
       <FlatList
         data={filteredFoods}
@@ -1135,16 +1287,17 @@ const FoodListScreen: React.FC = () => {
         color={theme.colors.primary}
         onPress={() => toggleOverlay()}
         placement="right"
-        title='Add'
+        title="Add"
       />
 
-      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()} overlayStyle={{backgroundColor: theme.colors.background}}>
-        <ScrollView>
-          <Text h4 style={{ marginBottom: 10, color: theme.colors.text }}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
+      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()} overlayStyle={[styles.overlay, {backgroundColor: theme.colors.background}]}>
+
+          <Text h4 style={[styles.overlayTitle, {color: theme.colors.text}]}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
           <Input
             placeholder="Food Name"
             value={editFood ? editFood.name : newFood.name}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, name: text }) : setNewFood({ ...newFood, name: text })}
+            onChangeText={(text) => handleInputChange('name', text)}
+            errorMessage={errors.name}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -1152,7 +1305,8 @@ const FoodListScreen: React.FC = () => {
             placeholder="Calories (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.calories) : String(newFood.calories)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, calories: parseFloat(text) || 0 }) : setNewFood({ ...newFood, calories: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('calories', text)}
+            errorMessage={errors.calories}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -1160,7 +1314,8 @@ const FoodListScreen: React.FC = () => {
             placeholder="Protein (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.protein) : String(newFood.protein)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, protein: parseFloat(text) || 0 }) : setNewFood({ ...newFood, protein: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('protein', text)}
+            errorMessage={errors.protein}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -1168,70 +1323,90 @@ const FoodListScreen: React.FC = () => {
             placeholder="Carbs (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.carbs) : String(newFood.carbs)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, carbs: parseFloat(text) || 0 }) : setNewFood({ ...newFood, carbs: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('carbs', text)}
+            errorMessage={errors.carbs}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
-
           />
           <Input
             placeholder="Fat (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.fat) : String(newFood.fat)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, fat: parseFloat(text) || 0 }) : setNewFood({ ...newFood, fat: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('fat', text)}
+            errorMessage={errors.fat}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
-          <Button title={editFood ? "Update Food" : "Add Food"} onPress={editFood ? handleUpdateFood : handleCreateFood} />
-        </ScrollView>
+          <Button
+            title={editFood ? 'Update Food' : 'Add Food'}
+            onPress={editFood ? handleUpdateFood : handleCreateFood}
+            disabled={editFood ? !!validateFood(editFood) : !!validateFood(newFood)} //Disable button on error
+          />
+
       </Overlay>
     </View>
   );
 };
+
 const useStyles = makeStyles((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  }
+  },
+  searchBarContainer: {
+    backgroundColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginBottom: 10,
+    padding: 0,
+  },
+  searchBarInputContainer: {
+    borderRadius: 10,
+  },
+    overlay: {
+      width: '90%',
+      maxHeight: '80%',
+        padding: 20,
+        borderRadius: 10
+    },
+    overlayTitle: {
+        marginBottom: 20,
+        textAlign: 'center'
+    }
 }));
+
 export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
 
 
 ---------- SettingsScreen.tsx ----------
 // screens/SettingsScreen.tsx
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Alert, ScrollView } from "react-native";
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Alert, ScrollView } from 'react-native';
 import {
   saveSettings,
   loadSettings,
   Settings,
   clearAllData,
   loadDailyEntries,
-} from "../services/storageService";
-import {
-  Button,
-  ListItem,
-  Text,
-  Switch,
-  Input,
-  makeStyles,
-  useTheme,
-} from "@rneui/themed";
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
-import { formatDate } from "../utils/dateUtils";
-import ConfirmationModal from "../components/ConfirmationModal";
-import { DailyEntry } from "../types/dailyEntry";
-import { LineChart, Grid, YAxis, XAxis } from "react-native-svg-charts";
-import { scaleTime } from "d3-scale";
-import { parseISO } from "date-fns";
+  saveDailyEntries,
+} from '../services/storageService';
+import { Button, ListItem, Text, Switch, Input, makeStyles, useTheme } from '@rneui/themed';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { formatDate } from '../utils/dateUtils';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { DailyEntry } from '../types/dailyEntry';
+import { LineChart, Grid, YAxis, XAxis } from 'react-native-svg-charts';
+import { scaleTime } from 'd3-scale';
+import { parseISO } from 'date-fns';
 
-const macros = ["calories", "protein", "carbs", "fat"] as const;
+const macros = ['calories', 'protein', 'carbs', 'fat'] as const;
 type MacroType = (typeof macros)[number];
 
 interface MacroData {
-  x: number; // Change: x is now a number (timestamp)
-  y: number;
+  x: number; // Timestamp
+  y: number; // Macro value
 }
 
 interface Statistics {
@@ -1247,16 +1422,16 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   const [settings, setSettings] = useState<Settings>({
-    theme: "system",
+    theme: 'system',
     dailyGoals: {
-      calories: 2000, // Provide default values
+      calories: 2000,
       protein: 50,
       carbs: 200,
       fat: 70,
     },
   });
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
-  const [confirmationText, setConfirmationText] = useState("");
+  const [confirmationText, setConfirmationText] = useState('');
   const [statistics, setStatistics] = useState<Statistics>({
     calories: [],
     protein: [],
@@ -1269,14 +1444,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
 
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
-    // Ensure dailyGoals is initialized, even if loadedSettings is null/undefined
-    setSettings(prevSettings => ({
-      ...prevSettings, // Keep existing settings (like theme)
-      ...loadedSettings, // Overwrite with loaded settings
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      ...loadedSettings,
       dailyGoals: {
-        // Ensure dailyGoals exists and merge defaults
-        ...prevSettings.dailyGoals, // Start with default/previous
-        ...(loadedSettings?.dailyGoals || {}), // Overlay with loaded, if exist
+        ...prevSettings.dailyGoals,
+        ...(loadedSettings?.dailyGoals || {}),
       },
     }));
   }, []);
@@ -1285,21 +1458,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
     loadInitialSettings();
   }, [loadInitialSettings]);
 
-  //This is now handled by the parent component App.tsx
-  // const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
-  //   const updatedSettings: Settings = { ...settings, theme: newTheme }; //Type assertion
-  //   setSettings(updatedSettings);
-  //   await saveSettings(updatedSettings);
-  // };
-
-  const handleGoalChange = async (goalType: MacroType, value: string) => {
+  const handleGoalChange = (goalType: MacroType, value: string) => {
     const numericValue = parseFloat(value) || 0;
     const updatedGoals = { ...settings.dailyGoals, [goalType]: numericValue };
 
-    // Use functional update to correctly merge with previous state
-    setSettings(prevSettings => {
+    setSettings((prevSettings) => {
       const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals };
-      saveSettings(updatedSettings); // Save on every change
+      saveSettings(updatedSettings);
       return updatedSettings;
     });
   };
@@ -1308,7 +1473,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
     try {
       const dailyEntries = await loadDailyEntries();
       const csvData = [
-        ["Date", "Food Name", "Grams", "Calories", "Protein", "Carbs", "Fat"],
+        ['Date', 'Food Name', 'Grams', 'Calories', 'Protein', 'Carbs', 'Fat'],
         ...dailyEntries.flatMap((entry) =>
           entry.items.map((item) => [
             entry.date,
@@ -1321,98 +1486,156 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
           ]),
         ),
       ];
-      const csvString = csvData.map((row) => row.join(",")).join("\n");
-      const fileUri =
-        FileSystem.documentDirectory +
-        `macro_data_${formatDate(new Date())}.csv`;
+      const csvString = csvData.map((row) => row.join(',')).join('\n');
+      const fileName = `macro_data_${formatDate(new Date())}.csv`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+
       await FileSystem.writeAsStringAsync(fileUri, csvString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
-      Alert.alert("Export Successful", `Data exported to ${fileUri}`);
-    } catch (error) {
+
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: false,
+        type: '*/*',
+      });
+
+      // Corrected handling:  Check for assets directly
+      if (result.assets && result.assets.length > 0) {
+        await FileSystem.copyAsync({ from: fileUri, to: result.assets[0].uri });
+        Alert.alert('Export Successful', `Data exported to ${result.assets[0].name}`);
+      } else {
+        // User cancelled or an error occurred
+        await FileSystem.deleteAsync(fileUri); // Clean up the temporary file
+        if (result.canceled) { //User cancelled explicitly
+             //Do nothing, user cancelled
+        } else { //Other error
+            Alert.alert("Export Failed", "No file was selected.");
+        }
+      }
+    } catch (error: any) {
       console.error(error);
-      Alert.alert("Export Failed", "An error occurred while exporting data.");
+      Alert.alert('Export Failed', error.message || 'An error occurred while exporting data.');
     }
   };
+
 
   const handleImportData = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
+        type: 'text/csv',
       });
-      if (!result.canceled && result.assets?.length > 0) {
-        const fileUri = result.assets[0].uri;
-        const fileContent = await FileSystem.readAsStringAsync(fileUri, {
+
+       // Corrected handling: Check for assets directly
+      if (result.assets && result.assets.length > 0) {
+        const fileContent = await FileSystem.readAsStringAsync(result.assets[0].uri, {
           encoding: FileSystem.EncodingType.UTF8,
         });
-        console.log("Imported File Content:", fileContent);
 
-        const lines = fileContent.trim().split("\n");
-        const headers = lines[0].split(",");
+        const lines = fileContent.trim().split('\n');
+        const headers = lines[0].split(',').map((h) => h.trim());
         const data = lines.slice(1).map((line) => {
-          const values = line.split(",");
+          const values = line.split(',').map((v) => v.trim());
           return headers.reduce((obj: any, header, index) => {
-            obj[header.trim()] = values[index]?.trim();
+            obj[header] = values[index];
             return obj;
           }, {});
         });
 
-        console.log("Parsed Data:", data);
-        Alert.alert(
-          "Import Successful",
-          "Data imported (parsing complete). Storage implementation pending."
-        );
-      } else {
-        Alert.alert("Import Failed", "No file selected");
+        const expectedHeaders = [
+          'Date',
+          'Food Name',
+          'Grams',
+          'Calories',
+          'Protein',
+          'Carbs',
+          'Fat',
+        ];
+        const missingHeaders = expectedHeaders.filter((h) => !headers.includes(h));
+        if (missingHeaders.length > 0) {
+          Alert.alert('Import Failed', `Missing columns: ${missingHeaders.join(', ')}`);
+          return;
+        }
+
+        const importedDailyEntries: DailyEntry[] = [];
+        data.forEach((row) => {
+          let dailyEntry = importedDailyEntries.find((entry) => entry.date === row['Date']);
+          if (!dailyEntry) {
+            dailyEntry = { date: row['Date'], items: [] };
+            importedDailyEntries.push(dailyEntry);
+          }
+
+          dailyEntry.items.push({
+            food: {
+              id: '',
+              name: row['Food Name'],
+              calories: parseFloat(row['Calories']) || 0,
+              protein: parseFloat(row['Protein']) || 0,
+              carbs: parseFloat(row['Carbs']) || 0,
+              fat: parseFloat(row['Fat']) || 0,
+            },
+            grams: parseFloat(row['Grams']) || 0,
+          });
+        });
+
+        await saveDailyEntries(importedDailyEntries);
+        Alert.alert('Import Successful', 'Data imported and saved.');
+      }  else { //Explicitly check for cancelled
+          if (result.canceled) { //User cancelled
+              //do nothing
+          } else {
+              Alert.alert('Import Failed', 'Invalid file selected.');
+          }
       }
     } catch (error: any) {
-      console.error("Import Error:", error);
-      Alert.alert(
-        "Import Failed",
-        error.message || "An unknown error occurred."
-      );
+      console.error('Import Error:', error);
+      Alert.alert('Import Failed', error.message || 'An unknown error occurred.');
     }
   };
 
   const handleClearData = () => setIsConfirmationVisible(true);
 
   const confirmClearData = async () => {
-    if (confirmationText === "CLEAR DATA") {
+    if (confirmationText === 'CLEAR DATA') {
       try {
         await clearAllData();
-        Alert.alert("Data Cleared", "All data has been cleared.");
-        setConfirmationText("");
+        Alert.alert('Data Cleared', 'All data has been cleared.');
+        setConfirmationText('');
         setIsConfirmationVisible(false);
-        await loadInitialSettings(); // Reload initial settings after clearing
+        await loadInitialSettings();
+        setStatistics({
+          calories: [],
+          protein: [],
+          carbs: [],
+          fat: [],
+        });
       } catch (error) {
-        Alert.alert("Error", "Failed to clear data.");
+        Alert.alert('Error', 'Failed to clear data.');
       }
     } else {
-      Alert.alert("Error", "Incorrect confirmation text.");
+      Alert.alert('Error', 'Incorrect confirmation text.');
     }
   };
 
   const getStatisticsData = (dailyEntries: DailyEntry[], macro: MacroType) => {
     return dailyEntries
       .map((entry) => ({
-        x: parseISO(entry.date).getTime(), // Get timestamp
+        x: parseISO(entry.date).getTime(),
         y: entry.items.reduce(
           (total, item) => total + (item.food[macro] / 100) * item.grams,
-          0
+          0,
         ),
       }))
-      .sort((a, b) => a.x - b.x); // Sort by timestamp
+      .sort((a, b) => a.x - b.x);
   };
 
   useEffect(() => {
     const loadStatistics = async () => {
       const loadedEntries = await loadDailyEntries();
       setStatistics({
-        calories: getStatisticsData(loadedEntries, "calories"),
-        protein: getStatisticsData(loadedEntries, "protein"),
-        carbs: getStatisticsData(loadedEntries, "carbs"),
-        fat: getStatisticsData(loadedEntries, "fat"),
+        calories: getStatisticsData(loadedEntries, 'calories'),
+        protein: getStatisticsData(loadedEntries, 'protein'),
+        carbs: getStatisticsData(loadedEntries, 'carbs'),
+        fat: getStatisticsData(loadedEntries, 'fat'),
       });
     };
     loadStatistics();
@@ -1420,60 +1643,48 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
-        General
-      </Text>
-      <ListItem bottomDivider containerStyle={{backgroundColor: theme.colors.background}}>
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>General</Text>
+      <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
         <ListItem.Content>
           <ListItem.Title style={{ color: theme.colors.text }}>Dark Mode</ListItem.Title>
         </ListItem.Content>
         <Switch
-          value={settings.theme === "dark"}
-          onValueChange={() =>
-            onThemeChange(settings.theme === "dark" ? "light" : "dark")
-          }
+          value={settings.theme === 'dark'}
+          onValueChange={() => onThemeChange(settings.theme === 'dark' ? 'light' : 'dark')}
         />
       </ListItem>
 
-      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
-        Daily Goals
-      </Text>
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Daily Goals</Text>
       {macros.map((macro) => (
         <Input
           key={macro}
           label={`${macro.charAt(0).toUpperCase() + macro.slice(1)} Goal`}
           keyboardType="numeric"
-          value={settings.dailyGoals?.[macro]?.toString() || ""}
+          value={settings.dailyGoals?.[macro]?.toString() || ''}
           onChangeText={(value) => handleGoalChange(macro, value)}
-          style={{color: theme.colors.text}}
-          inputContainerStyle={{borderBottomColor: theme.colors.text}}
-          labelStyle={{color: theme.colors.text}}
+          style={{ color: theme.colors.text }}
+          inputContainerStyle={{ borderBottomColor: theme.colors.text }}
+          labelStyle={{ color: theme.colors.text }}
         />
       ))}
 
-      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
-        Statistics
-      </Text>
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Statistics</Text>
       {macros.map((macro) => {
         const data = statistics[macro];
         const dates = data.map((item) => item.x);
         const values = data.map((item) => item.y);
 
-        // Calculate domain for x-axis (dates), converting timestamps to numbers.
-        const xDomain = [
-          Number(Math.min(...dates)),
-          Number(Math.max(...dates)),
-        ];
+        const xDomain = [Number(Math.min(...dates)), Number(Math.max(...dates))];
 
         return (
           <View key={macro} style={styles.chartContainer}>
-            <Text h4 style={{ textAlign: "center", color: theme.colors.text }}>
+            <Text h4 style={[styles.chartTitle, { color: theme.colors.text }]}>
               {macro.charAt(0).toUpperCase() + macro.slice(1)}
             </Text>
-            <View style={{ height: 200, flexDirection: "row" }}>
+            <View style={styles.chart}>
               <YAxis
                 data={values}
-                contentInset={{ top: 20, bottom: 20 }}
+                contentInset={styles.chartInset}
                 svg={{
                   fill: theme.colors.text,
                   fontSize: 10,
@@ -1481,24 +1692,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
                 numberOfTicks={10}
                 formatLabel={(value: number) => `${value}`}
               />
-              <View style={{ flex: 1, marginLeft: 10 }}>
+              <View style={styles.lineChartContainer}>
                 <LineChart
-                  style={{ flex: 1 }}
+                  style={styles.lineChart}
                   data={values}
                   gridMin={Math.min(...values)}
                   gridMax={Math.max(...values)}
-                  contentInset={{ top: 20, bottom: 20 }}
+                  contentInset={styles.chartInset}
                   svg={{ stroke: theme.colors.primary }}
                 >
                   <Grid />
                 </LineChart>
                 <XAxis
-                  style={{ marginHorizontal: -10, height: 30 }}
+                  style={styles.xAxis}
                   data={data}
                   scale={scaleTime}
-                  formatLabel={(value: number, index: number) =>
-                    formatDate(new Date(value))
-                  } // Create Date from timestamp
+                  formatLabel={(value: number) => formatDate(new Date(value))}
                   contentInset={{ left: 10, right: 10 }}
                   svg={{
                     fontSize: 10,
@@ -1506,7 +1715,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
                     rotation: -45,
                     originY: 30,
                     y: 5,
-                  }} // Rotate labels
+                  }}
                 />
               </View>
             </View>
@@ -1514,20 +1723,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         );
       })}
 
-      <Text h3 style={{ ...styles.sectionTitle, color: theme.colors.text }}>
-        Data Management
-      </Text>
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Data Management</Text>
       <Button
         title="Export Data"
         onPress={handleExportData}
-        buttonStyle={{ marginBottom: 10, backgroundColor: theme.colors.primary }}
+        buttonStyle={[styles.button, { backgroundColor: theme.colors.primary }]}
       />
       <Button
         title="Import Data"
         onPress={handleImportData}
-        buttonStyle={{ marginBottom: 10, backgroundColor: theme.colors.primary }}
+        buttonStyle={[styles.button, { backgroundColor: theme.colors.primary }]}
       />
-      <Button title="Clear All Data" onPress={handleClearData} color="error" />
+      <Button title="Clear All Data" onPress={handleClearData} color="error" buttonStyle={styles.button} />
 
       <ConfirmationModal
         isVisible={isConfirmationVisible}
@@ -1535,6 +1742,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         onConfirm={confirmClearData}
         confirmationText={confirmationText}
         setConfirmationText={setConfirmationText}
+        title="Clear All Data?"
+        message="This action cannot be undone. Are you absolutely sure?"
       />
     </ScrollView>
   );
@@ -1553,6 +1762,32 @@ const useStyles = makeStyles((theme) => ({
   chartContainer: {
     marginBottom: 20,
   },
+  chartTitle: {
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  chart: {
+    height: 200,
+    flexDirection: 'row',
+  },
+  chartInset: {
+    top: 20,
+    bottom: 20,
+  },
+  lineChartContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  lineChart: {
+    flex: 1,
+  },
+  xAxis: {
+    marginHorizontal: -10,
+    height: 30,
+  },
+  button: {
+    marginBottom: 10,
+  },
 }));
 
 export default SettingsScreen;
@@ -1560,7 +1795,7 @@ export default SettingsScreen;
 
 
 ---------- foodService.ts ----------
-// services/foodService.ts
+// services/foodService.ts (No significant changes)
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
@@ -1601,7 +1836,7 @@ export const deleteFood = async (foodId: string): Promise<void> => {
 
 
 ---------- storageService.ts ----------
-// services/storageService.ts
+// services/storageService.ts (No significant changes)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
@@ -1615,7 +1850,7 @@ export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => 
     await AsyncStorage.setItem(DAILY_ENTRIES_KEY, JSON.stringify(entries));
   } catch (error) {
     console.error('Error saving daily entries:', error);
-    throw error; // Re-throw to handle upstream
+    throw error;
   }
 };
 
@@ -1625,7 +1860,7 @@ export const loadDailyEntries = async (): Promise<DailyEntry[]> => {
     return entriesJson ? JSON.parse(entriesJson) : [];
   } catch (error) {
     console.error('Error loading daily entries:', error);
-    return []; // Return empty array on error
+    return [];
   }
 };
 
@@ -1648,10 +1883,9 @@ export const loadFoods = async (): Promise<Food[]> => {
   }
 };
 
-// Settings (example: theme)
 export interface Settings {
   theme: 'light' | 'dark' | 'system';
-  dailyGoals?: {  // Optional goals
+  dailyGoals?: {
     calories?: number;
     protein?: number;
     carbs?: number;
@@ -1671,10 +1905,12 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 export const loadSettings = async (): Promise<Settings> => {
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    return settingsJson ? JSON.parse(settingsJson) : { theme: 'system' }; // Default settings
+    return settingsJson
+      ? JSON.parse(settingsJson)
+      : { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} }; //Provide defaults for dailyGoals
   } catch (error) {
     console.error('Error loading settings:', error);
-    return { theme: 'system' };
+    return { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} };
   }
 };
 

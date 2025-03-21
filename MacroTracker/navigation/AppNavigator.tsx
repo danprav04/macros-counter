@@ -49,10 +49,9 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
     >
       <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
       <Tab.Screen name="Foods" component={FoodListScreen} />
-      <Tab.Screen
-        name="Settings"
-        component={() => <SettingsScreen onThemeChange={onThemeChange} />}
-      />
+      <Tab.Screen name="Settings">
+        {() => <SettingsScreen onThemeChange={onThemeChange} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };
