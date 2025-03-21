@@ -122,14 +122,14 @@ yarn-error.*
 
 
 ---------- App.tsx ----------
-// App.tsx (Corrected for Reactivity)
+// App.tsx (Modified for Reload)
 import 'react-native-get-random-values'; // MUST BE FIRST
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, createTheme } from '@rneui/themed';
 import { loadSettings, saveSettings } from './services/storageService';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Import AppState
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
@@ -271,8 +271,12 @@ const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
   const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
+  const [reloadKey, setReloadKey] = useState(0); // Key for forcing remount
+  const [appState, setAppState] = useState(AppState.currentState); // AppState
 
-  useEffect(() => {
+
+  // Load initial settings
+    useEffect(() => {
     const initializeApp = async () => {
       const settings = await loadSettings();
       setThemeMode(settings.theme);
@@ -280,6 +284,28 @@ const App = () => {
     };
     initializeApp();
   }, []);
+
+  // Function to trigger a reload
+  const triggerReload = () => {
+    setReloadKey((prevKey) => prevKey + 1);
+  };
+
+    useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        // App has come to the foreground, trigger reload
+        triggerReload();
+      }
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState]); // Depend on appState
+
 
   const updateTheme = (newThemeMode: 'light' | 'dark' | 'system') => {
     const isDark = newThemeMode === 'system' ? colorScheme === 'dark' : newThemeMode === 'dark';
@@ -333,7 +359,8 @@ const App = () => {
         <NavigationContainer
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
         >
-          <AppNavigator onThemeChange={handleThemeChange} />
+          {/* Pass reloadKey and triggerReload */}
+          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
         </NavigationContainer>
       </SafeAreaProvider>
     </ThemeProvider>
@@ -1004,7 +1031,8 @@ export default DailyProgress;
 
 
 ---------- DataManagementButtons.tsx ----------
-// components/DataManagementButtons.tsx (Corrected)
+// components/DataManagementButtons.tsx (Modified callback)
+
 import React, { useState } from "react";
 import { Alert, Platform } from "react-native"; // Import Platform
 import { Button } from "@rneui/themed";
@@ -1029,11 +1057,11 @@ import { useTheme } from "@rneui/themed";
 
 
 interface DataManagementButtonsProps {
-  onDataCleared: () => Promise<void>;
+  onDataOperation: () => void; // Changed prop name
 }
 
 const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
-  onDataCleared,
+    onDataOperation
 }) => {
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
@@ -1067,6 +1095,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       }
 
       await Sharing.shareAsync(fileUri);
+      onDataOperation(); // Trigger reload after export
 
     } catch (error: any) {
       console.error(error);
@@ -1118,7 +1147,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
           await saveFoods(importedData.foods);
           await saveSettings(importedData.settings)
           Alert.alert("Import Successful", "Data imported and saved.");
-          await onDataCleared();
+          onDataOperation(); //trigger reload
 
         } catch (parseError) {
           Alert.alert(
@@ -1153,7 +1182,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       try {
         await clearAllData();
         Alert.alert("Data Cleared", "All data has been cleared.");
-        await onDataCleared(); // Call the callback
+        onDataOperation(); // Trigger reload after clearing
       } catch (error) {
         Alert.alert("Error", "Failed to clear data.");
       } finally {
@@ -1510,7 +1539,7 @@ registerRootComponent(App);
 
 
 ---------- AppNavigator.tsx ----------
-// navigation/AppNavigator.tsx
+// navigation/AppNavigator.tsx (Modified to accept onDataOperation)
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@rneui/themed';
@@ -1522,9 +1551,10 @@ const Tab = createBottomTabNavigator();
 
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onDataOperation: () => void; // Add this prop
 }
 
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
+const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onDataOperation }) => {
   const { theme } = useTheme();
 
   return (
@@ -1562,7 +1592,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
       <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
       <Tab.Screen name="Foods" component={FoodListScreen} />
       <Tab.Screen name="Settings">
-        {() => <SettingsScreen onThemeChange={onThemeChange} />}
+        {/* Pass onDataOperation to SettingsScreen */}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={onDataOperation} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -2247,7 +2278,7 @@ export default FoodListScreen;
 
 
 ---------- SettingsScreen.tsx ----------
-// screens/SettingsScreen.tsx (Corrected)
+// screens/SettingsScreen.tsx (Modified to use onDataOperation)
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Text, makeStyles } from "@rneui/themed";
@@ -2271,10 +2302,11 @@ import { DailyEntry } from "../types/dailyEntry";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+    onDataOperation: () => void; // Add this
 }
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOperation }) => {
     const [settings, setSettings] = useState<Settings>({
         theme: "system",
         dailyGoals: {
@@ -2341,21 +2373,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   };
 
     const handleDataCleared = async () => {
-        try {
-          await loadInitialSettings(); // Reload settings and clear inputs
-          // Reset statistics, *then* reload entries (to avoid double loading)
-          setStatistics({
-            calories: [],
-            protein: [],
-            carbs: [],
-            fat: [],
-          });
-          setSettingsHistory([]);
-          const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
-          updateStatistics(loadedEntries, settingsHistory)
-        } catch (error) {
-          Alert.alert("Error", "Failed to clear data.");
-        }
+        // try {
+        //   await loadInitialSettings(); // Reload settings and clear inputs
+        //   // Reset statistics, *then* reload entries (to avoid double loading)
+        //   setStatistics({
+        //     calories: [],
+        //     protein: [],
+        //     carbs: [],
+        //     fat: [],
+        //   });
+        //   setSettingsHistory([]);
+        //   const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
+        //   updateStatistics(loadedEntries, settingsHistory)
+        // } catch (error) {
+        //   Alert.alert("Error", "Failed to clear data.");
+        // }
+        onDataOperation();
     };
 
       const getStatisticsData = useCallback((
@@ -2440,7 +2473,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Data Management
       </Text>
-      <DataManagementButtons onDataCleared={handleDataCleared} />
+      {/* Pass onDataOperation to DataManagementButtons */}
+      <DataManagementButtons onDataOperation={onDataOperation} />
     </ScrollView>
   );
 };

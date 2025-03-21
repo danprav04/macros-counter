@@ -1,5 +1,6 @@
 // App.tsx (Modified for Reload)
 import 'react-native-get-random-values'; // MUST BE FIRST
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,6 +10,9 @@ import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Impo
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs(['Function components cannot be given refs']);
 
 declare module '@rneui/themed' {
   export interface Colors {
@@ -239,6 +243,7 @@ const App = () => {
           <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
         </NavigationContainer>
       </SafeAreaProvider>
+      <Toast />
     </ThemeProvider>
   );
 };

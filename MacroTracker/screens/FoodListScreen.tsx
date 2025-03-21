@@ -1,16 +1,17 @@
-// screens/FoodListScreen.tsx (Corrected with keyof Omit)
-import React, { useState, useEffect } from "react";
-import { View, FlatList, Alert, Platform } from "react-native";
-import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
-import { Food } from "../types/food";
-import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
-import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles } from "@rneui/themed";
-import { FAB } from "@rneui/base";
-import { SafeAreaView } from "react-native-safe-area-context";
-import AddFoodModal from "../components/AddFoodModal";
+ //FoodListScreen.tsx
+ import React, { useState, useEffect, useCallback } from "react"; // Import useCallback
+ import { View, FlatList, Alert, Platform } from "react-native";
+ import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
+ import { Food } from "../types/food";
+ import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
+ import FoodItem from "../components/FoodItem";
+ import { Button, SearchBar, useTheme, makeStyles } from "@rneui/themed";
+ import { FAB } from "@rneui/base";
+ import { SafeAreaView } from "react-native-safe-area-context";
+ import AddFoodModal from "../components/AddFoodModal";
+ import Toast from 'react-native-toast-message';
 
-const FoodListScreen: React.FC = () => {
+ const FoodListScreen: React.FC = () => {
  const [foods, setFoods] = useState<Food[]>([]);
  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
  const [search, setSearch] = useState("");
@@ -26,14 +27,14 @@ const FoodListScreen: React.FC = () => {
  const { theme } = useTheme();
  const styles = useStyles();
 
- const loadFoodData = async () => {
+ const loadFoodData = useCallback(async () => { // Use useCallback
      const loadedFoods = await getFoods();
      setFoods(loadedFoods);
- };
+ }, []);  // Empty dependency array
 
  useEffect(() => {
      loadFoodData();
- }, []);
+ }, [loadFoodData]);
 
  const validateFood = (food: Omit<Food, "id">) => {
      const newErrors: { [key: string]: string } = {};
@@ -86,10 +87,17 @@ const FoodListScreen: React.FC = () => {
      setFoods(foods.filter((f) => f.id !== foodId));
  };
 
+ // Add undo function
+ const handleUndoDeleteFood = (food: Food) => {
+     setFoods(prevFoods => [...prevFoods, food]); // Re-add the food
+     Toast.hide();
+ };
+
+
  const toggleOverlay = (food?: Food) => {
      if (food) {
-       setEditFood(food);
-       setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+     setEditFood(food);
+     setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
      } else {
          setEditFood(null);
          setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
@@ -128,7 +136,12 @@ const FoodListScreen: React.FC = () => {
              data={filteredFoods}
              keyExtractor={(item) => item.id}
              renderItem={({ item }) => (
-                 <FoodItem food={item} onEdit={toggleOverlay} onDelete={handleDeleteFood} />
+                 <FoodItem
+                     food={item}
+                     onEdit={toggleOverlay}
+                     onDelete={handleDeleteFood}
+                     onUndoDelete={handleUndoDeleteFood} // Pass undo handler
+                 />
              )}
          />
 
@@ -138,6 +151,7 @@ const FoodListScreen: React.FC = () => {
              onPress={() => toggleOverlay()}
              placement="right"
              title="Add"
+             style={{marginBottom:70}}
          />
 
          <AddFoodModal
@@ -153,9 +167,9 @@ const FoodListScreen: React.FC = () => {
          />
      </SafeAreaView>
  );
-};
+ };
 
-const useStyles = makeStyles((theme) => ({
+ const useStyles = makeStyles((theme) => ({
  container: {
      flex: 1,
      backgroundColor: theme.colors.background,
@@ -170,6 +184,6 @@ const useStyles = makeStyles((theme) => ({
  searchBarInputContainer: {
      borderRadius: 10,
  },
-}));
+ }));
 
-export default FoodListScreen;
+ export default FoodListScreen;

@@ -1,51 +1,50 @@
-// components/AddEntryModal.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
+    View,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
 } from "react-native";
 import {
-  Button,
-  Input,
-  Text,
-  ListItem,
-  Overlay,
-  SearchBar,
-  makeStyles,
-  useTheme,
+    Button,
+    Input,
+    Text,
+    ListItem,
+    Overlay,
+    SearchBar,
+    makeStyles,
+    useTheme,
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isValidNumberInput } from "../utils/validationUtils";
+import { DailyEntryItem } from "../types/dailyEntry";
 
 interface AddEntryModalProps {
-  isVisible: boolean;
-  toggleOverlay: () => void;
-  search: string;
-  updateSearch: (search: string) => void;
-  filteredFoods: Food[];
-  handleSelectFood: (item: Food) => void;
-  grams: string;
-  setGrams: (grams: string) => void;
-  handleAddEntry: () => void;
-  selectedFood: Food | null;
+    isVisible: boolean;
+    toggleOverlay: () => void;
+    selectedFood: Food | null; // Corrected prop
+    grams: string;
+    setGrams: (grams: string) => void;
+    handleAddEntry: () => void;
+    filteredFoods: Food[]; //Foods to filter
+    handleSelectFood: (item:Food) => void; //what happens after food selected
+     updateSearch: (search: string) => void; //What happens after search
+    search: string; //The searched text
 }
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
-  isVisible,
-  toggleOverlay,
-  search,
-  updateSearch,
-  filteredFoods,
-  handleSelectFood,
-  grams,
-  setGrams,
-  handleAddEntry,
-  selectedFood
+    isVisible,
+    toggleOverlay,
+    selectedFood,
+    grams,
+    setGrams,
+    handleAddEntry,
+    filteredFoods,
+    handleSelectFood,
+    updateSearch,
+    search,
 }) => {
-
     const { theme } = useTheme();
     const styles = useStyles();
 

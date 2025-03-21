@@ -1,20 +1,38 @@
-// components/FoodItem.tsx
-import React from 'react';
+// FoodItem.tsx
+import React, { useRef } from 'react'; // Import useRef
 import { StyleSheet } from 'react-native';
 import { ListItem, Icon, useTheme, Button } from '@rneui/themed';
 import { Food } from '../types/food';
+import Toast from 'react-native-toast-message';
 
 interface FoodItemProps {
   food: Food;
   onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
+  onUndoDelete: (food: Food) => void; // Add undo prop
 }
 
-const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
+const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete, onUndoDelete }) => {
+  const { theme } = useTheme();
+  const swipeableRef = useRef<any>(null); // Ref for swipeable
 
-    const {theme} = useTheme();
+  const handleDelete = () => {
+      onDelete(food.id);
+       swipeableRef.current?.close(); // Close after delete
+      Toast.show({
+          type: 'success',
+          text1: `${food.name} deleted`,
+          text2: 'Tap to undo',
+          position: 'bottom',
+          bottomOffset: 80,
+          onPress: () => onUndoDelete(food), // Call undo function
+          visibilityTime: 3000, // Show for 3 seconds
+        });
+  };
+
   return (
     <ListItem.Swipeable
+      ref={swipeableRef} // Attach ref
       bottomDivider
       leftContent={(reset) => (
         <Button
@@ -30,19 +48,21 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
       rightContent={(reset) => (
         <Button
           title="Delete"
-          onPress={() => {
-            onDelete(food.id);
-            reset();
-          }}
+          onPress={handleDelete} // Call handleDelete
           icon={{ name: 'delete', color: 'white' }}
           buttonStyle={styles.swipeButtonDelete}
         />
       )}
-      containerStyle={[styles.listItemContainer, {backgroundColor: theme.colors.background}]}
+      containerStyle={[
+        styles.listItemContainer,
+        { backgroundColor: theme.colors.background },
+      ]}
     >
       <Icon name="fast-food-outline" type="ionicon" color={theme.colors.text} />
       <ListItem.Content>
-        <ListItem.Title style={[styles.title, {color: theme.colors.text}]}>{food.name}</ListItem.Title>
+        <ListItem.Title style={[styles.title, { color: theme.colors.text }]}>
+          {food.name}
+        </ListItem.Title>
         <ListItem.Subtitle style={{ color: theme.colors.text }}>
           {`Cal: ${food.calories}, P: ${food.protein}g, C: ${food.carbs}g, F: ${food.fat}g`}
         </ListItem.Subtitle>
@@ -54,11 +74,9 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete }) => {
 
 const styles = StyleSheet.create({
     listItemContainer: {
-      paddingVertical: 15, // Add some vertical padding
-      borderRadius: 8,   // Rounded corners
-      marginVertical: 5, // Space between list items
-      //borderWidth: 1,       // Subtle border //Removed for theme
-      //borderColor: '#ddd',
+      paddingVertical: 15,
+      borderRadius: 8,
+      marginVertical: 5,
     },
     title: {
       fontWeight: 'bold',
