@@ -1,5 +1,5 @@
-// navigation/AppNavigator.tsx (Modified to accept onDataOperation)
-import React from 'react';
+// navigation/AppNavigator.tsx
+import React, { useState, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@rneui/themed';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
@@ -10,11 +10,15 @@ const Tab = createBottomTabNavigator();
 
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onDataOperation: () => void; // Add this prop
 }
 
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onDataOperation }) => {
+const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
   const { theme } = useTheme();
+  const [foodListRefresh, setFoodListRefresh] = useState(false);
+
+  const handleFoodChange = useCallback(() => {
+    setFoodListRefresh(prev => !prev); // Toggle the state to trigger refresh
+  }, []);
 
   return (
     <Tab.Navigator
@@ -48,11 +52,16 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onDataOperat
         }
       })}
     >
-      <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
-      <Tab.Screen name="Foods" component={FoodListScreen} />
+      <Tab.Screen name="Daily Entry">
+        {() => <DailyEntryScreen key={foodListRefresh ? 'refresh' : 'normal'} />}
+      </Tab.Screen>
+      <Tab.Screen name="Foods">
+        {() => <FoodListScreen onFoodChange={handleFoodChange} />}
+      </Tab.Screen>
       <Tab.Screen name="Settings">
-        {/* Pass onDataOperation to SettingsScreen */}
-        {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={onDataOperation} />}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={function (): void {
+          throw new Error('Function not implemented.');
+        } } />}
       </Tab.Screen>
     </Tab.Navigator>
   );

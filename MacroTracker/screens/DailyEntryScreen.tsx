@@ -1,3 +1,4 @@
+// DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
@@ -32,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
+import { useFocusEffect } from '@react-navigation/native';  // Import useFocusEffect
 
 interface DailyGoals {
   calories: number;
@@ -75,9 +77,12 @@ const DailyEntryScreen: React.FC = () => {
     setDailyEntries(loadedEntries);
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Use useFocusEffect to load data when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const getCurrentEntry = (): DailyEntry => {
     return (
