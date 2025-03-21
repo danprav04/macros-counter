@@ -56,6 +56,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             animationType="slide"
             transparent={true}
             statusBarTranslucent={true}
+            overlayStyle={styles.overlayStyle} // Apply overlayStyle here
         >
             <SafeAreaView style={styles.modalSafeArea}>
                 <KeyboardAvoidingView
@@ -63,7 +64,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     style={styles.keyboardAvoidingView}
                 >
                     <View style={styles.overlayContent}>
-                        <Text h4 style={[styles.overlayTitle, { color: theme.colors.text }]}>
+                        <Text h4 style={styles.overlayTitle}>
                             Add Entry
                         </Text>
                         <SearchBar
@@ -72,14 +73,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             value={search}
                             platform={Platform.OS === "ios" ? "ios" : "android"}
                             containerStyle={styles.searchBarContainer}
-                            inputContainerStyle={[styles.searchBarInputContainer, { backgroundColor: theme.colors.grey5 }]}
-                            inputStyle={{ color: theme.colors.text }}
+                            inputContainerStyle={styles.searchBarInputContainer}
+                            inputStyle={{ color: theme.colors.text }} // Ensure text color
                         />
                         <FlatList
                             data={filteredFoods}
                             keyExtractor={(item) => item.id}
                             renderItem={({ item }) => (
-                                <ListItem bottomDivider onPress={() => handleSelectFood(item)} containerStyle={{ backgroundColor: theme.colors.background }}>
+                                <ListItem bottomDivider onPress={() => handleSelectFood(item)} containerStyle={styles.listItemContainer}>
                                     <ListItem.Content>
                                         <ListItem.Title style={{ color: theme.colors.text }}>{item.name}</ListItem.Title>
                                     </ListItem.Content>
@@ -87,13 +88,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             )}
                             style={styles.foodList}
                         />
-                        <Input
+                         <Input
                             placeholder="Grams (e.g. 150)"
+                            placeholderTextColor={theme.colors.text}
                             keyboardType="numeric"
                             value={grams}
                             onChangeText={setGrams}
-                            style={{ color: theme.colors.text }}
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }}
+                            style={{ color: theme.colors.text }} // Correct text color
+                            inputContainerStyle={{ borderBottomColor: theme.colors.text }} // Consistent border color
                             errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
                         />
                         <Button
@@ -101,6 +103,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             onPress={handleAddEntry}
                             disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
                             buttonStyle={styles.addButton}
+                            titleStyle={{color: theme.colors.white}} //add the correct title color
                         />
                     </View>
                 </KeyboardAvoidingView>
@@ -109,45 +112,62 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
 };
 const useStyles = makeStyles((theme) => ({
+  overlayStyle: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    paddingTop: '33%',
+    padding: 20,  // Remove padding from the Overlay itself
+    width: '100%',
+    height: '100%', //  Control width here
+    borderRadius: 10,
+    // maxHeight: '80%' No longer needed since it is handled by overlayContent
+  },
     modalSafeArea: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "rgba(0, 0, 0, 0)",
+      // backgroundColor: "rgba(0, 0, 0, 0)", //  Removed -  Let Overlay handle the background
     },
     keyboardAvoidingView: {
       width: "100%",
       flex: 1, // Important: Allow KeyboardAvoidingView to take up all available space
     },
     overlayContent: {
-      backgroundColor: theme.colors.background,
-      width: "100%",
-      height: "80%",
-      borderRadius: 10,
-      padding: 20,
-      // maxHeight: '80%',  //  Add a maxHeight to prevent overly large modals
+        backgroundColor: theme.colors.background,
+        width: "100%",  // Occupy full width *within* the overlay
+        height: "80%",
+        borderRadius: 10,
+        padding: 20,
+
     },
     overlayTitle: {
-      marginBottom: 20,
-      textAlign: "center",
+        marginBottom: 20,
+        textAlign: "center",
+        color: theme.colors.text, // Use theme color
     },
     searchBarContainer: {
-      backgroundColor: "transparent",
-      borderBottomColor: "transparent",
-      borderTopColor: "transparent",
-      marginBottom: 10,
-      padding: 0,
+        backgroundColor: "transparent",
+        borderBottomColor: "transparent",
+        borderTopColor: "transparent",
+        marginBottom: 10,
+        padding: 0,
+        width: '100%', // Ensure full width
     },
     searchBarInputContainer: {
-      borderRadius: 10,
+        borderRadius: 10,
+        backgroundColor: theme.colors.grey5, // Use theme color
     },
     foodList: {
-      maxHeight: 200, // Limit height for scrollability *within* the FlatList
-      marginBottom: 10,
-      width: "100%",
+        maxHeight: 200, // Limit height for scrollability
+        marginBottom: 10,
+        width: "100%",
+    },
+    listItemContainer:{
+      backgroundColor: theme.colors.background
     },
     addButton: {
-      marginTop: 10,
+        marginTop: 10,
+        backgroundColor: theme.colors.primary, // Or your desired button color
+
     },
-  }));
+}));
 export default AddEntryModal;
