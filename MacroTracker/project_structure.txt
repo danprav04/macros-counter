@@ -1306,7 +1306,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                     points: { show: false }
                   },
                   {
-                    stroke: "grey",
+                    stroke: "red",
                     width: 1,
                     dash: [5, 5],
                     label: "Goal",
@@ -1342,8 +1342,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                     },
                     axes: [
                         {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
+                            stroke: "${textColor}",
+                            font: "14px ${fontFamily}",
                            grid: {
                                 stroke: "${gridColor}",
                                 width: 1
@@ -1354,8 +1354,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                             }
                         },
                         {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
+                            stroke: "${textColor}",
+                            font: "14px ${fontFamily}",
                             grid: {
                                 stroke: "${gridColor}",
                                 width: 1
@@ -1406,7 +1406,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     webView: {
-        height: 250 * (macros.length) + 50, // Explicit height, adjust as needed.
+        height: 340, // Explicit height, adjust as needed.
     },
 });
 
@@ -2121,12 +2121,12 @@ import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
 import {
-    Settings,
-    Statistics,
-    SettingsScreenProps,
-    MacroType,
-    MacroData
-} from "../types/settings"; // Import types
+Settings,
+Statistics,
+SettingsScreenProps,
+MacroType,
+MacroData
+} from "../types/settings"; // Import types from settings
 
 import { parseISO, isBefore } from "date-fns";
 import { formatDate } from "../utils/dateUtils";
@@ -2368,10 +2368,12 @@ export const deleteFood = async (foodId: string): Promise<void> => {
 
 
 ---------- storageService.ts ----------
-// services/storageService.ts (No significant changes)
+// services/storageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
+import { Settings } from '../types/settings'; // Import Settings from types
+
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
@@ -2415,16 +2417,16 @@ export const loadFoods = async (): Promise<Food[]> => {
   }
 };
 
-export interface Settings {
-  theme: 'light' | 'dark' | 'system';
-  dailyGoals?: {
-    calories?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-  };
-  settingsHistory?: { date: string; settings: Settings }[]; // Add this line
-}
+// export interface Settings {  // REMOVE THIS DUPLICATE INTERFACE
+//   theme: 'light' | 'dark' | 'system';
+//   dailyGoals?: {
+//     calories?: number;
+//     protein?: number;
+//     carbs?: number;
+//     fat?: number;
+//   };
+//   settingsHistory?: { date: string; settings: Settings }[]; // Add this line
+// }
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -2438,12 +2440,33 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 export const loadSettings = async (): Promise<Settings> => {
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    return settingsJson
-      ? JSON.parse(settingsJson)
-      : { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} }; //Provide defaults for dailyGoals
+const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
+
+// Apply defaults and ensure structure
+const defaultSettings: Settings = {
+  theme: 'system',
+  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+  settingsHistory: [] // Ensure settingsHistory exists
+};
+
+
+return {
+  ...defaultSettings, // Start with defaults
+    ...loadedSettings, // Override with loaded values
+    dailyGoals: {
+       ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
+        ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
+    }
+}
+
   } catch (error) {
     console.error('Error loading settings:', error);
-    return { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} };
+// Return defaults if loading fails
+return {
+  theme: 'system',
+  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+  settingsHistory: [] // Ensure settingsHistory exists in default
+};
   }
 };
 

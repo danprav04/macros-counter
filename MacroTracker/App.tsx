@@ -1,4 +1,4 @@
-// App.tsx
+// App.tsx (Corrected for Reactivity)
 import 'react-native-get-random-values'; // MUST BE FIRST
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
@@ -8,6 +8,7 @@ import { loadSettings, saveSettings } from './services/storageService';
 import { useColorScheme } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
+import { Settings } from './types/settings';
 
 declare module '@rneui/themed' {
   export interface Colors {
@@ -25,29 +26,60 @@ interface MyTheme {
 const lightTheme: MyTheme = {
   mode: 'light',
   colors: {
-    primary: '#2e86de', // A more modern blue
+    primary: '#2e86de',
     secondary: '#6c757d',
-    background: '#f8f9fa', // Slightly off-white
+    background: '#f8f9fa',
     grey5: '#e9ecef',
     white: '#ffffff',
     grey4: '#ced4da',
     success: '#28a745',
-    successLight: '#d4edda', // Lighter success
+    successLight: '#d4edda',
     black: '#000000',
-    text: '#212529', // Darker text for better contrast
+    text: '#212529',
     card: '#ffffff',
     error: '#dc3545',
     warning: '#ffc107',
     disabled: '#6c757d',
     divider: '#ced4da',
     platform: {
-      ios: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      android: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      web: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      default: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+      ios: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
+      android: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
+      web: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
+      default: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
     },
     grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
-
   },
 };
 
@@ -63,17 +95,49 @@ const darkTheme: MyTheme = {
     success: '#28a745',
     successLight: '#1f5139',
     black: '#000000',
-    text: '#f8f9fa', // Light text
-    card: '#1e1e1e', // Darker card
+    text: '#f8f9fa',
+    card: '#1e1e1e',
     error: '#dc3545',
     warning: '#ffc107',
     disabled: '#6c757d',
     divider: '#343a40',
-     platform: {
-      ios: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      android: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      web: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
-      default: { /* ... (same as before) */ primary: '', secondary: '', grey: '', searchBg: '', success: '', error: '', warning: ''},
+    platform: {
+       ios: {
+         primary: '',
+         secondary: '',
+         grey: '',
+         searchBg: '',
+         success: '',
+         error: '',
+         warning: ''
+       },
+      android: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
+      web: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
+      default: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
     },
     grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
   },
@@ -81,63 +145,66 @@ const darkTheme: MyTheme = {
 
 const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
-  const [currentTheme, setCurrentTheme] = useState<MyTheme>(lightTheme);
+  const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
 
   useEffect(() => {
     const initializeApp = async () => {
       const settings = await loadSettings();
-      const initialThemeMode = settings.theme || 'system';
-      setThemeMode(initialThemeMode);
-      updateTheme(initialThemeMode);
+      setThemeMode(settings.theme);
+      setLoadedSettings(settings);
     };
     initializeApp();
   }, []);
 
   const updateTheme = (newThemeMode: 'light' | 'dark' | 'system') => {
     const isDark = newThemeMode === 'system' ? colorScheme === 'dark' : newThemeMode === 'dark';
-    setCurrentTheme(isDark ? darkTheme : lightTheme);
+    return isDark ? darkTheme : lightTheme;
   };
-
-  useEffect(() => {
-    updateTheme(themeMode);
-  }, [themeMode, colorScheme]);
 
   const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
     setThemeMode(newTheme);
-    await saveSettings({ theme: newTheme });
+    if (loadedSettings) {
+      const updatedSettings: Settings = {
+        ...loadedSettings,
+        theme: newTheme,
+      };
+      await saveSettings(updatedSettings);
+      setLoadedSettings(updatedSettings);
+    }
   };
 
-    //Combined themes for brevity
+  const currentTheme = updateTheme(themeMode);
+
     const navigationTheme = {
-      dark: {
-          ...DarkTheme,
-          colors: {
-              ...DarkTheme.colors,
-              primary: currentTheme.colors.primary,
-              background: currentTheme.colors.background,
-              card: currentTheme.colors.card,
-              text: currentTheme.colors.text,
-              border: currentTheme.colors.divider,
-              notification: currentTheme.colors.successLight,
-          },
-      },
-      light: {
-          ...DefaultTheme,
-          colors: {
-              ...DefaultTheme.colors,
-              primary: currentTheme.colors.primary,
-              background: currentTheme.colors.background,
-              card: currentTheme.colors.card,
-              text: currentTheme.colors.text,
-              border: currentTheme.colors.divider,
-              notification: currentTheme.colors.success,
-          },
-      },
-  };
+    dark: {
+        ...DarkTheme,
+        colors: {
+            ...DarkTheme.colors,
+            primary: currentTheme.colors.primary,
+            background: currentTheme.colors.background,
+            card: currentTheme.colors.card,
+            text: currentTheme.colors.text,
+            border: currentTheme.colors.divider,
+            notification: currentTheme.colors.successLight,
+        },
+    },
+    light: {
+        ...DefaultTheme,
+        colors: {
+            ...DefaultTheme.colors,
+            primary: currentTheme.colors.primary,
+            background: currentTheme.colors.background,
+            card: currentTheme.colors.card,
+            text: currentTheme.colors.text,
+            border: currentTheme.colors.divider,
+            notification: currentTheme.colors.success,
+        },
+    },
+};
 
   return (
-    <ThemeProvider theme={createTheme(currentTheme)}>
+    <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
       <SafeAreaProvider>
         <NavigationContainer
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}

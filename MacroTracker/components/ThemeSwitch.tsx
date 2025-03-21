@@ -1,16 +1,15 @@
-// components/ThemeSwitch.tsx
+// components/ThemeSwitch.tsx (Corrected)
 import React from "react";
 import { ListItem, Switch } from "@rneui/themed";
 import { useTheme } from "@rneui/themed";
 
 interface ThemeSwitchProps {
-  isDarkMode: boolean;
-  onToggle: () => void;
+  currentTheme: 'light' | 'dark' | 'system'; // Use theme string
+  onToggle: (theme: 'light' | 'dark' | 'system') => void; // Pass the theme string
 }
 
-const ThemeSwitch: React.FC<ThemeSwitchProps> = ({ isDarkMode, onToggle }) => {
-
-    const { theme } = useTheme();
+const ThemeSwitch: React.FC<ThemeSwitchProps> = ({ currentTheme, onToggle }) => {
+  const { theme } = useTheme();
 
   return (
     <ListItem
@@ -22,7 +21,12 @@ const ThemeSwitch: React.FC<ThemeSwitchProps> = ({ isDarkMode, onToggle }) => {
           Dark Mode
         </ListItem.Title>
       </ListItem.Content>
-      <Switch value={isDarkMode} onValueChange={onToggle} />
+      <Switch
+        value={currentTheme === 'dark'} // Correctly reflect theme
+        onValueChange={(newValue) => {
+          onToggle(newValue ? 'dark' : 'light'); // Toggle between 'light' and 'dark'
+        }}
+      />
     </ListItem>
   );
 };

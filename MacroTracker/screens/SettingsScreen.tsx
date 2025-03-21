@@ -1,4 +1,4 @@
-// screens/SettingsScreen.tsx
+// screens/SettingsScreen.tsx (Corrected)
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Text, makeStyles } from "@rneui/themed";
@@ -10,7 +10,6 @@ import { loadSettings, saveSettings, loadDailyEntries } from "../services/storag
 import {
 Settings,
 Statistics,
-SettingsScreenProps,
 MacroType,
 MacroData
 } from "../types/settings"; // Import types from settings
@@ -19,6 +18,11 @@ import { parseISO, isBefore } from "date-fns";
 import { formatDate } from "../utils/dateUtils";
 import { useTheme } from "@rneui/themed";
 import { DailyEntry } from "../types/dailyEntry";
+
+
+interface SettingsScreenProps {
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+}
 
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
@@ -167,10 +171,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         General
       </Text>
       <ThemeSwitch
-        isDarkMode={settings.theme === "dark"}
-        onToggle={() =>
-          onThemeChange(settings.theme === "dark" ? "light" : "dark")
-        }
+        currentTheme={settings.theme} // Pass the current theme mode
+        onToggle={onThemeChange} // Directly pass onThemeChange
       />
 
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
