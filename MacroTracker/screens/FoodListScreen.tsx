@@ -150,8 +150,8 @@
              color={theme.colors.primary}
              onPress={() => toggleOverlay()}
              placement="right"
-             title="Add"
-             style={{marginBottom:70}}
+             title=""
+             style={{marginBottom:10, marginRight: 8}}
          />
 
          <AddFoodModal

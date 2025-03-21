@@ -421,9 +421,9 @@ const useStyles = makeStyles((theme) => ({
     },
     fabContainer: {
         position: "absolute",
-        bottom: 70,
-        right: 16,
-        elevation: 5,
+        bottom: -6,
+        right: -8,
+        elevation: 0,
         zIndex: 10,
     },
 

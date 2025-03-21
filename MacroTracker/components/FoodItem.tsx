@@ -75,8 +75,8 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete, onUndoDelet
 const styles = StyleSheet.create({
     listItemContainer: {
       paddingVertical: 15,
-      borderRadius: 8,
-      marginVertical: 5,
+      borderRadius: 0,
+      marginVertical: 0,
     },
     title: {
       fontWeight: 'bold',
