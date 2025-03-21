@@ -1,13 +1,13 @@
 // screens/FoodListScreen.tsx
-
-import React, { useState, useEffect } from 'react'; // Removed useCallback
-import { View, FlatList, StyleSheet, Alert, TextInput, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, FlatList, StyleSheet, Alert, Platform } from 'react-native';
 import { createFood, getFoods, updateFood, deleteFood } from '../services/foodService';
 import { Food } from '../types/food';
 import { isValidNumberInput, isNotEmpty } from '../utils/validationUtils';
 import FoodItem from '../components/FoodItem';
-import { Button, Input, Text, ListItem, FAB, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
-import { formatDate } from '../utils/dateUtils';
+import { Button, Input, Text, Overlay, SearchBar, useTheme, makeStyles } from '@rneui/themed';
+import { FAB } from '@rneui/base';
+
 
 const FoodListScreen: React.FC = () => {
   const [foods, setFoods] = useState<Food[]>([]);
@@ -21,23 +21,43 @@ const FoodListScreen: React.FC = () => {
     fat: 0,
   });
   const [editFood, setEditFood] = useState<Food | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({}); // Error state
   const { theme } = useTheme();
   const styles = useStyles();
 
-  const loadFoodData = async () => { // Removed useCallback
+  const loadFoodData = async () => {
     const loadedFoods = await getFoods();
     setFoods(loadedFoods);
   };
 
   useEffect(() => {
     loadFoodData();
-  }, []); // Removed loadFoodData dependency
+  }, []);
+
+    //Validation function for reuse
+    const validateFood = (food: Omit<Food, 'id'>) => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!isNotEmpty(food.name)) newErrors.name = 'Name is required';
+        if (!isValidNumberInput(String(food.calories))) newErrors.calories = 'Invalid input';
+        if (!isValidNumberInput(String(food.protein))) newErrors.protein = 'Invalid input';
+        if (!isValidNumberInput(String(food.carbs))) newErrors.carbs = 'Invalid input';
+        if (!isValidNumberInput(String(food.fat))) newErrors.fat = 'Invalid input';
+
+        if (Object.keys(newErrors).length === 0) return null;
+
+        return newErrors;
+    }
 
   const handleCreateFood = async () => {
-    if (!isNotEmpty(newFood.name) || !isValidNumberInput(String(newFood.calories)) || !isValidNumberInput(String(newFood.protein)) || !isValidNumberInput(String(newFood.carbs)) || !isValidNumberInput(String(newFood.fat))) {
-      Alert.alert('Invalid Input', 'Please enter valid food data.');
-      return;
+    const validationErrors = validateFood(newFood);
+
+    if (validationErrors) {
+        setErrors(validationErrors);
+        return; // Stop if there are errors
     }
+
+    setErrors({}); // Clear previous errors
 
     try {
       const createdFood = await createFood(newFood);
@@ -50,14 +70,18 @@ const FoodListScreen: React.FC = () => {
   };
 
   const handleUpdateFood = async () => {
-    if (!editFood || !isNotEmpty(editFood.name) || !isValidNumberInput(String(editFood.calories)) || !isValidNumberInput(String(editFood.protein)) || !isValidNumberInput(String(editFood.carbs)) || !isValidNumberInput(String(editFood.fat))) {
-      Alert.alert('Invalid Input', 'Please enter valid food data.');
-      return;
-    }
+    if (!editFood) return; //Should not happen, but good practice
+
+    const validationErrors = validateFood(editFood);
+      if (validationErrors) {
+          setErrors(validationErrors);
+        return;
+      }
+      setErrors({});
 
     try {
       const updated = await updateFood(editFood);
-      setFoods(foods.map(f => f.id === updated.id ? updated : f));
+      setFoods(foods.map((f) => f.id === updated.id ? updated : f));
       setEditFood(null);
       setIsOverlayVisible(false);
     } catch (error) {
@@ -77,10 +101,11 @@ const FoodListScreen: React.FC = () => {
   const toggleOverlay = (food?: Food) => {
     if (food) {
       setEditFood(food);
+      setErrors({}); // Clear errors when editing
     } else {
       setNewFood({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
+      setErrors({}); // Clear errors and form when adding new
     }
-
     setIsOverlayVisible(!isOverlayVisible);
   };
 
@@ -92,15 +117,28 @@ const FoodListScreen: React.FC = () => {
     return food.name.toLowerCase().includes(search.toLowerCase());
   });
 
+    const handleInputChange = (key: keyof Omit<Food, 'id'>, value: string) => {
+        const updatedFood = editFood
+            ? { ...editFood, [key]: key === 'name' ? value : (parseFloat(value) || 0) }
+            : { ...newFood, [key]: key === 'name' ? value : (parseFloat(value) || 0) };
+
+        if(editFood) {
+            setEditFood(updatedFood as Food);
+        } else {
+            setNewFood(updatedFood);
+        }
+    }
+
   return (
     <View style={styles.container}>
       <SearchBar
         placeholder="Search Foods..."
         onChangeText={updateSearch}
         value={search}
-        platform={Platform.select({ ios: 'ios', android: 'android', default: 'default' })} // Use Platform.select
-        containerStyle={{backgroundColor: theme.colors.background}}
-        inputContainerStyle={{backgroundColor: theme.colors.grey5}}
+        platform={Platform.OS === 'ios' ? 'ios' : 'android'}
+        containerStyle={styles.searchBarContainer}
+        inputContainerStyle={[styles.searchBarInputContainer, {backgroundColor: theme.colors.grey5}]}
+        inputStyle={{color: theme.colors.text}}
       />
       <FlatList
         data={filteredFoods}
@@ -115,16 +153,17 @@ const FoodListScreen: React.FC = () => {
         color={theme.colors.primary}
         onPress={() => toggleOverlay()}
         placement="right"
-        title='Add'
+        title="Add"
       />
 
-      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()} overlayStyle={{backgroundColor: theme.colors.background}}>
-        <ScrollView>
-          <Text h4 style={{ marginBottom: 10, color: theme.colors.text }}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
+      <Overlay isVisible={isOverlayVisible} onBackdropPress={() => toggleOverlay()} overlayStyle={[styles.overlay, {backgroundColor: theme.colors.background}]}>
+
+          <Text h4 style={[styles.overlayTitle, {color: theme.colors.text}]}>{editFood ? 'Edit Food' : 'Add New Food'}</Text>
           <Input
             placeholder="Food Name"
             value={editFood ? editFood.name : newFood.name}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, name: text }) : setNewFood({ ...newFood, name: text })}
+            onChangeText={(text) => handleInputChange('name', text)}
+            errorMessage={errors.name}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -132,7 +171,8 @@ const FoodListScreen: React.FC = () => {
             placeholder="Calories (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.calories) : String(newFood.calories)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, calories: parseFloat(text) || 0 }) : setNewFood({ ...newFood, calories: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('calories', text)}
+            errorMessage={errors.calories}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -140,7 +180,8 @@ const FoodListScreen: React.FC = () => {
             placeholder="Protein (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.protein) : String(newFood.protein)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, protein: parseFloat(text) || 0 }) : setNewFood({ ...newFood, protein: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('protein', text)}
+            errorMessage={errors.protein}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
@@ -148,29 +189,56 @@ const FoodListScreen: React.FC = () => {
             placeholder="Carbs (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.carbs) : String(newFood.carbs)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, carbs: parseFloat(text) || 0 }) : setNewFood({ ...newFood, carbs: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('carbs', text)}
+            errorMessage={errors.carbs}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
-
           />
           <Input
             placeholder="Fat (per 100g)"
             keyboardType="numeric"
             value={editFood ? String(editFood.fat) : String(newFood.fat)}
-            onChangeText={(text) => editFood ? setEditFood({ ...editFood, fat: parseFloat(text) || 0 }) : setNewFood({ ...newFood, fat: parseFloat(text) || 0 })}
+            onChangeText={(text) => handleInputChange('fat', text)}
+            errorMessage={errors.fat}
             style={{color: theme.colors.text}}
             inputContainerStyle={{borderBottomColor: theme.colors.text}}
           />
-          <Button title={editFood ? "Update Food" : "Add Food"} onPress={editFood ? handleUpdateFood : handleCreateFood} />
-        </ScrollView>
+          <Button
+            title={editFood ? 'Update Food' : 'Add Food'}
+            onPress={editFood ? handleUpdateFood : handleCreateFood}
+            disabled={editFood ? !!validateFood(editFood) : !!validateFood(newFood)} //Disable button on error
+          />
+
       </Overlay>
     </View>
   );
 };
+
 const useStyles = makeStyles((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  }
+  },
+  searchBarContainer: {
+    backgroundColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginBottom: 10,
+    padding: 0,
+  },
+  searchBarInputContainer: {
+    borderRadius: 10,
+  },
+    overlay: {
+      width: '90%',
+      maxHeight: '80%',
+        padding: 20,
+        borderRadius: 10
+    },
+    overlayTitle: {
+        marginBottom: 20,
+        textAlign: 'center'
+    }
 }));
+
 export default FoodListScreen;

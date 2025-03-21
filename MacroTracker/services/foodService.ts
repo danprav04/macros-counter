@@ -1,4 +1,4 @@
-// services/foodService.ts
+// services/foodService.ts (No significant changes)
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';

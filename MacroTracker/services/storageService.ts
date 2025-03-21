@@ -1,4 +1,4 @@
-// services/storageService.ts
+// services/storageService.ts (No significant changes)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
@@ -12,7 +12,7 @@ export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => 
     await AsyncStorage.setItem(DAILY_ENTRIES_KEY, JSON.stringify(entries));
   } catch (error) {
     console.error('Error saving daily entries:', error);
-    throw error; // Re-throw to handle upstream
+    throw error;
   }
 };
 
@@ -22,7 +22,7 @@ export const loadDailyEntries = async (): Promise<DailyEntry[]> => {
     return entriesJson ? JSON.parse(entriesJson) : [];
   } catch (error) {
     console.error('Error loading daily entries:', error);
-    return []; // Return empty array on error
+    return [];
   }
 };
 
@@ -45,10 +45,9 @@ export const loadFoods = async (): Promise<Food[]> => {
   }
 };
 
-// Settings (example: theme)
 export interface Settings {
   theme: 'light' | 'dark' | 'system';
-  dailyGoals?: {  // Optional goals
+  dailyGoals?: {
     calories?: number;
     protein?: number;
     carbs?: number;
@@ -68,10 +67,12 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 export const loadSettings = async (): Promise<Settings> => {
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    return settingsJson ? JSON.parse(settingsJson) : { theme: 'system' }; // Default settings
+    return settingsJson
+      ? JSON.parse(settingsJson)
+      : { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} }; //Provide defaults for dailyGoals
   } catch (error) {
     console.error('Error loading settings:', error);
-    return { theme: 'system' };
+    return { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} };
   }
 };
 
