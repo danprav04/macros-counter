@@ -53,6 +53,7 @@ export interface Settings {
     carbs?: number;
     fat?: number;
   };
+  settingsHistory?: { date: string; settings: Settings }[]; // Add this line
 }
 
 export const saveSettings = async (settings: Settings): Promise<void> => {

@@ -24,7 +24,7 @@ import { formatDate } from "../utils/dateUtils";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { DailyEntry } from "../types/dailyEntry";
 import { WebView } from "react-native-webview";
-import { parseISO } from "date-fns";
+import { parseISO, isBefore, isEqual } from "date-fns";
 
 const macros = ["calories", "protein", "carbs", "fat"] as const;
 type MacroType = (typeof macros)[number];
@@ -35,10 +35,10 @@ interface MacroData {
 }
 
 interface Statistics {
-  calories: MacroData[];
-  protein: MacroData[];
-  carbs: MacroData[];
-  fat: MacroData[];
+  calories: MacroData[][];
+  protein: MacroData[][];
+  carbs: MacroData[][];
+  fat: MacroData[][];
 }
 
 interface SettingsScreenProps {
@@ -63,12 +63,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
     carbs: [],
     fat: [],
   });
+  const [settingsHistory, setSettingsHistory] = useState<
+    { date: string; settings: Settings }[]
+  >([]);
 
   const { theme } = useTheme();
   const styles = useStyles();
 
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
+    const loadedSettingsHistory = loadedSettings?.settingsHistory || [];
+
     setSettings((prevSettings) => ({
       ...prevSettings,
       ...loadedSettings,
@@ -77,25 +82,37 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         ...(loadedSettings?.dailyGoals || {}),
       },
     }));
+    setSettingsHistory(loadedSettingsHistory);
   }, []);
 
   useEffect(() => {
     loadInitialSettings();
   }, [loadInitialSettings]);
 
-  const handleGoalChange = (goalType: MacroType, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    const updatedGoals = { ...settings.dailyGoals, [goalType]: numericValue };
 
-    setSettings((prevSettings) => {
-      const updatedSettings: Settings = {
-        ...prevSettings,
-        dailyGoals: updatedGoals,
-      };
-      saveSettings(updatedSettings);
-      return updatedSettings;
-    });
+    const handleGoalChange = (goalType: MacroType, value: string) => {
+      const numericValue = parseFloat(value) || 0;
+      const updatedGoals = { ...settings.dailyGoals, [goalType]: numericValue };
+
+      setSettings((prevSettings) => {
+        const updatedSettings: Settings = {
+          ...prevSettings,
+          dailyGoals: updatedGoals,
+        };
+
+        // Update settings history
+        const newSettingsHistory = [
+          ...settingsHistory,
+          { date: formatDate(new Date()), settings: updatedSettings },
+        ];
+        saveSettings({ ...updatedSettings, settingsHistory: newSettingsHistory }); // Save history
+        setSettingsHistory(newSettingsHistory);
+
+        return updatedSettings;
+      });
   };
+
+
 
   const handleExportData = async () => {
     try {
@@ -158,7 +175,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   };
 
   const handleImportData = async () => {
-    try {
+      try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "text/csv",
       });
@@ -262,6 +279,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
           carbs: [],
           fat: [],
         });
+        setSettingsHistory([]); // Clear the settings history
       } catch (error) {
         Alert.alert("Error", "Failed to clear data.");
       }
@@ -269,60 +287,88 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
       Alert.alert("Error", "Incorrect confirmation text.");
     }
   };
-  const getStatisticsData = (dailyEntries: DailyEntry[], macro: MacroType) => {
-    return dailyEntries
-      .map((entry) => ({
-        x: parseISO(entry.date).getTime(), // Convert date to timestamp
-        y: entry.items.reduce(
+const getStatisticsData = (
+    dailyEntries: DailyEntry[],
+    macro: MacroType,
+    settingsHistory: { date: string; settings: Settings }[]
+  ) => {
+    const intakeData = dailyEntries
+      .map((entry) => {
+        const entryDate = parseISO(entry.date);
+        // Find the settings that were in effect *on that date*
+        const relevantSettings = settingsHistory
+          .filter((sh) => !isBefore(entryDate, parseISO(sh.date))) // Filter out future settings
+          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0]?.settings ?? settings; // Get most recent, fallback to current
+
+        const intakeValue = entry.items.reduce(
           (total, item) => total + (item.food[macro] / 100) * item.grams,
           0
-        ),
-      }))
+        );
+        const goalValue = relevantSettings.dailyGoals?.[macro] ?? 0; // Default to 0 if undefined
+
+        return {
+          x: entryDate.getTime(), // Convert date to timestamp
+          y: intakeValue,
+          goal: goalValue,
+        };
+      })
       .sort((a, b) => a.x - b.x);
+
+      const intakeSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.y }));
+
+      if (macro === "calories") {
+          const goalSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.goal }));
+          return [intakeSeries, goalSeries]; // Return *both* series
+        } else {
+          return [intakeSeries]; // Only intake for other macros
+        }
   };
+
 
   useEffect(() => {
     const loadStatistics = async () => {
       const loadedEntries = await loadDailyEntries();
       setStatistics({
-        calories: getStatisticsData(loadedEntries, "calories"),
-        protein: getStatisticsData(loadedEntries, "protein"),
-        carbs: getStatisticsData(loadedEntries, "carbs"),
-        fat: getStatisticsData(loadedEntries, "fat"),
+        calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
+        protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
+        carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
+        fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
       });
     };
     loadStatistics();
-  }, []);
+  }, [settingsHistory]); // Dependency on settingsHistory
 
-  const generateChartHTML = () => {
-    const chartData = macros.reduce((acc, macro) => {
-      acc[macro] = statistics[macro].map((item) => [item.x / 1000, item.y]); // uPlot expects seconds
-      return acc;
-    }, {} as { [key in MacroType]: number[][] });
 
-    const textColor = theme.colors.text;
-    const gridColor = theme.colors.grey5; // Lighter grid
-    const axisColor = theme.colors.grey3; // Slightly darker axis
-    const fontFamily = "Helvetica, Arial, sans-serif";
+ const generateChartHTML = () => {
+   const chartData = macros.reduce((acc, macro) => {
+     // Prepare data for each macro, including goal if applicable
+     acc[macro] = statistics[macro].map((series) =>
+       series.map((item) => [item.x / 1000, item.y])
+     );
+     return acc;
+   }, {} as { [key in MacroType]: number[][][] });
 
-    // Define color palette for the lines, using theme colors if possible
-    const lineColors = {
-      calories: theme.colors.primary,
-      protein: theme.colors.success,
-      carbs: theme.colors.warning,
-      fat: theme.colors.error,
-    };
+   const textColor = theme.colors.text;
+   const gridColor = theme.colors.grey5; // Lighter grid
+   const axisColor = theme.colors.grey3; // Slightly darker axis
+   const fontFamily = "Helvetica, Arial, sans-serif";
 
-    return `
+   // Define color palette for the lines, using theme colors if possible
+   const lineColors = {
+     calories: theme.colors.primary,
+     protein: theme.colors.success,
+     carbs: theme.colors.warning,
+     fat: theme.colors.error,
+   };
+
+   return `
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
         <title>Macro Charts</title>
         <style>
-            body { font-family: ${fontFamily}; margin: 0; padding: 0; background-color: ${
-      theme.colors.background
-    }; }
+           body { font-family: ${fontFamily}; margin: 0; padding: 0; background-color: ${theme.colors.background}; color: ${textColor};}
             .chart-container { width: 95%; height: 250px; margin: 10px auto; }
         </style>
         <link rel="stylesheet" href="https://unpkg.com/uplot@1.6.27/dist/uPlot.min.css">
@@ -330,15 +376,47 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
     </head>
     <body>
         ${macros
-          .map(
-            (macro) => `
+          .map((macro) => {
+            const isCalories = macro === "calories";
+            const seriesCount = isCalories ? 2 : 1; // Two series for calories (intake, goal)
+            const seriesConfig = isCalories
+              ? `[
+                  {},
+                  {
+                    stroke: "${lineColors[macro] || theme.colors.primary}",
+                    width: 2,
+                    label: "Intake",
+                    points: { show: false }
+                  },
+                  {
+                    stroke: "grey",
+                    width: 1,
+                    dash: [5, 5],
+                    label: "Goal",
+                    points: { show: false }
+                  }
+                ]`
+              : `[
+                  {},
+                  {
+                    stroke: "${lineColors[macro] || theme.colors.primary}",
+                    width: 2,
+                    label: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
+                    points: { show: false }
+                  }
+                ]`;
+
+            const uPlotData =
+              seriesCount === 2
+                ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
+                : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
+
+            return `
             <div id="${macro}-chart" class="chart-container"></div>
             <script>
                 const data = ${JSON.stringify(chartData[macro])};
                 const opts = {
-                    title: "${
-                      macro.charAt(0).toUpperCase() + macro.slice(1)
-                    }",
+                    title: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
                     width: window.innerWidth * 0.95,
                     height: 250,
                     scales: {
@@ -349,7 +427,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
                         {
                             stroke: "${axisColor}",
                             font: "12px ${fontFamily}",
-                            grid: {
+                           grid: {
                                 stroke: "${gridColor}",
                                 width: 1
                             },
@@ -371,42 +449,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
                             }
                         }
                     ],
-                    series: [
-                        {},
-                        {
-                            stroke: "${lineColors[macro] || theme.colors.primary}",
-                            width: 2,
-                            label: "${
-                              macro.charAt(0).toUpperCase() + macro.slice(1)
-                            }",
-                             points: {
-                                show: false, // Hide points by default
-                            }
-                        },
-                    ],
+                    series: ${seriesConfig},
                     cursor: {
-                        drag: {
-                            setScale: false,
-                        },
-                         points: {
-                                size: 6,  // Normal point size
-                                fill: (self, i) => self.series[i]._stroke,
-                                stroke: (self, i) => self.series[i]._stroke,
-                         },
+                        drag: { setScale: false },
+                        points: {
+                            size: 6,
+                            fill: (self, i) => self.series[i]._stroke,
+                            stroke: (self, i) => self.series[i]._stroke,
+                        }
                     }
-
                 };
-                new uPlot(opts, [data.map(d => d[0]), data.map(d => d[1])], document.getElementById('${macro}-chart'));
+                new uPlot(opts, ${uPlotData}, document.getElementById('${macro}-chart'));
             </script>
-        `
-          )
+        `;
+          })
           .join("")}
     </body>
     </html>
-            `;
-  };
+    `;
+ };
 
-  return (
+
+
+ return (
     <ScrollView style={styles.container}>
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         General
@@ -491,26 +556,28 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
 };
 
 const useStyles = makeStyles((theme) => ({
-  container: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: theme.colors.background,
-  },
-  sectionTitle: {
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  webViewContainer: {
-    height: 250 * macros.length + 50, // Adjust height based on number of charts + some padding
-    width: "100%",
-    marginTop: 10,
-  },
-  webView: {
-    flex: 1,
-  },
-  button: {
-    marginBottom: 10,
-  },
+    container: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: theme.colors.background,
+    },
+    sectionTitle: {
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    webViewContainer: {
+        height: 'auto', // Keep it at auto
+        width: "100%",
+        marginTop: 10,
+    },
+    webView: {
+        // Remove the flex:1
+        //flex: 1, // REMOVE THIS
+        height: 250 * (macros.length) + 50, // Explicit height
+    },
+    button: {
+        marginBottom: 10,
+    },
 }));
 
 export default SettingsScreen;
