@@ -1,7 +1,9 @@
-// services/storageService.ts (No significant changes)
+// services/storageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
+import { Settings } from '../types/settings'; // Import Settings from types
+
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
@@ -45,16 +47,16 @@ export const loadFoods = async (): Promise<Food[]> => {
   }
 };
 
-export interface Settings {
-  theme: 'light' | 'dark' | 'system';
-  dailyGoals?: {
-    calories?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-  };
-  settingsHistory?: { date: string; settings: Settings }[]; // Add this line
-}
+// export interface Settings {  // REMOVE THIS DUPLICATE INTERFACE
+//   theme: 'light' | 'dark' | 'system';
+//   dailyGoals?: {
+//     calories?: number;
+//     protein?: number;
+//     carbs?: number;
+//     fat?: number;
+//   };
+//   settingsHistory?: { date: string; settings: Settings }[]; // Add this line
+// }
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -68,12 +70,33 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 export const loadSettings = async (): Promise<Settings> => {
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    return settingsJson
-      ? JSON.parse(settingsJson)
-      : { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} }; //Provide defaults for dailyGoals
+const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
+
+// Apply defaults and ensure structure
+const defaultSettings: Settings = {
+  theme: 'system',
+  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+  settingsHistory: [] // Ensure settingsHistory exists
+};
+
+
+return {
+  ...defaultSettings, // Start with defaults
+    ...loadedSettings, // Override with loaded values
+    dailyGoals: {
+       ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
+        ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
+    }
+}
+
   } catch (error) {
     console.error('Error loading settings:', error);
-    return { theme: 'system', dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70} };
+// Return defaults if loading fails
+return {
+  theme: 'system',
+  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+  settingsHistory: [] // Ensure settingsHistory exists in default
+};
   }
 };
 

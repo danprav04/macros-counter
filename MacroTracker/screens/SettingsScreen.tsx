@@ -1,62 +1,37 @@
 // screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Alert, ScrollView } from "react-native";
+import { View, ScrollView, Alert } from "react-native";
+import { Text, makeStyles } from "@rneui/themed";
+import DailyGoalsInput from "../components/DailyGoalsInput";
+import DataManagementButtons from "../components/DataManagementButtons";
+import ThemeSwitch from "../components/ThemeSwitch";
+import StatisticsChart from "../components/StatisticsChart";
+import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
 import {
-  saveSettings,
-  loadSettings,
-  Settings,
-  clearAllData,
-  loadDailyEntries,
-  saveDailyEntries,
-} from "../services/storageService";
-import {
-  Button,
-  ListItem,
-  Text,
-  Switch,
-  Input,
-  makeStyles,
-  useTheme,
-} from "@rneui/themed";
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
+Settings,
+Statistics,
+SettingsScreenProps,
+MacroType,
+MacroData
+} from "../types/settings"; // Import types from settings
+
+import { parseISO, isBefore } from "date-fns";
 import { formatDate } from "../utils/dateUtils";
-import ConfirmationModal from "../components/ConfirmationModal";
+import { useTheme } from "@rneui/themed";
 import { DailyEntry } from "../types/dailyEntry";
-import { WebView } from "react-native-webview";
-import { parseISO, isBefore, isEqual } from "date-fns";
 
-const macros = ["calories", "protein", "carbs", "fat"] as const;
-type MacroType = (typeof macros)[number];
-
-interface MacroData {
-  x: number; // Timestamp
-  y: number; // Macro value
-}
-
-interface Statistics {
-  calories: MacroData[][];
-  protein: MacroData[][];
-  carbs: MacroData[][];
-  fat: MacroData[][];
-}
-
-interface SettingsScreenProps {
-  onThemeChange: (theme: "light" | "dark" | "system") => void;
-}
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
-  const [settings, setSettings] = useState<Settings>({
-    theme: "system",
-    dailyGoals: {
-      calories: 2000,
-      protein: 50,
-      carbs: 200,
-      fat: 70,
-    },
-  });
-  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
-  const [confirmationText, setConfirmationText] = useState("");
+    const [settings, setSettings] = useState<Settings>({
+        theme: "system",
+        dailyGoals: {
+          calories: 2000,
+          protein: 50,
+          carbs: 200,
+          fat: 70,
+        },
+    });
+
   const [statistics, setStatistics] = useState<Statistics>({
     calories: [],
     protein: [],
@@ -72,7 +47,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
 
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
-    const loadedSettingsHistory = loadedSettings?.settingsHistory || [];
+    const loadedSettingsHistory = loadedSettings?.settingsHistory || []; // Handle potentially undefined settingsHistory
 
     setSettings((prevSettings) => ({
       ...prevSettings,
@@ -112,363 +87,78 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
       });
   };
 
-
-
-  const handleExportData = async () => {
-    try {
-      const dailyEntries = await loadDailyEntries();
-      const csvData = [
-        ["Date", "Food Name", "Grams", "Calories", "Protein", "Carbs", "Fat"],
-        ...dailyEntries.flatMap((entry) =>
-          entry.items.map((item) => [
-            entry.date,
-            item.food.name,
-            item.grams,
-            item.food.calories,
-            item.food.protein,
-            item.food.carbs,
-            item.food.fat,
-          ])
-        ),
-      ];
-      const csvString = csvData.map((row) => row.join(",")).join("\n");
-      const fileName = `macro_data_${formatDate(new Date())}.csv`;
-      const fileUri = FileSystem.documentDirectory + fileName;
-
-      await FileSystem.writeAsStringAsync(fileUri, csvString, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: false,
-        type: "*/*",
-      });
-
-      // Corrected handling:  Check for assets directly
-      if (result.assets && result.assets.length > 0) {
-        await FileSystem.copyAsync({
-          from: fileUri,
-          to: result.assets[0].uri,
-        });
-        Alert.alert(
-          "Export Successful",
-          `Data exported to ${result.assets[0].name}`
-        );
-      } else {
-        // User cancelled or an error occurred
-        await FileSystem.deleteAsync(fileUri); // Clean up the temporary file
-        if (result.canceled) {
-          //User cancelled explicitly
-          //Do nothing, user cancelled
-        } else {
-          //Other error
-          Alert.alert("Export Failed", "No file was selected.");
-        }
-      }
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert(
-        "Export Failed",
-        error.message || "An error occurred while exporting data."
-      );
-    }
-  };
-
-  const handleImportData = async () => {
-      try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "text/csv",
-      });
-
-      // Corrected handling: Check for assets directly
-      if (result.assets && result.assets.length > 0) {
-        const fileContent = await FileSystem.readAsStringAsync(
-          result.assets[0].uri,
-          {
-            encoding: FileSystem.EncodingType.UTF8,
-          }
-        );
-
-        const lines = fileContent.trim().split("\n");
-        const headers = lines[0].split(",").map((h) => h.trim());
-        const data = lines.slice(1).map((line) => {
-          const values = line.split(",").map((v) => v.trim());
-          return headers.reduce((obj: any, header, index) => {
-            obj[header] = values[index];
-            return obj;
-          }, {});
-        });
-
-        const expectedHeaders = [
-          "Date",
-          "Food Name",
-          "Grams",
-          "Calories",
-          "Protein",
-          "Carbs",
-          "Fat",
-        ];
-        const missingHeaders = expectedHeaders.filter(
-          (h) => !headers.includes(h)
-        );
-        if (missingHeaders.length > 0) {
-          Alert.alert(
-            "Import Failed",
-            `Missing columns: ${missingHeaders.join(", ")}`
-          );
-          return;
-        }
-
-        const importedDailyEntries: DailyEntry[] = [];
-        data.forEach((row) => {
-          let dailyEntry = importedDailyEntries.find(
-            (entry) => entry.date === row["Date"]
-          );
-          if (!dailyEntry) {
-            dailyEntry = { date: row["Date"], items: [] };
-            importedDailyEntries.push(dailyEntry);
-          }
-
-          dailyEntry.items.push({
-            food: {
-              id: "",
-              name: row["Food Name"],
-              calories: parseFloat(row["Calories"]) || 0,
-              protein: parseFloat(row["Protein"]) || 0,
-              carbs: parseFloat(row["Carbs"]) || 0,
-              fat: parseFloat(row["Fat"]) || 0,
-            },
-            grams: parseFloat(row["Grams"]) || 0,
+    const handleDataCleared = async () => {
+        try {
+          await loadInitialSettings(); // Reload settings and clear inputs
+          // Reset statistics, *then* reload entries (to avoid double loading)
+          setStatistics({
+            calories: [],
+            protein: [],
+            carbs: [],
+            fat: [],
           });
-        });
-
-        await saveDailyEntries(importedDailyEntries);
-        Alert.alert("Import Successful", "Data imported and saved.");
-      } else {
-        //Explicitly check for cancelled
-        if (result.canceled) {
-          //User cancelled
-          //do nothing
-        } else {
-          Alert.alert("Import Failed", "Invalid file selected.");
+          setSettingsHistory([]);
+          const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
+          updateStatistics(loadedEntries, settingsHistory)
+        } catch (error) {
+          Alert.alert("Error", "Failed to clear data.");
         }
-      }
-    } catch (error: any) {
-      console.error("Import Error:", error);
-      Alert.alert(
-        "Import Failed",
-        error.message || "An unknown error occurred."
-      );
-    }
-  };
+    };
 
-  const handleClearData = () => setIsConfirmationVisible(true);
+      const getStatisticsData = useCallback((
+        dailyEntries: DailyEntry[],
+        macro: MacroType,
+        settingsHistory: { date: string; settings: Settings }[]
+      ) => {
+        const intakeData = dailyEntries
+          .map((entry) => {
+            const entryDate = parseISO(entry.date);
+            // Find the settings that were in effect *on that date*
+            const relevantSettings = settingsHistory
+              .filter((sh) => !isBefore(entryDate, parseISO(sh.date))) // Filter out future settings
+              .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0]?.settings ?? settings; // Get most recent, fallback to current
 
-  const confirmClearData = async () => {
-    if (confirmationText === "CLEAR DATA") {
-      try {
-        await clearAllData();
-        Alert.alert("Data Cleared", "All data has been cleared.");
-        setConfirmationText("");
-        setIsConfirmationVisible(false);
-        await loadInitialSettings(); // Reload settings to clear input fields
+            const intakeValue = entry.items.reduce(
+              (total, item) => total + (item.food[macro] / 100) * item.grams,
+              0
+            );
+            const goalValue = relevantSettings.dailyGoals?.[macro] ?? 0; // Default to 0 if undefined
+
+            return {
+              x: entryDate.getTime(), // Convert date to timestamp
+              y: intakeValue,
+              goal: goalValue,
+            };
+          })
+          .sort((a, b) => a.x - b.x);
+
+          const intakeSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.y }));
+
+          if (macro === "calories") {
+              const goalSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.goal }));
+              return [intakeSeries, goalSeries]; // Return *both* series
+            } else {
+              return [intakeSeries]; // Only intake for other macros
+            }
+      }, [settings]);
+
+
+  const updateStatistics = useCallback((loadedEntries: DailyEntry[], settingsHistory: { date: string; settings: Settings }[]) => {
         setStatistics({
-          // Reset statistics
-          calories: [],
-          protein: [],
-          carbs: [],
-          fat: [],
+            calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
+            protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
+            carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
+            fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
         });
-        setSettingsHistory([]); // Clear the settings history
-      } catch (error) {
-        Alert.alert("Error", "Failed to clear data.");
-      }
-    } else {
-      Alert.alert("Error", "Incorrect confirmation text.");
-    }
-  };
-const getStatisticsData = (
-    dailyEntries: DailyEntry[],
-    macro: MacroType,
-    settingsHistory: { date: string; settings: Settings }[]
-  ) => {
-    const intakeData = dailyEntries
-      .map((entry) => {
-        const entryDate = parseISO(entry.date);
-        // Find the settings that were in effect *on that date*
-        const relevantSettings = settingsHistory
-          .filter((sh) => !isBefore(entryDate, parseISO(sh.date))) // Filter out future settings
-          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0]?.settings ?? settings; // Get most recent, fallback to current
-
-        const intakeValue = entry.items.reduce(
-          (total, item) => total + (item.food[macro] / 100) * item.grams,
-          0
-        );
-        const goalValue = relevantSettings.dailyGoals?.[macro] ?? 0; // Default to 0 if undefined
-
-        return {
-          x: entryDate.getTime(), // Convert date to timestamp
-          y: intakeValue,
-          goal: goalValue,
-        };
-      })
-      .sort((a, b) => a.x - b.x);
-
-      const intakeSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.y }));
-
-      if (macro === "calories") {
-          const goalSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.goal }));
-          return [intakeSeries, goalSeries]; // Return *both* series
-        } else {
-          return [intakeSeries]; // Only intake for other macros
-        }
-  };
-
+    }, [getStatisticsData]);
 
   useEffect(() => {
-    const loadStatistics = async () => {
-      const loadedEntries = await loadDailyEntries();
-      setStatistics({
-        calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
-        protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
-        carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
-        fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
-      });
-    };
-    loadStatistics();
-  }, [settingsHistory]); // Dependency on settingsHistory
-
-
- const generateChartHTML = () => {
-   const chartData = macros.reduce((acc, macro) => {
-     // Prepare data for each macro, including goal if applicable
-     acc[macro] = statistics[macro].map((series) =>
-       series.map((item) => [item.x / 1000, item.y])
-     );
-     return acc;
-   }, {} as { [key in MacroType]: number[][][] });
-
-   const textColor = theme.colors.text;
-   const gridColor = theme.colors.grey5; // Lighter grid
-   const axisColor = theme.colors.grey3; // Slightly darker axis
-   const fontFamily = "Helvetica, Arial, sans-serif";
-
-   // Define color palette for the lines, using theme colors if possible
-   const lineColors = {
-     calories: theme.colors.primary,
-     protein: theme.colors.success,
-     carbs: theme.colors.warning,
-     fat: theme.colors.error,
-   };
-
-   return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Macro Charts</title>
-        <style>
-           body { font-family: ${fontFamily}; margin: 0; padding: 0; background-color: ${theme.colors.background}; color: ${textColor};}
-            .chart-container { width: 95%; height: 250px; margin: 10px auto; }
-        </style>
-        <link rel="stylesheet" href="https://unpkg.com/uplot@1.6.27/dist/uPlot.min.css">
-        <script src="https://unpkg.com/uplot@1.6.27/dist/uPlot.iife.min.js"></script>
-    </head>
-    <body>
-        ${macros
-          .map((macro) => {
-            const isCalories = macro === "calories";
-            const seriesCount = isCalories ? 2 : 1; // Two series for calories (intake, goal)
-            const seriesConfig = isCalories
-              ? `[
-                  {},
-                  {
-                    stroke: "${lineColors[macro] || theme.colors.primary}",
-                    width: 2,
-                    label: "Intake",
-                    points: { show: false }
-                  },
-                  {
-                    stroke: "grey",
-                    width: 1,
-                    dash: [5, 5],
-                    label: "Goal",
-                    points: { show: false }
-                  }
-                ]`
-              : `[
-                  {},
-                  {
-                    stroke: "${lineColors[macro] || theme.colors.primary}",
-                    width: 2,
-                    label: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                    points: { show: false }
-                  }
-                ]`;
-
-            const uPlotData =
-              seriesCount === 2
-                ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
-                : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
-
-            return `
-            <div id="${macro}-chart" class="chart-container"></div>
-            <script>
-                const data = ${JSON.stringify(chartData[macro])};
-                const opts = {
-                    title: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                    width: window.innerWidth * 0.95,
-                    height: 250,
-                    scales: {
-                        x: { time: true },
-                        y: { },
-                    },
-                    axes: [
-                        {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
-                           grid: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            },
-                            ticks: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            }
-                        },
-                        {
-                            stroke: "${axisColor}",
-                            font: "12px ${fontFamily}",
-                            grid: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            },
-                            ticks: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            }
-                        }
-                    ],
-                    series: ${seriesConfig},
-                    cursor: {
-                        drag: { setScale: false },
-                        points: {
-                            size: 6,
-                            fill: (self, i) => self.series[i]._stroke,
-                            stroke: (self, i) => self.series[i]._stroke,
-                        }
-                    }
-                };
-                new uPlot(opts, ${uPlotData}, document.getElementById('${macro}-chart'));
-            </script>
-        `;
-          })
-          .join("")}
-    </body>
-    </html>
-    `;
- };
-
+        const loadStatistics = async () => {
+            const loadedEntries = await loadDailyEntries();
+            updateStatistics(loadedEntries, settingsHistory);
+        };
+        loadStatistics();
+  }, [settingsHistory, updateStatistics]);
 
 
  return (
@@ -476,81 +166,30 @@ const getStatisticsData = (
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         General
       </Text>
-      <ListItem
-        bottomDivider
-        containerStyle={{ backgroundColor: theme.colors.background }}
-      >
-        <ListItem.Content>
-          <ListItem.Title style={{ color: theme.colors.text }}>
-            Dark Mode
-          </ListItem.Title>
-        </ListItem.Content>
-        <Switch
-          value={settings.theme === "dark"}
-          onValueChange={() =>
-            onThemeChange(settings.theme === "dark" ? "light" : "dark")
-          }
-        />
-      </ListItem>
+      <ThemeSwitch
+        isDarkMode={settings.theme === "dark"}
+        onToggle={() =>
+          onThemeChange(settings.theme === "dark" ? "light" : "dark")
+        }
+      />
 
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Daily Goals
       </Text>
-      {macros.map((macro) => (
-        <Input
-          key={macro}
-          label={`${macro.charAt(0).toUpperCase() + macro.slice(1)} Goal`}
-          keyboardType="numeric"
-          value={settings.dailyGoals?.[macro]?.toString() || ""}
-          onChangeText={(value) => handleGoalChange(macro, value)}
-          style={{ color: theme.colors.text }}
-          inputContainerStyle={{ borderBottomColor: theme.colors.text }}
-          labelStyle={{ color: theme.colors.text }}
-        />
-      ))}
+      <DailyGoalsInput
+        dailyGoals={settings.dailyGoals}
+        onGoalChange={handleGoalChange}
+      />
 
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Statistics
       </Text>
-      <View style={styles.webViewContainer}>
-        <WebView
-          originWhitelist={["*"]}
-          source={{ html: generateChartHTML() }}
-          style={styles.webView}
-          scalesPageToFit={false}
-          scrollEnabled={false}
-        />
-      </View>
+      <StatisticsChart statistics={statistics} />
 
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Data Management
       </Text>
-      <Button
-        title="Export Data"
-        onPress={handleExportData}
-        buttonStyle={[styles.button, { backgroundColor: theme.colors.primary }]}
-      />
-      <Button
-        title="Import Data"
-        onPress={handleImportData}
-        buttonStyle={[styles.button, { backgroundColor: theme.colors.primary }]}
-      />
-      <Button
-        title="Clear All Data"
-        onPress={handleClearData}
-        color="error"
-        buttonStyle={styles.button}
-      />
-
-      <ConfirmationModal
-        isVisible={isConfirmationVisible}
-        onCancel={() => setIsConfirmationVisible(false)}
-        onConfirm={confirmClearData}
-        confirmationText={confirmationText}
-        setConfirmationText={setConfirmationText}
-        title="Clear All Data?"
-        message="This action cannot be undone. Are you absolutely sure?"
-      />
+      <DataManagementButtons onDataCleared={handleDataCleared} />
     </ScrollView>
   );
 };
@@ -559,21 +198,11 @@ const useStyles = makeStyles((theme) => ({
     container: {
         flex: 1,
         padding: 10,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.background
     },
     sectionTitle: {
         marginTop: 20,
         marginBottom: 10,
-    },
-    webViewContainer: {
-        height: 'auto', // Keep it at auto
-        width: "100%",
-        marginTop: 10,
-    },
-    webView: {
-        // Remove the flex:1
-        //flex: 1, // REMOVE THIS
-        height: 250 * (macros.length) + 50, // Explicit height
     },
     button: {
         marginBottom: 10,
