@@ -1004,7 +1004,7 @@ export default DailyProgress;
 
 
 ---------- DataManagementButtons.tsx ----------
-// components/DataManagementButtons.tsx
+// components/DataManagementButtons.tsx (Corrected)
 import React, { useState } from "react";
 import { Alert, Platform } from "react-native"; // Import Platform
 import { Button } from "@rneui/themed";
@@ -1016,10 +1016,17 @@ import {
   clearAllData,
   loadDailyEntries,
   saveDailyEntries,
+  loadFoods,
+  saveFoods,
+  loadSettings,
+  saveSettings
 } from "../services/storageService";
 import ConfirmationModal from "./ConfirmationModal";
 import { DailyEntry } from "../types/dailyEntry";
+import { Food } from "../types/food";
+import { Settings } from "../types/settings";
 import { useTheme } from "@rneui/themed";
+
 
 interface DataManagementButtonsProps {
   onDataCleared: () => Promise<void>;
@@ -1035,26 +1042,21 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleExportData = async () => {
     try {
       const dailyEntries = await loadDailyEntries();
-      const csvData = [
-        ["Date", "Food Name", "Grams", "Calories", "Protein", "Carbs", "Fat"],
-        ...dailyEntries.flatMap((entry) =>
-          entry.items.map((item) => [
-            entry.date,
-            item.food.name,
-            item.grams,
-            item.food.calories,
-            item.food.protein,
-            item.food.carbs,
-            item.food.fat,
-          ])
-        ),
-      ];
-      const csvString = csvData.map((row) => row.join(",")).join("\n");
+      const foods = await loadFoods();
+      const settings = await loadSettings();
+
+      const exportData = {
+        dailyEntries,
+        foods,
+        settings
+      };
+
+      const exportDataString = JSON.stringify(exportData);
       const formattedDate = formatDate(new Date()).replace(/\//g, '-'); // Replace slashes
-      const fileName = `macro_data_${formattedDate}.csv`;
+      const fileName = `macro_data_${formattedDate}.json`;
       const fileUri = FileSystem.documentDirectory + fileName;
 
-      await FileSystem.writeAsStringAsync(fileUri, csvString, {
+      await FileSystem.writeAsStringAsync(fileUri, exportDataString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
@@ -1078,21 +1080,15 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleImportData = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "text/csv",
-          "application/csv",
-          "text/comma-separated-values",
-          "application/vnd.ms-excel",
-        ],
+        type: ["application/json"], // Only accept JSON files
       });
 
-      // Corrected handling: Check for assets directly
       if (result.assets && result.assets.length > 0) {
         const file = result.assets[0];
 
         // Check file extension
-        if (!file.name?.toLowerCase().endsWith(".csv")) {
-          Alert.alert("Invalid File", "Please select a CSV file.");
+        if (!file.name?.toLowerCase().endsWith(".json")) {
+          Alert.alert("Invalid File", "Please select a JSON file.");
           return;
         }
 
@@ -1100,61 +1096,39 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
           encoding: FileSystem.EncodingType.UTF8,
         });
 
-        const lines = fileContent.trim().split("\n");
-        const headers = lines[0].split(",").map((h) => h.trim());
-        const data = lines.slice(1).map((line) => {
-          const values = line.split(",").map((v) => v.trim());
-          return headers.reduce((obj: any, header, index) => {
-            obj[header] = values[index];
-            return obj;
-          }, {});
-        });
 
-        const expectedHeaders = [
-          "Date",
-          "Food Name",
-          "Grams",
-          "Calories",
-          "Protein",
-          "Carbs",
-          "Fat",
-        ];
-        const missingHeaders = expectedHeaders.filter(
-          (h) => !headers.includes(h)
-        );
-        if (missingHeaders.length > 0) {
+        try {
+          const importedData = JSON.parse(fileContent);
+
+          // Basic structure validation:
+          if (
+            !importedData.hasOwnProperty("dailyEntries") ||
+            !importedData.hasOwnProperty("foods") ||
+            !importedData.hasOwnProperty("settings")
+          ) {
+            Alert.alert(
+              "Import Failed",
+              "The imported file is missing required data (dailyEntries, foods, or settings)."
+            );
+            return;
+          }
+
+
+          await saveDailyEntries(importedData.dailyEntries);
+          await saveFoods(importedData.foods);
+          await saveSettings(importedData.settings)
+          Alert.alert("Import Successful", "Data imported and saved.");
+          await onDataCleared();
+
+        } catch (parseError) {
           Alert.alert(
             "Import Failed",
-            `Missing columns: ${missingHeaders.join(", ")}`
+            "The imported file is not valid JSON."
           );
           return;
         }
 
-        const importedDailyEntries: DailyEntry[] = [];
-        data.forEach((row) => {
-          let dailyEntry = importedDailyEntries.find(
-            (entry) => entry.date === row["Date"]
-          );
-          if (!dailyEntry) {
-            dailyEntry = { date: row["Date"], items: [] };
-            importedDailyEntries.push(dailyEntry);
-          }
 
-          dailyEntry.items.push({
-            food: {
-              id: "",
-              name: row["Food Name"],
-              calories: parseFloat(row["Calories"]) || 0,
-              protein: parseFloat(row["Protein"]) || 0,
-              carbs: parseFloat(row["Carbs"]) || 0,
-              fat: parseFloat(row["Fat"]) || 0,
-            },
-            grams: parseFloat(row["Grams"]) || 0,
-          });
-        });
-
-        await saveDailyEntries(importedDailyEntries);
-        Alert.alert("Import Successful", "Data imported and saved.");
       } else {
         // Explicitly check for cancelled
         if (result.canceled) {
@@ -1736,273 +1710,360 @@ fs.stat(projectRoot, (err, stats) => {
 
 
 ---------- DailyEntryScreen.tsx ----------
-// screens/DailyEntryScreen.tsx
+//screens/DailyEntryScreen.tsx
+// Import necessary modules and components
 import React, { useState, useEffect, useCallback } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods } from "../services/foodService";
-import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
-import { formatDate, formatDateReadable, getTodayDateString } from "../utils/dateUtils";
+import {
+  saveDailyEntries,
+  loadDailyEntries,
+  loadSettings,
+} from "../services/storageService";
+import {
+  formatDate,
+  formatDateReadable,
+  getTodayDateString,
+} from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
 import DailyProgress from "../components/DailyProgress";
-import { Button, Text, ListItem, FAB, SearchBar, makeStyles, useTheme, Divider } from "@rneui/themed";
+import {
+  Button,
+  Text,
+  ListItem,
+  FAB,
+  SearchBar,
+  makeStyles,
+  useTheme,
+  Divider,
+} from "@rneui/themed";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO } from "date-fns";
 import { Icon } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal"; // Import
+import "react-native-get-random-values";
+import { v4 as uuidv4 } from "uuid";
 
+// Define the DailyGoals interface
 interface DailyGoals {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
+// DailyEntryScreen Component
 const DailyEntryScreen: React.FC = () => {
-    const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-    const [foods, setFoods] = useState<Food[]>([]);
-    const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-    const [grams, setGrams] = useState("");
-    const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-    const [search, setSearch] = useState("");
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
-        calories: 2000,
-        protein: 50,
-        carbs: 200,
-        fat: 70,
-    });
+  // State variables
+  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    getTodayDateString()
+  );
+  const [foods, setFoods] = useState<Food[]>([]);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [grams, setGrams] = useState("");
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
+    calories: 2000,
+    protein: 50,
+    carbs: 200,
+    fat: 70,
+  });
 
-    const { theme } = useTheme();
-    const styles = useStyles();
+  // Get theme and styles
+  const { theme } = useTheme();
+  const styles = useStyles();
 
-    const loadData = useCallback(async () => {
-        const loadedFoods = await getFoods();
-        const loadedEntries = await loadDailyEntries();
-        const loadedSettings = await loadSettings();
+  // Load data function (using useCallback for memoization)
+  const loadData = useCallback(async () => {
+    const loadedFoods = await getFoods();
+    const loadedEntries = await loadDailyEntries();
+    const loadedSettings = await loadSettings();
 
-        if (loadedSettings.dailyGoals) {
-            setDailyGoals((prevGoals) => ({ ...prevGoals, ...loadedSettings.dailyGoals }));
-        }
+    if (loadedSettings.dailyGoals) {
+      setDailyGoals((prevGoals) => ({
+        ...prevGoals,
+        ...loadedSettings.dailyGoals,
+      }));
+    }
 
-        setFoods(loadedFoods);
-        setDailyEntries(loadedEntries);
-    }, []);
+    setFoods(loadedFoods);
+    setDailyEntries(loadedEntries);
+  }, []);
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-    const getCurrentEntry = (): DailyEntry => {
-        return (
-            dailyEntries.find((entry) => entry.date === selectedDate) || {
-                date: selectedDate,
-                items: [],
-            }
-        );
-    };
-
-    const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
-        await saveDailyEntries(updatedEntries);
-        setDailyEntries(updatedEntries);
-    };
-
-    const handleAddEntry = async () => {
-        if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
-            Alert.alert(
-                "Invalid Input",
-                "Please select a food and enter a valid, positive number for grams."
-            );
-            return;
-        }
-
-        const newEntryItem: DailyEntryItem = {
-            food: selectedFood,
-            grams: parseFloat(grams),
-        };
-        const currentEntry = getCurrentEntry();
-        const updatedItems = [...currentEntry.items, newEntryItem];
-        const updatedEntry = { ...currentEntry, items: updatedItems };
-
-        const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
-        updatedEntries.push(updatedEntry);
-
-        await updateAndSaveEntries(updatedEntries);
-        setSelectedFood(null);
-        setGrams("");
-        setIsOverlayVisible(false);
-    };
-
-    const handleRemoveEntry = async (index: number) => {
-        const currentEntry = getCurrentEntry();
-        const updatedItems = currentEntry.items.filter((_, i) => i !== index);
-        const updatedEntry = { ...currentEntry, items: updatedItems };
-
-        const updatedEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
-        if (updatedItems.length > 0) {
-            updatedEntries.push(updatedEntry);
-        }
-
-        await updateAndSaveEntries(updatedEntries);
-    };
-
-    const toggleOverlay = () => {
-      setIsOverlayVisible(!isOverlayVisible);
-      if (isOverlayVisible) {
-          // Corrected condition
-          setSearch("");
-          setSelectedFood(null);
+  // Function to get the current entry for the selected date
+  const getCurrentEntry = (): DailyEntry => {
+    return (
+      dailyEntries.find((entry) => entry.date === selectedDate) || {
+        date: selectedDate,
+        items: [],
       }
+    );
   };
 
-    const updateSearch = (search: string) => setSearch(search);
-    const filteredFoods = foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase()));
-    const handleDateChange = (event: any, selectedDateVal?: Date) => {
-        setShowDatePicker(false);
-        if (event.type === "set" && selectedDateVal) {
-            setSelectedDate(formatDate(selectedDateVal));
-        }
+  // Function to update and save entries
+  const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
+    await saveDailyEntries(updatedEntries);
+    setDailyEntries(updatedEntries);
+  };
+
+  // Function to handle adding a new entry
+  const handleAddEntry = async () => {
+    if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
+      Alert.alert(
+        "Invalid Input",
+        "Please select a food and enter a valid, positive number for grams."
+      );
+      return;
+    }
+
+    const newEntryItem: DailyEntryItem = {
+      food: selectedFood,
+      grams: parseFloat(grams),
     };
-    const handlePreviousDay = () => setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
-    const handleNextDay = () => setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
-    const handleSelectFood = (item: Food) => {
-        setSelectedFood(item);
-        setSearch("");
-    };
+    const currentEntry = getCurrentEntry();
+    const updatedItems = [...currentEntry.items, newEntryItem];
+    const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    const calculateTotals = () => {
-        const currentEntry = getCurrentEntry();
-        let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
-
-        currentEntry.items.forEach((item) => {
-            totalCalories += (item.food.calories / 100) * item.grams;
-            totalProtein += (item.food.protein / 100) * item.grams;
-            totalCarbs += (item.food.carbs / 100) * item.grams;
-            totalFat += (item.food.fat / 100) * item.grams;
-        });
-
-        return {
-            totalCalories: Math.round(totalCalories),
-            totalProtein: Math.round(totalProtein),
-            totalCarbs: Math.round(totalCarbs),
-            totalFat: Math.round(totalFat),
-        };
-    };
-
-    const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
-
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.dateNavigation}>
-                <Button
-                    type="clear"
-                    onPress={handlePreviousDay}
-                    icon={<Icon name="arrow-back" type="ionicon" color={theme.colors.text} />}
-                />
-                <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
-                    {formatDateReadable(selectedDate)}
-                </Text>
-                <Button
-                    type="clear"
-                    onPress={handleNextDay}
-                    icon={<Icon name="arrow-forward" type="ionicon" color={theme.colors.text} />}
-                />
-            </View>
-
-            {showDatePicker && (
-                <DateTimePicker
-                    value={parseISO(selectedDate)}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                />
-            )}
-
-            <DailyProgress
-                calories={totalCalories}
-                protein={totalProtein}
-                carbs={totalCarbs}
-                fat={totalFat}
-                goals={dailyGoals}
-            />
-            <Divider style={styles.divider} />
-
-            <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                Entries:
-            </Text>
-            <FlatList
-                data={getCurrentEntry().items}
-                keyExtractor={(_, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                    <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
-                        <Icon name="nutrition-outline" type="ionicon" color={theme.colors.text} />
-                        <ListItem.Content>
-                            <ListItem.Title style={{ color: theme.colors.text }}>{item.food.name}</ListItem.Title>
-                            <ListItem.Subtitle style={{ color: theme.colors.text }}>{`${item.grams}g`}</ListItem.Subtitle>
-                        </ListItem.Content>
-                        <Button
-                            type="clear"
-                            onPress={() => handleRemoveEntry(index)}
-                            icon={<Icon name="trash" type="ionicon" color="red" />}
-                        />
-                    </ListItem>
-                )}
-            />
-
-            <FAB
-                icon={<Icon name="add" color="white" />}
-                color={theme.colors.primary}
-                onPress={toggleOverlay}
-                placement="right"
-                title="Add"
-            />
-
-            <AddEntryModal
-                isVisible={isOverlayVisible}
-                toggleOverlay={toggleOverlay}
-                search={search}
-                updateSearch={updateSearch}
-                filteredFoods={filteredFoods}
-                handleSelectFood={handleSelectFood}
-                grams={grams}
-                setGrams={setGrams}
-                handleAddEntry={handleAddEntry}
-                selectedFood={selectedFood}
-            />
-        </SafeAreaView>
+    const updatedEntries = dailyEntries.filter(
+      (entry) => entry.date !== selectedDate
     );
+    updatedEntries.push(updatedEntry);
+
+    await updateAndSaveEntries(updatedEntries);
+    setSelectedFood(null);
+    setGrams("");
+    setIsOverlayVisible(false);
+  };
+
+  // Function to handle removing an entry
+  const handleRemoveEntry = async (index: number) => {
+    const currentEntry = getCurrentEntry();
+    const updatedItems = currentEntry.items.filter((_, i) => i !== index);
+    const updatedEntry = { ...currentEntry, items: updatedItems };
+
+    const updatedEntries = dailyEntries.filter(
+      (entry) => entry.date !== selectedDate
+    );
+    if (updatedItems.length > 0) {
+      updatedEntries.push(updatedEntry);
+    }
+
+    await updateAndSaveEntries(updatedEntries);
+  };
+
+  // Toggle the visibility of the overlay
+  const toggleOverlay = () => {
+    setIsOverlayVisible(!isOverlayVisible);
+    if (isOverlayVisible) {
+      // Corrected condition
+      setSearch("");
+      setSelectedFood(null);
+    }
+  };
+
+  // Update search text
+  const updateSearch = (search: string) => setSearch(search);
+
+  // Filter foods based on search text
+  const filteredFoods = foods.filter((food) =>
+    food.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Handle date change
+  const handleDateChange = (event: any, selectedDateVal?: Date) => {
+    setShowDatePicker(false);
+    if (event.type === "set" && selectedDateVal) {
+      setSelectedDate(formatDate(selectedDateVal));
+    }
+  };
+
+  // Navigate to previous day
+  const handlePreviousDay = () =>
+    setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
+
+  // Navigate to next day
+  const handleNextDay = () =>
+    setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
+
+  // Handle food selection
+  const handleSelectFood = (item: Food) => {
+    setSelectedFood(item);
+    setSearch("");
+  };
+
+  // Calculate total macros for the selected date
+  const calculateTotals = () => {
+    const currentEntry = getCurrentEntry();
+    let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
+
+    currentEntry.items.forEach((item) => {
+      totalCalories += (item.food.calories / 100) * item.grams;
+      totalProtein += (item.food.protein / 100) * item.grams;
+      totalCarbs += (item.food.carbs / 100) * item.grams;
+      totalFat += (item.food.fat / 100) * item.grams;
+    });
+
+    return {
+      totalCalories: Math.round(totalCalories),
+      totalProtein: Math.round(totalProtein),
+      totalCarbs: Math.round(totalCarbs),
+      totalFat: Math.round(totalFat),
+    };
+  };
+
+  // Destructure calculated totals
+  const { totalCalories, totalProtein, totalCarbs, totalFat } =
+    calculateTotals();
+
+  // Return the JSX for the DailyEntryScreen
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Date Navigation */}
+      <View style={styles.dateNavigation}>
+        <Button
+          type="clear"
+          onPress={handlePreviousDay}
+          icon={
+            <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
+          }
+        />
+        <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
+          {formatDateReadable(selectedDate)}
+        </Text>
+        <Button
+          type="clear"
+          onPress={handleNextDay}
+          icon={
+            <Icon
+              name="arrow-forward"
+              type="ionicon"
+              color={theme.colors.text}
+            />
+          }
+        />
+      </View>
+
+      {/* Date Picker (conditional rendering) */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={parseISO(selectedDate)}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+
+      {/* Daily Progress Component */}
+      <DailyProgress
+        calories={totalCalories}
+        protein={totalProtein}
+        carbs={totalCarbs}
+        fat={totalFat}
+        goals={dailyGoals}
+      />
+      <Divider style={styles.divider} />
+
+      {/* Entries Section */}
+      <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        Entries:
+      </Text>
+      <FlatList
+        data={getCurrentEntry().items}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={({ item, index }) => (
+          <ListItem
+            bottomDivider
+            containerStyle={{ backgroundColor: theme.colors.background }}
+          >
+            <Icon
+              name="nutrition-outline"
+              type="ionicon"
+              color={theme.colors.text}
+            />
+            <ListItem.Content>
+              <ListItem.Title style={{ color: theme.colors.text }}>
+                {item.food.name}
+              </ListItem.Title>
+              <ListItem.Subtitle
+                style={{ color: theme.colors.text }}
+              >{`${item.grams}g`}</ListItem.Subtitle>
+            </ListItem.Content>
+            <Button
+              type="clear"
+              onPress={() => handleRemoveEntry(index)}
+              icon={<Icon name="trash" type="ionicon" color="red" />}
+            />
+          </ListItem>
+        )}
+      />
+
+      {/* Add Entry FAB */}
+      <FAB
+        icon={<Icon name="add" color="white" />}
+        color={theme.colors.primary}
+        onPress={toggleOverlay}
+        placement="right"
+        title="Add"
+      />
+
+      {/* Add Entry Modal */}
+      <AddEntryModal
+        isVisible={isOverlayVisible}
+        toggleOverlay={toggleOverlay}
+        search={search}
+        updateSearch={updateSearch}
+        filteredFoods={filteredFoods}
+        handleSelectFood={handleSelectFood}
+        grams={grams}
+        setGrams={setGrams}
+        handleAddEntry={handleAddEntry}
+        selectedFood={selectedFood}
+      />
+    </SafeAreaView>
+  );
 };
 
+// StyleSheet using makeStyles
 const useStyles = makeStyles((theme) => ({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    dateNavigation: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginVertical: 10,
-        paddingHorizontal: 10,
-    },
-    dateText: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: theme.colors.text,
-    },
-    divider: {
-        marginVertical: 10,
-    },
-    sectionTitle: {
-        marginBottom: 10,
-        paddingHorizontal: 10,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  dateNavigation: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 10,
+    paddingHorizontal: 10,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: theme.colors.text,
+  },
+  divider: {
+    marginVertical: 10,
+  },
+  sectionTitle: {
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
 }));
 
+// Export the component
 export default DailyEntryScreen;
+
 ---------- END DailyEntryScreen.tsx ----------
 
 

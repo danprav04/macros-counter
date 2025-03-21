@@ -1,4 +1,4 @@
-// navigation/AppNavigator.tsx
+// navigation/AppNavigator.tsx (Modified to accept onDataOperation)
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@rneui/themed';
@@ -10,9 +10,10 @@ const Tab = createBottomTabNavigator();
 
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onDataOperation: () => void; // Add this prop
 }
 
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
+const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onDataOperation }) => {
   const { theme } = useTheme();
 
   return (
@@ -50,7 +51,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
       <Tab.Screen name="Daily Entry" component={DailyEntryScreen} />
       <Tab.Screen name="Foods" component={FoodListScreen} />
       <Tab.Screen name="Settings">
-        {() => <SettingsScreen onThemeChange={onThemeChange} />}
+        {/* Pass onDataOperation to SettingsScreen */}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={onDataOperation} />}
       </Tab.Screen>
     </Tab.Navigator>
   );

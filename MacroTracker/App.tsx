@@ -1,11 +1,11 @@
-// App.tsx (Corrected for Reactivity)
+// App.tsx (Modified for Reload)
 import 'react-native-get-random-values'; // MUST BE FIRST
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, createTheme } from '@rneui/themed';
 import { loadSettings, saveSettings } from './services/storageService';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Import AppState
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
@@ -147,8 +147,12 @@ const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
   const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
+  const [reloadKey, setReloadKey] = useState(0); // Key for forcing remount
+  const [appState, setAppState] = useState(AppState.currentState); // AppState
 
-  useEffect(() => {
+
+  // Load initial settings
+    useEffect(() => {
     const initializeApp = async () => {
       const settings = await loadSettings();
       setThemeMode(settings.theme);
@@ -156,6 +160,28 @@ const App = () => {
     };
     initializeApp();
   }, []);
+
+  // Function to trigger a reload
+  const triggerReload = () => {
+    setReloadKey((prevKey) => prevKey + 1);
+  };
+
+    useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        // App has come to the foreground, trigger reload
+        triggerReload();
+      }
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState]); // Depend on appState
+
 
   const updateTheme = (newThemeMode: 'light' | 'dark' | 'system') => {
     const isDark = newThemeMode === 'system' ? colorScheme === 'dark' : newThemeMode === 'dark';
@@ -209,7 +235,8 @@ const App = () => {
         <NavigationContainer
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
         >
-          <AppNavigator onThemeChange={handleThemeChange} />
+          {/* Pass reloadKey and triggerReload */}
+          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
         </NavigationContainer>
       </SafeAreaProvider>
     </ThemeProvider>

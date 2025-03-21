@@ -1,4 +1,5 @@
-// components/DataManagementButtons.tsx (Corrected)
+// components/DataManagementButtons.tsx (Modified callback)
+
 import React, { useState } from "react";
 import { Alert, Platform } from "react-native"; // Import Platform
 import { Button } from "@rneui/themed";
@@ -23,11 +24,11 @@ import { useTheme } from "@rneui/themed";
 
 
 interface DataManagementButtonsProps {
-  onDataCleared: () => Promise<void>;
+  onDataOperation: () => void; // Changed prop name
 }
 
 const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
-  onDataCleared,
+    onDataOperation
 }) => {
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
@@ -61,6 +62,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       }
 
       await Sharing.shareAsync(fileUri);
+      onDataOperation(); // Trigger reload after export
 
     } catch (error: any) {
       console.error(error);
@@ -112,7 +114,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
           await saveFoods(importedData.foods);
           await saveSettings(importedData.settings)
           Alert.alert("Import Successful", "Data imported and saved.");
-          await onDataCleared();
+          onDataOperation(); //trigger reload
 
         } catch (parseError) {
           Alert.alert(
@@ -147,7 +149,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
       try {
         await clearAllData();
         Alert.alert("Data Cleared", "All data has been cleared.");
-        await onDataCleared(); // Call the callback
+        onDataOperation(); // Trigger reload after clearing
       } catch (error) {
         Alert.alert("Error", "Failed to clear data.");
       } finally {

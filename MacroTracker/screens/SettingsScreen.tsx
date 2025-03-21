@@ -1,4 +1,4 @@
-// screens/SettingsScreen.tsx (Corrected)
+// screens/SettingsScreen.tsx (Modified to use onDataOperation)
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Text, makeStyles } from "@rneui/themed";
@@ -22,10 +22,11 @@ import { DailyEntry } from "../types/dailyEntry";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+    onDataOperation: () => void; // Add this
 }
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOperation }) => {
     const [settings, setSettings] = useState<Settings>({
         theme: "system",
         dailyGoals: {
@@ -92,21 +93,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   };
 
     const handleDataCleared = async () => {
-        try {
-          await loadInitialSettings(); // Reload settings and clear inputs
-          // Reset statistics, *then* reload entries (to avoid double loading)
-          setStatistics({
-            calories: [],
-            protein: [],
-            carbs: [],
-            fat: [],
-          });
-          setSettingsHistory([]);
-          const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
-          updateStatistics(loadedEntries, settingsHistory)
-        } catch (error) {
-          Alert.alert("Error", "Failed to clear data.");
-        }
+        // try {
+        //   await loadInitialSettings(); // Reload settings and clear inputs
+        //   // Reset statistics, *then* reload entries (to avoid double loading)
+        //   setStatistics({
+        //     calories: [],
+        //     protein: [],
+        //     carbs: [],
+        //     fat: [],
+        //   });
+        //   setSettingsHistory([]);
+        //   const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
+        //   updateStatistics(loadedEntries, settingsHistory)
+        // } catch (error) {
+        //   Alert.alert("Error", "Failed to clear data.");
+        // }
+        onDataOperation();
     };
 
       const getStatisticsData = useCallback((
@@ -191,7 +193,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
       <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Data Management
       </Text>
-      <DataManagementButtons onDataCleared={handleDataCleared} />
+      {/* Pass onDataOperation to DataManagementButtons */}
+      <DataManagementButtons onDataOperation={onDataOperation} />
     </ScrollView>
   );
 };
