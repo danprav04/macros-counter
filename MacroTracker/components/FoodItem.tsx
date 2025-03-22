@@ -1,5 +1,5 @@
-// FoodItem.tsx
-import React, { useRef } from 'react'; // Import useRef
+// FoodItem.tsx (Corrected with forwardRef)
+import React, { useRef, forwardRef } from 'react'; // Import forwardRef
 import { StyleSheet } from 'react-native';
 import { ListItem, Icon, useTheme, Button } from '@rneui/themed';
 import { Food } from '../types/food';
@@ -9,30 +9,33 @@ interface FoodItemProps {
   food: Food;
   onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
-  onUndoDelete: (food: Food) => void; // Add undo prop
+  onUndoDelete: (food: Food) => void;
 }
 
-const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete, onUndoDelete }) => {
+// Use forwardRef to receive the ref from the parent
+const FoodItem = forwardRef<any, FoodItemProps>(({ food, onEdit, onDelete, onUndoDelete }, ref) => {
   const { theme } = useTheme();
-  const swipeableRef = useRef<any>(null); // Ref for swipeable
+  // No need for swipeableRef here anymore.  We'll get it from the parent.
 
   const handleDelete = () => {
-      onDelete(food.id);
-       swipeableRef.current?.close(); // Close after delete
-      Toast.show({
-          type: 'success',
-          text1: `${food.name} deleted`,
-          text2: 'Tap to undo',
-          position: 'bottom',
-          bottomOffset: 80,
-          onPress: () => onUndoDelete(food), // Call undo function
-          visibilityTime: 3000, // Show for 3 seconds
-        });
+    onDelete(food.id);
+    //  swipeableRef.current?.close(); // Close after delete -- removed because we manage it with the ref.
+    // The ref is now managed EXTERNALLY, by the List.ItemSwipeable.  We just need to make sure we attach it
+    Toast.show({
+      type: 'success',
+      text1: `${food.name} deleted`,
+      text2: 'Tap to undo',
+      position: 'bottom',
+      bottomOffset: 80,
+      onPress: () => onUndoDelete(food), // Call undo function
+      visibilityTime: 3000, // Show for 3 seconds
+    });
   };
 
   return (
+    // Attach the received ref to ListItem.Swipeable
     <ListItem.Swipeable
-      ref={swipeableRef} // Attach ref
+      ref={ref} // Pass the forwarded ref here!
       bottomDivider
       leftContent={(reset) => (
         <Button
@@ -70,27 +73,26 @@ const FoodItem: React.FC<FoodItemProps> = ({ food, onEdit, onDelete, onUndoDelet
       <ListItem.Chevron />
     </ListItem.Swipeable>
   );
-};
+});
 
 const styles = StyleSheet.create({
-    listItemContainer: {
-      paddingVertical: 15,
-      borderRadius: 0,
-      marginVertical: 0,
-    },
-    title: {
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-    swipeButtonEdit: {
-        minHeight: '100%',
-        backgroundColor: 'orange'
-    },
-    swipeButtonDelete: {
-        minHeight: '100%',
-        backgroundColor: 'red'
-    }
-
-  });
+  listItemContainer: {
+    paddingVertical: 15,
+    borderRadius: 0,
+    marginVertical: 0,
+  },
+  title: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  swipeButtonEdit: {
+    minHeight: '100%',
+    backgroundColor: 'orange'
+  },
+  swipeButtonDelete: {
+    minHeight: '100%',
+    backgroundColor: 'red'
+  }
+});
 
 export default FoodItem;

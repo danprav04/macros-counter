@@ -1650,7 +1650,7 @@ export default FoodItem;
 
 
 ---------- StatisticsChart.tsx ----------
-// components/StatisticsChart.tsx
+// components/StatisticsChart.tsx (Modified)
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
@@ -1664,136 +1664,196 @@ interface StatisticsChartProps {
 
 const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
 
-    const { theme } = useTheme();
+  const { theme } = useTheme();
 
   const generateChartHTML = () => {
-      const chartData = macros.reduce((acc, macro) => {
-     // Prepare data for each macro, including goal if applicable
-     acc[macro] = statistics[macro].map((series) =>
-       series.map((item) => [item.x / 1000, item.y])
-     );
-     return acc;
-   }, {} as { [key in MacroType]: number[][][] });
+    const chartData = macros.reduce((acc, macro) => {
+      // Prepare data for each macro, including goal if applicable
+      acc[macro] = statistics[macro].map((series) =>
+        series.map((item) => [item.x / 1000, item.y])
+      );
+      return acc;
+    }, {} as { [key in MacroType]: number[][][] });
 
-   const textColor = theme.colors.text;
-   const gridColor = theme.colors.grey5; // Lighter grid
-   const axisColor = theme.colors.grey3; // Slightly darker axis
-   const fontFamily = "Helvetica, Arial, sans-serif";
+    const textColor = theme.colors.text;
+    const gridColor = theme.colors.grey5; // Lighter grid
+    const axisColor = theme.colors.grey3; // Slightly darker axis
+    const fontFamily = "Helvetica, Arial, sans-serif";
 
-   // Define color palette for the lines, using theme colors if possible
-   const lineColors = {
-     calories: theme.colors.primary,
-     protein: theme.colors.success,
-     carbs: theme.colors.warning,
-     fat: theme.colors.error,
-   };
+    // Define color palette for the lines, using theme colors if possible
+    const lineColors = {
+      calories: theme.colors.primary,
+      protein: theme.colors.success,
+      carbs: theme.colors.warning,
+      fat: theme.colors.error,
+    };
 
-   return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Macro Charts</title>
-        <style>
-           body { font-family: ${fontFamily}; margin: 0; padding: 0; background-color: ${theme.colors.background}; color: ${textColor};}
-            .chart-container { width: 95%; height: 250px; margin: 10px auto; }
-        </style>
-        <link rel="stylesheet" href="https://unpkg.com/uplot@1.6.27/dist/uPlot.min.css">
-        <script src="https://unpkg.com/uplot@1.6.27/dist/uPlot.iife.min.js"></script>
-    </head>
-    <body>
-        ${macros
-          .map((macro) => {
-            const isCalories = macro === "calories";
-            const seriesCount = isCalories ? 2 : 1; // Two series for calories (intake, goal)
-            const seriesConfig = isCalories
-              ? `[
-                  {},
-                  {
-                    stroke: "${lineColors[macro] || theme.colors.primary}",
-                    width: 2,
-                    label: "Intake",
-                    points: { show: false }
-                  },
-                  {
-                    stroke: "red",
-                    width: 1,
-                    dash: [5, 5],
-                    label: "Goal",
-                    points: { show: false }
-                  }
-                ]`
-              : `[
-                  {},
-                  {
-                    stroke: "${lineColors[macro] || theme.colors.primary}",
-                    width: 2,
-                    label: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                    points: { show: false }
-                  }
-                ]`;
 
-            const uPlotData =
-              seriesCount === 2
-                ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
-                : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
+    // Re-enabled caching, but *only* cache the HTML itself, not the data.  The data is now dynamic.
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Macro Charts</title>
+            <style>
+            body { font-family: ${fontFamily}; margin: 0; padding: 0; background-color: ${theme.colors.background}; color: ${textColor};}
+                .chart-container { width: 95%; height: 250px; margin: 10px auto; }
+            </style>
+            <link rel="stylesheet" href="https://unpkg.com/uplot@1.6.27/dist/uPlot.min.css">
+            <script src="https://unpkg.com/uplot@1.6.27/dist/uPlot.iife.min.js"></script>
+        </head>
+        <body>
+            ${macros
+      .map((macro) => {
+        const isCalories = macro === "calories";
+        const seriesCount = isCalories ? 2 : 1; // Two series for calories (intake, goal)
 
-            return `
-            <div id="${macro}-chart" class="chart-container"></div>
-            <script>
-                const data = ${JSON.stringify(chartData[macro])};
-                const opts = {
-                    title: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                    width: window.innerWidth * 0.95,
-                    height: 250,
-                    scales: {
-                        x: { time: true },
-                        y: { },
-                    },
-                    axes: [
-                        {
-                            stroke: "${textColor}",
-                            font: "14px ${fontFamily}",
-                           grid: {
-                                stroke: "${gridColor}",
-                                width: 1
+        const seriesConfig = isCalories
+          ? `[
+                      {},
+                      {
+                        stroke: "${lineColors[macro] || theme.colors.primary}",
+                        width: 2,
+                        label: "Intake",
+                        points: { show: false }
+                      },
+                      {
+                        stroke: "red",
+                        width: 1,
+                        dash: [5, 5],
+                        label: "Goal",
+                        points: { show: false }
+                      }
+                    ]`
+          : `[
+                      {},
+                      {
+                        stroke: "${lineColors[macro] || theme.colors.primary}",
+                        width: 2,
+                        label: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
+                        points: { show: false }
+                      }
+                    ]`;
+
+
+        const uPlotData =
+          seriesCount === 2
+            ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
+            : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
+
+
+
+        return `
+                <div id="${macro}-chart" class="chart-container"></div>
+                <script>
+                    const data = ${JSON.stringify(chartData[macro])};
+                    const opts = {
+                        title: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
+                        width: window.innerWidth * 0.95,
+                        height: 250,
+                        scales: {
+                            x: { time: true },
+                            y: { },
+                        },
+                        axes: [
+                            {
+                                stroke: "${textColor}",
+                                font: "14px ${fontFamily}",
+                            grid: {
+                                    stroke: "${gridColor}",
+                                    width: 1
+                                },
+                                ticks: {
+                                    stroke: "${gridColor}",
+                                    width: 1
+                                }
                             },
-                            ticks: {
-                                stroke: "${gridColor}",
-                                width: 1
+                            {
+                                stroke: "${textColor}",
+                                font: "14px ${fontFamily}",
+                                grid: {
+                                    stroke: "${gridColor}",
+                                    width: 1
+                                },
+                                ticks: {
+                                    stroke: "${gridColor}",
+                                    width: 1
+                                }
+                            }
+                        ],
+                        series: ${seriesConfig},
+                        cursor: {
+                            drag: { setScale: false },
+                            points: {
+                                size: 6,
+                                fill: (self, i) => self.series[i]._stroke,
+                                stroke: (self, i) => self.series[i]._stroke,
                             }
                         },
-                        {
-                            stroke: "${textColor}",
-                            font: "14px ${fontFamily}",
-                            grid: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            },
-                            ticks: {
-                                stroke: "${gridColor}",
-                                width: 1
-                            }
+                        ${isCalories ? `
+                        hooks: {
+                            draw: [
+                                (u) => {
+                                   const ctx = u.ctx;
+                                    u.series.forEach((series, seriesIdx) => {
+                                      if (seriesIdx === 1) {
+                                        const intakeData = data[0];
+                                        const goalData = data[1];
+
+                                        ctx.beginPath();
+                                        ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
+
+                                        for (let i = 0; i < intakeData.length; i++) {
+                                          const intakeY = intakeData[i][1];
+                                          const goalY = goalData[i][1];
+                                          const x = u.valToPos(intakeData[i][0], "x", true);
+                                          
+                                           // Check if intake exceeds the goal
+                                            if(intakeY > goalY){
+                                                const intakeYPos = u.valToPos(intakeY, 'y', true);
+                                                const goalYPos = u.valToPos(goalY, 'y', true);
+                                               
+                                                //if this is the first point or last point, move to x, other wise line to x
+                                                if(i === 0){
+                                                   ctx.moveTo(x, intakeYPos);
+                                                }else{
+                                                  ctx.lineTo(x, intakeYPos);
+                                                }
+                                            }
+                                        }
+                                        //go back along the goal data
+                                         for (let i = intakeData.length-1; i >= 0; i--) {
+                                            const intakeY = intakeData[i][1];
+                                            const goalY = goalData[i][1];
+                                             const x = u.valToPos(intakeData[i][0], "x", true);
+                                               // Check if intake exceeds the goal
+                                            if(intakeY > goalY){
+                                                 const goalYPos = u.valToPos(goalY, 'y', true);
+                                                ctx.lineTo(x, goalYPos);
+                                            }
+                                         }
+
+                                        ctx.closePath();
+                                        ctx.fill();
+                                        }
+
+                                    });
+
+                                }
+                            ]
                         }
-                    ],
-                    series: ${seriesConfig},
-                    cursor: {
-                        drag: { setScale: false },
-                        points: {
-                            size: 6,
-                            fill: (self, i) => self.series[i]._stroke,
-                            stroke: (self, i) => self.series[i]._stroke,
-                        }
-                    }
-                };
-                new uPlot(opts, ${uPlotData}, document.getElementById('${macro}-chart'));
-            </script>
+                        ` : ''}
+                    };
+                    new uPlot(opts, ${uPlotData}, document.getElementById('${macro}-chart'));
+                </script>
+            `;
+      })
+      .join("")}
+        </body>
+        </html>
         `;
-          })
-          .join("")}
-    </body>
-    </html>
-    `;
+
   };
 
   return (
@@ -1810,14 +1870,14 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
 };
 
 const styles = StyleSheet.create({
-    webViewContainer: {
-        height: 'auto',
-        width: "100%",
-        marginTop: 10,
-    },
-    webView: {
-        height: 340, // Explicit height, adjust as needed.
-    },
+  webViewContainer: {
+    height: 'auto',
+    width: "100%",
+    marginTop: 10,
+  },
+  webView: {
+    height: 340, // Explicit height, adjust as needed.
+  },
 });
 
 export default StatisticsChart;
@@ -2088,7 +2148,7 @@ fs.stat(projectRoot, (err, stats) => {
 
 
 ---------- DailyEntryScreen.tsx ----------
-// DailyEntryScreen.tsx
+// DailyEntryScreen.tsx (Modified for Timestamps)
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
@@ -2117,7 +2177,7 @@ import {
   Input,
 } from "@rneui/themed";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { addDays, subDays, parseISO } from "date-fns";
+import { addDays, subDays, parseISO, formatISO } from "date-fns";
 import { Icon } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
@@ -2135,7 +2195,7 @@ interface DailyGoals {
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [foods, setFoods] = useState<Food[]>([]); // Initialize as empty array
+  const [foods, setFoods] = useState<Food[]>([]);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -2149,7 +2209,7 @@ const DailyEntryScreen: React.FC = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempGrams, setTempGrams] = useState("");
   const [search, setSearch] = useState("");
-  const [editIndex, setEditIndex] = useState<number | null>(null); // Added state
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -2167,12 +2227,10 @@ const DailyEntryScreen: React.FC = () => {
     setDailyEntries(loadedEntries);
   }, []);
 
-  // Use useFocusEffect to reload data when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadData();
       return () => {
-        // Reset the search state when the screen loses focus
         setSearch('');
       };
     }, [loadData])
@@ -2243,12 +2301,10 @@ const DailyEntryScreen: React.FC = () => {
     let updatedItems;
 
     if (editIndex !== null) {
-      // Replace existing item if editing
       updatedItems = currentEntry.items.map((item, index) =>
         index === editIndex ? newEntryItem : item
       );
     } else {
-      // Add new item if not editing
       updatedItems = [...currentEntry.items, newEntryItem];
     }
 
@@ -2264,7 +2320,7 @@ const DailyEntryScreen: React.FC = () => {
     await updateAndSaveEntries(updatedEntries);
     setSelectedFood(null);
     setGrams("");
-    setEditIndex(null); // Reset edit index
+    setEditIndex(null);
     setIsOverlayVisible(false);
   };
 
@@ -2272,39 +2328,38 @@ const DailyEntryScreen: React.FC = () => {
     setSelectedFood(item);
   };
 
-  const handleRemoveEntry = async (index: number) => {
-    const currentEntry = getCurrentEntry();
-    const itemToRemove = currentEntry.items[index];
-    const updatedItems = currentEntry.items.filter((_, i) => i !== index);
-    const updatedEntry = { ...currentEntry, items: updatedItems };
+    const handleRemoveEntry = async (index: number) => {
+        const currentEntry = getCurrentEntry();
+        const itemToRemove = currentEntry.items[index];
+        const updatedItems = currentEntry.items.filter((_, i) => i !== index);
 
-    const updatedEntries = dailyEntries.map((entry) => {
-      if (entry.date === currentEntry.date) {
-        return updatedEntry;
-      }
-      return entry;
-    });
 
-    if (updatedItems.length === 0) {
-      const newEntries = dailyEntries.filter(
-        (entry) => entry.date !== currentEntry.date
-      );
-      await updateAndSaveEntries(newEntries);
-      setDailyEntries(newEntries);
-    } else {
-      await updateAndSaveEntries(updatedEntries);
-      setDailyEntries(updatedEntries);
-    }
+        const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    Toast.show({
-      type: "success",
-      text1: `${itemToRemove.food.name} entry deleted`,
-      text2: "Tap to undo",
-      position: "bottom",
-      bottomOffset: 80,
-      onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
-      visibilityTime: 3000,
-    });
+        //If the entry is empty, remove it completely from the entries.
+        if (updatedItems.length === 0) {
+          const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date);
+          await updateAndSaveEntries(newEntries);
+        }
+        else {
+            const updatedEntries = dailyEntries.map((entry) => {
+                if (entry.date === currentEntry.date) {
+                    return updatedEntry;
+                }
+                return entry;
+                });
+            await updateAndSaveEntries(updatedEntries);
+        }
+
+        Toast.show({
+            type: 'success',
+            text1: `${itemToRemove.food.name} entry deleted`,
+            text2: 'Tap to undo',
+            position: 'bottom',
+            bottomOffset: 80,
+            onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
+            visibilityTime: 3000,
+        });
   };
 
   const handleUndoRemoveEntry = (
@@ -2341,8 +2396,8 @@ const DailyEntryScreen: React.FC = () => {
     setIsOverlayVisible(!isOverlayVisible);
     if (item) {
       setSelectedFood(item.food);
-      setGrams(String(item.grams)); // Pre-fill grams
-      setEditIndex(index); // Store the index being edited
+      setGrams(String(item.grams));
+      setEditIndex(index);
     } else {
       setSelectedFood(null);
       setGrams("");
@@ -2355,18 +2410,27 @@ const DailyEntryScreen: React.FC = () => {
     toggleOverlay(item, index);
   };
 
-  const handleDateChange = (event: any, selectedDateVal?: Date) => {
-    setShowDatePicker(false);
-    if (event.type === "set" && selectedDateVal) {
-      setSelectedDate(formatDate(selectedDateVal));
+// Key Change: Update date handling
+    const handleDateChange = (event: any, selectedDateVal?: Date) => {
+        setShowDatePicker(false);
+        if (event.type === "set" && selectedDateVal) {
+            // Format the selected date to a string
+            const formattedDate = formatISO(selectedDateVal, { representation: 'date' });
+            setSelectedDate(formattedDate);
+        }
+    };
+
+    const handlePreviousDay = () => {
+        const currentDate = parseISO(selectedDate);
+        const newDate = subDays(currentDate, 1);
+        setSelectedDate(formatISO(newDate, { representation: 'date' }));
     }
-  };
 
-  const handlePreviousDay = () =>
-    setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
-
-  const handleNextDay = () =>
-    setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
+    const handleNextDay = () => {
+        const currentDate = parseISO(selectedDate);
+        const newDate = addDays(currentDate, 1);
+        setSelectedDate(formatISO(newDate, {representation: 'date'}));
+    }
 
   const calculateTotals = () => {
     const currentEntry = getCurrentEntry();
@@ -2826,7 +2890,7 @@ export default FoodListScreen;
 
 
 ---------- SettingsScreen.tsx ----------
-// screens/SettingsScreen.tsx (Modified to use onDataOperation)
+// SettingsScreen.tsx (Corrected for UTC Timestamps)
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Text, makeStyles } from "@rneui/themed";
@@ -2835,35 +2899,28 @@ import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
-import {
-Settings,
-Statistics,
-MacroType,
-MacroData
-} from "../types/settings"; // Import types from settings
-
-import { parseISO, isBefore } from "date-fns";
-import { formatDate } from "../utils/dateUtils";
+import { Settings, Statistics, MacroType, MacroData } from "../types/settings";
+import { parseISO, isBefore, formatISO } from "date-fns";
+import { formatDate, formatDateReadable } from "../utils/dateUtils"; // Use custom formatDate
 import { useTheme } from "@rneui/themed";
 import { DailyEntry } from "../types/dailyEntry";
-
+import { useFocusEffect } from "@react-navigation/native";
 
 interface SettingsScreenProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-    onDataOperation: () => void; // Add this
+  onThemeChange: (theme: "light" | "dark" | "system") => void;
+  onDataOperation: () => void;
 }
 
-
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOperation }) => {
-    const [settings, setSettings] = useState<Settings>({
-        theme: "system",
-        dailyGoals: {
-          calories: 2000,
-          protein: 50,
-          carbs: 200,
-          fat: 70,
-        },
-    });
+  const [settings, setSettings] = useState<Settings>({
+    theme: "system",
+    dailyGoals: {
+      calories: 2000,
+      protein: 50,
+      carbs: 200,
+      fat: 70,
+    },
+  });
 
   const [statistics, setStatistics] = useState<Statistics>({
     calories: [],
@@ -2871,16 +2928,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
     carbs: [],
     fat: [],
   });
-  const [settingsHistory, setSettingsHistory] = useState<
-    { date: string; settings: Settings }[]
-  >([]);
+  const [settingsHistory, setSettingsHistory] = useState<{ date: number; dailyGoals: { [key in MacroType]: number } }[]>([]); // Use timestamp
+  const [chartUpdateKey, setChartUpdateKey] = useState(0);
+  const [dataChangeCounter, setDataChangeCounter] = useState(0);
 
   const { theme } = useTheme();
   const styles = useStyles();
 
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
-    const loadedSettingsHistory = loadedSettings?.settingsHistory || []; // Handle potentially undefined settingsHistory
+    const loadedSettingsHistory = loadedSettings?.settingsHistory || [];
 
     setSettings((prevSettings) => ({
       ...prevSettings,
@@ -2898,148 +2955,159 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
   }, [loadInitialSettings]);
 
 
-    const handleGoalChange = (goalType: MacroType, value: string) => {
-      const numericValue = parseFloat(value) || 0;
-      const updatedGoals = { ...settings.dailyGoals, [goalType]: numericValue };
+  const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
+    const numericValue = parseFloat(value) || 0;
 
-      setSettings((prevSettings) => {
-        const updatedSettings: Settings = {
-          ...prevSettings,
-          dailyGoals: updatedGoals,
-        };
+    setSettings((prevSettings) => {
+      const updatedGoals = { ...prevSettings.dailyGoals, [goalType]: numericValue };
+      const updatedSettings: Settings = {
+        ...prevSettings,
+        dailyGoals: updatedGoals,
+      };
 
-        // Update settings history
-        const newSettingsHistory = [
-          ...settingsHistory,
-          { date: formatDate(new Date()), settings: updatedSettings },
-        ];
-        saveSettings({ ...updatedSettings, settingsHistory: newSettingsHistory }); // Save history
+      // Store the date as a timestamp
+      const newHistoryEntry = {
+        date: new Date().getTime(), // UTC timestamp
+        dailyGoals: updatedGoals,
+      };
+
+      const newSettingsHistory = [...settingsHistory, newHistoryEntry];
+
+      (async () => {
+        await saveSettings({ ...updatedSettings, settingsHistory: newSettingsHistory });
         setSettingsHistory(newSettingsHistory);
+        setChartUpdateKey((prevKey) => prevKey + 1);
+      })();
 
-        return updatedSettings;
-      });
-  };
+      return updatedSettings;
+    });
+    }, [settingsHistory]);
 
-    const handleDataCleared = async () => {
-        // try {
-        //   await loadInitialSettings(); // Reload settings and clear inputs
-        //   // Reset statistics, *then* reload entries (to avoid double loading)
-        //   setStatistics({
-        //     calories: [],
-        //     protein: [],
-        //     carbs: [],
-        //     fat: [],
-        //   });
-        //   setSettingsHistory([]);
-        //   const loadedEntries = await loadDailyEntries(); // Reload to get empty entries
-        //   updateStatistics(loadedEntries, settingsHistory)
-        // } catch (error) {
-        //   Alert.alert("Error", "Failed to clear data.");
-        // }
-        onDataOperation();
+
+    const getStatisticsData = useCallback(
+    (
+      dailyEntries: DailyEntry[],
+      macro: MacroType,
+      settingsHistory: { date: number; dailyGoals: { [key in MacroType]: number } }[]
+    ): MacroData[][] => { // Return type annotation
+      const intakeData: MacroData[] = [];
+      const goalData: MacroData[] = []; // For calories goal
+
+        dailyEntries.forEach((entry) => {
+            const entryDate = parseISO(entry.date);
+          let relevantGoals: { [key in MacroType]: number };
+
+          // 1. Find the *most recent* setting BEFORE or EQUAL TO the entry date.
+          const applicableSetting = settingsHistory
+            .filter((sh) => !isBefore(entryDate, new Date(sh.date)))  // Compare with UTC timestamp
+            .sort((a, b) => b.date - a.date)[0]; // Sort by timestamp
+
+          // 2. Determine the settings to use:
+          if (applicableSetting) {
+            // Use historical settings if found.
+            relevantGoals = applicableSetting.dailyGoals;
+          } else {
+            // Use *current* settings as the fallback.
+            relevantGoals = settings.dailyGoals;
+          }
+
+          const intakeValue = entry.items.reduce(
+            (total, item) => total + (item.food[macro] / 100) * item.grams,
+            0
+          );
+          const goalValue = relevantGoals[macro] ?? 0;
+
+          // Add to intake data (for all macros)
+          intakeData.push({ x: entryDate.getTime(), y: intakeValue });
+
+          // Add to goal data (only for calories)
+          if (macro === "calories") {
+            goalData.push({ x: entryDate.getTime(), y: goalValue });
+          }
+        });
+
+        // Sort both arrays by date
+      intakeData.sort((a, b) => a.x - b.x);
+        if (macro === "calories") {
+            goalData.sort((a,b) => a.x - b.x);
+        }
+
+      // Return as an array of arrays
+      if (macro === "calories") {
+        return [intakeData, goalData]; // Two series: intake and goal
+      } else {
+        return [intakeData]; // One series: intake only
+      }
+    },
+    [settings.dailyGoals, settingsHistory]
+  );
+
+
+  const updateStatistics = useCallback(async () => {
+    const loadedEntries = await loadDailyEntries();
+
+    // Calculate statistics for each macro
+    const updatedStats: Statistics = {
+      calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
+      protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
+      carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
+      fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
     };
 
-      const getStatisticsData = useCallback((
-        dailyEntries: DailyEntry[],
-        macro: MacroType,
-        settingsHistory: { date: string; settings: Settings }[]
-      ) => {
-        const intakeData = dailyEntries
-          .map((entry) => {
-            const entryDate = parseISO(entry.date);
-            // Find the settings that were in effect *on that date*
-            const relevantSettings = settingsHistory
-              .filter((sh) => !isBefore(entryDate, parseISO(sh.date))) // Filter out future settings
-              .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0]?.settings ?? settings; // Get most recent, fallback to current
+    setStatistics(updatedStats);
+  }, [getStatisticsData, settingsHistory]);
 
-            const intakeValue = entry.items.reduce(
-              (total, item) => total + (item.food[macro] / 100) * item.grams,
-              0
-            );
-            const goalValue = relevantSettings.dailyGoals?.[macro] ?? 0; // Default to 0 if undefined
-
-            return {
-              x: entryDate.getTime(), // Convert date to timestamp
-              y: intakeValue,
-              goal: goalValue,
-            };
-          })
-          .sort((a, b) => a.x - b.x);
-
-          const intakeSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.y }));
-
-          if (macro === "calories") {
-              const goalSeries: MacroData[] = intakeData.map(item => ({ x: item.x, y: item.goal }));
-              return [intakeSeries, goalSeries]; // Return *both* series
-            } else {
-              return [intakeSeries]; // Only intake for other macros
-            }
-      }, [settings]);
-
-
-  const updateStatistics = useCallback((loadedEntries: DailyEntry[], settingsHistory: { date: string; settings: Settings }[]) => {
-        setStatistics({
-            calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
-            protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
-            carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
-            fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
-        });
-    }, [getStatisticsData]);
+   useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        await loadInitialSettings();
+        await updateStatistics();
+      })();
+    }, [loadInitialSettings, updateStatistics])
+  );
 
   useEffect(() => {
-        const loadStatistics = async () => {
-            const loadedEntries = await loadDailyEntries();
-            updateStatistics(loadedEntries, settingsHistory);
-        };
-        loadStatistics();
-  }, [settingsHistory, updateStatistics]);
+    (async () => {
+      if (dataChangeCounter > 0) {
+        await updateStatistics();
+        setChartUpdateKey((prevKey) => prevKey + 1);
+      }
+    })();
+  }, [dataChangeCounter, updateStatistics]);
 
+  const handleDataOperation = useCallback(() => {
+    setDataChangeCounter((prevCounter) => prevCounter + 1);
+  }, []);
 
- return (
+  return (
     <ScrollView style={styles.container}>
-      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        General
-      </Text>
-      <ThemeSwitch
-        currentTheme={settings.theme} // Pass the current theme mode
-        onToggle={onThemeChange} // Directly pass onThemeChange
-      />
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>General</Text>
+      <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
-      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Daily Goals
-      </Text>
-      <DailyGoalsInput
-        dailyGoals={settings.dailyGoals}
-        onGoalChange={handleGoalChange}
-      />
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Daily Goals</Text>
+      <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
 
-      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Statistics
-      </Text>
-      <StatisticsChart statistics={statistics} />
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Statistics</Text>
+      <StatisticsChart statistics={statistics} key={chartUpdateKey} />
 
-      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Data Management
-      </Text>
-      {/* Pass onDataOperation to DataManagementButtons */}
-      <DataManagementButtons onDataOperation={onDataOperation} />
+      <Text h3 style={[styles.sectionTitle, { color: theme.colors.text }]}>Data Management</Text>
+      <DataManagementButtons onDataOperation={handleDataOperation} />
     </ScrollView>
   );
 };
-
 const useStyles = makeStyles((theme) => ({
-    container: {
-        flex: 1,
-        padding: 10,
-        backgroundColor: theme.colors.background
-    },
-    sectionTitle: {
-        marginTop: 20,
-        marginBottom: 10,
-    },
-    button: {
-        marginBottom: 10,
-    },
+  container: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: theme.colors.background,
+  },
+  sectionTitle: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  button: {
+    marginBottom: 10,
+  },
 }));
 
 export default SettingsScreen;
@@ -3088,11 +3156,12 @@ export const deleteFood = async (foodId: string): Promise<void> => {
 
 
 ---------- storageService.ts ----------
-// services/storageService.ts
+// services/storageService.ts (Modified for Timestamps)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
-import { Settings } from '../types/settings'; // Import Settings from types
+import { Settings } from '../types/settings';
+import { formatISO, parseISO } from 'date-fns';
 
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
@@ -3153,33 +3222,45 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 export const loadSettings = async (): Promise<Settings> => {
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
+    const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
 
-// Apply defaults and ensure structure
-const defaultSettings: Settings = {
-  theme: 'system',
-  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-  settingsHistory: [] // Ensure settingsHistory exists
-};
+    // Apply defaults and ensure structure
+    const defaultSettings: Settings = {
+      theme: 'system',
+      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+      settingsHistory: [] // Ensure settingsHistory exists
+    };
 
 
-return {
-  ...defaultSettings, // Start with defaults
-    ...loadedSettings, // Override with loaded values
-    dailyGoals: {
-       ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
-        ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
+    return {
+      ...defaultSettings, // Start with defaults
+        ...loadedSettings, // Override with loaded values
+        dailyGoals: {
+          ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
+            ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
+        }
     }
-}
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading settings:', error);
-// Return defaults if loading fails
-return {
-  theme: 'system',
-  dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-  settingsHistory: [] // Ensure settingsHistory exists in default
-};
+
+    // *** KEY CHANGE: Handle "Row too big" error ***
+    if (error.message.includes('Row too big')) {
+      console.warn('Detected oversized settings data. Clearing settings.');
+      try {
+        await AsyncStorage.removeItem(SETTINGS_KEY); // Clear the oversized data
+      } catch (clearError) {
+        console.error('Error clearing oversized settings:', clearError);
+        // You might want to handle this more gracefully, e.g., by showing an error to the user.
+      }
+    }
+
+    // Return defaults if loading fails (or after clearing)
+    return {
+      theme: 'system',
+      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+      settingsHistory: [] // Ensure settingsHistory exists in default
+    };
   }
 };
 
@@ -3228,7 +3309,7 @@ export const loadRecentFoods = async (): Promise<Food[]> => {
 
 
 ---------- dailyEntry.ts ----------
-// types/dailyEntry.ts
+// types/dailyEntry.ts (Modified)
 import { Food } from "./food";
 
 export interface DailyEntryItem {
@@ -3247,7 +3328,7 @@ export interface DailyEntry {
   };
 }
 
-export interface FoodItem {
+export interface FoodItem { //No changes here.
     id: string;
     name: string;
     calories: number;
@@ -3273,10 +3354,7 @@ export interface Food {
 
 
 ---------- settings.ts ----------
-// types/settings.ts
-
-import { DailyEntry } from "./dailyEntry";
-
+// types/settings.ts (Modified)
 export const macros = ["calories", "protein", "carbs", "fat"] as const;
 export type MacroType = (typeof macros)[number];
 
@@ -3297,9 +3375,8 @@ export interface Settings {
   dailyGoals: {
     [key in MacroType]: number;
   };
-  settingsHistory?: { date: string; settings: Settings }[]; // Make settingsHistory optional
+  settingsHistory?: { date: number; dailyGoals: { [key in MacroType]: number } }[]; // CHANGED: Store timestamp
 }
-
 
 export interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -3308,25 +3385,25 @@ export interface SettingsScreenProps {
 
 
 ---------- dateUtils.ts ----------
-// utils/dateUtils.ts
-import { format, parseISO } from 'date-fns';
+// utils/dateUtils.ts (Modified)
+import { format, parseISO, formatISO } from 'date-fns';
 
-export const formatDate = (date: Date | string): string => {
-  if (typeof date === 'string') {
-    date = parseISO(date);
-  }
-  return format(date, 'yyyy-MM-dd');
+// Format a timestamp as YYYY-MM-DD (for display and storage)
+export const formatDate = (timestamp: number): string => {
+    return formatISO(timestamp, { representation: 'date' });
 };
 
-export const formatDateReadable = (date: Date | string): string => {
-    if (typeof date === 'string') {
-        date = parseISO(date);
+// Format a timestamp as a readable date (for display)
+export const formatDateReadable = (timestamp: number | string): string => {
+    if (typeof timestamp === 'string') {
+        return timestamp; // if it is a string, do nothing.
     }
-    return format(date, 'MMMM dd, yyyy');
-}
+  return format(timestamp, 'MMMM dd, yyyy');
+};
 
+// Get today's date as a timestamp
 export const getTodayDateString = (): string => {
-  return formatDate(new Date());
+  return formatISO(new Date(), { representation: 'date' });
 };
 ---------- END dateUtils.ts ----------
 
