@@ -1,4 +1,4 @@
-// DailyEntryScreen.tsx
+// DailyEntryScreen.tsx (Modified for Timestamps)
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
@@ -27,7 +27,7 @@ import {
   Input,
 } from "@rneui/themed";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { addDays, subDays, parseISO } from "date-fns";
+import { addDays, subDays, parseISO, formatISO } from "date-fns";
 import { Icon } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
@@ -45,7 +45,7 @@ interface DailyGoals {
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [foods, setFoods] = useState<Food[]>([]); // Initialize as empty array
+  const [foods, setFoods] = useState<Food[]>([]);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -59,7 +59,7 @@ const DailyEntryScreen: React.FC = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempGrams, setTempGrams] = useState("");
   const [search, setSearch] = useState("");
-  const [editIndex, setEditIndex] = useState<number | null>(null); // Added state
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -77,12 +77,10 @@ const DailyEntryScreen: React.FC = () => {
     setDailyEntries(loadedEntries);
   }, []);
 
-  // Use useFocusEffect to reload data when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadData();
       return () => {
-        // Reset the search state when the screen loses focus
         setSearch('');
       };
     }, [loadData])
@@ -153,12 +151,10 @@ const DailyEntryScreen: React.FC = () => {
     let updatedItems;
 
     if (editIndex !== null) {
-      // Replace existing item if editing
       updatedItems = currentEntry.items.map((item, index) =>
         index === editIndex ? newEntryItem : item
       );
     } else {
-      // Add new item if not editing
       updatedItems = [...currentEntry.items, newEntryItem];
     }
 
@@ -174,7 +170,7 @@ const DailyEntryScreen: React.FC = () => {
     await updateAndSaveEntries(updatedEntries);
     setSelectedFood(null);
     setGrams("");
-    setEditIndex(null); // Reset edit index
+    setEditIndex(null);
     setIsOverlayVisible(false);
   };
 
@@ -182,39 +178,38 @@ const DailyEntryScreen: React.FC = () => {
     setSelectedFood(item);
   };
 
-  const handleRemoveEntry = async (index: number) => {
-    const currentEntry = getCurrentEntry();
-    const itemToRemove = currentEntry.items[index];
-    const updatedItems = currentEntry.items.filter((_, i) => i !== index);
-    const updatedEntry = { ...currentEntry, items: updatedItems };
+    const handleRemoveEntry = async (index: number) => {
+        const currentEntry = getCurrentEntry();
+        const itemToRemove = currentEntry.items[index];
+        const updatedItems = currentEntry.items.filter((_, i) => i !== index);
 
-    const updatedEntries = dailyEntries.map((entry) => {
-      if (entry.date === currentEntry.date) {
-        return updatedEntry;
-      }
-      return entry;
-    });
 
-    if (updatedItems.length === 0) {
-      const newEntries = dailyEntries.filter(
-        (entry) => entry.date !== currentEntry.date
-      );
-      await updateAndSaveEntries(newEntries);
-      setDailyEntries(newEntries);
-    } else {
-      await updateAndSaveEntries(updatedEntries);
-      setDailyEntries(updatedEntries);
-    }
+        const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    Toast.show({
-      type: "success",
-      text1: `${itemToRemove.food.name} entry deleted`,
-      text2: "Tap to undo",
-      position: "bottom",
-      bottomOffset: 80,
-      onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
-      visibilityTime: 3000,
-    });
+        //If the entry is empty, remove it completely from the entries.
+        if (updatedItems.length === 0) {
+          const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date);
+          await updateAndSaveEntries(newEntries);
+        }
+        else {
+            const updatedEntries = dailyEntries.map((entry) => {
+                if (entry.date === currentEntry.date) {
+                    return updatedEntry;
+                }
+                return entry;
+                });
+            await updateAndSaveEntries(updatedEntries);
+        }
+
+        Toast.show({
+            type: 'success',
+            text1: `${itemToRemove.food.name} entry deleted`,
+            text2: 'Tap to undo',
+            position: 'bottom',
+            bottomOffset: 80,
+            onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
+            visibilityTime: 3000,
+        });
   };
 
   const handleUndoRemoveEntry = (
@@ -251,8 +246,8 @@ const DailyEntryScreen: React.FC = () => {
     setIsOverlayVisible(!isOverlayVisible);
     if (item) {
       setSelectedFood(item.food);
-      setGrams(String(item.grams)); // Pre-fill grams
-      setEditIndex(index); // Store the index being edited
+      setGrams(String(item.grams));
+      setEditIndex(index);
     } else {
       setSelectedFood(null);
       setGrams("");
@@ -265,18 +260,27 @@ const DailyEntryScreen: React.FC = () => {
     toggleOverlay(item, index);
   };
 
-  const handleDateChange = (event: any, selectedDateVal?: Date) => {
-    setShowDatePicker(false);
-    if (event.type === "set" && selectedDateVal) {
-      setSelectedDate(formatDate(selectedDateVal));
+// Key Change: Update date handling
+    const handleDateChange = (event: any, selectedDateVal?: Date) => {
+        setShowDatePicker(false);
+        if (event.type === "set" && selectedDateVal) {
+            // Format the selected date to a string
+            const formattedDate = formatISO(selectedDateVal, { representation: 'date' });
+            setSelectedDate(formattedDate);
+        }
+    };
+
+    const handlePreviousDay = () => {
+        const currentDate = parseISO(selectedDate);
+        const newDate = subDays(currentDate, 1);
+        setSelectedDate(formatISO(newDate, { representation: 'date' }));
     }
-  };
 
-  const handlePreviousDay = () =>
-    setSelectedDate(formatDate(subDays(parseISO(selectedDate), 1)));
-
-  const handleNextDay = () =>
-    setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
+    const handleNextDay = () => {
+        const currentDate = parseISO(selectedDate);
+        const newDate = addDays(currentDate, 1);
+        setSelectedDate(formatISO(newDate, {representation: 'date'}));
+    }
 
   const calculateTotals = () => {
     const currentEntry = getCurrentEntry();

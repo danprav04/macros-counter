@@ -1,20 +1,20 @@
-// utils/dateUtils.ts
-import { format, parseISO } from 'date-fns';
+// utils/dateUtils.ts (Modified)
+import { format, parseISO, formatISO } from 'date-fns';
 
-export const formatDate = (date: Date | string): string => {
-  if (typeof date === 'string') {
-    date = parseISO(date);
-  }
-  return format(date, 'yyyy-MM-dd');
+// Format a timestamp as YYYY-MM-DD (for display and storage)
+export const formatDate = (timestamp: number): string => {
+    return formatISO(timestamp, { representation: 'date' });
 };
 
-export const formatDateReadable = (date: Date | string): string => {
-    if (typeof date === 'string') {
-        date = parseISO(date);
+// Format a timestamp as a readable date (for display)
+export const formatDateReadable = (timestamp: number | string): string => {
+    if (typeof timestamp === 'string') {
+        return timestamp; // if it is a string, do nothing.
     }
-    return format(date, 'MMMM dd, yyyy');
-}
+  return format(timestamp, 'MMMM dd, yyyy');
+};
 
+// Get today's date as a timestamp
 export const getTodayDateString = (): string => {
-  return formatDate(new Date());
+  return formatISO(new Date(), { representation: 'date' });
 };

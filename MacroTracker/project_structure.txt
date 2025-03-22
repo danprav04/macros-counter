@@ -207,7 +207,13 @@ const lightTheme: MyTheme = {
         warning: ''
       },
     },
-    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
+    // Complete the missing grey colors
+    grey0: '#f8f9fa', // Very light, almost white
+    grey1: '#e9ecef', // Light grey, same as grey5 (can adjust)
+    grey2: '#dee2e6', // Medium-light grey
+    grey3: '#ced4da', // Medium grey, same as grey4
+    greyOutline: '#adb5bd', // Slightly darker for outlines
+    searchBg: '#ffffff' // Background for search input, usually white
   },
 };
 
@@ -230,15 +236,15 @@ const darkTheme: MyTheme = {
     disabled: '#6c757d',
     divider: '#343a40',
     platform: {
-       ios: {
-         primary: '',
-         secondary: '',
-         grey: '',
-         searchBg: '',
-         success: '',
-         error: '',
-         warning: ''
-       },
+      ios: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
       android: {
         primary: '',
         secondary: '',
@@ -267,9 +273,16 @@ const darkTheme: MyTheme = {
         warning: ''
       },
     },
-    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
+    // Complete the missing grey colors
+    grey0: '#212529', // Very dark, almost black
+    grey1: '#2c2c2c', // Dark grey, same as grey5
+    grey2: '#343a40', // Medium-dark grey, same as grey4
+    grey3: '#495057', // Medium grey
+    greyOutline: '#6c757d', // Lighter grey for outlines, same as disabled
+    searchBg: '#1e1e1e'  // Background for search, dark to match card
   },
 };
+
 
 const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
@@ -364,7 +377,7 @@ const App = () => {
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
         >
           {/* Pass reloadKey and triggerReload */}
-          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
+          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} />
         </NavigationContainer>
       </SafeAreaProvider>
       <Toast />
@@ -397,12 +410,16 @@ export default App;
 
 
 ---------- AddEntryModal.tsx ----------
-import React, { useEffect, useState } from "react";
+// AddEntryModal.tsx
+import React, { useEffect, useState, useMemo } from "react";
 import {
     View,
     FlatList,
     KeyboardAvoidingView,
     Platform,
+    TouchableOpacity,
+    ScrollView,
+    Dimensions, // Import Dimensions
 } from "react-native";
 import {
     Button,
@@ -413,24 +430,27 @@ import {
     SearchBar,
     makeStyles,
     useTheme,
+    Icon
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isValidNumberInput } from "../utils/validationUtils";
 import { DailyEntryItem } from "../types/dailyEntry";
+import { loadRecentFoods, saveRecentFoods } from "../services/storageService"; // Import storage functions
 
 interface AddEntryModalProps {
     isVisible: boolean;
     toggleOverlay: () => void;
-    selectedFood: Food | null; // Corrected prop
+    selectedFood: Food | null;
     grams: string;
     setGrams: (grams: string) => void;
     handleAddEntry: () => void;
-    filteredFoods: Food[]; //Foods to filter
-    handleSelectFood: (item:Food) => void; //what happens after food selected
-     updateSearch: (search: string) => void; //What happens after search
-    search: string; //The searched text
-    isEditMode: boolean; // Add isEditMode
+    foods: Food[];
+    handleSelectFood: (item: Food | null) => void;
+    updateSearch: (search: string) => void;
+    search: string;
+    isEditMode: boolean;
+    initialGrams?: string;
 
 }
 
@@ -441,14 +461,79 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     grams,
     setGrams,
     handleAddEntry,
-    filteredFoods,
+    foods,
     handleSelectFood,
     updateSearch,
     search,
     isEditMode,
+    initialGrams
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const [recentFoods, setRecentFoods] = useState<Food[]>([]);
+    const MAX_RECENT_FOODS = 5;
+
+    // Get screen width for responsive adjustments
+    const screenWidth = Dimensions.get('window').width;
+
+    useEffect(() => {
+        if (isEditMode && initialGrams) {
+            setGrams(initialGrams);
+        }
+    }, [isEditMode, initialGrams, setGrams]);
+
+    const addToRecentFoods = async (food: Food) => {
+        const updatedRecentFoods = recentFoods.filter(recentFood => recentFood.id !== food.id);
+        updatedRecentFoods.unshift(food);
+        const trimmedRecentFoods = updatedRecentFoods.slice(0, MAX_RECENT_FOODS);
+        setRecentFoods(trimmedRecentFoods);
+        await saveRecentFoods(trimmedRecentFoods);
+    };
+
+    useEffect(() => {
+        const loadRecents = async () => {
+            const loadedRecentFoods = await loadRecentFoods();
+            setRecentFoods(loadedRecentFoods);
+        };
+        if (isVisible) {
+            loadRecents()
+        }
+    }, [isVisible]);
+
+    useEffect(() => {
+        if (!isVisible) {
+            handleSelectFood(null);
+            setGrams("");
+            updateSearch("");
+        }
+    }, [isVisible, handleSelectFood, setGrams, updateSearch]);
+
+    const filteredFoods = useMemo(() => {
+        let result = foods;
+        if (search) {
+            result = result.filter((food) =>
+                food.name.toLowerCase().includes(search.toLowerCase())
+            );
+        }
+        return result;
+    }, [foods, search]);
+
+    const servingSizeSuggestions = useMemo(() => {
+        if (!selectedFood) return [];
+        return [
+            { label: "50g", value: "50" },
+            { label: "100g", value: "100" },
+            { label: "150g", value: "150" },
+            { label: "200g", value: "200" },
+        ];
+    }, [selectedFood]);
+
+    const handleAddOrUpdateEntry = async () => {
+        handleAddEntry();
+        if (selectedFood) {
+            await addToRecentFoods(selectedFood);
+        }
+    };
 
     return (
         <Overlay
@@ -456,8 +541,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onBackdropPress={toggleOverlay}
             animationType="slide"
             transparent={true}
-            statusBarTranslucent={true}
-            overlayStyle={styles.overlayStyle} // Apply overlayStyle here
+            statusBarTranslucent={Platform.OS === 'android'}
+            overlayStyle={styles.overlayStyle}
         >
             <SafeAreaView style={styles.modalSafeArea}>
                 <KeyboardAvoidingView
@@ -465,9 +550,28 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     style={styles.keyboardAvoidingView}
                 >
                     <View style={styles.overlayContent}>
-                        <Text h4 style={styles.overlayTitle}>
-                            {isEditMode ? "Edit Entry" : "Add Entry"}
-                        </Text>
+                        <View style={styles.header}>
+                            <Text style={[styles.overlayTitle, isEditMode && styles.editModeTitle]}>
+                                {isEditMode ? "Edit Entry" : "Add Entry"}
+                            </Text>
+
+                            <Button
+                                title={isEditMode ? "Update" : "Add"}
+                                onPress={handleAddOrUpdateEntry}
+                                disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
+                                buttonStyle={[styles.addButton, { backgroundColor: isEditMode ? theme.colors.warning : theme.colors.primary }]}
+                                titleStyle={styles.buttonTitle}
+                            />
+                            <TouchableOpacity onPress={toggleOverlay} style={styles.closeIcon}>
+                                <Icon
+                                    name="close"
+                                    type="material"
+                                    size={28}
+                                    color={theme.colors.text}
+                                />
+                            </TouchableOpacity>
+                        </View>
+
                         <SearchBar
                             placeholder="Search Foods..."
                             onChangeText={updateSearch}
@@ -475,37 +579,81 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             platform={Platform.OS === "ios" ? "ios" : "android"}
                             containerStyle={styles.searchBarContainer}
                             inputContainerStyle={styles.searchBarInputContainer}
-                            inputStyle={{ color: theme.colors.text }} // Ensure text color
+                            inputStyle={styles.searchInputStyle}
                         />
-                        <FlatList
-                            data={filteredFoods}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <ListItem bottomDivider onPress={() => handleSelectFood(item)} containerStyle={styles.listItemContainer}>
-                                    <ListItem.Content>
-                                        <ListItem.Title style={{ color: theme.colors.text }}>{item.name}</ListItem.Title>
-                                    </ListItem.Content>
-                                </ListItem>
-                            )}
-                            style={styles.foodList}
-                        />
-                         <Input
-                            placeholder="Grams (e.g. 150)"
-                            placeholderTextColor={theme.colors.text}
-                            keyboardType="numeric"
-                            value={grams}
-                            onChangeText={setGrams}
-                            style={{ color: theme.colors.text }} // Correct text color
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }} // Consistent border color
-                            errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
-                        />
-                        <Button
-                            title={isEditMode ? "Update Entry" : "Add Entry"}
-                            onPress={handleAddEntry}
-                            disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
-                            buttonStyle={styles.addButton}
-                            titleStyle={{color: theme.colors.white}} //add the correct title color
-                        />
+
+                        {recentFoods.length > 0 && (
+                            <View style={styles.recentFoodsContainer}>
+                                <Text style={styles.sectionTitle}>Recent Foods</Text>
+                                <FlatList
+                                    data={recentFoods}
+                                    keyExtractor={(item) => item.id}
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.recentFoodItem,
+                                                screenWidth < 350 && styles.smallRecentFoodItem,
+                                                selectedFood?.id === item.id && styles.selectedRecentFoodItem, // Apply selected style
+                                            ]}
+                                            onPress={() => handleSelectFood(item)}>
+                                            <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]}>{item.name}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                />
+                            </View>
+                        )}
+
+                        {filteredFoods.length > 0 ? (
+                            <FlatList
+                                data={filteredFoods}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity onPress={() => handleSelectFood(item)}>
+                                        <ListItem
+                                            bottomDivider
+                                            containerStyle={[
+                                                styles.listItemContainer,
+                                                selectedFood?.id === item.id && styles.selectedListItem, // Apply selected style
+                                            ]}
+                                        >
+                                            <ListItem.Content>
+                                                <ListItem.Title style={styles.listItemTitle}>{item.name}</ListItem.Title>
+                                            </ListItem.Content>
+                                        </ListItem>
+                                    </TouchableOpacity>
+                                )}
+                                style={styles.foodList}
+                            />
+                        ) : (
+                            <Text style={styles.noFoodsText}>No foods found.</Text>
+                        )}
+
+                        {selectedFood && (
+                            <View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.servingSizeContainer}>
+                                    {servingSizeSuggestions.map((suggestion) => (
+                                        <TouchableOpacity
+                                            key={suggestion.label}
+                                            style={styles.servingSizeButton}
+                                            onPress={() => setGrams(suggestion.value)}
+                                        >
+                                            <Text style={styles.servingSizeButtonTitle}>{suggestion.label}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <Input
+                                    placeholder="Grams (e.g. 150)"
+                                    keyboardType="numeric"
+                                    value={grams}
+                                    onChangeText={(text) => setGrams(text.replace(/[^0-9]/g, ""))}
+                                    style={styles.gramInputStyle}
+                                    inputContainerStyle={styles.gramInputContainerStyle}
+                                    errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
+                                />
+                            </View>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -513,37 +661,51 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
 };
 const useStyles = makeStyles((theme) => ({
-  overlayStyle: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-    paddingTop: '33%',
-    padding: 20,  // Remove padding from the Overlay itself
-    width: '100%',
-    height: '100%', //  Control width here
-    borderRadius: 10,
-    // maxHeight: '80%' No longer needed since it is handled by overlayContent
-  },
+    overlayStyle: {
+        backgroundColor: 'rgba(255, 255, 255, 00)', // Semi-transparent white
+        padding: 20,
+        marginVertical: 50,
+        width: '90%',
+        borderRadius: 20, // More rounded
+        height: '100%', //MODIFIED.  Use auto
+        shadowColor: "#000", // Add shadow
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
     modalSafeArea: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      // backgroundColor: "rgba(0, 0, 0, 0)", //  Removed -  Let Overlay handle the background
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
     },
     keyboardAvoidingView: {
-      width: "100%",
-      flex: 1, // Important: Allow KeyboardAvoidingView to take up all available space
+        width: "100%",
+        flex: 1,
     },
     overlayContent: {
         backgroundColor: theme.colors.background,
-        width: "100%",  // Occupy full width *within* the overlay
-        height: "80%",
-        borderRadius: 10,
+        width: "100%",
+        borderRadius: 20, // More rounded
         padding: 20,
-
+        flexGrow: 1, //MODIFIED
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     overlayTitle: {
-        marginBottom: 20,
-        textAlign: "center",
-        color: theme.colors.text, // Use theme color
+        color: theme.colors.text,
+        fontWeight: 'bold',
+        fontSize: 24, // Larger title
+    },
+    editModeTitle: {
+        color: theme.colors.warning,
     },
     searchBarContainer: {
         backgroundColor: "transparent",
@@ -551,270 +713,397 @@ const useStyles = makeStyles((theme) => ({
         borderTopColor: "transparent",
         marginBottom: 10,
         padding: 0,
-        width: '100%', // Ensure full width
     },
     searchBarInputContainer: {
-        borderRadius: 10,
-        backgroundColor: theme.colors.grey5, // Use theme color
+        borderRadius: 25, // More rounded
+        backgroundColor: theme.colors.grey5,
+        height: 40, // Consistent height
     },
+    searchInputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10,
+        fontSize: 16, // Slightly larger font
+    },
+    recentFoodsContainer: {
+        marginBottom: 15,
+    },
+    sectionTitle: {
+        fontWeight: 'bold',
+        marginBottom: 8,
+        color: theme.colors.text,
+        fontSize: 18, // Larger section title
+    },
+    recentFoodItem: {
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 20, // More rounded
+        backgroundColor: theme.colors.grey5,
+        marginRight: 10,
+        justifyContent: 'center', // Center text
+        alignItems: 'center',
+    },
+    selectedRecentFoodItem: {
+        backgroundColor: theme.colors.grey3, // Slightly darker background
+        borderColor: theme.colors.primary,
+        borderWidth: 2,
+    },
+    smallRecentFoodItem: {
+        paddingHorizontal: 10, // Reduce padding on small screens
+    },
+    recentFoodText: {
+        color: theme.colors.text,
+        fontSize: 14,
+    },
+    smallRecentFoodText: {
+        fontSize: 12, // Smaller font on small screens
+    },
+
     foodList: {
-        maxHeight: 200, // Limit height for scrollability
-        marginBottom: 10,
-        width: "100%",
+        maxHeight: 'auto',
     },
-    listItemContainer:{
-      backgroundColor: theme.colors.background
+    listItemContainer: {
+        backgroundColor: 'transparent',
+        paddingVertical: 12, // More vertical padding
+    },
+    selectedListItem: {
+        backgroundColor: theme.colors.grey5, // Highlight selected item
+    },
+    listItemTitle: {
+        color: theme.colors.text,
+        fontSize: 16,
+    },
+    noFoodsText: {
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginTop: 20,
+    },
+    servingSizeContainer: {
+        marginTop: 15,
+        marginBottom: 10,
+    },
+    servingSizeButton: {
+      backgroundColor: theme.colors.grey4,
+      borderRadius: 20,
+      marginRight: 8,
+      paddingHorizontal: 15,
+      paddingVertical: 8, // Add vertical padding
+      justifyContent: 'center', // Center text
+      alignItems: 'center', // Center text
+  },
+    servingSizeButtonTitle: {
+        color: theme.colors.text,
+        fontSize: 14,
+    },
+    gramInputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10,
+        fontSize: 16,
+    },
+    gramInputContainerStyle: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.text,
+        paddingBottom: 5,
     },
     addButton: {
-        marginTop: 10,
-        backgroundColor: theme.colors.primary, // Or your desired button color
-
+        borderRadius: 20, // More rounded
+        paddingHorizontal: 25,
+        paddingVertical: 10, // Add vertical padding
+        minWidth: 100, // Set minimum width
+    },
+    buttonTitle: {
+        color: theme.colors.white,
+        fontWeight: '600',
+        fontSize: 16, // Larger button text
+    },
+    closeIcon: {
+        padding: 5,
     },
 }));
+
 export default AddEntryModal;
 ---------- END AddEntryModal.tsx ----------
 
 
 ---------- AddFoodModal.tsx ----------
-// components/AddFoodModal.tsx
-import React from "react";
-import { View, KeyboardAvoidingView, Platform } from "react-native";
+// AddFoodModal.tsx
+import React, { useState, useEffect } from "react";
+import { View, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { Button, Input, Text, Overlay, makeStyles, useTheme, Icon } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 interface AddFoodModalProps {
- isVisible: boolean;
- toggleOverlay: () => void;
- newFood: Omit<Food, "id">;
- editFood: Food | null;
- errors: { [key: string]: string };
- handleInputChange: (key: keyof Omit<Food, "id">, value: string) => void;
- handleCreateFood: () => void;
- handleUpdateFood: () => void;
- validateFood: (food: Omit<Food, "id">) => { [key: string]: string } | null;
+    isVisible: boolean;
+    toggleOverlay: () => void;
+    newFood: Omit<Food, "id">;
+    editFood: Food | null;
+    errors: { [key: string]: string };
+    handleInputChange: (key: keyof Omit<Food, "id">, value: string) => void;
+    handleCreateFood: () => void;
+    handleUpdateFood: () => void;
+    validateFood: (food: Omit<Food, "id">) => { [key: string]: string } | null;
+    setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
- isVisible,
- toggleOverlay,
- newFood,
- editFood,
- errors,
- handleInputChange,
- handleCreateFood,
- handleUpdateFood,
- validateFood
+    isVisible,
+    toggleOverlay,
+    newFood,
+    editFood,
+    errors,
+    handleInputChange,
+    handleCreateFood,
+    handleUpdateFood,
+    validateFood,
+    setErrors
 }) => {
- const { theme } = useTheme();
- const styles = useStyles();
+    const { theme } = useTheme();
+    const styles = useStyles();
+    const [loading, setLoading] = useState(false);
+    const [apiLoading, setApiLoading] = useState(false); // Loading state for API calls
 
- // Helper function to get the value safely
- const getValue = (key: keyof Omit<Food, "id">) => {
-     if (editFood) {
-         return String(editFood[key] ?? "");
-     }
-     return String(newFood[key] ?? "");
- };
+    useEffect(() => {
+        if (isVisible) {
+            setErrors({});
+        }
+    }, [isVisible, setErrors]);
 
- // Dynamically determine icon and label color based on theme and errors
- const getIconColor = (error: string | undefined) => {
-     return error ? theme.colors.error : theme.colors.grey3;
- };
+    const getValue = (key: keyof Omit<Food, "id">) => {
+        return String((editFood && editFood[key]) ?? newFood[key] ?? "");
+    };
 
- const getLabelColor = (error: string | undefined) => {
-     return error ? theme.colors.error : theme.colors.grey1;
- };
+    const handleCreateOrUpdate = async (isUpdate: boolean) => {
+        setLoading(true);
+        const validationErrors = validateFood(isUpdate ? (editFood as Omit<Food, "id">) : newFood);
+
+        if (validationErrors) {
+            setErrors(validationErrors);
+            setLoading(false);
+            Toast.show({ //show a toast in case of errors
+                type: 'error',
+                text1: 'Please fix the errors',
+            });
+            return;
+        }
+
+        try {
+            isUpdate ? await handleUpdateFood() : await handleCreateFood();
+            Toast.show({
+                type: 'success',
+                text1: `Food ${isUpdate ? 'Updated' : 'Created'} Successfully!`,
+            });
+            toggleOverlay();
+        } catch (error: any) {
+            Alert.alert("Error", error.message || `Failed to ${isUpdate ? 'update' : 'create'} food.`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
- return (
-     <Overlay
-         isVisible={isVisible}
-         onBackdropPress={toggleOverlay}
-         animationType="slide"
-         transparent={true}
-         statusBarTranslucent={true}
-         overlayStyle={styles.overlayStyle}
-     >
-         <SafeAreaView style={styles.modalSafeArea}>
-             <KeyboardAvoidingView
-                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                 style={styles.keyboardAvoidingView}
-             >
-                 <View style={styles.overlayContent}>
-                     <View style={styles.titleContainer}>
-                         <Text h4 style={styles.overlayTitle}>
-                             {editFood ? "Edit Food" : "Add New Food"}
-                         </Text>
-                         <Icon
-                             name="close"
-                             type="material"
-                             size={24}
-                             color={theme.colors.grey3}
-                             onPress={toggleOverlay}
-                             containerStyle={styles.closeIcon}
-                         />
-                     </View>
 
-                     <View style={styles.inputContainer}>
-                         <Input
-                             placeholder=""
-                             value={getValue("name")}
-                             onChangeText={(text) => handleInputChange("name", text)}
-                             style={styles.input}
-                             inputContainerStyle={{ borderBottomColor: errors.name ? theme.colors.error : theme.colors.text }}
-                             placeholderTextColor={theme.colors.grey3}
-                             leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                             label="Food Name"
-                             labelStyle={[styles.inputLabel, { color: errors.name ? theme.colors.error : theme.colors.text }]}
-                         />
-                         {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-                     </View>
+    return (
+        <Overlay
+            isVisible={isVisible}
+            onBackdropPress={toggleOverlay}
+            animationType="fade" // Changed animation
+            transparent={true}
+            statusBarTranslucent={Platform.OS === 'android'}
+            overlayStyle={styles.overlayStyle}
+        >
+            <SafeAreaView style={styles.modalSafeArea}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.keyboardAvoidingView}
+                >
+                    <View style={styles.overlayContent}>
+                        <View style={styles.header}>
+                            <Text h4 style={styles.overlayTitle}>
+                                {editFood ? "Edit Food" : "Add New Food"}
+                            </Text>
+                            <Button
+                                title={editFood ? "Update" : "Add"}
+                                onPress={() => handleCreateOrUpdate(!!editFood)}
+                                buttonStyle={[styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary }]}
+                                titleStyle={{ color: theme.colors.white, fontWeight: '600' }}
+                                loading={loading}
+                                containerStyle={styles.buttonContainer}
+                            />
+                            <Icon
+                                name="close"
+                                type="material"
+                                size={28}
+                                color={theme.colors.text}
+                                onPress={toggleOverlay}
+                                containerStyle={styles.closeIcon}
+                            />
 
-                     <View style={styles.inputContainer}>
-                         <Input
-                             placeholder="Calories (per 100g)"
-                             keyboardType="numeric"
-                             value={getValue("calories")}
-                             onChangeText={(text) => handleInputChange("calories", text)}
-                             style={styles.input}
-                             inputContainerStyle={{ borderBottomColor: errors.calories ? theme.colors.error : theme.colors.text }}
-                             placeholderTextColor={theme.colors.grey3}
-                             leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                             label="Calories (per 100g)"
-                             labelStyle={[styles.inputLabel, { color: errors.calories ? theme.colors.error : theme.colors.text }]}
-                         />
-                          {errors.calories && <Text style={styles.errorText}>{errors.calories}</Text>}
-                     </View>
+                        </View>
+                        <ScrollView>
 
-                     <View style={styles.inputContainer}>
-                         <Input
-                             placeholder="Protein (per 100g)"
-                             keyboardType="numeric"
-                             value={getValue("protein")}
-                             onChangeText={(text) => handleInputChange("protein", text)}
-                             style={styles.input}
-                             inputContainerStyle={{ borderBottomColor: errors.protein ? theme.colors.error : theme.colors.text }}
-                             placeholderTextColor={theme.colors.grey3}
-                             leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                             label="Protein (per 100g)"
-                             labelStyle={[styles.inputLabel, { color: errors.protein ? theme.colors.error : theme.colors.text }]}
-                         />
-                         {errors.protein && <Text style={styles.errorText}>{errors.protein}</Text>}
-                     </View>
+                            <Input
+                                label="Food Name"
+                                labelStyle={{ color: theme.colors.text }}
+                                value={getValue("name")}
+                                onChangeText={(text) => handleInputChange("name", text)}
+                                errorMessage={errors.name}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.text} />}
+                            />
 
-                     <View style={styles.inputContainer}>
-                         <Input
-                             placeholder="Carbs (per 100g)"
-                             keyboardType="numeric"
-                             value={getValue("carbs")}
-                             onChangeText={(text) => handleInputChange("carbs", text)}
-                             style={styles.input}
-                             inputContainerStyle={{ borderBottomColor: errors.carbs ? theme.colors.error : theme.colors.text }}
-                             placeholderTextColor={theme.colors.grey3}
-                             leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                             label="Carbs (per 100g)"
-                             labelStyle={[styles.inputLabel, { color: errors.carbs ? theme.colors.error : theme.colors.text }]}
-                         />
-                         {errors.carbs && <Text style={styles.errorText}>{errors.carbs}</Text>}
-                     </View>
-                     <View style={styles.inputContainer}>
-                         <Input
-                             placeholder="Fat (per 100g)"
-                             keyboardType="numeric"
-                             value={getValue("fat")}
-                             onChangeText={(text) => handleInputChange("fat", text)}
-                             style={styles.input}
-                             inputContainerStyle={{ borderBottomColor: errors.fat ? theme.colors.error : theme.colors.text }}
-                             placeholderTextColor={theme.colors.grey3}
-                             leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={errors.fat ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                             label="Fat (per 100g)"
-                             labelStyle={[styles.inputLabel, { color: errors.fat ? theme.colors.error : theme.colors.text }]}
-                         />
-                         {errors.fat && <Text style={styles.errorText}>{errors.fat}</Text>}
-                     </View>
+                            <Input
+                                label="Calories (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
+                                keyboardType="numeric"
+                                value={getValue("calories")}
+                                onChangeText={(text) => handleInputChange("calories", text.replace(/[^0-9]/g, ''))} // Improved validation
+                                errorMessage={errors.calories}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.text} />}
+                            />
 
-                     <Button
-                         title={editFood ? "Update Food" : "Add Food"}
-                         onPress={editFood ? handleUpdateFood : handleCreateFood}
-                         disabled={editFood ? (editFood !== null && !!validateFood(editFood)) : !!validateFood(newFood)}
-                         buttonStyle={styles.button}
-                         titleStyle={{ color: theme.colors.white }}
-                     />
-                 </View>
-             </KeyboardAvoidingView>
-         </SafeAreaView>
-     </Overlay>
- );
+                            <Input
+                                label="Protein (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
+                                keyboardType="numeric"
+                                value={getValue("protein")}
+                                onChangeText={(text) => handleInputChange("protein", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.protein}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.text} />}
+                            />
+
+                            <Input
+                                label="Carbs (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
+                                keyboardType="numeric"
+                                value={getValue("carbs")}
+                                onChangeText={(text) => handleInputChange("carbs", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.carbs}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.text} />}
+                            />
+                            <Input
+                                label="Fat (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
+                                keyboardType="numeric"
+                                value={getValue("fat")}
+                                onChangeText={(text) => handleInputChange("fat", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.fat}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={errors.fat ? theme.colors.error : theme.colors.text} />}
+                            />
+                            {/* Placeholders for AI and Barcode Input */}
+                            <View style={styles.futureInputContainer}>
+                                <Text style={styles.futureInputLabel}>AI Input (Coming Soon)</Text>
+                            </View>
+                            <View style={styles.futureInputContainer}>
+                                <Text style={styles.futureInputLabel}>Barcode Input (Coming Soon)</Text>
+                            </View>
+                        </ScrollView>
+
+
+                    </View>
+                </KeyboardAvoidingView>
+                {/* Full-screen Loading Overlay */}
+                {apiLoading && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                    </View>
+                )}
+            </SafeAreaView>
+        </Overlay>
+    );
 };
 
 const useStyles = makeStyles((theme) => ({
- overlayStyle: {
-     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-     paddingTop: '33%',
-     padding: 20,
-     width: '100%',
-     height: '100%',
-     borderRadius: 10,
- },
- modalSafeArea: {
-     flex: 1,
-     justifyContent: "center",
-     alignItems: "center",
- },
- keyboardAvoidingView: {
-     width: "100%",
-     flex: 1,
- },
- overlayContent: {
-     backgroundColor: theme.colors.background,
-     width: "100%",
-     borderRadius: 10,
-     padding: 20,
- },
- titleContainer: {
-     flexDirection: 'row',
-     justifyContent: 'space-between',
-     alignItems: 'center',
-     marginBottom: 10,
- },
- overlayTitle: {
-     textAlign: "center",
-     color: theme.colors.text,
- },
- closeIcon: {
-     position: 'absolute',
-     top: 0,
-     right: 0,
-     padding: 5,
- },
- input: {
-     color: theme.colors.text,
- },
- inputLabel: {
-     color: theme.colors.grey1,  // Default label color
-     marginBottom: 5,
-     fontSize: 16,
- },
- inputIcon: {
-     marginRight: 10,
- },
-  inputContainer: {
-     marginBottom: 0, // Reduce spacing
- },
- errorText: {
-     color: theme.colors.error,
-     marginLeft: 10,
-     marginTop: 0,
-     marginBottom: 5
+    overlayStyle: {
+        backgroundColor: 'rgba(150, 150, 150, 0)', // Lighter background
+        padding: 20,
+        marginVertical: 50,
+        width: '90%', // Slightly smaller width
+        borderRadius: 15, // More rounded corners
+        height: '100%', //MODIFIED
+    },
+    modalSafeArea: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    keyboardAvoidingView: {
+        width: "100%",
+        flex: 1,
+    },
+    overlayContent: {
+        backgroundColor: theme.colors.background,
+        width: "100%",
+        borderRadius: 15,
+        padding: 20,
+        minHeight: '50%', //MODIFIED
+        flexGrow: 1, //MODIFIED
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    overlayTitle: {
+        color: theme.colors.text,
+        fontWeight: 'bold',
+    },
+    closeIcon: {
+        padding: 5,
+    },
 
- },
- button: {
-     marginTop: 15,
-     backgroundColor: theme.colors.primary,
-     borderRadius: 8,
- },
+    inputContainerStyle: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.grey4,
+        marginBottom: 10, // Reduced margin
+    },
+    inputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10,
+    },
+
+    futureInputContainer: {
+        backgroundColor: theme.colors.grey5,
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    futureInputLabel: {
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+    },
+    buttonContainer: {
+        // marginTop: 15,
+    },
+    button: {
+        // backgroundColor: theme.colors.primary, // Handled in component now
+        borderRadius: 8,
+        paddingHorizontal: 20, // More horizontal padding
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10, // Ensure it's on top
+    },
 }));
 
 export default AddFoodModal;
@@ -1800,7 +2089,7 @@ fs.stat(projectRoot, (err, stats) => {
 
 ---------- DailyEntryScreen.tsx ----------
 // DailyEntryScreen.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
@@ -1834,7 +2123,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
-import { useFocusEffect } from '@react-navigation/native';  // Import useFocusEffect
+import { useFocusEffect } from '@react-navigation/native';
 
 interface DailyGoals {
   calories: number;
@@ -1846,7 +2135,7 @@ interface DailyGoals {
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [foods, setFoods] = useState<Food[]>([]);
+  const [foods, setFoods] = useState<Food[]>([]); // Initialize as empty array
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -1878,10 +2167,14 @@ const DailyEntryScreen: React.FC = () => {
     setDailyEntries(loadedEntries);
   }, []);
 
-  // Use useFocusEffect to load data when the screen comes into focus
+  // Use useFocusEffect to reload data when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadData();
+      return () => {
+        // Reset the search state when the screen loses focus
+        setSearch('');
+      };
     }, [loadData])
   );
 
@@ -1961,13 +2254,12 @@ const DailyEntryScreen: React.FC = () => {
 
     const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    const updatedEntries = dailyEntries.map(entry => {
-        if (entry.date === currentEntry.date) {
-            return updatedEntry;
-        }
-        return entry;
+    const updatedEntries = dailyEntries.map((entry) => {
+      if (entry.date === currentEntry.date) {
+        return updatedEntry;
+      }
+      return entry;
     });
-
 
     await updateAndSaveEntries(updatedEntries);
     setSelectedFood(null);
@@ -1976,11 +2268,9 @@ const DailyEntryScreen: React.FC = () => {
     setIsOverlayVisible(false);
   };
 
-
-  const handleSelectFood = (item: Food) => {
+  const handleSelectFood = (item: Food | null) => {
     setSelectedFood(item);
   };
-
 
   const handleRemoveEntry = async (index: number) => {
     const currentEntry = getCurrentEntry();
@@ -1988,23 +2278,23 @@ const DailyEntryScreen: React.FC = () => {
     const updatedItems = currentEntry.items.filter((_, i) => i !== index);
     const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    const updatedEntries = dailyEntries.map(entry => {
-        if (entry.date === currentEntry.date) {
-            return updatedEntry;
-        }
-        return entry;
+    const updatedEntries = dailyEntries.map((entry) => {
+      if (entry.date === currentEntry.date) {
+        return updatedEntry;
+      }
+      return entry;
     });
+
     if (updatedItems.length === 0) {
-       const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date)
-        await updateAndSaveEntries(newEntries)
-        setDailyEntries(newEntries)
-
+      const newEntries = dailyEntries.filter(
+        (entry) => entry.date !== currentEntry.date
+      );
+      await updateAndSaveEntries(newEntries);
+      setDailyEntries(newEntries);
+    } else {
+      await updateAndSaveEntries(updatedEntries);
+      setDailyEntries(updatedEntries);
     }
-    else {
-        await updateAndSaveEntries(updatedEntries);
-        setDailyEntries(updatedEntries)
-    }
-
 
     Toast.show({
       type: "success",
@@ -2021,10 +2311,10 @@ const DailyEntryScreen: React.FC = () => {
     item: DailyEntryItem,
     originalEntry: DailyEntry
   ) => {
-    const updatedEntries = dailyEntries.map(entry => {
+    const updatedEntries = dailyEntries.map((entry) => {
       if (entry.date === originalEntry.date) {
         const existingItemIndex = entry.items.findIndex(
-          existingItem => existingItem.food.id === item.food.id
+          (existingItem) => existingItem.food.id === item.food.id
         );
 
         let updatedItems = [...entry.items];
@@ -2042,33 +2332,28 @@ const DailyEntryScreen: React.FC = () => {
     Toast.hide();
   };
 
+  const updateSearch = (search: string) => setSearch(search);
 
-  const updateSearch = (search: string) => setSearch(search); //handleSearch
-  const filteredFoods = foods.filter((food) => //handle filter
-    food.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const toggleOverlay = (item: DailyEntryItem | null = null, index: number | null = null) => {
+  const toggleOverlay = (
+    item: DailyEntryItem | null = null,
+    index: number | null = null
+  ) => {
     setIsOverlayVisible(!isOverlayVisible);
     if (item) {
       setSelectedFood(item.food);
       setGrams(String(item.grams)); // Pre-fill grams
       setEditIndex(index); // Store the index being edited
-
-    }
-    else {
+    } else {
       setSelectedFood(null);
       setGrams("");
       setEditIndex(null);
-
-
+      setSearch("");
     }
   };
 
   const handleEditEntry = (item: DailyEntryItem, index: number) => {
     toggleOverlay(item, index);
   };
-
 
   const handleDateChange = (event: any, selectedDateVal?: Date) => {
     setShowDatePicker(false);
@@ -2082,7 +2367,6 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleNextDay = () =>
     setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
-
 
   const calculateTotals = () => {
     const currentEntry = getCurrentEntry();
@@ -2103,7 +2387,8 @@ const DailyEntryScreen: React.FC = () => {
     };
   };
 
-  const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
+  const { totalCalories, totalProtein, totalCarbs, totalFat } =
+    calculateTotals();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -2111,7 +2396,9 @@ const DailyEntryScreen: React.FC = () => {
         <Button
           type="clear"
           onPress={handlePreviousDay}
-          icon={<Icon name="arrow-back" type="ionicon" color={theme.colors.text} />}
+          icon={
+            <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
+          }
         />
         <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
           {formatDateReadable(selectedDate)}
@@ -2119,7 +2406,13 @@ const DailyEntryScreen: React.FC = () => {
         <Button
           type="clear"
           onPress={handleNextDay}
-          icon={<Icon name="arrow-forward" type="ionicon" color={theme.colors.text} />}
+          icon={
+            <Icon
+              name="arrow-forward"
+              type="ionicon"
+              color={theme.colors.text}
+            />
+          }
         />
       </View>
 
@@ -2155,11 +2448,11 @@ const DailyEntryScreen: React.FC = () => {
               <Button
                 title="Edit"
                 onPress={() => {
-                  handleEditEntry(item, index); // Pass the entire item
+                  handleEditEntry(item, index);
                   reset();
                 }}
-                icon={{ name: 'edit', color: 'white' }}
-                buttonStyle={{ minHeight: '100%', backgroundColor: 'orange' }}
+                icon={{ name: "edit", color: "white" }}
+                buttonStyle={{ minHeight: "100%", backgroundColor: "orange" }}
               />
             )}
             rightContent={(reset) => (
@@ -2169,26 +2462,30 @@ const DailyEntryScreen: React.FC = () => {
                   handleRemoveEntry(index);
                   reset();
                 }}
-                icon={{ name: 'delete', color: 'white' }}
-                buttonStyle={{ minHeight: '100%', backgroundColor: 'red' }}
+                icon={{ name: "delete", color: "white" }}
+                buttonStyle={{ minHeight: "100%", backgroundColor: "red" }}
               />
             )}
             containerStyle={{ backgroundColor: theme.colors.background }}
           >
-            <Icon name="nutrition-outline" type="ionicon" color={theme.colors.text} />
+            <Icon
+              name="nutrition-outline"
+              type="ionicon"
+              color={theme.colors.text}
+            />
             <ListItem.Content>
               <ListItem.Title style={{ color: theme.colors.text }}>
                 {item.food.name}
               </ListItem.Title>
 
-              {editingIndex === index ? ( // Inline editing input
+              {editingIndex === index ? (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Input
                     value={tempGrams}
                     onChangeText={setTempGrams}
                     keyboardType="numeric"
-                    inputContainerStyle={{ borderBottomWidth: 0 }} // Remove default border
-                    style={{ width: 80, color: theme.colors.text }} // Adjust width as needed
+                    inputContainerStyle={{ borderBottomWidth: 0 }}
+                    style={{ width: 80, color: theme.colors.text }}
                   />
                   <Button
                     title="Save"
@@ -2203,12 +2500,11 @@ const DailyEntryScreen: React.FC = () => {
                     icon={<Icon name="close" type="ionicon" color="red" />}
                   />
                 </View>
-              ) : ( // Regular display of grams
+              ) : (
                 <ListItem.Subtitle style={{ color: theme.colors.text }}>
                   {`${item.grams}g`}
                 </ListItem.Subtitle>
               )}
-
             </ListItem.Content>
           </ListItem.Swipeable>
         )}
@@ -2225,16 +2521,17 @@ const DailyEntryScreen: React.FC = () => {
 
       <AddEntryModal
         isVisible={isOverlayVisible}
-        toggleOverlay={() => toggleOverlay()}
-        selectedFood={selectedFood} //Pass the selected food
-        grams={grams} //pass the current number of grams
+        toggleOverlay={toggleOverlay}
+        selectedFood={selectedFood}
+        grams={grams}
         setGrams={setGrams}
-        filteredFoods={foods}
+        foods={foods} // Pass all foods
         handleAddEntry={handleAddEntry}
         handleSelectFood={handleSelectFood}
         search={search}
         updateSearch={updateSearch}
-        isEditMode={editIndex !== null} // Pass isEditMode
+        isEditMode={editIndex !== null}
+        initialGrams={editIndex !== null ? String(getCurrentEntry().items[editIndex]?.grams) : undefined}
       />
     </SafeAreaView>
   );
@@ -2271,7 +2568,6 @@ const useStyles = makeStyles((theme) => ({
     elevation: 0,
     zIndex: 10,
   },
-
 }));
 
 export default DailyEntryScreen;
@@ -2282,7 +2578,12 @@ export default DailyEntryScreen;
 // FoodListScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { View, FlatList, Alert, Platform } from "react-native";
-import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
+import {
+  createFood,
+  getFoods,
+  updateFood,
+  deleteFood,
+} from "../services/foodService";
 import { Food } from "../types/food";
 import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
@@ -2290,186 +2591,234 @@ import { Button, SearchBar, useTheme, makeStyles } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
-import Toast from 'react-native-toast-message';
+import Toast from "react-native-toast-message";
+import { useFocusEffect } from "@react-navigation/native";
 
-interface FoodListScreenProps { // Added interface
-    onFoodChange?: () => void;
+interface FoodListScreenProps {
+  onFoodChange?: () => void;
 }
 
-const FoodListScreen: React.FC<FoodListScreenProps> = ({onFoodChange}) => {
-const [foods, setFoods] = useState<Food[]>([]);
-const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-const [search, setSearch] = useState("");
-const [newFood, setNewFood] = useState<Omit<Food, "id">>({
+const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
+  const [foods, setFoods] = useState<Food[]>([]);
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+  const [search, setSearch] = useState("");
+  const [newFood, setNewFood] = useState<Omit<Food, "id">>({
     name: "",
     calories: 0,
     protein: 0,
     carbs: 0,
     fat: 0,
-});
-const [editFood, setEditFood] = useState<Food | null>(null);
-const [errors, setErrors] = useState<{ [key: string]: string }>({});
-const { theme } = useTheme();
-const styles = useStyles();
+    // category: "", // REMOVED - No category field
+  });
+  const [editFood, setEditFood] = useState<Food | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const { theme } = useTheme();
+  const styles = useStyles();
 
-const loadFoodData = useCallback(async () => { // Use useCallback
+  const loadFoodData = useCallback(async () => {
     const loadedFoods = await getFoods();
     setFoods(loadedFoods);
-}, []);  // Empty dependency array
+  }, []);
 
-useEffect(() => {
-    loadFoodData();
-}, [loadFoodData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadFoodData();
+    }, [loadFoodData])
+  );
 
-const validateFood = (food: Omit<Food, "id">) => {
+  const validateFood = (food: Omit<Food, "id">) => {
     const newErrors: { [key: string]: string } = {};
-    if (!isNotEmpty(food.name || '')) newErrors.name = "Name is required";
-    if (!isValidNumberInput(String(food.calories))) newErrors.calories = "Invalid input";
-    if (!isValidNumberInput(String(food.protein))) newErrors.protein = "Invalid input";
-    if (!isValidNumberInput(String(food.carbs))) newErrors.carbs = "Invalid input";
+    if (!isNotEmpty(food.name)) newErrors.name = "Name is required";
+    if (!isValidNumberInput(String(food.calories)))
+      newErrors.calories = "Invalid input";
+    if (!isValidNumberInput(String(food.protein)))
+      newErrors.protein = "Invalid input";
+    if (!isValidNumberInput(String(food.carbs)))
+      newErrors.carbs = "Invalid input";
     if (!isValidNumberInput(String(food.fat))) newErrors.fat = "Invalid input";
 
     return Object.keys(newErrors).length === 0 ? null : newErrors;
-};
+  };
 
-const handleCreateFood = async () => {
+  const handleCreateFood = async () => {
     const validationErrors = validateFood(newFood);
     if (validationErrors) {
-        setErrors(validationErrors);
-        return;
+      setErrors(validationErrors);
+      return;
     }
     setErrors({});
     try {
-        const createdFood = await createFood(newFood);
-        setFoods([...foods, createdFood]);
-        setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
-        setIsOverlayVisible(false);
-        onFoodChange && onFoodChange(); // Trigger data refresh
-    } catch (error) {
-        Alert.alert("Error", "Failed to create food.");
+      const createdFood = await createFood(newFood);
+      setFoods([...foods, createdFood]);
+      setNewFood({
+        name: "",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        // category: "", // REMOVED - No category
+      });
+      setIsOverlayVisible(false);
+      onFoodChange && onFoodChange();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to create food.");
     }
-};
+  };
 
-const handleUpdateFood = async () => {
+  const handleUpdateFood = async () => {
     if (!editFood) return;
     const validationErrors = validateFood(editFood);
     if (validationErrors) {
-        setErrors(validationErrors);
-        return;
+      setErrors(validationErrors);
+      return;
     }
     setErrors({});
     try {
-        const updated = await updateFood(editFood);
-        setFoods(foods.map((f) => (f.id === updated.id ? updated : f)));
-        setEditFood(null);
-        setIsOverlayVisible(false);
-    } catch (error) {
-        Alert.alert("Error", "Failed to update food.");
+      const updated = await updateFood(editFood);
+      setFoods(foods.map((f) => (f.id === updated.id ? updated : f)));
+      setEditFood(null);
+      setIsOverlayVisible(false);
+      onFoodChange && onFoodChange();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update food.");
     }
-};
+  };
 
-const handleDeleteFood = async (foodId: string) => {
-    await deleteFood(foodId);
+  const handleDeleteFood = async (foodId: string) => {
+    const foodToDelete = foods.find((f) => f.id === foodId);
+    if (!foodToDelete) return;
     setFoods(foods.filter((f) => f.id !== foodId));
-};
 
-// Add undo function
-const handleUndoDeleteFood = (food: Food) => {
-    setFoods(prevFoods => [...prevFoods, food]); // Re-add the food
-    Toast.hide();
-};
-
-
-const toggleOverlay = (food?: Food) => {
-    if (food) {
-    setEditFood(food);
-    setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
-    } else {
-        setEditFood(null);
-        setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+    try {
+      await deleteFood(foodId);
+      Toast.show({
+        type: "success",
+        text1: `${foodToDelete.name} deleted`,
+        text2: "Tap to undo",
+        position: "bottom",
+        bottomOffset: 80,
+        onPress: () => handleUndoDeleteFood(foodToDelete),
+        visibilityTime: 3000,
+      });
+      onFoodChange && onFoodChange();
+    } catch (error) {
+      setFoods((prevFoods) => [...prevFoods, foodToDelete]);
+      Alert.alert("Error", "Failed to delete food.");
     }
-    setErrors({});
+  };
+
+  const handleUndoDeleteFood = (food: Food) => {
+    setFoods((prevFoods) => [...prevFoods, food]);
+    Toast.hide();
+    onFoodChange && onFoodChange();
+  };
+
+  const toggleOverlay = (food?: Food) => {
+    if (food) {
+      setEditFood(food);
+    } else {
+      setEditFood(null);
+      setNewFood({  // Reset newFood when adding, not editing
+        name: "",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      });
+    }
+    setErrors({}); // Clear errors
     setIsOverlayVisible(!isOverlayVisible);
-};
+  };
 
-const updateSearch = (search: string) => setSearch(search);
-const filteredFoods = foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase()));
+  const updateSearch = (search: string) => setSearch(search);
 
-const handleInputChange = (key: keyof Omit<Food, "id">, value: string) => { // Corrected type
+  const filteredFoods = foods.filter((food) =>
+    food.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleInputChange = (
+    key: keyof Omit<Food, "id">,
+    value: string
+  ) => {
+        // crucial change:  handle name and number inputs
     const updatedFood = editFood
-        ? { ...editFood, [key]: key === "name" ? value : parseFloat(value) || 0 }
-        : { ...newFood, [key]: key === "name" ? value : parseFloat(value) || 0 };
+      ? { ...editFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) }
+      : { ...newFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) };
 
     if (editFood) {
-        setEditFood(updatedFood as Food);
+      setEditFood(updatedFood as Food);
     } else {
-        setNewFood(updatedFood);
+      setNewFood(updatedFood);
     }
-};
+  };
 
-return (
+  return (
     <SafeAreaView style={styles.container}>
-        <SearchBar
-            placeholder="Search Foods..."
-            onChangeText={updateSearch}
-            value={search}
-            platform={Platform.OS === "ios" ? "ios" : "android"}
-            containerStyle={styles.searchBarContainer}
-            inputContainerStyle={[styles.searchBarInputContainer, { backgroundColor: theme.colors.grey5 }]}
-            inputStyle={{ color: theme.colors.text }}
-        />
-        <FlatList
-            data={filteredFoods}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-                <FoodItem
-                    food={item}
-                    onEdit={toggleOverlay}
-                    onDelete={handleDeleteFood}
-                    onUndoDelete={handleUndoDeleteFood} // Pass undo handler
-                />
-            )}
-        />
+      <SearchBar
+        placeholder="Search Foods..."
+        onChangeText={updateSearch}
+        value={search}
+        platform={Platform.OS === "ios" ? "ios" : "android"}
+        containerStyle={styles.searchBarContainer}
+        inputContainerStyle={[
+          styles.searchBarInputContainer,
+          { backgroundColor: theme.colors.grey5 },
+        ]}
+        inputStyle={{ color: theme.colors.text }}
+      />
+      <FlatList
+        data={filteredFoods}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <FoodItem
+            food={item}
+            onEdit={toggleOverlay}
+            onDelete={handleDeleteFood}
+            onUndoDelete={handleUndoDeleteFood} // Pass undo function
+          />
+        )}
+      />
 
-        <FAB
-            icon={{ name: "add", color: "white" }}
-            color={theme.colors.primary}
-            onPress={() => toggleOverlay()}
-            placement="right"
-            title=""
-            style={{marginBottom:10, marginRight: 8}}
-        />
+      <FAB
+        icon={{ name: "add", color: "white" }}
+        color={theme.colors.primary}
+        onPress={() => toggleOverlay()}  // Open overlay for adding
+        placement="right"
+        title=""  // No title, just the icon
+        style={{marginBottom: 10, marginRight: 8}}
+      />
 
-        <AddFoodModal
-            isVisible={isOverlayVisible}
-            toggleOverlay={toggleOverlay}
-            newFood={newFood}
-            editFood={editFood}
-            errors={errors}
-            handleInputChange={handleInputChange}
-            handleCreateFood={handleCreateFood}
-            handleUpdateFood={handleUpdateFood}
-            validateFood={validateFood}
-        />
+      <AddFoodModal
+        isVisible={isOverlayVisible}
+        toggleOverlay={toggleOverlay}
+        newFood={newFood}
+        editFood={editFood}
+        errors={errors}
+        handleInputChange={handleInputChange}
+        handleCreateFood={handleCreateFood}
+        handleUpdateFood={handleUpdateFood}
+        validateFood={validateFood}
+        setErrors={setErrors}
+      />
     </SafeAreaView>
-);
+  );
 };
 
 const useStyles = makeStyles((theme) => ({
-container: {
+  container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-},
-searchBarContainer: {
+  },
+  searchBarContainer: {
     backgroundColor: "transparent",
     borderBottomColor: "transparent",
     borderTopColor: "transparent",
     marginBottom: 10,
-    padding: 0,
-},
-searchBarInputContainer: {
+    padding: 0, // Remove extra padding
+  },
+  searchBarInputContainer: {
     borderRadius: 10,
-},
+  },
 }));
 
 export default FoodListScreen;
@@ -2698,7 +3047,7 @@ export default SettingsScreen;
 
 
 ---------- foodService.ts ----------
-// services/foodService.ts (No significant changes)
+// services/foodService.ts
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
@@ -2723,7 +3072,7 @@ export const updateFood = async (updatedFood: Food): Promise<Food> => {
   const foods = await loadFoods();
   const index = foods.findIndex((f) => f.id === updatedFood.id);
   if (index === -1) {
-    throw new Error('Food not found');
+    throw new Error('Food not found'); // Throw an error if not found
   }
   foods[index] = updatedFood;
   await saveFoods(foods);
@@ -2749,6 +3098,8 @@ import { Settings } from '../types/settings'; // Import Settings from types
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
+const RECENT_FOODS = 'recentFoods';
+
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -2774,7 +3125,7 @@ export const saveFoods = async (foods: Food[]): Promise<void> => {
     await AsyncStorage.setItem(FOODS_KEY, JSON.stringify(foods));
   } catch (error) {
     console.error('Error saving foods:', error);
-    throw error;
+    throw error; // Re-throw the error
   }
 };
 
@@ -2784,20 +3135,11 @@ export const loadFoods = async (): Promise<Food[]> => {
     return foodsJson ? JSON.parse(foodsJson) : [];
   } catch (error) {
     console.error('Error loading foods:', error);
-    return [];
+    return []; // Return an empty array on error
   }
 };
 
-// export interface Settings {  // REMOVE THIS DUPLICATE INTERFACE
-//   theme: 'light' | 'dark' | 'system';
-//   dailyGoals?: {
-//     calories?: number;
-//     protein?: number;
-//     carbs?: number;
-//     fat?: number;
-//   };
-//   settingsHistory?: { date: string; settings: Settings }[]; // Add this line
-// }
+
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -2849,6 +3191,27 @@ export const clearAllData = async (): Promise<void> => {
     throw error;
   }
 };
+
+// Function to save recent foods
+export const saveRecentFoods = async (foods: Food[]) => {
+    try {
+        await AsyncStorage.setItem(RECENT_FOODS, JSON.stringify(foods));
+    } catch (error) {
+        console.error('Error saving recent foods:', error);
+        throw error; // Important: Re-throw the error so calling code knows it failed
+    }
+};
+
+// Function to load recent foods
+export const loadRecentFoods = async (): Promise<Food[]> => {
+    try {
+        const foods = await AsyncStorage.getItem(RECENT_FOODS);
+        return foods ? JSON.parse(foods) : [];
+    } catch (error) {
+        console.error('Error loading recent foods:', error);
+        return []; // Return empty array on error, don't throw
+    }
+};
 ---------- END storageService.ts ----------
 
 
@@ -2898,13 +3261,14 @@ export interface FoodItem {
 ---------- food.ts ----------
 // types/food.ts
 export interface Food {
-    id: string;
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  // category: string;  // REMOVED
+}
 ---------- END food.ts ----------
 
 

@@ -1,4 +1,4 @@
-// types/dailyEntry.ts
+// types/dailyEntry.ts (Modified)
 import { Food } from "./food";
 
 export interface DailyEntryItem {
@@ -17,7 +17,7 @@ export interface DailyEntry {
   };
 }
 
-export interface FoodItem {
+export interface FoodItem { //No changes here.
     id: string;
     name: string;
     calories: number;

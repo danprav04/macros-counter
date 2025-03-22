@@ -1,7 +1,4 @@
-// types/settings.ts
-
-import { DailyEntry } from "./dailyEntry";
-
+// types/settings.ts (Modified)
 export const macros = ["calories", "protein", "carbs", "fat"] as const;
 export type MacroType = (typeof macros)[number];
 
@@ -22,9 +19,8 @@ export interface Settings {
   dailyGoals: {
     [key in MacroType]: number;
   };
-  settingsHistory?: { date: string; settings: Settings }[]; // Make settingsHistory optional
+  settingsHistory?: { date: number; dailyGoals: { [key in MacroType]: number } }[]; // CHANGED: Store timestamp
 }
-
 
 export interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
