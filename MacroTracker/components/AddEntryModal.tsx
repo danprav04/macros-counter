@@ -180,7 +180,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                     showsHorizontalScrollIndicator={false}
                                     renderItem={({ item }) => (
                                         <TouchableOpacity
-                                            style={[styles.recentFoodItem, screenWidth < 350 && styles.smallRecentFoodItem]} // Adjust for small screens
+                                            style={[
+                                                styles.recentFoodItem,
+                                                screenWidth < 350 && styles.smallRecentFoodItem,
+                                                selectedFood?.id === item.id && styles.selectedRecentFoodItem, // Apply selected style
+                                            ]}
                                             onPress={() => handleSelectFood(item)}>
                                             <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]}>{item.name}</Text>
                                         </TouchableOpacity>
@@ -197,7 +201,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                     <TouchableOpacity onPress={() => handleSelectFood(item)}>
                                         <ListItem
                                             bottomDivider
-                                            containerStyle={styles.listItemContainer}
+                                            containerStyle={[
+                                                styles.listItemContainer,
+                                                selectedFood?.id === item.id && styles.selectedListItem, // Apply selected style
+                                            ]}
                                         >
                                             <ListItem.Content>
                                                 <ListItem.Title style={styles.listItemTitle}>{item.name}</ListItem.Title>
@@ -323,6 +330,11 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'center', // Center text
         alignItems: 'center',
     },
+    selectedRecentFoodItem: {
+        backgroundColor: theme.colors.grey3, // Slightly darker background
+        borderColor: theme.colors.primary,
+        borderWidth: 2,
+    },
     smallRecentFoodItem: {
         paddingHorizontal: 10, // Reduce padding on small screens
     },
@@ -340,6 +352,9 @@ const useStyles = makeStyles((theme) => ({
     listItemContainer: {
         backgroundColor: 'transparent',
         paddingVertical: 12, // More vertical padding
+    },
+    selectedListItem: {
+        backgroundColor: theme.colors.grey5, // Highlight selected item
     },
     listItemTitle: {
         color: theme.colors.text,
