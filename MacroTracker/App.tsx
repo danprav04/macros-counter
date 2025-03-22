@@ -83,7 +83,13 @@ const lightTheme: MyTheme = {
         warning: ''
       },
     },
-    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
+    // Complete the missing grey colors
+    grey0: '#f8f9fa', // Very light, almost white
+    grey1: '#e9ecef', // Light grey, same as grey5 (can adjust)
+    grey2: '#dee2e6', // Medium-light grey
+    grey3: '#ced4da', // Medium grey, same as grey4
+    greyOutline: '#adb5bd', // Slightly darker for outlines
+    searchBg: '#ffffff' // Background for search input, usually white
   },
 };
 
@@ -106,15 +112,15 @@ const darkTheme: MyTheme = {
     disabled: '#6c757d',
     divider: '#343a40',
     platform: {
-       ios: {
-         primary: '',
-         secondary: '',
-         grey: '',
-         searchBg: '',
-         success: '',
-         error: '',
-         warning: ''
-       },
+      ios: {
+        primary: '',
+        secondary: '',
+        grey: '',
+        searchBg: '',
+        success: '',
+        error: '',
+        warning: ''
+      },
       android: {
         primary: '',
         secondary: '',
@@ -143,9 +149,16 @@ const darkTheme: MyTheme = {
         warning: ''
       },
     },
-    grey0: '', grey1: '', grey2: '', grey3: '', greyOutline: '', searchBg: ''
+    // Complete the missing grey colors
+    grey0: '#212529', // Very dark, almost black
+    grey1: '#2c2c2c', // Dark grey, same as grey5
+    grey2: '#343a40', // Medium-dark grey, same as grey4
+    grey3: '#495057', // Medium grey
+    greyOutline: '#6c757d', // Lighter grey for outlines, same as disabled
+    searchBg: '#1e1e1e'  // Background for search, dark to match card
   },
 };
+
 
 const App = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
@@ -240,7 +253,7 @@ const App = () => {
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
         >
           {/* Pass reloadKey and triggerReload */}
-          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} onDataOperation={triggerReload}/>
+          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} />
         </NavigationContainer>
       </SafeAreaProvider>
       <Toast />

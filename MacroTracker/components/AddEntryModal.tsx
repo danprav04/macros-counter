@@ -284,144 +284,147 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         </Overlay>
     );
 };
-const useStyles = makeStyles((theme) => ({
-    overlayStyle: {
-        backgroundColor: 'rgba(255, 255, 255, 0)',
-        padding: 20,
-        marginVertical: 50,
-        width: '90%',
-        borderRadius: 15,
-        height: '100%', //MODIFIED
+const useStyles = makeStyles((theme) => {
+    console.log(theme.colors); // Check theme
+    return ({
+        overlayStyle: {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            padding: 20,
+            marginVertical: 50,
+            width: '90%',
+            borderRadius: 15,
+            height: '100%', //MODIFIED
 
-    },
-    modalSafeArea: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    keyboardAvoidingView: {
-        width: "100%",
-        flex: 1,
-    },
-    overlayContent: {
-        backgroundColor: theme.colors.background,
-        width: "100%",
-        borderRadius: 15,
-        padding: 20,
-        minHeight: '50%', //MODIFIED
-        flexGrow: 1, //MODIFIED
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    overlayTitle: {
-        color: theme.colors.text,
-        fontWeight: 'bold',
-    },
-    editModeTitle: {
-        color: theme.colors.warning, // Different color in edit mode
-    },
-    searchBarContainer: {
-        backgroundColor: "transparent",
-        borderBottomColor: "transparent",
-        borderTopColor: "transparent",
-        marginBottom: 10,
-        padding: 0,
-    },
-    searchBarInputContainer: {
-        borderRadius: 10,
-        backgroundColor: theme.colors.grey5,
-    },
-    searchInputStyle: {
-        color: theme.colors.text,
-        marginLeft: 10,
-    },
-    categoryContainer: { //REMOVED
-        marginBottom: 10,
-    },
-    categoryButton: { //REMOVED
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: theme.colors.grey5,
-        marginRight: 8,
-    },
-    selectedCategoryButton: { //REMOVED
-        backgroundColor: theme.colors.primary,
-    },
-    categoryButtonText: { //REMOVED
-        color: theme.colors.grey2,
-    },
-    selectedCategoryButtonText: { //REMOVED
-        color: theme.colors.white,
-    },
-    sectionTitle: {
-        fontWeight: 'bold',
-        marginBottom: 5,
-        color: theme.colors.text,
-    },
-    recentFoodItem: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 10,
-        backgroundColor: theme.colors.grey5,
-        marginRight: 8,
-    },
-    recentFoodText: {
-        color: theme.colors.grey2,
-    },
-    foodList: {
-        maxHeight: 200,
-        marginBottom: 10,
-    },
-    listItemContainer: {
-        backgroundColor: 'transparent', // Use transparent background
-    },
-    listItemTitle: {
-        color: theme.colors.text,
-    },
-    noFoodsText: {
-        color: theme.colors.grey2,
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    servingSizeContainer: {
-        marginTop: 10,
-        marginBottom: 5,
-    },
-    servingSizeButton: {
-        backgroundColor: theme.colors.grey4,
-        borderRadius: 20,
-        marginRight: 8,
-        paddingHorizontal: 15,
-    },
-    servingSizeButtonTitle: {
-        color: theme.colors.grey2,
-    },
-    gramInputStyle: {
-        color: theme.colors.text,
-        marginLeft: 10
-    },
-    gramInputContainerStyle: {
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.grey4,
-    },
-    addButton: {
-        // backgroundColor: theme.colors.primary, // Handled in the component
-        borderRadius: 8,
-        paddingHorizontal: 20,
-    },
-    buttonTitle: {
-        color: theme.colors.white,
-        fontWeight: '600',
-    },
-    closeIcon: {
-        padding: 5,
-    },
-}));
+        },
+        modalSafeArea: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        keyboardAvoidingView: {
+            width: "100%",
+            flex: 1,
+        },
+        overlayContent: {
+            backgroundColor: theme.colors.background,
+            width: "100%",
+            borderRadius: 15,
+            padding: 20,
+            minHeight: '50%', //MODIFIED
+            flexGrow: 1, //MODIFIED
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+        },
+        overlayTitle: {
+            color: theme.colors.text,
+            fontWeight: 'bold',
+        },
+        editModeTitle: {
+            color: theme.colors.warning, // Different color in edit mode
+        },
+        searchBarContainer: {
+            backgroundColor: "transparent",
+            borderBottomColor: "transparent",
+            borderTopColor: "transparent",
+            marginBottom: 10,
+            padding: 0,
+        },
+        searchBarInputContainer: {
+            borderRadius: 10,
+            backgroundColor: theme.colors.grey5,
+        },
+        searchInputStyle: {
+            color: theme.colors.text,
+            marginLeft: 10,
+        },
+        categoryContainer: { //REMOVED
+            marginBottom: 10,
+        },
+        categoryButton: { //REMOVED
+            paddingHorizontal: 15,
+            paddingVertical: 8,
+            borderRadius: 20,
+            backgroundColor: theme.colors.grey5,
+            marginRight: 8,
+        },
+        selectedCategoryButton: { //REMOVED
+            backgroundColor: theme.colors.primary,
+        },
+        categoryButtonText: { //REMOVED
+            color: theme.colors.grey2,
+        },
+        selectedCategoryButtonText: { //REMOVED
+            color: theme.colors.white,
+        },
+        sectionTitle: {
+            fontWeight: 'bold',
+            marginBottom: 5,
+            color: theme.colors.text,
+        },
+        recentFoodItem: {
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            backgroundColor: theme.colors.grey5,
+            marginRight: 8,
+        },
+        recentFoodText: {
+            color: theme.colors.grey2,
+        },
+        foodList: {
+            maxHeight: 200,
+            marginBottom: 10,
+        },
+        listItemContainer: {
+            backgroundColor: 'transparent', // Use transparent background
+        },
+        listItemTitle: {
+            color: theme.colors.text,
+        },
+        noFoodsText: {
+            color: theme.colors.grey2,
+            fontStyle: 'italic',
+            textAlign: 'center',
+            marginTop: 20,
+        },
+        servingSizeContainer: {
+            marginTop: 10,
+            marginBottom: 5,
+        },
+        servingSizeButton: {
+            backgroundColor: theme.colors.grey4 || '#888888', // Fallback color
+            borderRadius: 20,
+            marginRight: 8,
+            paddingHorizontal: 15,
+        },
+        servingSizeButtonTitle: {
+            color: theme.colors.grey2,
+        },
+        gramInputStyle: {
+            color: theme.colors.text,
+            marginLeft: 10
+        },
+        gramInputContainerStyle: {
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.grey4,
+        },
+        addButton: {
+            // backgroundColor: theme.colors.primary, // Handled in the component
+            borderRadius: 8,
+            paddingHorizontal: 20,
+        },
+        buttonTitle: {
+            color: theme.colors.white,
+            fontWeight: '600',
+        },
+        closeIcon: {
+            padding: 5,
+        },
+    });
+});
 
 export default AddEntryModal;
