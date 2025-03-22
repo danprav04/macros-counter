@@ -1,11 +1,11 @@
-// components/AddFoodModal.tsx
+// AddFoodModal.tsx
 import React, { useState, useEffect } from "react";
-import { View, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from "react-native";
+import { View, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { Button, Input, Text, Overlay, makeStyles, useTheme, Icon } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message'; // Import Toast
+import Toast from 'react-native-toast-message';
 
 interface AddFoodModalProps {
     isVisible: boolean;
@@ -17,7 +17,7 @@ interface AddFoodModalProps {
     handleCreateFood: () => void;
     handleUpdateFood: () => void;
     validateFood: (food: Omit<Food, "id">) => { [key: string]: string } | null;
-    setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>; // Add setErrors prop
+    setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
@@ -30,74 +30,60 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     handleCreateFood,
     handleUpdateFood,
     validateFood,
-    setErrors // Receive setErrors
+    setErrors
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [loading, setLoading] = useState(false); // Add loading state
+    const [loading, setLoading] = useState(false);
+    const [apiLoading, setApiLoading] = useState(false); // Loading state for API calls
 
     useEffect(() => {
         if (isVisible) {
-            setErrors({}); // Clear errors when the modal opens
+            setErrors({});
         }
     }, [isVisible, setErrors]);
 
-    // Helper function to get the value safely
     const getValue = (key: keyof Omit<Food, "id">) => {
-        if (editFood) {
-            return String(editFood[key] ?? "");
-        }
-        return String(newFood[key] ?? "");
+        return String((editFood && editFood[key]) ?? newFood[key] ?? "");
     };
 
-    // Dynamically determine icon and label color based on theme and errors
-    const getIconColor = (error: string | undefined) => {
-        return error ? theme.colors.error : theme.colors.grey3;
-    };
-
-    const getLabelColor = (error: string | undefined) => {
-        return error ? theme.colors.error : theme.colors.grey1;
-    };
-
-    const handleCreate = async () => {
+    const handleCreateOrUpdate = async (isUpdate: boolean) => {
         setLoading(true);
+        const validationErrors = validateFood(isUpdate ? (editFood as Omit<Food, "id">) : newFood);
+
+        if (validationErrors) {
+            setErrors(validationErrors);
+            setLoading(false);
+            Toast.show({ //show a toast in case of errors
+                type: 'error',
+                text1: 'Please fix the errors',
+            });
+            return;
+        }
+
         try {
-            await handleCreateFood();
+            isUpdate ? await handleUpdateFood() : await handleCreateFood();
             Toast.show({
                 type: 'success',
-                text1: 'Food Created Successfully!',
-                visibilityTime: 3000
+                text1: `Food ${isUpdate ? 'Updated' : 'Created'} Successfully!`,
             });
+            toggleOverlay();
         } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to create food.");
+            Alert.alert("Error", error.message || `Failed to ${isUpdate ? 'update' : 'create'} food.`);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleUpdate = async () => {
-        setLoading(true);
-        try {
-            await handleUpdateFood();
-            Toast.show({
-                type: 'success',
-                text1: 'Food Updated Successfully!',
-                visibilityTime: 3000
-            });
-        } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to update food.");
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     return (
         <Overlay
             isVisible={isVisible}
             onBackdropPress={toggleOverlay}
-            animationType="slide"
+            animationType="fade" // Changed animation
             transparent={true}
-            statusBarTranslucent={Platform.OS === 'android'} // Fix
+            statusBarTranslucent={Platform.OS === 'android'}
             overlayStyle={styles.overlayStyle}
         >
             <SafeAreaView style={styles.modalSafeArea}>
@@ -106,126 +92,105 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     style={styles.keyboardAvoidingView}
                 >
                     <View style={styles.overlayContent}>
-                        <View style={styles.titleContainer}>
+                        <View style={styles.header}>
                             <Text h4 style={styles.overlayTitle}>
                                 {editFood ? "Edit Food" : "Add New Food"}
                             </Text>
+                            <Button
+                                title={editFood ? "Update" : "Add"}
+                                onPress={() => handleCreateOrUpdate(!!editFood)}
+                                buttonStyle={[styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary }]}
+                                titleStyle={{ color: theme.colors.white, fontWeight: '600' }}
+                                loading={loading}
+                                containerStyle={styles.buttonContainer}
+                            />
                             <Icon
                                 name="close"
                                 type="material"
-                                size={28} //increased size
-                                color={theme.colors.grey3}
+                                size={28}
+                                color={theme.colors.text}
                                 onPress={toggleOverlay}
                                 containerStyle={styles.closeIcon}
                             />
-                        </View>
 
-                        <View style={styles.inputContainer}>
+                        </View>
+                        <ScrollView>
+
                             <Input
-                                placeholder=""
+                                label="Food Name"
+                                labelStyle={{ color: theme.colors.text }}
                                 value={getValue("name")}
                                 onChangeText={(text) => handleInputChange("name", text)}
-                                style={styles.input}
-                                inputContainerStyle={{ borderBottomColor: errors.name ? theme.colors.error : theme.colors.text }}
-                                placeholderTextColor={theme.colors.grey3}
-                                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                                label="Food Name"
-                                labelStyle={[styles.inputLabel, { color: errors.name ? theme.colors.error : theme.colors.text }]}
+                                errorMessage={errors.name}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.text} />}
                             />
-                            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-                        </View>
 
-                        <View style={styles.inputContainer}>
                             <Input
-                                placeholder="Calories (per 100g)"
+                                label="Calories (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
                                 keyboardType="numeric"
                                 value={getValue("calories")}
-                                onChangeText={(text) => {
-                                    const parsedValue = parseFloat(text);
-                                    if ((isNaN(parsedValue) && text !== "") || parsedValue < 0) return;
-                                    handleInputChange("calories", text);
-                                }}
-                                style={styles.input}
-                                inputContainerStyle={{ borderBottomColor: errors.calories ? theme.colors.error : theme.colors.text }}
-                                placeholderTextColor={theme.colors.grey3}
-                                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                                label="Calories (per 100g)"
-                                labelStyle={[styles.inputLabel, { color: errors.calories ? theme.colors.error : theme.colors.text }]}
+                                onChangeText={(text) => handleInputChange("calories", text.replace(/[^0-9]/g, ''))} // Improved validation
+                                errorMessage={errors.calories}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.text} />}
                             />
-                            {errors.calories && <Text style={styles.errorText}>{errors.calories}</Text>}
-                        </View>
 
-                        <View style={styles.inputContainer}>
                             <Input
-                                placeholder="Protein (per 100g)"
+                                label="Protein (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
                                 keyboardType="numeric"
                                 value={getValue("protein")}
-                                onChangeText={(text) => {
-                                    const parsedValue = parseFloat(text);
-                                    if ((isNaN(parsedValue) && text !== "") || parsedValue < 0) return;
-                                    handleInputChange("protein", text);
-                                }}
-                                style={styles.input}
-                                inputContainerStyle={{ borderBottomColor: errors.protein ? theme.colors.error : theme.colors.text }}
-                                placeholderTextColor={theme.colors.grey3}
-                                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                                label="Protein (per 100g)"
-                                labelStyle={[styles.inputLabel, { color: errors.protein ? theme.colors.error : theme.colors.text }]}
+                                onChangeText={(text) => handleInputChange("protein", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.protein}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.text} />}
                             />
-                            {errors.protein && <Text style={styles.errorText}>{errors.protein}</Text>}
-                        </View>
 
-                        <View style={styles.inputContainer}>
                             <Input
-                                placeholder="Carbs (per 100g)"
+                                label="Carbs (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
                                 keyboardType="numeric"
                                 value={getValue("carbs")}
-                                onChangeText={(text) => {
-                                    const parsedValue = parseFloat(text);
-                                    if ((isNaN(parsedValue) && text !== "") || parsedValue < 0) return;
-                                    handleInputChange("carbs", text);
-                                }}
-                                style={styles.input}
-                                inputContainerStyle={{ borderBottomColor: errors.carbs ? theme.colors.error : theme.colors.text }}
-                                placeholderTextColor={theme.colors.grey3}
-                                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                                label="Carbs (per 100g)"
-                                labelStyle={[styles.inputLabel, { color: errors.carbs ? theme.colors.error : theme.colors.text }]}
+                                onChangeText={(text) => handleInputChange("carbs", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.carbs}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.text} />}
                             />
-                            {errors.carbs && <Text style={styles.errorText}>{errors.carbs}</Text>}
-                        </View>
-                        <View style={styles.inputContainer}>
                             <Input
-                                placeholder="Fat (per 100g)"
+                                label="Fat (per 100g)"
+                                labelStyle={{ color: theme.colors.text }}
                                 keyboardType="numeric"
                                 value={getValue("fat")}
-                                onChangeText={(text) => {
-                                    const parsedValue = parseFloat(text);
-                                    if ((isNaN(parsedValue) && text !== "") || parsedValue < 0) return;
-                                    handleInputChange("fat", text);
-                                }}
-                                style={styles.input}
-                                inputContainerStyle={{ borderBottomColor: errors.fat ? theme.colors.error : theme.colors.text }}
-                                placeholderTextColor={theme.colors.grey3}
-                                leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={errors.fat ? theme.colors.error : theme.colors.text} style={styles.inputIcon} />}
-                                label="Fat (per 100g)"
-                                labelStyle={[styles.inputLabel, { color: errors.fat ? theme.colors.error : theme.colors.text }]}
+                                onChangeText={(text) => handleInputChange("fat", text.replace(/[^0-9]/g, ''))}
+                                errorMessage={errors.fat}
+                                inputContainerStyle={styles.inputContainerStyle}
+                                inputStyle={styles.inputStyle}
+                                leftIcon={<MaterialCommunityIcons name="bucket" size={24} color={errors.fat ? theme.colors.error : theme.colors.text} />}
                             />
-                            {errors.fat && <Text style={styles.errorText}>{errors.fat}</Text>}
-                        </View>
+                            {/* Placeholders for AI and Barcode Input */}
+                            <View style={styles.futureInputContainer}>
+                                <Text style={styles.futureInputLabel}>AI Input (Coming Soon)</Text>
+                            </View>
+                            <View style={styles.futureInputContainer}>
+                                <Text style={styles.futureInputLabel}>Barcode Input (Coming Soon)</Text>
+                            </View>
+                        </ScrollView>
 
-                        <Button
-                            title={editFood ? "Update Food" : "Add Food"}
-                            onPress={editFood ? handleUpdate : handleCreate}
-                            disabled={(editFood ? (editFood !== null && !!validateFood(editFood)) : !!validateFood(newFood)) || loading}
-                            buttonStyle={styles.button}
-                            titleStyle={{ color: theme.colors.white }}
-                            loading={loading}
-                            loadingProps={{ color: theme.colors.white }}
 
-                        />
                     </View>
                 </KeyboardAvoidingView>
+                {/* Full-screen Loading Overlay */}
+                {apiLoading && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                    </View>
+                )}
             </SafeAreaView>
         </Overlay>
     );
@@ -233,12 +198,12 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     overlayStyle: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        paddingTop: '33%',
+        backgroundColor: 'rgba(150, 150, 150, 0)', // Lighter background
         padding: 20,
-        width: '100%',
-        height: '100%',
-        borderRadius: 10,
+        marginVertical: 50,
+        width: '90%', // Slightly smaller width
+        borderRadius: 15, // More rounded corners
+        height: '100%', //MODIFIED
     },
     modalSafeArea: {
         flex: 1,
@@ -252,47 +217,64 @@ const useStyles = makeStyles((theme) => ({
     overlayContent: {
         backgroundColor: theme.colors.background,
         width: "100%",
-        borderRadius: 10,
+        borderRadius: 15,
         padding: 20,
+        minHeight: '50%', //MODIFIED
+        flexGrow: 1, //MODIFIED
     },
-    titleContainer: {
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 20,
     },
     overlayTitle: {
-        textAlign: "center",
         color: theme.colors.text,
+        fontWeight: 'bold',
     },
     closeIcon: {
         padding: 5,
     },
-    input: {
-        color: theme.colors.text,
-    },
-    inputLabel: {
-        color: theme.colors.grey1,  // Default label color
-        marginBottom: 5,
-        fontSize: 16,
-    },
-    inputIcon: {
-        marginRight: 10,
-    },
-    inputContainer: {
-        marginBottom: 0, // Reduce spacing
-    },
-    errorText: {
-        color: theme.colors.error,
-        marginLeft: 10,
-        marginTop: 0,
-        marginBottom: 5
 
+    inputContainerStyle: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.grey4,
+        marginBottom: 10, // Reduced margin
+    },
+    inputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10,
+    },
+
+    futureInputContainer: {
+        backgroundColor: theme.colors.grey5,
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    futureInputLabel: {
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+    },
+    buttonContainer: {
+        // marginTop: 15,
     },
     button: {
-        marginTop: 15,
-        backgroundColor: theme.colors.primary,
+        // backgroundColor: theme.colors.primary, // Handled in component now
         borderRadius: 8,
+        paddingHorizontal: 20, // More horizontal padding
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10, // Ensure it's on top
     },
 }));
 

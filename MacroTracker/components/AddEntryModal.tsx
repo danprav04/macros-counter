@@ -1,9 +1,12 @@
+// AddEntryModal.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import {
     View,
     FlatList,
     KeyboardAvoidingView,
     Platform,
+    TouchableOpacity,
+    ScrollView,
 } from "react-native";
 import {
     Button,
@@ -14,6 +17,7 @@ import {
     SearchBar,
     makeStyles,
     useTheme,
+    Icon
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,15 +27,16 @@ import { DailyEntryItem } from "../types/dailyEntry";
 interface AddEntryModalProps {
     isVisible: boolean;
     toggleOverlay: () => void;
-    selectedFood: Food | null; // Corrected prop
+    selectedFood: Food | null;
     grams: string;
     setGrams: (grams: string) => void;
     handleAddEntry: () => void;
-    foods: Food[]; // All Foods
-    handleSelectFood: (item: Food | null) => void; //what happens after food selected
-    updateSearch: (search: string) => void; //What happens after search
-    search: string; //The searched text
-    isEditMode: boolean; // Add isEditMode
+    foods: Food[];
+    handleSelectFood: (item: Food | null) => void;
+    updateSearch: (search: string) => void;
+    search: string;
+    isEditMode: boolean;
+    initialGrams?: string; // Add initialGrams prop
 
 }
 
@@ -47,31 +52,76 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     updateSearch,
     search,
     isEditMode,
+    initialGrams // Use initialGrams
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [recentFoods, setRecentFoods] = useState<Food[]>([]); // Example state
+
+    // Pre-populate grams in edit mode
+    useEffect(() => {
+        if (isEditMode && initialGrams) {
+            setGrams(initialGrams);
+        }
+    }, [isEditMode, initialGrams, setGrams]);
+
+
+    useEffect(() => {
+        // Load recent foods (example - replace with your logic)
+        //  loadRecentFoods().then(setRecentFoods);
+    }, []);
 
     useEffect(() => {
         if (!isVisible) {
-            // Clear selected food when the modal closes if in edit mode
             handleSelectFood(null);
-
+            setGrams(""); // Clear grams when closing
+            setSelectedCategory(null); // Reset category
+            updateSearch("");  //clear the search
         }
-    }, [isVisible, handleSelectFood]);
+    }, [isVisible, handleSelectFood, setGrams]);
 
-    // Clear grams on food selection
-    useEffect(() => {
-        if (selectedFood) {
-            setGrams("");
-        }
-    }, [selectedFood, setGrams]);
+    const categories = useMemo(() => {
+        // Extract unique categories from your foods (adapt to your data)
+        const uniqueCategories = [...new Set(foods.map(food => food.category).filter(Boolean))];
+        return ["All", ...uniqueCategories]; // Add "All" category
+    }, [foods]);
 
     const filteredFoods = useMemo(() => {
-        return foods.filter((food) =>
-            food.name.toLowerCase().includes(search.toLowerCase())
-        );
-    }, [foods, search]);
+        let result = foods;
 
+        if (selectedCategory && selectedCategory !== "All") {
+            result = result.filter((food) => food.category === selectedCategory);
+        }
+
+        if (search) {
+            result = result.filter((food) =>
+                food.name.toLowerCase().includes(search.toLowerCase())
+            );
+        }
+
+        return result;
+    }, [foods, search, selectedCategory]);
+
+    const servingSizeSuggestions = useMemo(() => {
+        if (!selectedFood) return [];
+        // Example:  Adapt to your data. You might have serving sizes in your Food object.
+        return [
+            { label: "50g", value: "50" },
+            { label: "100g", value: "100" },
+            { label: "150g", value: "150" },
+            { label: "200g", value: "200" },
+        ];
+    }, [selectedFood]);
+
+
+    const handleAddOrUpdateEntry = () => {
+        handleAddEntry(); // Keep the logic in the parent component
+        // Add to recent foods (example - replace with your logic)
+        //  if (selectedFood) {
+        //      addToRecentFoods(selectedFood);
+        //  }
+    };
 
     return (
         <Overlay
@@ -79,8 +129,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onBackdropPress={toggleOverlay}
             animationType="slide"
             transparent={true}
-            statusBarTranslucent={Platform.OS === 'android'} // Fix
-            overlayStyle={styles.overlayStyle} // Apply overlayStyle here
+            statusBarTranslucent={Platform.OS === 'android'}
+            overlayStyle={styles.overlayStyle}
         >
             <SafeAreaView style={styles.modalSafeArea}>
                 <KeyboardAvoidingView
@@ -88,9 +138,28 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     style={styles.keyboardAvoidingView}
                 >
                     <View style={styles.overlayContent}>
-                        <Text h4 style={styles.overlayTitle}>
-                            {isEditMode ? "Edit Entry" : "Add Entry"}
-                        </Text>
+                        <View style={styles.header}>
+                            <Text h4 style={[styles.overlayTitle, isEditMode && styles.editModeTitle]}>
+                                {isEditMode ? "Edit Entry" : "Add Entry"}
+                            </Text>
+
+                            <Button
+                                title={isEditMode ? "Update" : "Add"}
+                                onPress={handleAddOrUpdateEntry}
+                                disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
+                                buttonStyle={[styles.addButton, { backgroundColor: isEditMode ? theme.colors.warning : theme.colors.primary }]}
+                                titleStyle={styles.buttonTitle}
+                            />
+                            <Icon
+                                name="close"
+                                type="material"
+                                size={28}
+                                color={theme.colors.grey3}
+                                onPress={toggleOverlay}
+                                containerStyle={styles.closeIcon}
+                            />
+                        </View>
+
                         <SearchBar
                             placeholder="Search Foods..."
                             onChangeText={updateSearch}
@@ -98,37 +167,93 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             platform={Platform.OS === "ios" ? "ios" : "android"}
                             containerStyle={styles.searchBarContainer}
                             inputContainerStyle={styles.searchBarInputContainer}
-                            inputStyle={{ color: theme.colors.text }} // Ensure text color
+                            inputStyle={styles.searchInputStyle}
                         />
-                        <FlatList
-                            data={filteredFoods}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <ListItem bottomDivider onPress={() => handleSelectFood(item)} containerStyle={styles.listItemContainer}>
-                                    <ListItem.Content>
-                                        <ListItem.Title style={{ color: theme.colors.text }}>{item.name}</ListItem.Title>
-                                    </ListItem.Content>
-                                </ListItem>
-                            )}
-                            style={styles.foodList}
-                        />
-                        <Input
-                            placeholder="Grams (e.g. 150)"
-                            placeholderTextColor={theme.colors.text}
-                            keyboardType="numeric"
-                            value={grams}
-                            onChangeText={setGrams}
-                            style={{ color: theme.colors.text }} // Correct text color
-                            inputContainerStyle={{ borderBottomColor: theme.colors.text }} // Consistent border color
-                            errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
-                        />
-                        <Button
-                            title={isEditMode ? "Update Entry" : "Add Entry"}
-                            onPress={handleAddEntry}
-                            disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
-                            buttonStyle={styles.addButton}
-                            titleStyle={{ color: theme.colors.white }} //add the correct title color
-                        />
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryContainer}>
+                            {categories.map((category) => (
+                                <TouchableOpacity
+                                    key={category}
+                                    style={[
+                                        styles.categoryButton,
+                                        selectedCategory === category && styles.selectedCategoryButton,
+                                    ]}
+                                    onPress={() => setSelectedCategory(category)}
+                                >
+                                    <Text style={[
+                                        styles.categoryButtonText,
+                                        selectedCategory === category && styles.selectedCategoryButtonText,
+                                    ]}>
+                                        {category}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        {recentFoods.length > 0 && (
+                            <View>
+                                <Text style={styles.sectionTitle}>Recent Foods</Text>
+                                <FlatList
+                                    data={recentFoods}
+                                    keyExtractor={(item) => item.id}
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity style={styles.recentFoodItem} onPress={() => handleSelectFood(item)}>
+                                            <Text style={styles.recentFoodText}>{item.name}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                />
+                            </View>
+                        )}
+
+                        {filteredFoods.length > 0 ? (
+                            <FlatList
+                                data={filteredFoods}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item }) => (
+                                    <ListItem
+                                        bottomDivider
+                                        onPress={() => handleSelectFood(item)}
+                                        containerStyle={styles.listItemContainer}
+                                    >
+                                        <ListItem.Content>
+                                            <ListItem.Title style={styles.listItemTitle}>{item.name}</ListItem.Title>
+                                        </ListItem.Content>
+                                    </ListItem>
+                                )}
+                                style={styles.foodList}
+                            />
+                        ) : (
+                            <Text style={styles.noFoodsText}>No foods found.</Text>
+                        )}
+
+                        {selectedFood && ( // Only show when a food is selected
+                            <View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.servingSizeContainer}>
+                                    {servingSizeSuggestions.map((suggestion) => (
+                                        <Button
+                                            key={suggestion.label}
+                                            title={suggestion.label}
+                                            onPress={() => setGrams(suggestion.value)}
+                                            buttonStyle={styles.servingSizeButton}
+                                            titleStyle={styles.servingSizeButtonTitle}
+                                        />
+                                    ))}
+                                </ScrollView>
+                                <Input
+                                    placeholder="Grams (e.g. 150)"
+                                    keyboardType="numeric"
+                                    value={grams}
+                                    onChangeText={(text) => setGrams(text.replace(/[^0-9]/g, ""))} // Validate numeric input
+                                    style={styles.gramInputStyle}
+                                    inputContainerStyle={styles.gramInputContainerStyle}
+                                    errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
+                                />
+                            </View>
+                        )}
+
+
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -137,36 +262,42 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 };
 const useStyles = makeStyles((theme) => ({
     overlayStyle: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-        paddingTop: '33%',
-        padding: 20,  // Remove padding from the Overlay itself
-        width: '100%',
-        height: '100%', //  Control width here
-        borderRadius: 10,
-        // maxHeight: '80%' No longer needed since it is handled by overlayContent
+        backgroundColor: 'rgba(255, 255, 255, 0)',
+        padding: 20,
+        width: '90%',
+        borderRadius: 15,
+        height: '100%', //MODIFIED
+
     },
     modalSafeArea: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        // backgroundColor: "rgba(0, 0, 0, 0)", //  Removed -  Let Overlay handle the background
     },
     keyboardAvoidingView: {
         width: "100%",
-        flex: 1, // Important: Allow KeyboardAvoidingView to take up all available space
+        flex: 1,
     },
     overlayContent: {
         backgroundColor: theme.colors.background,
-        width: "100%",  // Occupy full width *within* the overlay
-        height: "80%",
-        borderRadius: 10,
+        width: "100%",
+        borderRadius: 15,
         padding: 20,
-
+        minHeight: '50%', //MODIFIED
+        flexGrow: 1, //MODIFIED
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     overlayTitle: {
-        marginBottom: 20,
-        textAlign: "center",
-        color: theme.colors.text, // Use theme color
+        color: theme.colors.text,
+        fontWeight: 'bold',
+    },
+    editModeTitle: {
+        color: theme.colors.warning, // Different color in edit mode
     },
     searchBarContainer: {
         backgroundColor: "transparent",
@@ -174,24 +305,98 @@ const useStyles = makeStyles((theme) => ({
         borderTopColor: "transparent",
         marginBottom: 10,
         padding: 0,
-        width: '100%', // Ensure full width
     },
     searchBarInputContainer: {
         borderRadius: 10,
-        backgroundColor: theme.colors.grey5, // Use theme color
+        backgroundColor: theme.colors.grey5,
+    },
+    searchInputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10,
+    },
+    categoryContainer: {
+        marginBottom: 10,
+    },
+    categoryButton: {
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: theme.colors.grey5,
+        marginRight: 8,
+    },
+    selectedCategoryButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    categoryButtonText: {
+        color: theme.colors.grey2,
+    },
+    selectedCategoryButtonText: {
+        color: theme.colors.white,
+    },
+    sectionTitle: {
+        fontWeight: 'bold',
+        marginBottom: 5,
+        color: theme.colors.text,
+    },
+    recentFoodItem: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        backgroundColor: theme.colors.grey5,
+        marginRight: 8,
+    },
+    recentFoodText: {
+        color: theme.colors.grey2,
     },
     foodList: {
-        maxHeight: 200, // Limit height for scrollability
+        maxHeight: 200,
         marginBottom: 10,
-        width: "100%",
     },
     listItemContainer: {
-        backgroundColor: theme.colors.background
+        backgroundColor: 'transparent', // Use transparent background
+    },
+    listItemTitle: {
+        color: theme.colors.text,
+    },
+    noFoodsText: {
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginTop: 20,
+    },
+    servingSizeContainer: {
+        marginTop: 10,
+        marginBottom: 5,
+    },
+    servingSizeButton: {
+        backgroundColor: theme.colors.grey4,
+        borderRadius: 20,
+        marginRight: 8,
+        paddingHorizontal: 15,
+    },
+    servingSizeButtonTitle: {
+        color: theme.colors.grey2,
+    },
+    gramInputStyle: {
+        color: theme.colors.text,
+        marginLeft: 10
+    },
+    gramInputContainerStyle: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.grey4,
     },
     addButton: {
-        marginTop: 10,
-        backgroundColor: theme.colors.primary, // Or your desired button color
-
+        // backgroundColor: theme.colors.primary, // Handled in the component
+        borderRadius: 8,
+        paddingHorizontal: 20,
+    },
+    buttonTitle: {
+        color: theme.colors.white,
+        fontWeight: '600',
+    },
+    closeIcon: {
+        padding: 5,
     },
 }));
+
 export default AddEntryModal;
