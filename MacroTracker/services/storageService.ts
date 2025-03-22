@@ -8,6 +8,8 @@ import { Settings } from '../types/settings'; // Import Settings from types
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
+const RECENT_FOODS = 'recentFoods';
+
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -33,7 +35,7 @@ export const saveFoods = async (foods: Food[]): Promise<void> => {
     await AsyncStorage.setItem(FOODS_KEY, JSON.stringify(foods));
   } catch (error) {
     console.error('Error saving foods:', error);
-    throw error;
+    throw error; // Re-throw the error
   }
 };
 
@@ -43,20 +45,11 @@ export const loadFoods = async (): Promise<Food[]> => {
     return foodsJson ? JSON.parse(foodsJson) : [];
   } catch (error) {
     console.error('Error loading foods:', error);
-    return [];
+    return []; // Return an empty array on error
   }
 };
 
-// export interface Settings {  // REMOVE THIS DUPLICATE INTERFACE
-//   theme: 'light' | 'dark' | 'system';
-//   dailyGoals?: {
-//     calories?: number;
-//     protein?: number;
-//     carbs?: number;
-//     fat?: number;
-//   };
-//   settingsHistory?: { date: string; settings: Settings }[]; // Add this line
-// }
+
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -107,4 +100,25 @@ export const clearAllData = async (): Promise<void> => {
     console.error('Error clearing data:', error);
     throw error;
   }
+};
+
+// Function to save recent foods
+export const saveRecentFoods = async (foods: Food[]) => {
+    try {
+        await AsyncStorage.setItem(RECENT_FOODS, JSON.stringify(foods));
+    } catch (error) {
+        console.error('Error saving recent foods:', error);
+        throw error; // Important: Re-throw the error so calling code knows it failed
+    }
+};
+
+// Function to load recent foods
+export const loadRecentFoods = async (): Promise<Food[]> => {
+    try {
+        const foods = await AsyncStorage.getItem(RECENT_FOODS);
+        return foods ? JSON.parse(foods) : [];
+    } catch (error) {
+        console.error('Error loading recent foods:', error);
+        return []; // Return empty array on error, don't throw
+    }
 };

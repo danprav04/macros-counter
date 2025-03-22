@@ -23,6 +23,7 @@ import { Food } from "../types/food";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isValidNumberInput } from "../utils/validationUtils";
 import { DailyEntryItem } from "../types/dailyEntry";
+import { loadRecentFoods, saveRecentFoods } from "../services/storageService"; // Import storage functions
 
 interface AddEntryModalProps {
     isVisible: boolean;
@@ -36,7 +37,7 @@ interface AddEntryModalProps {
     updateSearch: (search: string) => void;
     search: string;
     isEditMode: boolean;
-    initialGrams?: string; // Add initialGrams prop
+    initialGrams?: string;
 
 }
 
@@ -52,12 +53,13 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     updateSearch,
     search,
     isEditMode,
-    initialGrams // Use initialGrams
+    initialGrams
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [recentFoods, setRecentFoods] = useState<Food[]>([]); // Example state
+    const [recentFoods, setRecentFoods] = useState<Food[]>([]); //  state
+    const MAX_RECENT_FOODS = 5;
 
     // Pre-populate grams in edit mode
     useEffect(() => {
@@ -67,10 +69,32 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }, [isEditMode, initialGrams, setGrams]);
 
 
+     const addToRecentFoods = async (food: Food) => {
+        // Remove the food if it already exists to avoid duplicates
+        const updatedRecentFoods = recentFoods.filter(recentFood => recentFood.id !== food.id);
+
+        // Add the food to the beginning of the array
+        updatedRecentFoods.unshift(food);
+
+        // Limit the array to the maximum number of recent foods
+        const trimmedRecentFoods = updatedRecentFoods.slice(0, MAX_RECENT_FOODS);
+
+        setRecentFoods(trimmedRecentFoods);
+        await saveRecentFoods(trimmedRecentFoods); // Save to storage
+    };
+
     useEffect(() => {
-        // Load recent foods (example - replace with your logic)
-        //  loadRecentFoods().then(setRecentFoods);
-    }, []);
+        // Load recent foods from storage when the modal becomes visible
+           const loadRecents = async () => {
+            const loadedRecentFoods = await loadRecentFoods();
+            setRecentFoods(loadedRecentFoods);
+        };
+        if(isVisible){
+             loadRecents()
+        }
+
+    }, [isVisible]);
+
 
     useEffect(() => {
         if (!isVisible) {
@@ -115,12 +139,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }, [selectedFood]);
 
 
-    const handleAddOrUpdateEntry = () => {
+    const handleAddOrUpdateEntry = async () => { // Made asynchronous
         handleAddEntry(); // Keep the logic in the parent component
         // Add to recent foods (example - replace with your logic)
-        //  if (selectedFood) {
-        //      addToRecentFoods(selectedFood);
-        //  }
+          if (selectedFood) {
+              await addToRecentFoods(selectedFood); // Await the addition
+          }
     };
 
     return (
@@ -154,7 +178,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                 name="close"
                                 type="material"
                                 size={28}
-                                color={theme.colors.grey3}
+                                color={theme.colors.text}
                                 onPress={toggleOverlay}
                                 containerStyle={styles.closeIcon}
                             />
@@ -264,6 +288,7 @@ const useStyles = makeStyles((theme) => ({
     overlayStyle: {
         backgroundColor: 'rgba(255, 255, 255, 0)',
         padding: 20,
+        marginVertical: 50,
         width: '90%',
         borderRadius: 15,
         height: '100%', //MODIFIED

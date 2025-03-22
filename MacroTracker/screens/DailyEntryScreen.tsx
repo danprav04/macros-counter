@@ -33,7 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
-import { useFocusEffect } from '@react-navigation/native';  // Import useFocusEffect
+import { useFocusEffect } from '@react-navigation/native';
 
 interface DailyGoals {
   calories: number;
@@ -77,10 +77,14 @@ const DailyEntryScreen: React.FC = () => {
     setDailyEntries(loadedEntries);
   }, []);
 
-  // Use useFocusEffect to load data when the screen comes into focus
+  // Use useFocusEffect to reload data when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadData();
+      return () => {
+        // Reset the search state when the screen loses focus
+        setSearch('');
+      };
     }, [loadData])
   );
 
@@ -160,13 +164,12 @@ const DailyEntryScreen: React.FC = () => {
 
     const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    const updatedEntries = dailyEntries.map(entry => {
-        if (entry.date === currentEntry.date) {
-            return updatedEntry;
-        }
-        return entry;
+    const updatedEntries = dailyEntries.map((entry) => {
+      if (entry.date === currentEntry.date) {
+        return updatedEntry;
+      }
+      return entry;
     });
-
 
     await updateAndSaveEntries(updatedEntries);
     setSelectedFood(null);
@@ -175,11 +178,9 @@ const DailyEntryScreen: React.FC = () => {
     setIsOverlayVisible(false);
   };
 
-
   const handleSelectFood = (item: Food | null) => {
     setSelectedFood(item);
   };
-
 
   const handleRemoveEntry = async (index: number) => {
     const currentEntry = getCurrentEntry();
@@ -187,23 +188,23 @@ const DailyEntryScreen: React.FC = () => {
     const updatedItems = currentEntry.items.filter((_, i) => i !== index);
     const updatedEntry = { ...currentEntry, items: updatedItems };
 
-    const updatedEntries = dailyEntries.map(entry => {
-        if (entry.date === currentEntry.date) {
-            return updatedEntry;
-        }
-        return entry;
+    const updatedEntries = dailyEntries.map((entry) => {
+      if (entry.date === currentEntry.date) {
+        return updatedEntry;
+      }
+      return entry;
     });
+
     if (updatedItems.length === 0) {
-       const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date)
-        await updateAndSaveEntries(newEntries)
-        setDailyEntries(newEntries)
-
+      const newEntries = dailyEntries.filter(
+        (entry) => entry.date !== currentEntry.date
+      );
+      await updateAndSaveEntries(newEntries);
+      setDailyEntries(newEntries);
+    } else {
+      await updateAndSaveEntries(updatedEntries);
+      setDailyEntries(updatedEntries);
     }
-    else {
-        await updateAndSaveEntries(updatedEntries);
-        setDailyEntries(updatedEntries)
-    }
-
 
     Toast.show({
       type: "success",
@@ -220,10 +221,10 @@ const DailyEntryScreen: React.FC = () => {
     item: DailyEntryItem,
     originalEntry: DailyEntry
   ) => {
-    const updatedEntries = dailyEntries.map(entry => {
+    const updatedEntries = dailyEntries.map((entry) => {
       if (entry.date === originalEntry.date) {
         const existingItemIndex = entry.items.findIndex(
-          existingItem => existingItem.food.id === item.food.id
+          (existingItem) => existingItem.food.id === item.food.id
         );
 
         let updatedItems = [...entry.items];
@@ -241,36 +242,28 @@ const DailyEntryScreen: React.FC = () => {
     Toast.hide();
   };
 
+  const updateSearch = (search: string) => setSearch(search);
 
-    const updateSearch = (search: string) => setSearch(search); //handleSearch
-    const filteredFoods = useMemo(() => {
-        return foods.filter((food) =>
-            food.name.toLowerCase().includes(search.toLowerCase())
-        );
-    }, [foods]);
+  const toggleOverlay = (
+    item: DailyEntryItem | null = null,
+    index: number | null = null
+  ) => {
+    setIsOverlayVisible(!isOverlayVisible);
+    if (item) {
+      setSelectedFood(item.food);
+      setGrams(String(item.grams)); // Pre-fill grams
+      setEditIndex(index); // Store the index being edited
+    } else {
+      setSelectedFood(null);
+      setGrams("");
+      setEditIndex(null);
+      setSearch("");
+    }
+  };
 
-    const toggleOverlay = (item: DailyEntryItem | null = null, index: number | null = null) => {
-        setIsOverlayVisible(!isOverlayVisible);
-        if (item) {
-            setSelectedFood(item.food);
-            setGrams(String(item.grams)); // Pre-fill grams
-            setEditIndex(index); // Store the index being edited
-
-        }
-        else {
-            setSelectedFood(null);
-            setGrams("");
-            setEditIndex(null);
-            setSearch('')
-
-
-        }
-    };
-
-    const handleEditEntry = (item: DailyEntryItem, index: number) => {
-        toggleOverlay(item, index);
-    };
-
+  const handleEditEntry = (item: DailyEntryItem, index: number) => {
+    toggleOverlay(item, index);
+  };
 
   const handleDateChange = (event: any, selectedDateVal?: Date) => {
     setShowDatePicker(false);
@@ -284,7 +277,6 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleNextDay = () =>
     setSelectedDate(formatDate(addDays(parseISO(selectedDate), 1)));
-
 
   const calculateTotals = () => {
     const currentEntry = getCurrentEntry();
@@ -305,7 +297,8 @@ const DailyEntryScreen: React.FC = () => {
     };
   };
 
-  const { totalCalories, totalProtein, totalCarbs, totalFat } = calculateTotals();
+  const { totalCalories, totalProtein, totalCarbs, totalFat } =
+    calculateTotals();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -313,7 +306,9 @@ const DailyEntryScreen: React.FC = () => {
         <Button
           type="clear"
           onPress={handlePreviousDay}
-          icon={<Icon name="arrow-back" type="ionicon" color={theme.colors.text} />}
+          icon={
+            <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
+          }
         />
         <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
           {formatDateReadable(selectedDate)}
@@ -321,7 +316,13 @@ const DailyEntryScreen: React.FC = () => {
         <Button
           type="clear"
           onPress={handleNextDay}
-          icon={<Icon name="arrow-forward" type="ionicon" color={theme.colors.text} />}
+          icon={
+            <Icon
+              name="arrow-forward"
+              type="ionicon"
+              color={theme.colors.text}
+            />
+          }
         />
       </View>
 
@@ -357,11 +358,11 @@ const DailyEntryScreen: React.FC = () => {
               <Button
                 title="Edit"
                 onPress={() => {
-                  handleEditEntry(item, index); // Pass the entire item
+                  handleEditEntry(item, index);
                   reset();
                 }}
-                icon={{ name: 'edit', color: 'white' }}
-                buttonStyle={{ minHeight: '100%', backgroundColor: 'orange' }}
+                icon={{ name: "edit", color: "white" }}
+                buttonStyle={{ minHeight: "100%", backgroundColor: "orange" }}
               />
             )}
             rightContent={(reset) => (
@@ -371,26 +372,30 @@ const DailyEntryScreen: React.FC = () => {
                   handleRemoveEntry(index);
                   reset();
                 }}
-                icon={{ name: 'delete', color: 'white' }}
-                buttonStyle={{ minHeight: '100%', backgroundColor: 'red' }}
+                icon={{ name: "delete", color: "white" }}
+                buttonStyle={{ minHeight: "100%", backgroundColor: "red" }}
               />
             )}
             containerStyle={{ backgroundColor: theme.colors.background }}
           >
-            <Icon name="nutrition-outline" type="ionicon" color={theme.colors.text} />
+            <Icon
+              name="nutrition-outline"
+              type="ionicon"
+              color={theme.colors.text}
+            />
             <ListItem.Content>
               <ListItem.Title style={{ color: theme.colors.text }}>
                 {item.food.name}
               </ListItem.Title>
 
-              {editingIndex === index ? ( // Inline editing input
+              {editingIndex === index ? (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Input
                     value={tempGrams}
                     onChangeText={setTempGrams}
                     keyboardType="numeric"
-                    inputContainerStyle={{ borderBottomWidth: 0 }} // Remove default border
-                    style={{ width: 80, color: theme.colors.text }} // Adjust width as needed
+                    inputContainerStyle={{ borderBottomWidth: 0 }}
+                    style={{ width: 80, color: theme.colors.text }}
                   />
                   <Button
                     title="Save"
@@ -405,12 +410,11 @@ const DailyEntryScreen: React.FC = () => {
                     icon={<Icon name="close" type="ionicon" color="red" />}
                   />
                 </View>
-              ) : ( // Regular display of grams
+              ) : (
                 <ListItem.Subtitle style={{ color: theme.colors.text }}>
                   {`${item.grams}g`}
                 </ListItem.Subtitle>
               )}
-
             </ListItem.Content>
           </ListItem.Swipeable>
         )}
@@ -427,16 +431,17 @@ const DailyEntryScreen: React.FC = () => {
 
       <AddEntryModal
         isVisible={isOverlayVisible}
-        toggleOverlay={() => toggleOverlay()}
-        selectedFood={selectedFood} //Pass the selected food
-        grams={grams} //pass the current number of grams
+        toggleOverlay={toggleOverlay}
+        selectedFood={selectedFood}
+        grams={grams}
         setGrams={setGrams}
         foods={foods} // Pass all foods
         handleAddEntry={handleAddEntry}
         handleSelectFood={handleSelectFood}
         search={search}
         updateSearch={updateSearch}
-        isEditMode={editIndex !== null} // Pass isEditMode
+        isEditMode={editIndex !== null}
+        initialGrams={editIndex !== null ? String(getCurrentEntry().items[editIndex]?.grams) : undefined}
       />
     </SafeAreaView>
   );
@@ -473,7 +478,6 @@ const useStyles = makeStyles((theme) => ({
     elevation: 0,
     zIndex: 10,
   },
-
 }));
 
 export default DailyEntryScreen;

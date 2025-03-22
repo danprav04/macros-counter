@@ -1,4 +1,4 @@
-// services/foodService.ts (No significant changes)
+// services/foodService.ts
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
@@ -23,7 +23,7 @@ export const updateFood = async (updatedFood: Food): Promise<Food> => {
   const foods = await loadFoods();
   const index = foods.findIndex((f) => f.id === updatedFood.id);
   if (index === -1) {
-    throw new Error('Food not found');
+    throw new Error('Food not found'); // Throw an error if not found
   }
   foods[index] = updatedFood;
   await saveFoods(foods);
