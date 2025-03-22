@@ -6,5 +6,5 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
-  category: string; // Add the category property
+  // category: string;  // REMOVED
 }

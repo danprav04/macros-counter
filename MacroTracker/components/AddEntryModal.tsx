@@ -57,7 +57,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    // const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // REMOVED
     const [recentFoods, setRecentFoods] = useState<Food[]>([]); //  state
     const MAX_RECENT_FOODS = 5;
 
@@ -100,23 +100,23 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         if (!isVisible) {
             handleSelectFood(null);
             setGrams(""); // Clear grams when closing
-            setSelectedCategory(null); // Reset category
+            // setSelectedCategory(null); // Reset category  // REMOVED
             updateSearch("");  //clear the search
         }
     }, [isVisible, handleSelectFood, setGrams]);
 
-    const categories = useMemo(() => {
-        // Extract unique categories from your foods (adapt to your data)
-        const uniqueCategories = [...new Set(foods.map(food => food.category).filter(Boolean))];
-        return ["All", ...uniqueCategories]; // Add "All" category
-    }, [foods]);
+    // const categories = useMemo(() => { // REMOVED
+    //     // Extract unique categories from your foods (adapt to your data)
+    //     const uniqueCategories = [...new Set(foods.map(food => food.category).filter(Boolean))];
+    //     return ["All", ...uniqueCategories]; // Add "All" category
+    // }, [foods]);
 
     const filteredFoods = useMemo(() => {
         let result = foods;
 
-        if (selectedCategory && selectedCategory !== "All") {
-            result = result.filter((food) => food.category === selectedCategory);
-        }
+        // if (selectedCategory && selectedCategory !== "All") { // REMOVED
+        //     result = result.filter((food) => food.category === selectedCategory);
+        // }
 
         if (search) {
             result = result.filter((food) =>
@@ -125,7 +125,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
 
         return result;
-    }, [foods, search, selectedCategory]);
+    }, [foods, search, /*selectedCategory*/]); // Removed selectedCategory
 
     const servingSizeSuggestions = useMemo(() => {
         if (!selectedFood) return [];
@@ -194,7 +194,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             inputStyle={styles.searchInputStyle}
                         />
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryContainer}>
+                        {/* <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryContainer}> //REMOVED
                             {categories.map((category) => (
                                 <TouchableOpacity
                                     key={category}
@@ -212,7 +212,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
+                        </ScrollView> */}
 
                         {recentFoods.length > 0 && (
                             <View>
@@ -339,23 +339,23 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.text,
         marginLeft: 10,
     },
-    categoryContainer: {
+    categoryContainer: { //REMOVED
         marginBottom: 10,
     },
-    categoryButton: {
+    categoryButton: { //REMOVED
         paddingHorizontal: 15,
         paddingVertical: 8,
         borderRadius: 20,
         backgroundColor: theme.colors.grey5,
         marginRight: 8,
     },
-    selectedCategoryButton: {
+    selectedCategoryButton: { //REMOVED
         backgroundColor: theme.colors.primary,
     },
-    categoryButtonText: {
+    categoryButtonText: { //REMOVED
         color: theme.colors.grey2,
     },
-    selectedCategoryButtonText: {
+    selectedCategoryButtonText: { //REMOVED
         color: theme.colors.white,
     },
     sectionTitle: {

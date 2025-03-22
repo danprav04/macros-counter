@@ -15,7 +15,7 @@ import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
-import { useFocusEffect } from "@react-navigation/native"; // Import useFocusEffect
+import { useFocusEffect } from "@react-navigation/native";
 
 interface FoodListScreenProps {
   onFoodChange?: () => void;
@@ -31,7 +31,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     protein: 0,
     carbs: 0,
     fat: 0,
-    category: "", // Make sure to initialize all properties
+    // category: "", // REMOVED - No category field
   });
   const [editFood, setEditFood] = useState<Food | null>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -43,13 +43,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     setFoods(loadedFoods);
   }, []);
 
-    // Use useFocusEffect to reload data
   useFocusEffect(
     useCallback(() => {
       loadFoodData();
     }, [loadFoodData])
   );
-
 
   const validateFood = (food: Omit<Food, "id">) => {
     const newErrors: { [key: string]: string } = {};
@@ -81,10 +79,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         protein: 0,
         carbs: 0,
         fat: 0,
-        category: "", // Reset category too
+        // category: "", // REMOVED - No category
       });
       setIsOverlayVisible(false);
-      onFoodChange && onFoodChange(); // Trigger data refresh in parent
+      onFoodChange && onFoodChange();
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to create food.");
     }
@@ -103,21 +101,19 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
       setFoods(foods.map((f) => (f.id === updated.id ? updated : f)));
       setEditFood(null);
       setIsOverlayVisible(false);
-      onFoodChange && onFoodChange(); // Notify parent of change
+      onFoodChange && onFoodChange();
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to update food.");
     }
   };
 
   const handleDeleteFood = async (foodId: string) => {
-    // Optimistically remove the food from the list
     const foodToDelete = foods.find((f) => f.id === foodId);
-    if (!foodToDelete) return; // Should not happen, but handle for safety
+    if (!foodToDelete) return;
     setFoods(foods.filter((f) => f.id !== foodId));
 
     try {
       await deleteFood(foodId);
-      // If deletion is successful, show the toast
       Toast.show({
         type: "success",
         text1: `${foodToDelete.name} deleted`,
@@ -127,9 +123,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         onPress: () => handleUndoDeleteFood(foodToDelete),
         visibilityTime: 3000,
       });
-       onFoodChange && onFoodChange();
+      onFoodChange && onFoodChange();
     } catch (error) {
-      // If deletion failed, add the food back to the list
       setFoods((prevFoods) => [...prevFoods, foodToDelete]);
       Alert.alert("Error", "Failed to delete food.");
     }
@@ -138,37 +133,28 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
   const handleUndoDeleteFood = (food: Food) => {
     setFoods((prevFoods) => [...prevFoods, food]);
     Toast.hide();
-     onFoodChange && onFoodChange();
-
+    onFoodChange && onFoodChange();
   };
 
   const toggleOverlay = (food?: Food) => {
     if (food) {
       setEditFood(food);
-      setNewFood({
-        name: "",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        category: "",
-      }); // Clear newFood
     } else {
       setEditFood(null);
-      setNewFood({
+      setNewFood({  // Reset newFood when adding, not editing
         name: "",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
-        category: "",
       });
     }
-    setErrors({});
+    setErrors({}); // Clear errors
     setIsOverlayVisible(!isOverlayVisible);
   };
 
   const updateSearch = (search: string) => setSearch(search);
+
   const filteredFoods = foods.filter((food) =>
     food.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -177,9 +163,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     key: keyof Omit<Food, "id">,
     value: string
   ) => {
+        // crucial change:  handle name and number inputs
     const updatedFood = editFood
-      ? { ...editFood, [key]: key === "name" ? value : value === "" ? 0 :  parseFloat(value)  } // Allow empty string, treat as 0
-      : { ...newFood, [key]: key === "name" ? value : value === "" ? 0: parseFloat(value) };
+      ? { ...editFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) }
+      : { ...newFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) };
 
     if (editFood) {
       setEditFood(updatedFood as Food);
@@ -210,7 +197,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             food={item}
             onEdit={toggleOverlay}
             onDelete={handleDeleteFood}
-            onUndoDelete={handleUndoDeleteFood}
+            onUndoDelete={handleUndoDeleteFood} // Pass undo function
           />
         )}
       />
@@ -218,10 +205,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
       <FAB
         icon={{ name: "add", color: "white" }}
         color={theme.colors.primary}
-        onPress={() => toggleOverlay()}
+        onPress={() => toggleOverlay()}  // Open overlay for adding
         placement="right"
-        title=""
-        style={{ marginBottom: 10, marginRight: 8 }}
+        title=""  // No title, just the icon
+        style={{marginBottom: 10, marginRight: 8}}
       />
 
       <AddFoodModal
@@ -250,7 +237,7 @@ const useStyles = makeStyles((theme) => ({
     borderBottomColor: "transparent",
     borderTopColor: "transparent",
     marginBottom: 10,
-    padding: 0,
+    padding: 0, // Remove extra padding
   },
   searchBarInputContainer: {
     borderRadius: 10,
