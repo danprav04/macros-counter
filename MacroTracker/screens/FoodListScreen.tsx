@@ -1,6 +1,6 @@
 // FoodListScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, FlatList, Alert, Platform } from "react-native";
+import { View, FlatList, Alert, Platform, Image } from "react-native"; // Import Image
 import {
   createFood,
   getFoods,
@@ -16,6 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
+import { Icon } from "@rneui/base";
+import { getFoodIconUrl } from "./../utils/iconUtils"; // Import the icon helper function
 
 interface FoodListScreenProps {
   onFoodChange?: () => void;
@@ -23,6 +25,7 @@ interface FoodListScreenProps {
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
   const [foods, setFoods] = useState<Food[]>([]);
+    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [search, setSearch] = useState("");
   const [newFood, setNewFood] = useState<Omit<Food, "id">>({
@@ -48,6 +51,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
       loadFoodData();
     }, [loadFoodData])
   );
+    useEffect(() => {
+        const loadIcons = async () => {
+            const icons: { [foodName: string]: string | null } = {};
+            for (const food of foods) {
+                const iconUrl = await getFoodIconUrl(food.name);
+                icons[food.name] = iconUrl;
+            }
+            setFoodIcons(icons);
+        };
+
+        loadIcons();
+    }, [foods]);
 
   const validateFood = (food: Omit<Food, "id">) => {
     const newErrors: { [key: string]: string } = {};
@@ -193,12 +208,15 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         data={filteredFoods}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <FoodItem
-            food={item}
-            onEdit={toggleOverlay}
-            onDelete={handleDeleteFood}
-            onUndoDelete={handleUndoDeleteFood} // Pass undo function
-          />
+            <View style={{flexDirection:'row'}}>
+              <FoodItem
+                food={item}
+                onEdit={toggleOverlay}
+                onDelete={handleDeleteFood}
+                onUndoDelete={handleUndoDeleteFood} // Pass undo function
+                />
+            </View>
+
         )}
       />
 
@@ -242,6 +260,12 @@ const useStyles = makeStyles((theme) => ({
   searchBarInputContainer: {
     borderRadius: 10,
   },
+    foodIcon: {
+        width: 30,
+        height: 30,
+        marginRight: 10,
+        borderRadius: 15, // Make it circular
+    },
 }));
 
 export default FoodListScreen;

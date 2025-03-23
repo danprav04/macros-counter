@@ -1,6 +1,6 @@
-// DailyEntryScreen.tsx (Modified for Timestamps)
+// DailyEntryScreen.tsx (Modified for Food Icons)
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, FlatList, Alert, Platform } from "react-native";
+import { View, FlatList, Alert, Platform, Image, StyleSheet } from "react-native"; // Import Image and StyleSheet
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods } from "../services/foodService";
@@ -34,6 +34,7 @@ import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from '@react-navigation/native';
+import { getFoodIconUrl } from "./../utils/iconUtils"; // Import the icon helper function
 
 interface DailyGoals {
   calories: number;
@@ -60,6 +61,7 @@ const DailyEntryScreen: React.FC = () => {
   const [tempGrams, setTempGrams] = useState("");
   const [search, setSearch] = useState("");
   const [editIndex, setEditIndex] = useState<number | null>(null);
+    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -85,6 +87,21 @@ const DailyEntryScreen: React.FC = () => {
       };
     }, [loadData])
   );
+
+    // Load food icons when component mounts or foods change
+    useEffect(() => {
+      const loadIcons = async () => {
+        const icons: { [foodName: string]: string | null } = {};
+        for (const food of foods) {
+          const iconUrl = await getFoodIconUrl(food.name);
+          icons[food.name] = iconUrl;
+        }
+        setFoodIcons(icons);
+      };
+
+      loadIcons();
+    }, [foods]);
+
 
   const getCurrentEntry = (): DailyEntry => {
     return (
@@ -382,11 +399,18 @@ const DailyEntryScreen: React.FC = () => {
             )}
             containerStyle={{ backgroundColor: theme.colors.background }}
           >
-            <Icon
-              name="nutrition-outline"
-              type="ionicon"
-              color={theme.colors.text}
-            />
+              {foodIcons[item.food.name] ? (
+                  <Image
+                      source={{ uri: foodIcons[item.food.name] as string }}
+                      style={styles.foodIcon}
+                  />
+              ) : (
+                  <Icon
+                      name="nutrition-outline"
+                      type="ionicon"
+                      color={theme.colors.text}
+                  />
+              )}
             <ListItem.Content>
               <ListItem.Title style={{ color: theme.colors.text }}>
                 {item.food.name}
@@ -468,6 +492,12 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: "bold",
     color: theme.colors.text,
   },
+    foodIcon: {
+        width: 30,
+        height: 30,
+        marginRight: 10,
+        borderRadius: 15, // Make it circular
+    },
   divider: {
     marginVertical: 10,
   },
