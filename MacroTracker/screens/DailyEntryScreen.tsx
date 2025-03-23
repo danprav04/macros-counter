@@ -494,10 +494,11 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.text,
     },
     foodIcon: {
-        width: 30,
-        height: 30,
-        marginRight: 10,
-        borderRadius: 15, // Make it circular
+      width: 30,
+      height: 30,
+      marginRight: 10,
+      borderRadius: 15,
+      resizeMode: "stretch", // Or 'cover', or 'stretch', see below
     },
     divider: {
         marginVertical: 10,

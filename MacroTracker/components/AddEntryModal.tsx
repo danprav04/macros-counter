@@ -391,8 +391,9 @@ const useStyles = makeStyles((theme) => ({
         width: 30,
         height: 30,
         marginRight: 10,
-        borderRadius: 15, // Make it circular
-    },
+        borderRadius: 15,
+        resizeMode: "stretch", // Or 'cover', or 'stretch', see below
+      },
     foodList: {
         maxHeight: 'auto',
     },

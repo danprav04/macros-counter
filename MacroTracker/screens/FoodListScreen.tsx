@@ -259,11 +259,12 @@ const useStyles = makeStyles((theme) => ({
     searchBarInputContainer: {
         borderRadius: 10,
     },
-    foodIcon: {  //This is not used here anymore, styling handled in FoodItem
-        width: 30,
-        height: 30,
-        marginRight: 10,
-        borderRadius: 15, // Make it circular
+    foodIcon: {
+      width: 30,
+      height: 30,
+      marginRight: 10,
+      borderRadius: 15,
+      resizeMode: "stretch", // Or 'cover', or 'stretch', see below
     },
 }));
 
