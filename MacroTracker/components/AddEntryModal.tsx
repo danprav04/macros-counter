@@ -395,7 +395,8 @@ const useStyles = makeStyles((theme) => ({
         resizeMode: "stretch", // Or 'cover', or 'stretch', see below
       },
     foodList: {
-        maxHeight: 'auto',
+        maxHeight: '48%',
+        marginBottom: 8
     },
     listItemContainer: {
         backgroundColor: 'transparent',
