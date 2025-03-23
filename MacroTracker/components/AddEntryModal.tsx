@@ -1,4 +1,5 @@
 // AddEntryModal.tsx
+// AddEntryModal.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import {
     View,
@@ -8,6 +9,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Dimensions, // Import Dimensions
+    Image,
 } from "react-native";
 import {
     Button,
@@ -25,6 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { isValidNumberInput } from "../utils/validationUtils";
 import { DailyEntryItem } from "../types/dailyEntry";
 import { loadRecentFoods, saveRecentFoods } from "../services/storageService"; // Import storage functions
+import { getFoodIconUrl } from "../utils/iconUtils"; // Import the icon helper function
 
 interface AddEntryModalProps {
     isVisible: boolean;
@@ -60,6 +63,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const styles = useStyles();
     const [recentFoods, setRecentFoods] = useState<Food[]>([]);
     const MAX_RECENT_FOODS = 5;
+    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
 
     // Get screen width for responsive adjustments
     const screenWidth = Dimensions.get('window').width;
@@ -105,6 +109,18 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
         return result;
     }, [foods, search]);
+    useEffect(() => {
+        const loadIcons = async () => {
+            const icons: { [foodName: string]: string | null } = {};
+            for (const food of foods) {
+                const iconUrl = await getFoodIconUrl(food.name);
+                icons[food.name] = iconUrl;
+            }
+            setFoodIcons(icons);
+        };
+
+        loadIcons();
+    }, [foods]);
 
     const servingSizeSuggestions = useMemo(() => {
         if (!selectedFood) return [];
@@ -186,6 +202,18 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                                 selectedFood?.id === item.id && styles.selectedRecentFoodItem, // Apply selected style
                                             ]}
                                             onPress={() => handleSelectFood(item)}>
+                                            {foodIcons[item.name] ? (
+                                                <Image
+                                                    source={{ uri: foodIcons[item.name] as string }}
+                                                    style={styles.foodIcon}
+                                                />
+                                            ) : (
+                                                <Icon
+                                                    name="fast-food-outline"
+                                                    type="ionicon"
+                                                    size={16}
+                                                />
+                                            )}
                                             <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]}>{item.name}</Text>
                                         </TouchableOpacity>
                                     )}
@@ -206,6 +234,18 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                                 selectedFood?.id === item.id && styles.selectedListItem, // Apply selected style
                                             ]}
                                         >
+                                            {foodIcons[item.name] ? (
+                                                <Image
+                                                    source={{ uri: foodIcons[item.name] as string }}
+                                                    style={styles.foodIcon}
+                                                />
+                                            ) : (
+                                                <Icon
+                                                    name="fast-food-outline"
+                                                    type="ionicon"
+                                                    size={16}
+                                                />
+                                            )}
                                             <ListItem.Content>
                                                 <ListItem.Title style={styles.listItemTitle}>{item.name}</ListItem.Title>
                                             </ListItem.Content>
@@ -329,6 +369,7 @@ const useStyles = makeStyles((theme) => ({
         marginRight: 10,
         justifyContent: 'center', // Center text
         alignItems: 'center',
+        flexDirection: 'row', // Added for icon and text alignment
     },
     selectedRecentFoodItem: {
         backgroundColor: theme.colors.grey3, // Slightly darker background
@@ -341,17 +382,25 @@ const useStyles = makeStyles((theme) => ({
     recentFoodText: {
         color: theme.colors.text,
         fontSize: 14,
+        marginLeft: 5, // Added to separate the icon and text
     },
     smallRecentFoodText: {
         fontSize: 12, // Smaller font on small screens
     },
-
+    foodIcon: {
+        width: 30,
+        height: 30,
+        marginRight: 10,
+        borderRadius: 15,
+        resizeMode: "stretch", // Or 'cover', or 'stretch', see below
+      },
     foodList: {
         maxHeight: 'auto',
     },
     listItemContainer: {
         backgroundColor: 'transparent',
         paddingVertical: 12, // More vertical padding
+        flexDirection: 'row', // Added for icon and text alignment
     },
     selectedListItem: {
         backgroundColor: theme.colors.grey5, // Highlight selected item
