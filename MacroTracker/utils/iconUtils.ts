@@ -1,6 +1,8 @@
+// utils/iconUtils.ts
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_KEY = '25170800-59d7530d1a73abe661796e093'; // Sign up at https://pixabay.com/ to get a free API key
+const API_KEY = '25170800-59d7530d1a73abe661796e093';
 const API_ENDPOINT = "https://pixabay.com/api/";
 
 // Define the cache entry type
@@ -12,8 +14,8 @@ type CacheEntry = {
 // In-memory cache for fast access
 const memoryCache = new Map<string, CacheEntry>();
 
-// Cache TTL: 1 hour in milliseconds
-const CACHE_TTL = 60 * 60 * 1000;
+// Cache TTL: 3 days in milliseconds
+const CACHE_TTL = 3 * 24 * 60 * 60 * 1000;
 
 // Prefix for AsyncStorage keys
 const STORAGE_KEY_PREFIX = 'foodIconCache_';
@@ -45,10 +47,13 @@ export const getFoodIconUrl = async (foodName: string): Promise<string | null> =
   } catch (error) {
     console.error('Error accessing AsyncStorage:', error);
   }
+  
+  console.log(API_KEY);
+  
 
   // 3. No valid cached result, fetch from the API.
   try {
-    const query = encodeURIComponent(`${foodName} minimal icon transparent`);
+    const query = encodeURIComponent(`${foodName} minimal icon transparent colored`);
     const url = `${API_ENDPOINT}?key=${API_KEY}&q=${query}&image_type=vector&category=food&safesearch=true`;
     
     const response = await fetch(url);
