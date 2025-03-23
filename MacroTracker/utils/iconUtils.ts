@@ -48,12 +48,10 @@ export const getFoodIconUrl = async (foodName: string): Promise<string | null> =
     console.error('Error accessing AsyncStorage:', error);
   }
   
-  console.log(API_KEY);
-  
 
   // 3. No valid cached result, fetch from the API.
   try {
-    const query = encodeURIComponent(`${foodName} minimal icon transparent colored`);
+    const query = encodeURIComponent(`${foodName} minimal icon transparent`);
     const url = `${API_ENDPOINT}?key=${API_KEY}&q=${query}&image_type=vector&category=food&safesearch=true`;
     
     const response = await fetch(url);

@@ -1,6 +1,7 @@
-// FoodListScreen.tsx
+// FoodListScreen.tsx (Corrected)
+
 import React, { useState, useEffect, useCallback } from "react";
-import { View, FlatList, Alert, Platform, Image } from "react-native"; // Import Image
+import { View, FlatList, Alert, Platform, Image } from "react-native";
 import {
     createFood,
     getFoods,
@@ -17,7 +18,7 @@ import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
 import { Icon } from "@rneui/base";
-import { getFoodIconUrl } from "./../utils/iconUtils"; // Import the icon helper function
+import { getFoodIconUrl } from "./../utils/iconUtils";
 
 interface FoodListScreenProps {
     onFoodChange?: () => void;
@@ -34,7 +35,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         protein: 0,
         carbs: 0,
         fat: 0,
-        // category: "", // REMOVED - No category field
     });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -73,7 +73,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             newErrors.protein = "Invalid input";
         if (!isValidNumberInput(String(food.carbs)))
             newErrors.carbs = "Invalid input";
-        if (!isValidNumberInput(String(food.fat))) newErrors.fat = "Invalid input";
+        if (!isValidNumberInput(String(food.fat)))
+            newErrors.fat = "Invalid input";
 
         return Object.keys(newErrors).length === 0 ? null : newErrors;
     };
@@ -94,7 +95,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 protein: 0,
                 carbs: 0,
                 fat: 0,
-                // category: "", // REMOVED - No category
             });
             setIsOverlayVisible(false);
             onFoodChange && onFoodChange();
@@ -156,7 +156,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             setEditFood(food);
         } else {
             setEditFood(null);
-            setNewFood({  // Reset newFood when adding, not editing
+            setNewFood({
                 name: "",
                 calories: 0,
                 protein: 0,
@@ -164,7 +164,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 fat: 0,
             });
         }
-        setErrors({}); // Clear errors
+        setErrors({});
         setIsOverlayVisible(!isOverlayVisible);
     };
 
@@ -174,19 +174,24 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         food.name.toLowerCase().includes(search.toLowerCase())
     );
 
-    const handleInputChange = (
+   const handleInputChange = (
         key: keyof Omit<Food, "id">,
-        value: string
+        value: string,
+        isEdit: boolean
     ) => {
-        // crucial change:  handle name and number inputs
-        const updatedFood = editFood
-            ? { ...editFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) }
-            : { ...newFood, [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value) };
-
-        if (editFood) {
-            setEditFood(updatedFood as Food);
+        if (isEdit) {
+            setEditFood((prevEditFood) => {
+                if (!prevEditFood) return null; // Or some default empty Food object
+                return {
+                    ...prevEditFood,
+                    [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value),
+                };
+            });
         } else {
-            setNewFood(updatedFood);
+            setNewFood((prevNewFood) => ({
+                ...prevNewFood,
+                [key]: key === "name" ? value : value === "" ? 0 : parseFloat(value),
+            }));
         }
     };
 
@@ -208,13 +213,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 data={filteredFoods}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    // Remove the extra View wrapping FoodItem, let ListItem.Swipeable handle layout.
                     <FoodItem
                         food={item}
                         onEdit={toggleOverlay}
                         onDelete={handleDeleteFood}
-                        onUndoDelete={handleUndoDeleteFood} // Pass undo function
-                        foodIconUrl={foodIcons[item.name]} // Pass the icon URL directly
+                        onUndoDelete={handleUndoDeleteFood}
+                        foodIconUrl={foodIcons[item.name]}
                     />
                 )}
             />
@@ -222,9 +226,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             <FAB
                 icon={{ name: "add", color: "white" }}
                 color={theme.colors.primary}
-                onPress={() => toggleOverlay()}  // Open overlay for adding
+                onPress={() => toggleOverlay()}
                 placement="right"
-                title=""  // No title, just the icon
+                title=""
                 style={{ marginBottom: 10, marginRight: 8 }}
             />
 
@@ -254,12 +258,12 @@ const useStyles = makeStyles((theme) => ({
         borderBottomColor: "transparent",
         borderTopColor: "transparent",
         marginBottom: 10,
-        padding: 0, // Remove extra padding
+        padding: 0,
     },
     searchBarInputContainer: {
         borderRadius: 10,
     },
-    foodIcon: {
+      foodIcon: {
       width: 30,
       height: 30,
       marginRight: 10,
