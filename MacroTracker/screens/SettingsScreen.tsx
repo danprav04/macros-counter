@@ -1,4 +1,4 @@
-// SettingsScreen.tsx (Corrected for UTC Timestamps)
+// SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Text, makeStyles } from "@rneui/themed";
@@ -36,7 +36,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
     carbs: [],
     fat: [],
   });
-  const [settingsHistory, setSettingsHistory] = useState<{ date: number; dailyGoals: { [key in MacroType]: number } }[]>([]); // Use timestamp
+  // Removed settingsHistory
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [dataChangeCounter, setDataChangeCounter] = useState(0);
 
@@ -45,7 +45,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
 
   const loadInitialSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
-    const loadedSettingsHistory = loadedSettings?.settingsHistory || [];
 
     setSettings((prevSettings) => ({
       ...prevSettings,
@@ -55,7 +54,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
         ...(loadedSettings?.dailyGoals || {}),
       },
     }));
-    setSettingsHistory(loadedSettingsHistory);
   }, []);
 
   useEffect(() => {
@@ -73,82 +71,61 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
         dailyGoals: updatedGoals,
       };
 
-      // Store the date as a timestamp
-      const newHistoryEntry = {
-        date: new Date().getTime(), // UTC timestamp
-        dailyGoals: updatedGoals,
-      };
-
-      const newSettingsHistory = [...settingsHistory, newHistoryEntry];
+      // Removed settings history update
 
       (async () => {
-        await saveSettings({ ...updatedSettings, settingsHistory: newSettingsHistory });
-        setSettingsHistory(newSettingsHistory);
+        await saveSettings(updatedSettings); // Simplified save
         setChartUpdateKey((prevKey) => prevKey + 1);
       })();
 
       return updatedSettings;
     });
-    }, [settingsHistory]);
+    }, []); // Removed settingsHistory dependency
 
 
     const getStatisticsData = useCallback(
-    (
-      dailyEntries: DailyEntry[],
-      macro: MacroType,
-      settingsHistory: { date: number; dailyGoals: { [key in MacroType]: number } }[]
-    ): MacroData[][] => { // Return type annotation
-      const intakeData: MacroData[] = [];
-      const goalData: MacroData[] = []; // For calories goal
+      (
+        dailyEntries: DailyEntry[],
+        macro: MacroType,
+      ): MacroData[][] => { // Return type annotation
+        const intakeData: MacroData[] = [];
+        const goalData: MacroData[] = []; // For calories goal
 
-        dailyEntries.forEach((entry) => {
-            const entryDate = parseISO(entry.date);
-          let relevantGoals: { [key in MacroType]: number };
+          dailyEntries.forEach((entry) => {
+              const entryDate = parseISO(entry.date);
+            // Use current settings for all entries
+            const relevantGoals = settings.dailyGoals;
 
-          // 1. Find the *most recent* setting BEFORE or EQUAL TO the entry date.
-          const applicableSetting = settingsHistory
-            .filter((sh) => !isBefore(entryDate, new Date(sh.date)))  // Compare with UTC timestamp
-            .sort((a, b) => b.date - a.date)[0]; // Sort by timestamp
+            const intakeValue = entry.items.reduce(
+              (total, item) => total + (item.food[macro] / 100) * item.grams,
+              0
+            );
+            const goalValue = relevantGoals[macro] ?? 0;
 
-          // 2. Determine the settings to use:
-          if (applicableSetting) {
-            // Use historical settings if found.
-            relevantGoals = applicableSetting.dailyGoals;
-          } else {
-            // Use *current* settings as the fallback.
-            relevantGoals = settings.dailyGoals;
-          }
+            // Add to intake data (for all macros)
+            intakeData.push({ x: entryDate.getTime(), y: intakeValue });
 
-          const intakeValue = entry.items.reduce(
-            (total, item) => total + (item.food[macro] / 100) * item.grams,
-            0
-          );
-          const goalValue = relevantGoals[macro] ?? 0;
+            // Add to goal data (only for calories)
+            if (macro === "calories") {
+              goalData.push({ x: entryDate.getTime(), y: goalValue });
+            }
+          });
 
-          // Add to intake data (for all macros)
-          intakeData.push({ x: entryDate.getTime(), y: intakeValue });
-
-          // Add to goal data (only for calories)
+          // Sort both arrays by date
+        intakeData.sort((a, b) => a.x - b.x);
           if (macro === "calories") {
-            goalData.push({ x: entryDate.getTime(), y: goalValue });
+              goalData.sort((a,b) => a.x - b.x);
           }
-        });
 
-        // Sort both arrays by date
-      intakeData.sort((a, b) => a.x - b.x);
+        // Return as an array of arrays
         if (macro === "calories") {
-            goalData.sort((a,b) => a.x - b.x);
+          return [intakeData, goalData]; // Two series: intake and goal
+        } else {
+          return [intakeData]; // One series: intake only
         }
-
-      // Return as an array of arrays
-      if (macro === "calories") {
-        return [intakeData, goalData]; // Two series: intake and goal
-      } else {
-        return [intakeData]; // One series: intake only
-      }
-    },
-    [settings.dailyGoals, settingsHistory]
-  );
+      },
+      [settings.dailyGoals] // Only settings.dailyGoals as dependency
+    );
 
 
   const updateStatistics = useCallback(async () => {
@@ -156,14 +133,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onDataOp
 
     // Calculate statistics for each macro
     const updatedStats: Statistics = {
-      calories: getStatisticsData(loadedEntries, "calories", settingsHistory),
-      protein: getStatisticsData(loadedEntries, "protein", settingsHistory),
-      carbs: getStatisticsData(loadedEntries, "carbs", settingsHistory),
-      fat: getStatisticsData(loadedEntries, "fat", settingsHistory),
+      calories: getStatisticsData(loadedEntries, "calories"),
+      protein: getStatisticsData(loadedEntries, "protein"),
+      carbs: getStatisticsData(loadedEntries, "carbs"),
+      fat: getStatisticsData(loadedEntries, "fat"),
     };
 
     setStatistics(updatedStats);
-  }, [getStatisticsData, settingsHistory]);
+  }, [getStatisticsData]);
 
    useFocusEffect(
     useCallback(() => {
@@ -219,3 +196,6 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default SettingsScreen;
+
+// components/StatisticsChart.tsx (No changes needed here)
+// Remains the same as in the previous, corrected version.  The key changes were in SettingsScreen.
