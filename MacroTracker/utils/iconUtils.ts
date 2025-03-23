@@ -1,26 +1,28 @@
-// utils/iconUtils.ts
-// const API_KEY = "your_api_key"; // Replace with your actual API key
-const API_ENDPOINT = "https://www.themealdb.com/api/json/v1/1/search.php?s=";
+const API_KEY = '25170800-59d7530d1a73abe661796e093'; // Sign up at https://pixabay.com/ to get a free API key
+const API_ENDPOINT = "https://pixabay.com/api/";
 
 export const getFoodIconUrl = async (foodName: string): Promise<string | null> => {
-    try {
-        const response = await fetch(`${API_ENDPOINT}${foodName}`);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.meals && data.meals.length > 0) {
-            // Assuming the first meal's image is representative
-            return data.meals[0].strMealThumb;
-        } else {
-            // If no meals found, return null or a default icon URL
-            return null;
-        }
-    } catch (error) {
-        console.error("Error fetching food icon:", error);
-        return null;
+  try {
+    // URL encode the query to support non-English characters as well
+    const query = encodeURIComponent(foodName);
+    // Optionally, you can add parameters to filter for illustrations if you prefer icons:
+    // e.g., image_type=photo or image_type=illustration
+    const url = `${API_ENDPOINT}?key=${API_KEY}&q=${query}&image_type=photo`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
+    
+    const data = await response.json();
+    // Pick the first image from the results
+    if (data.hits && data.hits.length > 0) {
+      return data.hits[0].webformatURL; // or choose another size based on your needs
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching food icon:", error);
+    return null;
+  }
 };
