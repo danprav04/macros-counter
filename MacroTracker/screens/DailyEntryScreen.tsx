@@ -5,26 +5,26 @@ import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods } from "../services/foodService";
 import {
-  saveDailyEntries,
-  loadDailyEntries,
-  loadSettings,
+    saveDailyEntries,
+    loadDailyEntries,
+    loadSettings,
 } from "../services/storageService";
 import {
-  formatDate,
-  formatDateReadable,
-  getTodayDateString,
+    formatDate,
+    formatDateReadable,
+    getTodayDateString,
 } from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
 import DailyProgress from "../components/DailyProgress";
 import {
-  Button,
-  Text,
-  ListItem,
-  FAB,
-  makeStyles,
-  useTheme,
-  Divider,
-  Input,
+    Button,
+    Text,
+    ListItem,
+    FAB,
+    makeStyles,
+    useTheme,
+    Divider,
+    Input,
 } from "@rneui/themed";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO } from "date-fns";
@@ -37,163 +37,163 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getFoodIconUrl } from "./../utils/iconUtils"; // Import the icon helper function
 
 interface DailyGoals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
 }
 
 const DailyEntryScreen: React.FC = () => {
-  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [foods, setFoods] = useState<Food[]>([]);
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [grams, setGrams] = useState("");
-  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
-    calories: 2000,
-    protein: 50,
-    carbs: 200,
-    fat: 70,
-  });
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [tempGrams, setTempGrams] = useState("");
-  const [search, setSearch] = useState("");
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+    const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
+    const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+    const [foods, setFoods] = useState<Food[]>([]);
+    const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+    const [grams, setGrams] = useState("");
+    const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
+        calories: 2000,
+        protein: 50,
+        carbs: 200,
+        fat: 70,
+    });
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [tempGrams, setTempGrams] = useState("");
+    const [search, setSearch] = useState("");
+    const [editIndex, setEditIndex] = useState<number | null>(null);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
 
-  const { theme } = useTheme();
-  const styles = useStyles();
+    const { theme } = useTheme();
+    const styles = useStyles();
 
-  const loadData = useCallback(async () => {
-    const loadedFoods = await getFoods();
-    const loadedEntries = await loadDailyEntries();
-    const loadedSettings = await loadSettings();
+    const loadData = useCallback(async () => {
+        const loadedFoods = await getFoods();
+        const loadedEntries = await loadDailyEntries();
+        const loadedSettings = await loadSettings();
 
-    if (loadedSettings.dailyGoals) {
-      setDailyGoals(loadedSettings.dailyGoals);
-    }
+        if (loadedSettings.dailyGoals) {
+            setDailyGoals(loadedSettings.dailyGoals);
+        }
 
-    setFoods(loadedFoods);
-    setDailyEntries(loadedEntries);
-  }, []);
+        setFoods(loadedFoods);
+        setDailyEntries(loadedEntries);
+    }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-      return () => {
-        setSearch('');
-      };
-    }, [loadData])
-  );
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+            return () => {
+                setSearch('');
+            };
+        }, [loadData])
+    );
 
     // Load food icons when component mounts or foods change
     useEffect(() => {
-      const loadIcons = async () => {
-        const icons: { [foodName: string]: string | null } = {};
-        for (const food of foods) {
-          const iconUrl = await getFoodIconUrl(food.name);
-          icons[food.name] = iconUrl;
-        }
-        setFoodIcons(icons);
-      };
+        const loadIcons = async () => {
+            const icons: { [foodName: string]: string | null } = {};
+            for (const food of foods) {
+                const iconUrl = await getFoodIconUrl(food.name);
+                icons[food.name] = iconUrl;
+            }
+            setFoodIcons(icons);
+        };
 
-      loadIcons();
+        loadIcons();
     }, [foods]);
 
 
-  const getCurrentEntry = (): DailyEntry => {
-    return (
-      dailyEntries.find((entry) => entry.date === selectedDate) || {
-        date: selectedDate,
-        items: [],
-      }
-    );
-  };
-
-  const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
-    await saveDailyEntries(updatedEntries);
-    setDailyEntries(updatedEntries);
-  };
-
-  const handleStartEditing = (index: number, currentGrams: number) => {
-    setEditingIndex(index);
-    setTempGrams(String(currentGrams));
-  };
-
-  const handleSaveInlineEdit = async (index: number) => {
-    if (!isValidNumberInput(tempGrams) || parseFloat(tempGrams) <= 0) {
-      Alert.alert(
-        "Invalid Input",
-        "Please enter a valid, positive number for grams."
-      );
-      return;
-    }
-
-    const currentEntry = getCurrentEntry();
-    const updatedItems = [...currentEntry.items];
-    updatedItems[index] = { ...updatedItems[index], grams: parseFloat(tempGrams) };
-    const updatedEntry = { ...currentEntry, items: updatedItems };
-
-    const updatedEntries = dailyEntries.filter(
-      (entry) => entry.date !== selectedDate
-    );
-    updatedEntries.push(updatedEntry);
-
-    await updateAndSaveEntries(updatedEntries);
-    setEditingIndex(null);
-    setTempGrams("");
-  };
-
-  const handleCancelInlineEdit = () => {
-    setEditingIndex(null);
-    setTempGrams("");
-  };
-
-  const handleAddEntry = async () => {
-    if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
-      Alert.alert(
-        "Invalid Input",
-        "Please select a food and enter a valid, positive number for grams."
-      );
-      return;
-    }
-
-    const newEntryItem: DailyEntryItem = {
-      food: selectedFood,
-      grams: parseFloat(grams),
+    const getCurrentEntry = (): DailyEntry => {
+        return (
+            dailyEntries.find((entry) => entry.date === selectedDate) || {
+                date: selectedDate,
+                items: [],
+            }
+        );
     };
-    const currentEntry = getCurrentEntry();
-    let updatedItems;
 
-    if (editIndex !== null) {
-      updatedItems = currentEntry.items.map((item, index) =>
-        index === editIndex ? newEntryItem : item
-      );
-    } else {
-      updatedItems = [...currentEntry.items, newEntryItem];
-    }
+    const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
+        await saveDailyEntries(updatedEntries);
+        setDailyEntries(updatedEntries);
+    };
 
-    const updatedEntry = { ...currentEntry, items: updatedItems };
+    const handleStartEditing = (index: number, currentGrams: number) => {
+        setEditingIndex(index);
+        setTempGrams(String(currentGrams));
+    };
 
-    const updatedEntries = dailyEntries.map((entry) => {
-      if (entry.date === currentEntry.date) {
-        return updatedEntry;
-      }
-      return entry;
-    });
+    const handleSaveInlineEdit = async (index: number) => {
+        if (!isValidNumberInput(tempGrams) || parseFloat(tempGrams) <= 0) {
+            Alert.alert(
+                "Invalid Input",
+                "Please enter a valid, positive number for grams."
+            );
+            return;
+        }
 
-    await updateAndSaveEntries(updatedEntries);
-    setSelectedFood(null);
-    setGrams("");
-    setEditIndex(null);
-    setIsOverlayVisible(false);
-  };
+        const currentEntry = getCurrentEntry();
+        const updatedItems = [...currentEntry.items];
+        updatedItems[index] = { ...updatedItems[index], grams: parseFloat(tempGrams) };
+        const updatedEntry = { ...currentEntry, items: updatedItems };
 
-  const handleSelectFood = (item: Food | null) => {
-    setSelectedFood(item);
-  };
+        const updatedEntries = dailyEntries.filter(
+            (entry) => entry.date !== selectedDate
+        );
+        updatedEntries.push(updatedEntry);
+
+        await updateAndSaveEntries(updatedEntries);
+        setEditingIndex(null);
+        setTempGrams("");
+    };
+
+    const handleCancelInlineEdit = () => {
+        setEditingIndex(null);
+        setTempGrams("");
+    };
+
+    const handleAddEntry = async () => {
+        if (!selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0) {
+            Alert.alert(
+                "Invalid Input",
+                "Please select a food and enter a valid, positive number for grams."
+            );
+            return;
+        }
+
+        const newEntryItem: DailyEntryItem = {
+            food: selectedFood,
+            grams: parseFloat(grams),
+        };
+        const currentEntry = getCurrentEntry();
+        let updatedItems;
+
+        if (editIndex !== null) {
+            updatedItems = currentEntry.items.map((item, index) =>
+                index === editIndex ? newEntryItem : item
+            );
+        } else {
+            updatedItems = [...currentEntry.items, newEntryItem];
+        }
+
+        const updatedEntry = { ...currentEntry, items: updatedItems };
+
+        const updatedEntries = dailyEntries.map((entry) => {
+            if (entry.date === currentEntry.date) {
+                return updatedEntry;
+            }
+            return entry;
+        });
+
+        await updateAndSaveEntries(updatedEntries);
+        setSelectedFood(null);
+        setGrams("");
+        setEditIndex(null);
+        setIsOverlayVisible(false);
+    };
+
+    const handleSelectFood = (item: Food | null) => {
+        setSelectedFood(item);
+    };
 
     const handleRemoveEntry = async (index: number) => {
         const currentEntry = getCurrentEntry();
@@ -205,8 +205,8 @@ const DailyEntryScreen: React.FC = () => {
 
         //If the entry is empty, remove it completely from the entries.
         if (updatedItems.length === 0) {
-          const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date);
-          await updateAndSaveEntries(newEntries);
+            const newEntries = dailyEntries.filter((entry) => entry.date !== currentEntry.date);
+            await updateAndSaveEntries(newEntries);
         }
         else {
             const updatedEntries = dailyEntries.map((entry) => {
@@ -214,7 +214,7 @@ const DailyEntryScreen: React.FC = () => {
                     return updatedEntry;
                 }
                 return entry;
-                });
+            });
             await updateAndSaveEntries(updatedEntries);
         }
 
@@ -227,57 +227,57 @@ const DailyEntryScreen: React.FC = () => {
             onPress: () => handleUndoRemoveEntry(itemToRemove, currentEntry),
             visibilityTime: 3000,
         });
-  };
+    };
 
-  const handleUndoRemoveEntry = (
-    item: DailyEntryItem,
-    originalEntry: DailyEntry
-  ) => {
-    const updatedEntries = dailyEntries.map((entry) => {
-      if (entry.date === originalEntry.date) {
-        const existingItemIndex = entry.items.findIndex(
-          (existingItem) => existingItem.food.id === item.food.id
-        );
+    const handleUndoRemoveEntry = (
+        item: DailyEntryItem,
+        originalEntry: DailyEntry
+    ) => {
+        const updatedEntries = dailyEntries.map((entry) => {
+            if (entry.date === originalEntry.date) {
+                const existingItemIndex = entry.items.findIndex(
+                    (existingItem) => existingItem.food.id === item.food.id
+                );
 
-        let updatedItems = [...entry.items];
+                let updatedItems = [...entry.items];
 
-        if (existingItemIndex === -1) {
-          updatedItems = [...entry.items, item];
+                if (existingItemIndex === -1) {
+                    updatedItems = [...entry.items, item];
+                }
+
+                return { ...entry, items: updatedItems };
+            }
+            return entry;
+        });
+
+        updateAndSaveEntries(updatedEntries);
+        Toast.hide();
+    };
+
+    const updateSearch = (search: string) => setSearch(search);
+
+    const toggleOverlay = (
+        item: DailyEntryItem | null = null,
+        index: number | null = null
+    ) => {
+        setIsOverlayVisible(!isOverlayVisible);
+        if (item) {
+            setSelectedFood(item.food);
+            setGrams(String(item.grams));
+            setEditIndex(index);
+        } else {
+            setSelectedFood(null);
+            setGrams("");
+            setEditIndex(null);
+            setSearch("");
         }
+    };
 
-        return { ...entry, items: updatedItems };
-      }
-      return entry;
-    });
+    const handleEditEntry = (item: DailyEntryItem, index: number) => {
+        toggleOverlay(item, index);
+    };
 
-    updateAndSaveEntries(updatedEntries);
-    Toast.hide();
-  };
-
-  const updateSearch = (search: string) => setSearch(search);
-
-  const toggleOverlay = (
-    item: DailyEntryItem | null = null,
-    index: number | null = null
-  ) => {
-    setIsOverlayVisible(!isOverlayVisible);
-    if (item) {
-      setSelectedFood(item.food);
-      setGrams(String(item.grams));
-      setEditIndex(index);
-    } else {
-      setSelectedFood(null);
-      setGrams("");
-      setEditIndex(null);
-      setSearch("");
-    }
-  };
-
-  const handleEditEntry = (item: DailyEntryItem, index: number) => {
-    toggleOverlay(item, index);
-  };
-
-// Key Change: Update date handling
+    // Key Change: Update date handling
     const handleDateChange = (event: any, selectedDateVal?: Date) => {
         setShowDatePicker(false);
         if (event.type === "set" && selectedDateVal) {
@@ -296,222 +296,223 @@ const DailyEntryScreen: React.FC = () => {
     const handleNextDay = () => {
         const currentDate = parseISO(selectedDate);
         const newDate = addDays(currentDate, 1);
-        setSelectedDate(formatISO(newDate, {representation: 'date'}));
+        setSelectedDate(formatISO(newDate, { representation: 'date' }));
     }
 
-  const calculateTotals = () => {
-    const currentEntry = getCurrentEntry();
-    let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
+    const calculateTotals = () => {
+        const currentEntry = getCurrentEntry();
+        let [totalCalories, totalProtein, totalCarbs, totalFat] = [0, 0, 0, 0];
 
-    currentEntry.items.forEach((item) => {
-      totalCalories += (item.food.calories / 100) * item.grams;
-      totalProtein += (item.food.protein / 100) * item.grams;
-      totalCarbs += (item.food.carbs / 100) * item.grams;
-      totalFat += (item.food.fat / 100) * item.grams;
-    });
+        currentEntry.items.forEach((item) => {
+            totalCalories += (item.food.calories / 100) * item.grams;
+            totalProtein += (item.food.protein / 100) * item.grams;
+            totalCarbs += (item.food.carbs / 100) * item.grams;
+            totalFat += (item.food.fat / 100) * item.grams;
+        });
 
-    return {
-      totalCalories: Math.round(totalCalories),
-      totalProtein: Math.round(totalProtein),
-      totalCarbs: Math.round(totalCarbs),
-      totalFat: Math.round(totalFat),
+        return {
+            totalCalories: Math.round(totalCalories),
+            totalProtein: Math.round(totalProtein),
+            totalCarbs: Math.round(totalCarbs),
+            totalFat: Math.round(totalFat),
+        };
     };
-  };
 
-  const { totalCalories, totalProtein, totalCarbs, totalFat } =
-    calculateTotals();
+    const { totalCalories, totalProtein, totalCarbs, totalFat } =
+        calculateTotals();
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.dateNavigation}>
-        <Button
-          type="clear"
-          onPress={handlePreviousDay}
-          icon={
-            <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
-          }
-        />
-        <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
-          {formatDateReadable(selectedDate)}
-        </Text>
-        <Button
-          type="clear"
-          onPress={handleNextDay}
-          icon={
-            <Icon
-              name="arrow-forward"
-              type="ionicon"
-              color={theme.colors.text}
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.dateNavigation}>
+                <Button
+                    type="clear"
+                    onPress={handlePreviousDay}
+                    icon={
+                        <Icon name="arrow-back" type="ionicon" color={theme.colors.text} />
+                    }
+                />
+                <Text style={styles.dateText} onPress={() => setShowDatePicker(true)}>
+                    {formatDateReadable(selectedDate)}
+                </Text>
+                <Button
+                    type="clear"
+                    onPress={handleNextDay}
+                    icon={
+                        <Icon
+                            name="arrow-forward"
+                            type="ionicon"
+                            color={theme.colors.text}
+                        />
+                    }
+                />
+            </View>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={parseISO(selectedDate)}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                />
+            )}
+
+            <DailyProgress
+                calories={totalCalories}
+                protein={totalProtein}
+                carbs={totalCarbs}
+                fat={totalFat}
+                goals={dailyGoals}
             />
-          }
-        />
-      </View>
+            <Divider style={styles.divider} />
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={parseISO(selectedDate)}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
+            <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Entries:
+            </Text>
 
-      <DailyProgress
-        calories={totalCalories}
-        protein={totalProtein}
-        carbs={totalCarbs}
-        fat={totalFat}
-        goals={dailyGoals}
-      />
-      <Divider style={styles.divider} />
+            <FlatList
+                data={getCurrentEntry().items}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item, index }) => (
+                    <ListItem.Swipeable
+                        bottomDivider
+                        leftContent={(reset) => (
+                            <Button
+                                title="Edit"
+                                onPress={() => {
+                                    handleEditEntry(item, index);
+                                    reset();
+                                }}
+                                icon={{ name: "edit", color: "white" }}
+                                buttonStyle={{ minHeight: "100%", backgroundColor: "orange" }}
+                            />
+                        )}
+                        rightContent={(reset) => (
+                            <Button
+                                title="Delete"
+                                onPress={() => {
+                                    handleRemoveEntry(index);
+                                    reset();
+                                }}
+                                icon={{ name: "delete", color: "white" }}
+                                buttonStyle={{ minHeight: "100%", backgroundColor: "red" }}
+                            />
+                        )}
+                        containerStyle={{ backgroundColor: theme.colors.background }}
+                    >
+                        {/* Use Image if icon URL exists, otherwise use default Icon */}
+                        {foodIcons[item.food.name] ? (
+                            <Image
+                                source={{ uri: foodIcons[item.food.name] as string }}
+                                style={styles.foodIcon}
+                            />
+                        ) : (
+                            <Icon
+                                name="nutrition-outline"
+                                type="ionicon"
+                                color={theme.colors.text}
+                            />
+                        )}
+                        <ListItem.Content>
+                            <ListItem.Title style={{ color: theme.colors.text }}>
+                                {item.food.name}
+                            </ListItem.Title>
 
-      <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Entries:
-      </Text>
+                            {editingIndex === index ? (
+                                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                    <Input
+                                        value={tempGrams}
+                                        onChangeText={setTempGrams}
+                                        keyboardType="numeric"
+                                        inputContainerStyle={{ borderBottomWidth: 0 }}
+                                        style={{ width: 80, color: theme.colors.text }}
+                                    />
+                                    <Button
+                                        title="Save"
+                                        type="clear"
+                                        onPress={() => handleSaveInlineEdit(index)}
+                                        icon={<Icon name="checkmark" type="ionicon" color="green" />}
+                                    />
+                                    <Button
+                                        title="Cancel"
+                                        type="clear"
+                                        onPress={handleCancelInlineEdit}
+                                        icon={<Icon name="close" type="ionicon" color="red" />}
+                                    />
+                                </View>
+                            ) : (
+                                <ListItem.Subtitle style={{ color: theme.colors.text }}>
+                                    {`${item.grams}g`}
+                                </ListItem.Subtitle>
+                            )}
+                        </ListItem.Content>
+                    </ListItem.Swipeable>
+                )}
+            />
 
-      <FlatList
-        data={getCurrentEntry().items}
-        keyExtractor={(_, index) => index.toString()}
-        renderItem={({ item, index }) => (
-          <ListItem.Swipeable
-            bottomDivider
-            leftContent={(reset) => (
-              <Button
-                title="Edit"
-                onPress={() => {
-                  handleEditEntry(item, index);
-                  reset();
-                }}
-                icon={{ name: "edit", color: "white" }}
-                buttonStyle={{ minHeight: "100%", backgroundColor: "orange" }}
-              />
-            )}
-            rightContent={(reset) => (
-              <Button
-                title="Delete"
-                onPress={() => {
-                  handleRemoveEntry(index);
-                  reset();
-                }}
-                icon={{ name: "delete", color: "white" }}
-                buttonStyle={{ minHeight: "100%", backgroundColor: "red" }}
-              />
-            )}
-            containerStyle={{ backgroundColor: theme.colors.background }}
-          >
-              {foodIcons[item.food.name] ? (
-                  <Image
-                      source={{ uri: foodIcons[item.food.name] as string }}
-                      style={styles.foodIcon}
-                  />
-              ) : (
-                  <Icon
-                      name="nutrition-outline"
-                      type="ionicon"
-                      color={theme.colors.text}
-                  />
-              )}
-            <ListItem.Content>
-              <ListItem.Title style={{ color: theme.colors.text }}>
-                {item.food.name}
-              </ListItem.Title>
+            <FAB
+                icon={<Icon name="add" color="white" />}
+                color={theme.colors.primary}
+                onPress={() => toggleOverlay()}
+                placement="right"
+                size="large"
+                containerStyle={styles.fabContainer}
+            />
 
-              {editingIndex === index ? (
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Input
-                    value={tempGrams}
-                    onChangeText={setTempGrams}
-                    keyboardType="numeric"
-                    inputContainerStyle={{ borderBottomWidth: 0 }}
-                    style={{ width: 80, color: theme.colors.text }}
-                  />
-                  <Button
-                    title="Save"
-                    type="clear"
-                    onPress={() => handleSaveInlineEdit(index)}
-                    icon={<Icon name="checkmark" type="ionicon" color="green" />}
-                  />
-                  <Button
-                    title="Cancel"
-                    type="clear"
-                    onPress={handleCancelInlineEdit}
-                    icon={<Icon name="close" type="ionicon" color="red" />}
-                  />
-                </View>
-              ) : (
-                <ListItem.Subtitle style={{ color: theme.colors.text }}>
-                  {`${item.grams}g`}
-                </ListItem.Subtitle>
-              )}
-            </ListItem.Content>
-          </ListItem.Swipeable>
-        )}
-      />
-
-      <FAB
-        icon={<Icon name="add" color="white" />}
-        color={theme.colors.primary}
-        onPress={() => toggleOverlay()}
-        placement="right"
-        size="large"
-        containerStyle={styles.fabContainer}
-      />
-
-      <AddEntryModal
-        isVisible={isOverlayVisible}
-        toggleOverlay={toggleOverlay}
-        selectedFood={selectedFood}
-        grams={grams}
-        setGrams={setGrams}
-        foods={foods} // Pass all foods
-        handleAddEntry={handleAddEntry}
-        handleSelectFood={handleSelectFood}
-        search={search}
-        updateSearch={updateSearch}
-        isEditMode={editIndex !== null}
-        initialGrams={editIndex !== null ? String(getCurrentEntry().items[editIndex]?.grams) : undefined}
-      />
-    </SafeAreaView>
-  );
+            <AddEntryModal
+                isVisible={isOverlayVisible}
+                toggleOverlay={toggleOverlay}
+                selectedFood={selectedFood}
+                grams={grams}
+                setGrams={setGrams}
+                foods={foods} // Pass all foods
+                handleAddEntry={handleAddEntry}
+                handleSelectFood={handleSelectFood}
+                search={search}
+                updateSearch={updateSearch}
+                isEditMode={editIndex !== null}
+                initialGrams={editIndex !== null ? String(getCurrentEntry().items[editIndex]?.grams) : undefined}
+            />
+        </SafeAreaView>
+    );
 };
 
 const useStyles = makeStyles((theme) => ({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  dateNavigation: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 10,
-    paddingHorizontal: 10,
-  },
-  dateText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.text,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background,
+    },
+    dateNavigation: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginVertical: 10,
+        paddingHorizontal: 10,
+    },
+    dateText: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: theme.colors.text,
+    },
     foodIcon: {
         width: 30,
         height: 30,
         marginRight: 10,
         borderRadius: 15, // Make it circular
     },
-  divider: {
-    marginVertical: 10,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  fabContainer: {
-    position: "absolute",
-    bottom: -6,
-    right: -8,
-    elevation: 0,
-    zIndex: 10,
-  },
+    divider: {
+        marginVertical: 10,
+    },
+    sectionTitle: {
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    fabContainer: {
+        position: "absolute",
+        bottom: -6,
+        right: -8,
+        elevation: 0,
+        zIndex: 10,
+    },
 }));
 
 export default DailyEntryScreen;
