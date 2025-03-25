@@ -84,6 +84,7 @@ yarn-error.*
 
 
 ---------- app.json ----------
+
 {
   "expo": {
     "name": "MacroTracker",
@@ -91,7 +92,7 @@ yarn-error.*
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "automatic", 
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -102,14 +103,23 @@ yarn-error.*
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.macrotracker"
+      "bundleIdentifier": "com.yourcompany.macrotracker",
+      "infoPlist": { 
+        "UIStatusBarStyle": "UIStatusBarStyleAutomatic" 
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.macrotracker"
+      "package": "com.yourcompany.macrotracker",
+      "userInterfaceStyle": "automatic", 
+      "statusBar": { 
+        "backgroundColor": "#00000000",  
+        "translucent": true,             
+        "barStyle": "auto"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -129,24 +139,24 @@ yarn-error.*
     }
   }
 }
-
 ---------- END app.json ----------
 
 
 ---------- App.tsx ----------
-// App.tsx (Modified for Reload)
+// App.tsx (Modified for Diagnostics and Debugging in Expo Go)
 import 'react-native-get-random-values'; // MUST BE FIRST
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeProvider, createTheme } from '@rneui/themed';
 import { loadSettings, saveSettings } from './services/storageService';
-import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Import AppState
+import { useColorScheme, AppState, AppStateStatus, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
-import { LogBox } from 'react-native';
+import { LogBox, View, Text } from 'react-native';  //Import view for debug
+import { StatusBar } from 'expo-status-bar'; // changed import
 
 LogBox.ignoreLogs(['Function components cannot be given refs']);
 
@@ -302,7 +312,7 @@ const App = () => {
   const colorScheme = useColorScheme();
   const [reloadKey, setReloadKey] = useState(0); // Key for forcing remount
   const [appState, setAppState] = useState(AppState.currentState); // AppState
-
+  const [themeCheck, setThemeCheck] = useState(0); //Added theme check
 
   // Load initial settings
     useEffect(() => {
@@ -351,6 +361,7 @@ const App = () => {
       await saveSettings(updatedSettings);
       setLoadedSettings(updatedSettings);
     }
+    setThemeCheck(t => t + 1);
   };
 
   const currentTheme = updateTheme(themeMode);
@@ -382,17 +393,27 @@ const App = () => {
     },
 };
 
+  // Determine status bar style based on theme
+  const statusBarTheme = themeMode === 'system' ? colorScheme : themeMode;
+
+  const backgroundColor = currentTheme.colors.background;
+
   return (
     <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
-      <SafeAreaProvider>
-        <NavigationContainer
-          theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
-        >
-          {/* Pass reloadKey and triggerReload */}
-          <AppNavigator onThemeChange={handleThemeChange}  key={reloadKey} />
-        </NavigationContainer>
-      </SafeAreaProvider>
+        {/* Added to try force to behave like a normal text */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}> {/* Enclose everything in SafeAreaView */}
+      <StatusBar
+        style={statusBarTheme === 'dark' ? 'light' : 'dark'} // Text color
+        backgroundColor={backgroundColor} // Background color from theme
+        translucent={false} // Disable translucency for now (easier debugging)
+      />
+      <NavigationContainer
+        theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
+      >
+        <AppNavigator onThemeChange={handleThemeChange} key={reloadKey} />
+      </NavigationContainer>
       <Toast />
+      </SafeAreaView>
     </ThemeProvider>
   );
 };
@@ -1464,14 +1485,14 @@ export default ConfirmationModal;
 ---------- DailyGoalsInput.tsx ----------
 // components/DailyGoalsInput.tsx
 import React from "react";
-import { Input } from "@rneui/themed";
+import { Input, Text } from "@rneui/themed";
 import { MacroType } from "../types/settings";
 import { useTheme } from "@rneui/themed";
 
 
 interface DailyGoalsInputProps {
-  dailyGoals: { [key in MacroType]: number };
-  onGoalChange: (goalType: MacroType, value: string) => void;
+    dailyGoals: { [key in MacroType]: number };
+    onGoalChange: (goalType: MacroType, value: string) => void;
 }
 
 const DailyGoalsInput: React.FC<DailyGoalsInputProps> = ({
@@ -1486,7 +1507,7 @@ const DailyGoalsInput: React.FC<DailyGoalsInputProps> = ({
       {["calories", "protein", "carbs", "fat"].map((macro) => (
         <Input
           key={macro}
-          label={`${macro.charAt(0).toUpperCase() + macro.slice(1)} Goal`}
+          label={<Text style={{ color: theme.colors.text }}>{`${macro.charAt(0).toUpperCase() + macro.slice(1)} Goal`}</Text>} // Wrap label in <Text>
           keyboardType="numeric"
           value={dailyGoals?.[macro as MacroType]?.toString() || ""}
           onChangeText={(value) => onGoalChange(macro as MacroType, value)}
