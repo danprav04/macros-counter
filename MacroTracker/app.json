@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.macrotracker"
@@ -33,6 +35,11 @@
           "appleTeamId": "YOUR_TEAM_ID"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
+      }
+    }
   }
 }
