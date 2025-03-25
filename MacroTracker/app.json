@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "MacroTracker",
@@ -5,25 +6,39 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "automatic", 
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#000000",
+      "translucent": false,
+      "barStyle": "light-content"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.macrotracker"
+      "bundleIdentifier": "com.yourcompany.macrotracker",
+      "infoPlist": { 
+        "UIStatusBarStyle": "UIStatusBarStyleAutomatic" 
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.macrotracker"
+      "package": "com.yourcompany.macrotracker",
+      "userInterfaceStyle": "automatic", 
+      "statusBar": { 
+        "backgroundColor": "#00000000",  
+        "translucent": true,             
+        "barStyle": "auto"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
