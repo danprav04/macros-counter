@@ -272,7 +272,6 @@ const App = () => {
     <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
       {/* Added to try force to behave like a normal text */}
       <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}>
-        {" "}
         {/* Enclose everything in SafeAreaView */}
         <StatusBar
           style={statusBarTheme === "dark" ? "light" : "dark"} // Text color
