@@ -1,4 +1,4 @@
-// App.tsx (Modified for Reload)
+// App.tsx (Modified for Diagnostics and ThemeProvider Robustness)
 import 'react-native-get-random-values'; // MUST BE FIRST
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
@@ -6,12 +6,11 @@ import AppNavigator from './navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, createTheme } from '@rneui/themed';
 import { loadSettings, saveSettings } from './services/storageService';
-import { useColorScheme, AppState, AppStateStatus } from 'react-native'; // Import AppState
+import { useColorScheme, AppState, AppStateStatus, StatusBar, Text } from 'react-native'; // Import AppState and StatusBar
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Colors } from '@rneui/base';
 import { Settings } from './types/settings';
-import { LogBox } from 'react-native';
-
+import { LogBox, View } from 'react-native';  //Import view for debug
 LogBox.ignoreLogs(['Function components cannot be given refs']);
 
 declare module '@rneui/themed' {
@@ -166,7 +165,7 @@ const App = () => {
   const colorScheme = useColorScheme();
   const [reloadKey, setReloadKey] = useState(0); // Key for forcing remount
   const [appState, setAppState] = useState(AppState.currentState); // AppState
-
+  const [themeCheck, setThemeCheck] = useState(0); //Added theme check
 
   // Load initial settings
     useEffect(() => {
@@ -215,6 +214,7 @@ const App = () => {
       await saveSettings(updatedSettings);
       setLoadedSettings(updatedSettings);
     }
+    setThemeCheck(t => t + 1);
   };
 
   const currentTheme = updateTheme(themeMode);
@@ -246,8 +246,18 @@ const App = () => {
     },
 };
 
+  // Determine status bar style based on theme
+    const statusBarTheme = themeMode === 'system' ? colorScheme : themeMode;
+
   return (
     <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
+        {/* Diagnostics: Check theme object and rendering */ }
+        {/* <View style={{ padding: 20, backgroundColor: currentTheme.colors.background }}>
+            <Text style={{ color: currentTheme.colors.text }}>
+                Current Theme Mode: {themeMode}
+            </Text>
+        </View> */}
+      <StatusBar barStyle={statusBarTheme === 'dark' ? 'light-content' : 'dark-content'} />
       <SafeAreaProvider>
         <NavigationContainer
           theme={currentTheme.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}

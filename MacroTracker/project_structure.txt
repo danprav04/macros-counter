@@ -2445,7 +2445,7 @@ fs.stat(projectRoot, (err, stats) => {
 
 
 ---------- DailyEntryScreen.tsx ----------
-// DailyEntryScreen.tsx (Modified for Food Icons)
+// DailyEntryScreen.tsx (Corrected and Fully Functional)
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, FlatList, Alert, Platform, Image, StyleSheet } from "react-native"; // Import Image and StyleSheet
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
@@ -2551,12 +2551,16 @@ const DailyEntryScreen: React.FC = () => {
 
 
     const getCurrentEntry = (): DailyEntry => {
-        return (
-            dailyEntries.find((entry) => entry.date === selectedDate) || {
+        const existingEntry = dailyEntries.find((entry) => entry.date === selectedDate);
+        if (existingEntry) {
+            return existingEntry;
+        } else {
+            // Create a new DailyEntry if one doesn't exist
+            return {
                 date: selectedDate,
                 items: [],
-            }
-        );
+            };
+        }
     };
 
     const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
@@ -2611,25 +2615,36 @@ const DailyEntryScreen: React.FC = () => {
             food: selectedFood,
             grams: parseFloat(grams),
         };
-        const currentEntry = getCurrentEntry();
+
+        const currentEntry = getCurrentEntry();  // Get or *create* the entry
         let updatedItems;
 
         if (editIndex !== null) {
+            // ... (edit logic remains the same)
             updatedItems = currentEntry.items.map((item, index) =>
                 index === editIndex ? newEntryItem : item
             );
         } else {
+             // Add the new item to the (potentially new) entry
             updatedItems = [...currentEntry.items, newEntryItem];
         }
 
         const updatedEntry = { ...currentEntry, items: updatedItems };
 
-        const updatedEntries = dailyEntries.map((entry) => {
-            if (entry.date === currentEntry.date) {
+
+         // Find and replace OR add the new entry
+        let updatedEntries = dailyEntries.map((entry) => {
+            if (entry.date === selectedDate) {
                 return updatedEntry;
             }
             return entry;
         });
+
+        // If it's a new entry, add it to the array
+        if (!dailyEntries.some(entry => entry.date === selectedDate)) {
+            updatedEntries.push(updatedEntry);
+        }
+
 
         await updateAndSaveEntries(updatedEntries);
         setSelectedFood(null);
