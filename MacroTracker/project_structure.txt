@@ -5,7 +5,7 @@ assets/
   adaptive-icon.png
   favicon.png
   icon.png
-  splash-icon.png
+  splash.png
 components/
   AddEntryModal.tsx
   AddFoodModal.tsx
@@ -16,6 +16,7 @@ components/
   FoodItem.tsx
   StatisticsChart.tsx
   ThemeSwitch.tsx
+eas.json
 index.ts
 navigation/
   AppNavigator.tsx
@@ -96,7 +97,9 @@ yarn-error.*
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.macrotracker"
@@ -118,7 +121,12 @@ yarn-error.*
           "appleTeamId": "YOUR_TEAM_ID"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
+      }
+    }
   }
 }
 
@@ -408,9 +416,9 @@ export default App;
 ---------- END icon.png ----------
 
 
----------- splash-icon.png ----------
+---------- splash.png ----------
 (Image file - content not included)
----------- END splash-icon.png ----------
+---------- END splash.png ----------
 
 
 ---------- AddEntryModal.tsx ----------
@@ -2180,6 +2188,34 @@ const ThemeSwitch: React.FC<ThemeSwitchProps> = ({ currentTheme, onToggle }) => 
 
 export default ThemeSwitch;
 ---------- END ThemeSwitch.tsx ----------
+
+
+---------- eas.json ----------
+{
+  "cli": {
+    "version": ">= 13.4.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+---------- END eas.json ----------
 
 
 ---------- index.ts ----------
