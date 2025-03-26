@@ -1,16 +1,15 @@
-// services/storageService.ts (Modified for Timestamps)
+// services/storageService.ts (Updated)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
-import { Settings } from '../types/settings';
+import { Settings } from '../types/settings'; // Make sure Settings includes language?: string;
 import { formatISO, parseISO } from 'date-fns';
-
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
 const RECENT_FOODS = 'recentFoods';
-
+const LANGUAGE_KEY = 'userLanguage'; // Key for storing user's language choice
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -50,11 +49,12 @@ export const loadFoods = async (): Promise<Food[]> => {
   }
 };
 
-
-
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
-    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    // Ensure language is explicitly handled if needed before saving
+    const settingsToSave = { ...settings };
+    // No specific manipulation needed here if language is optional and undefined is acceptable
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
   } catch (error) {
     console.error('Error saving settings:', error);
     throw error;
@@ -66,72 +66,118 @@ export const loadSettings = async (): Promise<Settings> => {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
     const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
 
-    // Apply defaults and ensure structure
+    // Define default settings structure including language
     const defaultSettings: Settings = {
       theme: 'system',
       dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: [] // Ensure settingsHistory exists
+      settingsHistory: [], // Ensure settingsHistory exists
+      language: undefined, // Default language is undefined
     };
 
-
-    return {
-      ...defaultSettings, // Start with defaults
-        ...loadedSettings, // Override with loaded values
-        dailyGoals: {
-          ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
-            ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
-        }
+    // --- Type Safety Check for Language ---
+    let languageValue = loadedSettings.language;
+    if (languageValue !== undefined && typeof languageValue !== 'string') {
+        console.warn(`Invalid language type found in settings storage (${typeof languageValue}), resetting to undefined.`);
+        languageValue = undefined; // Reset to undefined if not string or undefined
     }
+    // --- End Type Safety Check ---
+
+    // Merge defaults with loaded settings, ensuring structure and types
+    const finalSettings: Settings = {
+      ...defaultSettings, // Start with defaults
+      ...loadedSettings, // Override with loaded values
+      language: languageValue, // Use the validated language value
+      dailyGoals: {
+        ...defaultSettings.dailyGoals, // Ensure all goal fields exist
+        ...(loadedSettings.dailyGoals || {}), // Override with loaded goals
+      },
+      // Ensure settingsHistory is an array if it exists in loadedSettings
+      settingsHistory: Array.isArray(loadedSettings.settingsHistory)
+        ? loadedSettings.settingsHistory
+        : defaultSettings.settingsHistory,
+    };
+
+    return finalSettings;
 
   } catch (error: any) {
     console.error('Error loading settings:', error);
 
-    // *** KEY CHANGE: Handle "Row too big" error ***
+    // Handle specific error for oversized data
     if (error.message.includes('Row too big')) {
       console.warn('Detected oversized settings data. Clearing settings.');
       try {
-        await AsyncStorage.removeItem(SETTINGS_KEY); // Clear the oversized data
+        await AsyncStorage.removeItem(SETTINGS_KEY); // Clear the corrupted data
       } catch (clearError) {
         console.error('Error clearing oversized settings:', clearError);
-        // You might want to handle this more gracefully, e.g., by showing an error to the user.
       }
     }
 
-    // Return defaults if loading fails (or after clearing)
-    return {
+    // Return defaults if any loading error occurs (or after clearing)
+    const defaultReturn: Settings = {
       theme: 'system',
       dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: [] // Ensure settingsHistory exists in default
+      settingsHistory: [],
+      language: undefined, // Ensure language is in the default return
     };
+    return defaultReturn;
   }
 };
 
 export const clearAllData = async (): Promise<void> => {
   try {
-    await AsyncStorage.clear();
+    // Be specific about what to clear if needed, or clear everything
+    // await AsyncStorage.multiRemove([DAILY_ENTRIES_KEY, FOODS_KEY, SETTINGS_KEY, RECENT_FOODS, LANGUAGE_KEY]);
+    await AsyncStorage.clear(); // Clears everything managed by AsyncStorage for this app
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;
   }
 };
 
-// Function to save recent foods
+// --- Recent Foods ---
 export const saveRecentFoods = async (foods: Food[]) => {
     try {
         await AsyncStorage.setItem(RECENT_FOODS, JSON.stringify(foods));
     } catch (error) {
         console.error('Error saving recent foods:', error);
-        throw error; // Important: Re-throw the error so calling code knows it failed
+        throw error;
     }
 };
 
-// Function to load recent foods
 export const loadRecentFoods = async (): Promise<Food[]> => {
     try {
         const foods = await AsyncStorage.getItem(RECENT_FOODS);
         return foods ? JSON.parse(foods) : [];
     } catch (error) {
         console.error('Error loading recent foods:', error);
-        return []; // Return empty array on error, don't throw
+        return [];
     }
+};
+
+// --- Language Preference ---
+// Used by i18n detector and potentially Settings screen
+
+export const saveLanguage = async (language: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LANGUAGE_KEY, language);
+  } catch (error) {
+    console.error('Error saving language preference:', error);
+    throw error;
+  }
+};
+
+export const loadLanguage = async (): Promise<string | null> => {
+  try {
+    const language = await AsyncStorage.getItem(LANGUAGE_KEY);
+    // Add safety check: ensure loaded value is a string or null
+    if (language !== null && typeof language !== 'string') {
+        console.warn(`Invalid language type found in language storage (${typeof language}), returning null.`);
+        await AsyncStorage.removeItem(LANGUAGE_KEY); // Remove invalid entry
+        return null;
+    }
+    return language; // Returns string or null
+  } catch (error) {
+    console.error('Error loading language preference:', error);
+    return null; // Return null on error
+  }
 };

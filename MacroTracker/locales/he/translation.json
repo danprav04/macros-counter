@@ -1,0 +1,45 @@
+{
+  "common": {
+    "add": "הוסף",
+    "edit": "ערוך",
+    "delete": "מחק",
+    "cancel": "ביטול",
+    "confirm": "אישור",
+    "update": "עדכן",
+    "save": "שמור",
+    "searchPlaceholder": "חיפוש...",
+    "loading": "טוען...",
+    "error": "שגיאה",
+    "success": "הצלחה",
+    "close": "סגור",
+    "undo": "בטל",
+    "back": "חזור"
+  },
+  "screens": {
+    "dailyEntry": "יומן יומי",
+    "foods": "מאכלים",
+    "settings": "הגדרות"
+  },
+  "settingsScreen": {
+    "general": "כללי",
+    "theme": "Theme",
+    "darkMode": "Dark Mode",
+    "language": "שפה",
+    "dailyGoals": "יעדים יומיים",
+    "statistics": "סטטיסטיקה",
+    "dataManagement": "ניהול נתונים",
+    "exportData": "יצוא נתונים",
+    "importData": "ייבוא נתונים",
+    "clearAllData": "נקה הכל",
+    "clearDataConfirmTitle": "Clear All Data?",
+    "clearDataConfirmMessage": "This action cannot be undone. Confirmation Text: CLEAR DATA",
+    "importSuccess": "Import Successful",
+    "importFailed": "Import Failed",
+    "exportFailed": "Export Failed",
+    "dataCleared": "Data Cleared",
+    "invalidFile": "Invalid File",
+    "selectJson": "Please select a JSON file.",
+    "missingData": "The imported file is missing required data (dailyEntries, foods, or settings).",
+    "invalidJson": "The imported file is not valid JSON."
+  }
+}

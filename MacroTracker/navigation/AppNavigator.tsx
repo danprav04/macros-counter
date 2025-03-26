@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@rneui/themed';
+import { useTranslation } from 'react-i18next';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -14,6 +15,7 @@ interface AppNavigatorProps {
 
 const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [foodListRefresh, setFoodListRefresh] = useState(false);
 
   const handleFoodChange = useCallback(() => {
@@ -27,13 +29,13 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
           let iconName: string = '';
           let type: string = '';
 
-          if (route.name === 'Daily Entry') {
+          if (route.name === t('screens.dailyEntry')) {
             iconName = focused ? 'calendar' : 'calendar-outline';
             type = 'ionicon';
-          } else if (route.name === 'Foods') {
+          } else if (route.name === t('screens.foods')) {
             iconName = focused ? 'fast-food' : 'fast-food-outline';
             type = 'ionicon'; // Consistent icon set
-          } else if (route.name === 'Settings') {
+          } else if (route.name === t('screens.settings')) {
             iconName = focused ? 'settings' : 'settings-outline';
             type = 'ionicon';
           }
@@ -52,13 +54,13 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
         }
       })}
     >
-      <Tab.Screen name="Daily Entry">
+      <Tab.Screen name={t('screens.dailyEntry')}>
         {() => <DailyEntryScreen key={foodListRefresh ? 'refresh' : 'normal'} />}
       </Tab.Screen>
-      <Tab.Screen name="Foods">
+      <Tab.Screen name={t('screens.foods')}>
         {() => <FoodListScreen onFoodChange={handleFoodChange} />}
       </Tab.Screen>
-      <Tab.Screen name="Settings">
+      <Tab.Screen name={t('screens.settings')}>
         {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={function (): void {
           throw new Error('Function not implemented.');
         } } />}

@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "MacroTracker",
@@ -6,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic", 
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -23,8 +22,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.macrotracker",
-      "infoPlist": { 
-        "UIStatusBarStyle": "UIStatusBarStyleAutomatic" 
+      "infoPlist": {
+        "UIStatusBarStyle": "UIStatusBarStyleAutomatic"
       }
     },
     "android": {
@@ -33,10 +32,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.yourcompany.macrotracker",
-      "userInterfaceStyle": "automatic", 
-      "statusBar": { 
-        "backgroundColor": "#00000000",  
-        "translucent": true,             
+      "userInterfaceStyle": "automatic",
+      "statusBar": {
+        "backgroundColor": "#00000000",
+        "translucent": true,
         "barStyle": "auto"
       }
     },
@@ -49,7 +48,8 @@
         {
           "appleTeamId": "YOUR_TEAM_ID"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

@@ -1,0 +1,108 @@
+{
+  "common": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "update": "Update",
+    "save": "Save",
+    "searchPlaceholder": "Search...",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "close": "Close",
+    "undo": "Undo",
+    "back": "Back"
+  },
+  "screens": {
+    "dailyEntry": "Daily Entry",
+    "foods": "Foods",
+    "settings": "Settings"
+  },
+  "dailyEntryScreen": {
+    "entriesTitle": "Entries:",
+    "gramsSuffix": "g",
+    "invalidInputTitle": "Invalid Input",
+    "invalidInputMessage": "Please select a food and enter a valid, positive number for grams.",
+    "confirmDeleteTitle": "Delete Entry?",
+    "confirmDeleteMessage": "Are you sure you want to delete this entry?",
+    "deletedToast": "{{foodName}} entry deleted",
+    "undoDeleteToast": "Tap to undo"
+  },
+  "foodListScreen": {
+    "addFoodTitle": "Add New Food",
+    "editFoodTitle": "Edit Food",
+    "deletedToast": "{{foodName}} deleted",
+    "undoDeleteToast": "Tap to undo",
+    "errorCreate": "Failed to create food.",
+    "errorUpdate": "Failed to update food.",
+    "errorDelete": "Failed to delete food."
+  },
+  "settingsScreen": {
+    "general": "General",
+    "theme": "Theme",
+    "darkMode": "Dark Mode",
+    "language": "Language",
+    "dailyGoals": "Daily Goals",
+    "statistics": "Statistics",
+    "dataManagement": "Data Management",
+    "exportData": "Export Data",
+    "importData": "Import Data",
+    "clearAllData": "Clear All Data",
+    "clearDataConfirmTitle": "Clear All Data?",
+    "clearDataConfirmMessage": "This action cannot be undone. Confirmation Text: CLEAR DATA",
+    "importSuccess": "Import Successful",
+    "importFailed": "Import Failed",
+    "exportFailed": "Export Failed",
+    "dataCleared": "Data Cleared",
+    "invalidFile": "Invalid File",
+    "selectJson": "Please select a JSON file.",
+    "missingData": "The imported file is missing required data (dailyEntries, foods, or settings).",
+    "invalidJson": "The imported file is not valid JSON."
+  },
+  "addEntryModal": {
+    "addTitle": "Add Entry",
+    "editTitle": "Edit Entry",
+    "searchPlaceholder": "Search Foods...",
+    "recentFoods": "Recent Foods",
+    "noFoods": "No foods found.",
+    "gramsPlaceholder": "Grams (e.g. 150)",
+    "enterValidNumber": "Enter a valid number"
+  },
+  "addFoodModal": {
+    "addTitle": "Add New Food",
+    "editTitle": "Edit Food",
+    "foodNameLabel": "Food Name",
+    "caloriesLabel": "Calories (per 100g)",
+    "proteinLabel": "Protein (per 100g)",
+    "carbsLabel": "Carbs (per 100g)",
+    "fatLabel": "Fat (per 100g)",
+    "nameRequired": "Name is required",
+    "invalidInput": "Invalid input",
+    "aiCalculate": "Calculate with AI (Optional)",
+    "aiIngredients": "Get Macros from Ingredients",
+    "aiNameOnly": "Get Macros from Name Only",
+    "ingredientsLabel": "Ingredients (Optional - Add if known)",
+    "ingredientsPlaceholder": "e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil",
+    "backToManual": "Back to Manual Input",
+    "barcodeComingSoon": "Barcode Input (Coming Soon)"
+  },
+  "confirmationModal": {
+    "defaultTitle": "Confirm Action",
+    "defaultMessage": "Are you sure you want to perform this action?",
+    "enterConfirmation": "Enter confirmation text"
+  },
+  "dailyGoalsInput": {
+    "caloriesGoal": "Calories Goal",
+    "proteinGoal": "Protein Goal",
+    "carbsGoal": "Carbs Goal",
+    "fatGoal": "Fat Goal"
+  },
+  "dailyProgress": {
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "common": {
+    "add": "Добавить",
+    "edit": "Изменить",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "update": "Обновить",
+    "save": "Сохранить",
+    "searchPlaceholder": "Поиск...",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "close": "Закрыть",
+    "undo": "Отменить",
+    "back": "Назад"
+  },
+  "screens": {
+    "dailyEntry": "Дневник",
+    "foods": "Продукты",
+    "settings": "Настройки"
+  },
+  "settingsScreen": {
+    "general": "Общие",
+    "theme": "Theme",
+    "darkMode": "Dark Mode",
+    "language": "Язык",
+    "dailyGoals": "Дневные цели",
+    "statistics": "Статистика",
+    "dataManagement": "Управление данными",
+    "exportData": "Экспорт данных",
+    "importData": "Импорт данных",
+    "clearAllData": "Очистить все данные",
+    "clearDataConfirmTitle": "Clear All Data?",
+    "clearDataConfirmMessage": "This action cannot be undone. Confirmation Text: CLEAR DATA",
+    "importSuccess": "Import Successful",
+    "importFailed": "Import Failed",
+    "exportFailed": "Export Failed",
+    "dataCleared": "Data Cleared",
+    "invalidFile": "Invalid File",
+    "selectJson": "Please select a JSON file.",
+    "missingData": "The imported file is missing required data (dailyEntries, foods, or settings).",
+    "invalidJson": "The imported file is not valid JSON."
+  }
+}
