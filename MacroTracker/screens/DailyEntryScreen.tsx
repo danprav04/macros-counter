@@ -275,23 +275,30 @@ const DailyEntryScreen: React.FC = () => {
         entryDate: string,
         originalIndex: number // Use the original index where it was removed
     ) => {
-        const existingEntryIndex = dailyEntries.findIndex(e => e.date === entryDate);
+        // Find the index of the *DailyEntry* for the given date
+        const existingEntryIndex = dailyEntries.findIndex(e => e.date === entryDate); // Correctly find the ENTRY index
 
         let updatedEntries;
 
-        if (existingItemIndex > -1) {
-             // Entry exists, insert the item back at its original position
-             const entryToUpdate = dailyEntries[existingEntryIndex];
-             const updatedItems = [...entryToUpdate.items];
-             updatedItems.splice(originalIndex, 0, itemToRestore); // Insert at original index
+        // Check if the DailyEntry for that date exists in the current state
+        if (existingEntryIndex > -1) { // *** CORRECTED: Use existingEntryIndex here ***
+            // Entry exists, insert the item back at its original position
+            const entryToUpdate = dailyEntries[existingEntryIndex];
+            const updatedItems = [...entryToUpdate.items];
+            // Insert the item back at the specific index it was removed from
+            updatedItems.splice(originalIndex, 0, itemToRestore);
 
+            // Map over entries and replace the updated one
             updatedEntries = dailyEntries.map((entry, index) =>
                 index === existingEntryIndex ? { ...entry, items: updatedItems } : entry
             );
         } else {
             // Entry was removed because it became empty, need to re-create it
             const newEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
+            // Add the newly created entry back to the list
             updatedEntries = [...dailyEntries, newEntry];
+            // Optional: Sort entries by date if needed, though usually handled by display logic
+            // updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
         }
 
         updateAndSaveEntries(updatedEntries);
