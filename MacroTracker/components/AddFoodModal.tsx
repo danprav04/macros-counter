@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  StyleSheet // Import StyleSheet
+  StyleSheet, // Import StyleSheet
+  TouchableOpacity, // Import TouchableOpacity for icon button
 } from "react-native";
 import {
   Button,
@@ -19,10 +20,12 @@ import {
   Icon,
 } from "@rneui/themed";
 import { Food } from "../types/food";
-// Removed inner SafeAreaView import
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { getMacrosForRecipe } from "../utils/macros";
+// Import the necessary functions
+import { getMacrosForRecipe, getMacrosForImageFile } from "../utils/macros";
+import * as ImagePicker from "expo-image-picker";
+// import { ImagePickerAsset } from 'expo-image-picker'; // Import not strictly needed unless used elsewhere
 import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils"; // Added validation imports
 
 interface AddFoodModalProps {
@@ -43,7 +46,7 @@ interface AddFoodModalProps {
 }
 
 // Define a keyboard offset (adjust value based on testing, e.g., header height)
-const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 60 : 0;
+const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 60 : 0;
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
   isVisible,
@@ -59,31 +62,36 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
-  const [loading, setLoading] = useState(false);
-  const [apiLoading, setApiLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // For save/update
+  const [apiLoading, setApiLoading] = useState(false); // Keep or remove based on need for global overlay
   const [mode, setMode] = useState<"normal" | "ingredients">("normal");
   const [ingredients, setIngredients] = useState("");
-  const [aiButtonLoading, setAiButtonLoading] = useState(false);
+  const [aiButtonLoading, setAiButtonLoading] = useState(false); // For ingredient AI
+  const [imageLoading, setImageLoading] = useState(false); // For image analysis
 
   useEffect(() => {
     if (isVisible) {
       setErrors({});
       setMode("normal");
       setIngredients("");
+      // Reset loading states when modal opens
+      setAiButtonLoading(false);
+      setImageLoading(false);
+      setLoading(false);
     }
   }, [isVisible, setErrors]);
 
   const getValue = (key: keyof Omit<Food, "id">) => {
     // Ensure numeric fields default to empty string for input if 0
-     const value = (editFood && editFood[key]) ?? newFood[key] ?? "";
-     // Keep 0 as "0" if it's the initial state for a new food
-     if (!editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-         return ""; // Show empty input for new food numeric fields initially
-     }
-     if (editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-         return "0"; // Show "0" if editing and value is actually 0
-     }
-     return String(value);
+    const value = (editFood && editFood[key]) ?? newFood[key] ?? "";
+    // Keep 0 as "0" if it's the initial state for a new food
+    if (!editFood && typeof value === 'number' && value === 0 && key !== 'name') {
+        return ""; // Show empty input for new food numeric fields initially
+    }
+    if (editFood && typeof value === 'number' && value === 0 && key !== 'name') {
+        return "0"; // Show "0" if editing and value is actually 0
+    }
+    return String(value); // Always return string for Input component
   };
 
 
@@ -100,10 +108,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
      const dataToValidate: Omit<Food, "id"> = {
         ...foodData,
         name: String(foodData.name).trim(), // Trim name
-        calories: parseFloat(String(foodData.calories)) || 0,
-        protein: parseFloat(String(foodData.protein)) || 0,
-        carbs: parseFloat(String(foodData.carbs)) || 0,
-        fat: parseFloat(String(foodData.fat)) || 0,
+        // Use getValue to ensure consistency with displayed value before parsing
+        calories: parseFloat(getValue("calories")) || 0,
+        protein: parseFloat(getValue("protein")) || 0,
+        carbs: parseFloat(getValue("carbs")) || 0,
+        fat: parseFloat(getValue("fat")) || 0,
     };
 
 
@@ -123,11 +132,12 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     setErrors({});
 
     try {
-      // Use dataToValidate which has correctly parsed numbers
+      // Assumes handleUpdateFood/handleCreateFood use the respective state (editFood/newFood)
+      // which was updated via handleInputChange. They need to handle parsing strings back to numbers if needed.
       if (isUpdate) {
-          await handleUpdateFood(); // Assumes handleUpdateFood uses the `editFood` state which was updated via handleInputChange
+          await handleUpdateFood();
       } else {
-          await handleCreateFood(); // Assumes handleCreateFood uses the `newFood` state which was updated via handleInputChange
+          await handleCreateFood();
       }
 
       Toast.show({
@@ -148,7 +158,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
   const handleAiButtonClick = async () => {
     const foodName = getValue("name");
-    if (!foodName) {
+     // Require name only when switching to ingredients mode or submitting from it
+    if (!foodName && mode === 'ingredients') {
       Alert.alert("Missing Name", "Please enter a food name first.");
       return;
     }
@@ -161,13 +172,16 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
       handleInputChange("carbs", "", !!editFood);
       handleInputChange("fat", "", !!editFood);
     } else if (mode === "ingredients") {
-      // --- MODIFICATION: Allow proceeding even if ingredients are empty ---
-      // The check for foodName is already done above.
+       // Ensure name exists before proceeding (should be caught above, but good failsafe)
+      const currentFoodName = getValue("name");
+      if (!currentFoodName) {
+        Alert.alert("Missing Name", "Please enter a food name before calculating macros.");
+        return;
+      }
 
       setAiButtonLoading(true);
       try {
-        // Pass the potentially empty ingredients string to the function
-        const macros = await getMacrosForRecipe(foodName, ingredients);
+        const macros = await getMacrosForRecipe(currentFoodName, ingredients);
 
         // Update fields with AI results (rounded)
         handleInputChange("calories", String(Math.round(macros.calories)), !!editFood);
@@ -176,18 +190,103 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         handleInputChange("fat", String(Math.round(macros.fat)), !!editFood);
 
         setMode("normal"); // Switch back to normal mode to show results
+         Toast.show({ type: 'info', text1: 'Macros estimated from ingredients.', position: 'bottom' });
       } catch (error) {
-        console.error("AI Macro fetch error:", error);
+        console.error("AI Macro fetch error (recipe):", error);
         Alert.alert(
           "AI Error",
-          // Modify error message slightly
-          "Could not calculate macros based on the provided information. Please check the name/ingredients and try again, or input manually."
+           `Could not calculate macros from text. ${error instanceof Error ? error.message : "Please try again or input manually."}`
         );
       } finally {
         setAiButtonLoading(false);
       }
     }
   };
+
+  const handleImagePickAndAnalyze = async () => {
+    // 1. Request Permissions
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You need to allow access to your photo library to select an image."
+      );
+      return;
+    }
+
+    // 2. Launch Image Picker
+    try {
+        const pickerResult = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6, // Reduce quality slightly
+        });
+
+        // 3. Handle Picker Result
+        if (pickerResult.canceled) {
+            console.log("Image selection cancelled");
+            return;
+        }
+
+        if (pickerResult.assets && pickerResult.assets.length > 0) {
+            const asset = pickerResult.assets[0]; // asset is of type ImagePickerAsset
+            console.log("Image selected:", asset.uri);
+            setImageLoading(true); // Start loading indicator
+
+            // --- FIX: Create the parameter object explicitly ---
+            const fileInfoForApi = {
+                uri: asset.uri,
+                // Convert null fileName to undefined to match the expected type
+                fileName: asset.fileName ?? undefined,
+                // Use mimeType from the picker asset if available, otherwise undefined
+                type: asset.mimeType ?? undefined
+            };
+            // --- End FIX ---
+
+            // 4. Call the Image Analysis Function with the correctly typed object
+            try {
+                // Pass the corrected fileInfoForApi object
+                const result = await getMacrosForImageFile(fileInfoForApi);
+
+                // Update form fields with results
+                handleInputChange("name", result.foodName, !!editFood); // Update name too
+                handleInputChange("calories",String(Math.round(result.calories)),!!editFood);
+                handleInputChange("protein",String(Math.round(result.protein)),!!editFood);
+                handleInputChange("carbs",String(Math.round(result.carbs)),!!editFood);
+                handleInputChange("fat", String(Math.round(result.fat)), !!editFood);
+
+                // Switch back to normal mode if in ingredients mode
+                setMode("normal");
+                setIngredients(""); // Clear ingredients if image analysis was successful
+
+                Toast.show({
+                    type: 'success',
+                    text1: 'Food Identified!',
+                    text2: `Identified as ${result.foodName}. Macros estimated.`,
+                    position: 'bottom',
+                });
+
+            } catch (analysisError) {
+                console.error("Error during image analysis:", analysisError);
+                Alert.alert(
+                    "Analysis Failed",
+                    `Could not get macros from the image. ${analysisError instanceof Error ? analysisError.message : "Please try again or enter manually."}`
+                );
+            } finally {
+                setImageLoading(false); // Stop loading indicator
+            }
+        } else {
+            console.log("No assets selected or returned.");
+            // Optional: show a message if no asset was returned unexpectedly
+        }
+    } catch (pickerError) {
+      console.error("Error launching image picker:", pickerError);
+      Alert.alert("Image Picker Error", "Could not open the image library.");
+      setImageLoading(false); // Ensure loading is false if picker fails
+    }
+  };
+
 
     // Combine theme-dependent and static styles
     const combinedOverlayStyle = StyleSheet.flatten([
@@ -198,9 +297,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
   return (
     <Overlay
       isVisible={isVisible}
-      onBackdropPress={toggleOverlay}
+      onBackdropPress={!imageLoading && !aiButtonLoading && !loading ? toggleOverlay : undefined} // Prevent closing while loading
       animationType="fade"
-      // statusBarTranslucent={Platform.OS === 'android'} // Consider removing if causing issues
       overlayStyle={styles.overlayContainer} // Use container style
     >
       {/* KeyboardAvoidingView now directly inside Overlay */}
@@ -227,39 +325,66 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 },
               ]}
               titleStyle={{ color: theme.colors.white, fontWeight: "600" }}
-              loading={loading}
+              loading={loading} // Use the specific loading state
+              disabled={loading || aiButtonLoading || imageLoading} // Disable while any operation is running
               containerStyle={styles.buttonContainer}
             />
+             {/* Disable close button when loading */}
             <Icon
               name="close"
               type="material"
               size={28}
               color={theme.colors.text}
-              onPress={toggleOverlay}
+              onPress={!imageLoading && !aiButtonLoading && !loading ? toggleOverlay : undefined}
               containerStyle={styles.closeIcon}
+              disabled={imageLoading || aiButtonLoading || loading}
+              disabledStyle={{ backgroundColor: 'transparent' }} // Prevent visual change on disable
             />
           </View>
 
           {/* Use ScrollView to ensure content is scrollable, especially with keyboard */}
           <ScrollView keyboardShouldPersistTaps="handled">
-            <Input
-              label="Food Name"
-              labelStyle={{ color: theme.colors.text }}
-              value={getValue("name")}
-              onChangeText={(text) =>
-                handleInputChange("name", text, !!editFood)
-              }
-              errorMessage={errors.name}
-              inputContainerStyle={styles.inputContainerStyle}
-              inputStyle={styles.inputStyle}
-              leftIcon={
-                <MaterialCommunityIcons
-                  name="food-apple"
-                  size={24}
-                  color={errors.name ? theme.colors.error : theme.colors.grey1} // Use less prominent color when no error
+             {/* --- Food Name Input with Image Icon --- */}
+            <View style={styles.inputRow}>
+                <Input
+                    label="Food Name"
+                    labelStyle={{ color: theme.colors.text }}
+                    value={getValue("name")}
+                    onChangeText={(text) =>
+                        handleInputChange("name", text, !!editFood)
+                    }
+                    errorMessage={errors.name}
+                    inputContainerStyle={[styles.inputContainerStyle, styles.inputContainerFlex]} // Adjust style
+                    inputStyle={styles.inputStyle}
+                    containerStyle={{ flex: 1 }} // Make input take available space
+                    leftIcon={
+                        <MaterialCommunityIcons
+                        name="food-apple"
+                        size={24}
+                        color={errors.name ? theme.colors.error : theme.colors.grey1} // Use less prominent color when no error
+                        />
+                    }
                 />
-              }
-            />
+                {/* --- Image Picker Icon Button --- */}
+                <TouchableOpacity
+                    onPress={handleImagePickAndAnalyze}
+                    disabled={imageLoading || aiButtonLoading || loading} // Disable while loading
+                    style={styles.iconButtonContainer}
+                 >
+                    {imageLoading ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                    ) : (
+                        <Icon
+                            name="camera-enhance-outline" // Or 'image-plus'
+                            type="material-community"
+                            size={28}
+                            color={theme.colors.primary}
+                        />
+                    )}
+                </TouchableOpacity>
+            </View>
+            {/* --- End Food Name Input with Image Icon --- */}
+
             {mode === "normal" && (
               <>
                 <Input
@@ -271,7 +396,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "calories",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -299,8 +424,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                   onChangeText={(text) =>
                     handleInputChange(
                       "protein",
-                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      // Allow only numbers and one decimal point
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -329,7 +454,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "carbs",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -355,7 +480,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "fat",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -383,10 +508,13 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     type="material-community"
                     size={24}
                     color={theme.colors.primary}
-                    onPress={() => setMode("normal")}
+                    onPress={() => !aiButtonLoading && setMode("normal")} // Prevent switching during AI call
+                    disabled={aiButtonLoading}
                     containerStyle={styles.backIcon}
                   />
-                  <Text style={styles.backButtonText} onPress={() => setMode("normal")}>Back to Manual Input</Text>
+                  <Text style={[styles.backButtonText, aiButtonLoading && styles.disabledText]} onPress={() => !aiButtonLoading && setMode("normal")}>
+                      Back to Manual Input
+                  </Text>
                 </View>
 
                 <Input
@@ -396,7 +524,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                   onChangeText={setIngredients}
                   multiline={true}
                   numberOfLines={4} // Suggests height but allows expansion
-                  inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
+                  inputContainerStyle={[
+                    styles.inputContainerStyle,
+                    styles.multilineInputContainer,
+                  ]}
                   inputStyle={[styles.inputStyle, styles.multilineInput]}
                   placeholder="e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil"
                   placeholderTextColor={theme.colors.grey3}
@@ -411,13 +542,14 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 />
               </>
             )}
-            {/* --- AI Button --- */}
+            {/* --- AI (Text) Button --- */}
             <Button
-              title={mode === "normal"
-                  ? "Calculate with AI (Optional)"
+              title={
+                mode === "normal"
+                  ? "Calculate with AI (Recipe/Text)" // Clarify it's for text
                   : ingredients // Check if ingredients have been entered
-                      ? "Get Macros from Ingredients"
-                      : "Get Macros from Name Only" // New title
+                  ? "Get Macros from Ingredients"
+                  : "Get Macros from Name Only" // New title
               }
               onPress={handleAiButtonClick}
               buttonStyle={[
@@ -426,8 +558,18 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 { backgroundColor: theme.colors.secondary },
               ]}
               titleStyle={[styles.aiButtonTitle, { color: theme.colors.white }]}
-              loading={aiButtonLoading}
-              icon={mode === 'normal' ? <MaterialCommunityIcons name="brain" size={18} color={theme.colors.white} style={{ marginRight: 8 }} /> : undefined}
+              loading={aiButtonLoading} // Use specific loading state
+              disabled={aiButtonLoading || imageLoading || loading} // Disable while other ops run
+              icon={
+                mode === "normal" ? (
+                  <MaterialCommunityIcons
+                    name="text-box-search-outline" // Changed icon
+                    size={18}
+                    color={theme.colors.white}
+                    style={{ marginRight: 8 }}
+                  />
+                ) : undefined
+              }
               containerStyle={[styles.buttonContainer, { marginTop: 15 }]}
             />
 
@@ -439,7 +581,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-      {apiLoading && ( // Keep this loading overlay as is
+      {/* Optional: Central loading overlay (can be removed if specific indicators are sufficient) */}
+      {apiLoading && ( // You might not need this if button indicators are enough
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
@@ -449,7 +592,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 };
 
 
-// --- Styles (Includes previous fixes for keyboard avoiding) ---
+// --- Styles (Includes previous fixes and new styles for image icon) ---
 const useStyles = makeStyles((theme) => ({
   // Style for the Overlay container itself (positioning, width)
   overlayContainer: {
@@ -458,7 +601,6 @@ const useStyles = makeStyles((theme) => ({
     maxWidth: 500, // Max width for larger screens
     padding: 0, // Remove padding from overlay itself
     borderRadius: 15,
-    // Remove height and marginVertical
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2, },
     shadowOpacity: 0.25,
@@ -499,6 +641,27 @@ const useStyles = makeStyles((theme) => ({
     padding: 5,
     marginLeft: 10,
   },
+  // *** Styles for Input Row with Icon Button ***
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end', // Align items to bottom (aligns icon with input line)
+    marginBottom: 5, // Consistent margin like other inputs
+  },
+  inputContainerFlex: {
+    flex: 1, // Allow input container to grow
+    marginRight: 10, // Space between input and icon button
+    marginBottom: 0, // Remove margin bottom from container inside row
+  },
+  iconButtonContainer: {
+    height: 40, // Match input height approximately
+    width: 40,  // Make it square
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10, // Align button bottom with input field bottom roughly (adjust if needed)
+    // backgroundColor: theme.colors.grey5, // Optional: Subtle background
+    // borderRadius: 20, // Optional: Make it circular
+  },
+  // *** End Styles for Input Row ***
   inputContainerStyle: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.grey4,
@@ -559,7 +722,7 @@ const useStyles = makeStyles((theme) => ({
       fontSize: 15,
       textAlign: 'center', // Center button text
   },
-  loadingOverlay: { // Keep as is
+  loadingOverlay: { // For general overlay if needed
     position: "absolute",
     top: 0,
     left: 0,
@@ -585,6 +748,9 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.primary, // Make text match icon color
     fontSize: 16,
     fontWeight: '500',
+  },
+  disabledText: {
+      color: theme.colors.grey3, // Style for disabled text
   }
 }));
 
