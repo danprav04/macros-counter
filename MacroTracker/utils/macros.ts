@@ -185,7 +185,7 @@ export async function getMacrosForImageFile(asset: {
 
   // 4. Prepare API Request Body
   const bodyData = {
-    model: "google/gemini-2.5-pro-exp-03-25:free", // DO NOT CHANGE MODEL per user request
+    model: "google/gemini-2.0-flash-thinking-exp-1219:free", // DO NOT CHANGE MODEL per user request
     messages: messages,
     response_format: { type: "json_object" },
     // max_tokens: 512, // Optional: Consider adding if responses get cut off
@@ -271,6 +271,7 @@ export async function getMacrosForImageFile(asset: {
             console.error("Parsed JSON has incorrect structure (image):", macroInfo);
             throw new Error("AI returned data in an unexpected format.");
         }
+        console.log('macroInfo: ', macroInfo);
         return macroInfo;
     } catch (parseError) {
         if (parseError instanceof SyntaxError) {
