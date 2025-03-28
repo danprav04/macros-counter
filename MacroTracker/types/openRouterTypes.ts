@@ -6,6 +6,7 @@ export interface OpenRouterMessage {
 }
 
 export interface OpenRouterChoice {
+  text: any;
   message: OpenRouterMessage;
   finish_reason?: string; // Optional properties for handling different responses
   index?: number;

@@ -34,7 +34,8 @@
     "react-native-svg": "^15.11.2",
     "react-native-toast-message": "^2.2.1",
     "react-native-webview": "^13.13.4",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "expo-image-picker": "~16.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
