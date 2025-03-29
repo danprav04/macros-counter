@@ -133,7 +133,8 @@ export async function getMacrosForImageFile(asset: {
   type?: string; // Optional MIME type from ImagePicker
 }): Promise<MacrosWithFoodName> {
   const prompt = `
-    Analyze the food in the image provided and guess the food name, ingredients, and their approximate proportions based on visual estimation.
+    Analyze the food in the image provided and guess the food name, ingredients, and their approximate proportions based on visual estimation or nutrients table if it exists in the image.
+    Some nutrients tables might have nutrients per portion in addition to 100g one, be careful to take only the 100g one.
     Then, calculate the estimated macros per 100g (calories, protein, carbs, fat) for the food.
     Output ONLY a JSON object with the keys "foodName", "calories", "protein", "carbs", and "fat".
     Do NOT include any extra text, explanations, calculations, or markdown formatting like \`\`\`json.
