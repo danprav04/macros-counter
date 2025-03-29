@@ -1,4 +1,4 @@
-// App.tsx (Modified for Diagnostics and Debugging in Expo Go)
+// App.tsx (Modified - Removed AppState-triggered remount)
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
 import React, { useState, useEffect } from "react";
@@ -175,7 +175,8 @@ const App = () => {
   );
   const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
-  const [reloadKey, setReloadKey] = useState(0); // Key for forcing remount
+  // --- REMOVED: reloadKey state is no longer needed for AppState changes ---
+  // const [reloadKey, setReloadKey] = useState(0);
   const [appState, setAppState] = useState(AppState.currentState); // AppState
   const [themeCheck, setThemeCheck] = useState(0); //Added theme check
 
@@ -189,18 +190,28 @@ const App = () => {
     initializeApp();
   }, []);
 
-  // Function to trigger a reload
-  const triggerReload = () => {
-    setReloadKey((prevKey) => prevKey + 1);
-  };
+  // --- REMOVED: triggerReload function is no longer needed ---
+  // const triggerReload = () => {
+  //   setReloadKey((prevKey) => prevKey + 1);
+  // };
 
+  // --- MODIFIED: Removed triggerReload() from AppState listener ---
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // --- REMOVED THIS BLOCK ---
+      // This block caused the entire navigator to remount when the app
+      // returned from the background (e.g., after image picker closed),
+      // which prematurely closed the AddFoodModal.
+      /*
       if (appState.match(/inactive|background/) && nextAppState === "active") {
-        // App has come to the foreground, trigger reload
-        triggerReload();
+        // App has come to the foreground, DON'T trigger reload anymore
+        console.log("App came to foreground - Reload Trigger REMOVED");
+        // triggerReload(); // <<< REMOVED THIS LINE
       }
-      setAppState(nextAppState);
+      */
+      // --- END REMOVED BLOCK ---
+
+      setAppState(nextAppState); // Still track app state if needed elsewhere
     };
 
     const subscription = AppState.addEventListener(
@@ -211,7 +222,7 @@ const App = () => {
     return () => {
       subscription.remove();
     };
-  }, [appState]); // Depend on appState
+  }, [appState]); // Keep appState dependency if you still use setAppState
 
   const updateTheme = (newThemeMode: "light" | "dark" | "system") => {
     const isDark =
@@ -269,7 +280,9 @@ const App = () => {
   const backgroundColor = currentTheme.colors.background;
 
   return (
-    <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
+    // --- REMOVED: key={themeMode} - Re-evalute if needed, usually not necessary for theme changes handled internally ---
+    // <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
+    <ThemeProvider theme={createTheme(currentTheme)}>
       {/* Added to try force to behave like a normal text */}
       <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}>
         {/* Enclose everything in SafeAreaView */}
@@ -285,7 +298,9 @@ const App = () => {
               : navigationTheme.light
           }
         >
-          <AppNavigator onThemeChange={handleThemeChange} key={reloadKey} />
+          {/* --- REMOVED: key={reloadKey} - Navigator no longer forced to remount --- */}
+          {/* <AppNavigator onThemeChange={handleThemeChange} key={reloadKey} /> */}
+          <AppNavigator onThemeChange={handleThemeChange} />
         </NavigationContainer>
         <Toast />
       </SafeAreaView>

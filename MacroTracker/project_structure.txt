@@ -40,6 +40,7 @@ utils/
   dateUtils.ts
   iconUtils.ts
   macros.ts
+  units.ts
   validationUtils.ts
 
 ---------- .gitignore ----------
@@ -470,7 +471,6 @@ export default App;
 
 ---------- AddEntryModal.tsx ----------
 // AddEntryModal.tsx
-// AddEntryModal.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import {
     View,
@@ -479,9 +479,11 @@ import {
     Platform,
     TouchableOpacity,
     ScrollView,
-    Dimensions, // Import Dimensions
+    Dimensions,
     Image,
-    StyleSheet // Import StyleSheet
+    StyleSheet,
+    ActivityIndicator,
+    Alert,
 } from "react-native";
 import {
     Button,
@@ -492,14 +494,15 @@ import {
     SearchBar,
     makeStyles,
     useTheme,
-    Icon
+    Icon,
+    ButtonGroup,
 } from "@rneui/themed";
 import { Food } from "../types/food";
-// Removed inner SafeAreaView import
 import { isValidNumberInput } from "../utils/validationUtils";
-import { DailyEntryItem } from "../types/dailyEntry";
-import { loadRecentFoods, saveRecentFoods } from "../services/storageService"; // Import storage functions
-import { getFoodIconUrl } from "../utils/iconUtils"; // Import the icon helper function
+import { loadRecentFoods, saveRecentFoods } from "../services/storageService";
+import { getFoodIconUrl } from "../utils/iconUtils";
+import { getGramsFromNaturalLanguage } from "../utils/units";
+import Toast from "react-native-toast-message";
 
 interface AddEntryModalProps {
     isVisible: boolean;
@@ -516,8 +519,9 @@ interface AddEntryModalProps {
     initialGrams?: string;
 }
 
-// Define a keyboard offset (adjust value based on testing, e.g., header height)
-const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 60 : 0;
+const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 80 : 0;
+
+type UnitMode = 'grams' | 'auto';
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
     isVisible,
@@ -534,21 +538,139 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     initialGrams
 }) => {
     const { theme } = useTheme();
-    const styles = useStyles(); // Use generated styles
+    const styles = useStyles();
     const [recentFoods, setRecentFoods] = useState<Food[]>([]);
     const MAX_RECENT_FOODS = 5;
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
 
-    // Get screen width for responsive adjustments
+    const [unitMode, setUnitMode] = useState<UnitMode>('grams');
+    const [autoInput, setAutoInput] = useState("");
+    const [isAiLoading, setIsAiLoading] = useState(false);
+
     const screenWidth = Dimensions.get('window').width;
 
+    // Filtered foods based on search
+    const filteredFoods = useMemo(() => {
+        if (!search) return []; // Don't filter if search is empty
+        return foods.filter((food) =>
+            food.name.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [foods, search]);
+
+    // Effect to handle state resets based on visibility, edit mode, and selected food changes
     useEffect(() => {
-        if (isEditMode && initialGrams) {
-            setGrams(initialGrams);
+        // --- Logging for Debugging ---
+        // console.log(`>>> useEffect triggered - isVisible: ${isVisible}, isEditMode: ${isEditMode}, selectedFood: ${selectedFood?.id}, initialGrams: ${initialGrams}`);
+
+        if (!isVisible) {
+            // Reset everything when modal closes
+            // console.log(">>> useEffect: Resetting state on close");
+            handleSelectFood(null);
+            setGrams("");
+            updateSearch("");
+            setUnitMode('grams');
+            setAutoInput("");
+            setIsAiLoading(false); // Ensure loading state is reset on close
+        } else {
+            // Modal is visible or just became visible
+            // console.log(">>> useEffect: Modal is visible");
+
+            // Always reset AI-related fields when modal becomes visible or food changes
+            // Avoid resetting things that might have just been set by AI estimation
+             if (!isAiLoading) { // Only reset these if AI isn't currently running
+                 setAutoInput("");
+                 // setIsAiLoading(false); // Don't reset loading here, handleEstimateGrams does it
+             }
+
+
+            // Determine the correct initial grams value and unit mode based on mode/food
+            let targetGrams = grams; // Start with current grams
+            let targetUnitMode = unitMode; // Start with current unit mode
+
+            if (isEditMode && selectedFood && initialGrams) {
+                // If editing the *same* item for which we have initial grams, restore it.
+                // console.log(">>> useEffect: Setting state for EDIT mode with initialGrams");
+                targetGrams = initialGrams;
+                targetUnitMode = 'grams'; // Default to grams view when editing existing value
+            } else if (!isEditMode && selectedFood) {
+                // If adding a new entry and a food *is* selected (e.g., user just picked one)
+                // Check if grams should be cleared or kept. Let's KEEP grams unless the food *changes*.
+                // The handleSelectFood prop should handle clearing grams if desired when food changes.
+                // console.log(">>> useEffect: Setting state for ADD mode with selected food");
+                targetUnitMode = 'grams'; // Switch to grams mode when a food is selected
+                // targetGrams = ""; // Option: Uncomment to clear grams whenever food changes in ADD mode
+            } else if (!selectedFood) {
+                // If no food is selected (either initially or cleared)
+                // console.log(">>> useEffect: No food selected, clearing grams");
+                targetGrams = ""; // Clear grams if no food is selected
+                targetUnitMode = 'grams'; // Default mode
+            }
+            // Apply the determined state changes *only if they are different* to avoid loops
+            if (grams !== targetGrams) {
+                // console.log(`>>> useEffect: Setting grams from "${grams}" to "${targetGrams}"`);
+                setGrams(targetGrams);
+            }
+            if (unitMode !== targetUnitMode && !isAiLoading) { // Don't override unit mode if AI is loading/just finished
+                 // console.log(`>>> useEffect: Setting unitMode from "${unitMode}" to "${targetUnitMode}"`);
+                 setUnitMode(targetUnitMode);
+            }
+             // Reset search only when modal *initially* becomes visible? Handled outside potentially.
+             // updateSearch("");
         }
-    }, [isEditMode, initialGrams, setGrams]);
+
+    // Dependencies: Trigger when visibility, edit mode, selected food, or initial grams change.
+    // handleSelectFood and updateSearch are stable functions.
+    // setGrams and setUnitMode are *not* included to prevent re-triggering the effect from its own actions.
+    }, [isVisible, isEditMode, selectedFood, initialGrams, handleSelectFood, updateSearch]);
+
+
+    // Load recent foods when modal becomes visible
+    useEffect(() => {
+        const loadRecents = async () => {
+            const loadedRecentFoods = await loadRecentFoods();
+            setRecentFoods(loadedRecentFoods);
+        };
+        if (isVisible) {
+            loadRecents();
+        }
+    }, [isVisible]);
+
+    // Load icons for visible foods (recent or filtered)
+    useEffect(() => {
+        const loadIcons = async () => {
+            const iconsToLoad: { [foodName: string]: string | null } = {};
+            const relevantFoods = search ? filteredFoods : recentFoods;
+            const uniqueFoods = Array.from(new Map(relevantFoods.map(food => [food.id, food])).values());
+
+            let shouldUpdateState = false;
+            for (const food of uniqueFoods) {
+                if (!(food.name in foodIcons)) {
+                    try {
+                        const iconUrl = await getFoodIconUrl(food.name);
+                        iconsToLoad[food.name] = iconUrl;
+                        shouldUpdateState = true;
+                    } catch (error) {
+                         console.warn(`Failed to load icon for ${food.name}:`, error);
+                         iconsToLoad[food.name] = null;
+                         shouldUpdateState = true;
+                    }
+                }
+            }
+
+            if (shouldUpdateState) {
+                 setFoodIcons(prevIcons => ({ ...prevIcons, ...iconsToLoad }));
+            }
+        };
+
+        if (isVisible && (foods.length > 0 || recentFoods.length > 0)) {
+           loadIcons();
+        }
+    }, [isVisible, search, filteredFoods, recentFoods, foods]); // Keep foodIcons dependency out to avoid loop
+
 
     const addToRecentFoods = async (food: Food) => {
+        if (recentFoods.length > 0 && recentFoods[0].id === food.id) return;
+
         const updatedRecentFoods = recentFoods.filter(recentFood => recentFood.id !== food.id);
         updatedRecentFoods.unshift(food);
         const trimmedRecentFoods = updatedRecentFoods.slice(0, MAX_RECENT_FOODS);
@@ -556,47 +678,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         await saveRecentFoods(trimmedRecentFoods);
     };
 
-    useEffect(() => {
-        const loadRecents = async () => {
-            const loadedRecentFoods = await loadRecentFoods();
-            setRecentFoods(loadedRecentFoods);
-        };
-        if (isVisible) {
-            loadRecents()
-        }
-    }, [isVisible]);
-
-    useEffect(() => {
-        if (!isVisible) {
-            handleSelectFood(null);
-            setGrams("");
-            updateSearch("");
-        }
-    }, [isVisible, handleSelectFood, setGrams, updateSearch]);
-
-    const filteredFoods = useMemo(() => {
-        let result = foods;
-        if (search) {
-            result = result.filter((food) =>
-                food.name.toLowerCase().includes(search.toLowerCase())
-            );
-        }
-        return result;
-    }, [foods, search]);
-
-    useEffect(() => {
-        const loadIcons = async () => {
-            const icons: { [foodName: string]: string | null } = {};
-            for (const food of foods) {
-                const iconUrl = await getFoodIconUrl(food.name);
-                icons[food.name] = iconUrl;
-            }
-            setFoodIcons(icons);
-        };
-
-        loadIcons();
-    }, [foods]);
-
+    // Serving size suggestions based on selected food
     const servingSizeSuggestions = useMemo(() => {
         if (!selectedFood) return [];
         return [
@@ -607,57 +689,147 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         ];
     }, [selectedFood]);
 
-    const handleAddOrUpdateEntry = async () => {
-        handleAddEntry();
-        if (selectedFood) {
-            await addToRecentFoods(selectedFood);
+    // Handler for AI gram estimation
+    const handleEstimateGrams = async () => {
+        if (!selectedFood || !autoInput.trim()) {
+            Alert.alert("Input Missing", "Please select a food and enter a quantity description (e.g., '1 cup', '2 medium').");
+            return;
+        }
+
+        setIsAiLoading(true);
+        // console.log(`handleEstimateGrams - START - autoInput: "${autoInput}", food: ${selectedFood?.name}`);
+        try {
+            const estimatedGrams = await getGramsFromNaturalLanguage(selectedFood.name, autoInput);
+            const roundedGrams = String(Math.round(estimatedGrams));
+
+            // console.log(`handleEstimateGrams - SUCCESS - Estimated: ${estimatedGrams}, Rounded: "${roundedGrams}"`);
+            // console.log(`handleEstimateGrams - BEFORE setGrams - current grams state: "${grams}"`);
+            setGrams(roundedGrams); // Update the grams state
+            // console.log(`handleEstimateGrams - AFTER setGrams (will re-render) - setting grams to: "${roundedGrams}"`);
+            // console.log(`handleEstimateGrams - BEFORE setUnitMode - current unitMode state: "${unitMode}"`);
+            setUnitMode('grams'); // Switch view back to grams input
+            // console.log(`handleEstimateGrams - AFTER setUnitMode (will re-render) - setting unitMode to: "grams"`);
+
+            Toast.show({
+                type: 'success',
+                text1: 'Grams Estimated',
+                text2: `Estimated ${roundedGrams}g for ${selectedFood.name}`,
+                position: 'bottom',
+                visibilityTime: 3000,
+            });
+            // Keep autoInput for reference, or clear it:
+            // setAutoInput("");
+        } catch (error: any) {
+            console.error("AI Estimation Error:", error);
+            Alert.alert("AI Estimation Failed", error.message || "Could not estimate grams. Please enter manually.");
+             // Keep unitMode as 'auto' on failure so user can retry or see input
+        } finally {
+            // console.log("handleEstimateGrams - FINALLY - setting isAiLoading to false");
+            setIsAiLoading(false); // Ensure loading state is turned off
         }
     };
 
-    // Combine theme-dependent and static styles
+    // Handler for adding or updating the entry
+    const handleAddOrUpdateEntry = async () => {
+        if (!selectedFood) {
+             Alert.alert("Food Not Selected", "Please select a food item.");
+             return;
+        }
+        const numericGrams = parseFloat(grams);
+        if (!isValidNumberInput(grams) || numericGrams <= 0) {
+             Alert.alert(
+                "Invalid Amount",
+                "Please enter a valid positive number for grams."
+            );
+            return;
+        }
+
+        // Prevent adding if AI is still loading (belt and suspenders)
+        if (isAiLoading) return;
+
+        handleAddEntry(); // Call the prop function
+        await addToRecentFoods(selectedFood); // Add to recents
+        // toggleOverlay(); // Consider if closing should happen here or in parent
+    };
+
+    // Prepare styles and theme
     const combinedOverlayStyle = StyleSheet.flatten([
-        styles.overlayStyle, // Get base styles from useStyles
-        { backgroundColor: theme.colors.background } // Apply theme background color here
+        styles.overlayStyle,
+        { backgroundColor: theme.colors.background }
     ]);
+
+    // Disable Add/Update button logic
+    const isAddButtonDisabled = !selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0 || isAiLoading;
+    // Disable AI Estimate button logic
+    const isAiButtonDisabled = !selectedFood || !autoInput.trim() || isAiLoading;
+
+    // Handler for selecting a food item
+    const handleInternalSelectFood = (item: Food | null) => {
+        // If the same food is selected again, do nothing
+        if (selectedFood?.id === item?.id) return;
+
+        handleSelectFood(item); // Call the prop function to update parent state
+
+        // When a food is selected/changed (and not in edit mode with initial grams):
+        if (item && (!isEditMode || !initialGrams)) {
+            // Option 1: Clear grams whenever a new food is selected
+            // setGrams("");
+
+            // Option 2: Keep existing grams (current behavior implicitly)
+
+            // Always switch to grams mode when selecting a food
+            setUnitMode('grams');
+            setAutoInput(""); // Clear any previous auto input
+        } else if (!item) {
+             // If food is deselected (set to null)
+             setGrams(""); // Clear grams
+             setUnitMode('grams');
+             setAutoInput("");
+        }
+        // If isEditMode and initialGrams exist, the main useEffect will handle setting grams.
+    };
+
+    // --- Render ---
+    // console.log(`Rendering AddEntryModal - grams: "${grams}", unitMode: "${unitMode}", selectedFood: ${selectedFood?.name || 'null'}`);
 
     return (
         <Overlay
             isVisible={isVisible}
-            onBackdropPress={toggleOverlay}
+            onBackdropPress={!isAiLoading ? toggleOverlay : undefined} // Prevent closing while AI loading
             animationType="slide"
-            // statusBarTranslucent={Platform.OS === 'android'} // Consider removing if causing issues
-            overlayStyle={styles.overlayContainer} // Use a container style for positioning/sizing
+            overlayStyle={styles.overlayContainer}
         >
-             {/* KeyboardAvoidingView now directly inside Overlay */}
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.keyboardAvoidingView}
-                keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} // Added offset
+                keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}
             >
-                {/* This View now acts as the visible modal background and content container */}
                 <View style={combinedOverlayStyle}>
+                    {/* Header */}
                     <View style={styles.header}>
-                        <Text style={[styles.overlayTitle, isEditMode && styles.editModeTitle]}>
-                            {isEditMode ? "Edit Entry" : "Add Entry"}
-                        </Text>
-
-                        <Button
-                            title={isEditMode ? "Update" : "Add"}
-                            onPress={handleAddOrUpdateEntry}
-                            disabled={!selectedFood || !isValidNumberInput(grams) || grams === ""}
-                            buttonStyle={[styles.addButton, { backgroundColor: isEditMode ? theme.colors.warning : theme.colors.primary }]}
-                            titleStyle={styles.buttonTitle}
-                        />
-                        <TouchableOpacity onPress={toggleOverlay} style={styles.closeIcon}>
+                         <TouchableOpacity onPress={!isAiLoading ? toggleOverlay : undefined} style={styles.closeIconTouchable} disabled={isAiLoading}>
                             <Icon
                                 name="close"
                                 type="material"
                                 size={28}
-                                color={theme.colors.text}
+                                color={isAiLoading ? theme.colors.grey3 : theme.colors.text}
                             />
                         </TouchableOpacity>
+                        <Text h4 h4Style={[styles.overlayTitle, isEditMode && styles.editModeTitle]}>
+                            {isEditMode ? "Edit Entry" : "Add Entry"}
+                        </Text>
+                        <Button
+                            title={isEditMode ? "Update" : "Add"}
+                            onPress={handleAddOrUpdateEntry}
+                            disabled={isAddButtonDisabled}
+                            buttonStyle={[styles.addButton, isEditMode && styles.updateButton]}
+                            titleStyle={styles.buttonTitle}
+                            // Loading indicator could be shown here too if needed during add/update action
+                            // loading={someOtherLoadingState}
+                        />
                     </View>
 
+                    {/* Search Bar */}
                     <SearchBar
                         placeholder="Search Foods..."
                         onChangeText={updateSearch}
@@ -666,291 +838,508 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                         containerStyle={styles.searchBarContainer}
                         inputContainerStyle={styles.searchBarInputContainer}
                         inputStyle={styles.searchInputStyle}
+                        onCancel={() => updateSearch('')}
+                        disabled={isAiLoading} // Disable search while AI loading?
                     />
 
-                    {recentFoods.length > 0 && (
-                        <View style={styles.recentFoodsContainer}>
-                            <Text style={styles.sectionTitle}>Recent Foods</Text>
+                    {/* Recent Foods (Only show if NOT searching) */}
+                    {!search && recentFoods.length > 0 && (
+                        <View style={styles.recentFoodsSection}>
+                            <Text style={styles.sectionTitle}>Recent</Text>
                             <FlatList
                                 data={recentFoods}
-                                keyExtractor={(item) => item.id}
+                                keyExtractor={(item) => `recent-${item.id}`}
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.recentFoodsContainer}
                                 renderItem={({ item }) => (
                                     <TouchableOpacity
                                         style={[
                                             styles.recentFoodItem,
                                             screenWidth < 350 && styles.smallRecentFoodItem,
-                                            selectedFood?.id === item.id && styles.selectedRecentFoodItem, // Apply selected style
+                                            selectedFood?.id === item.id && styles.selectedRecentFoodItem,
                                         ]}
-                                        onPress={() => handleSelectFood(item)}>
+                                        onPress={() => handleInternalSelectFood(item)} // Use internal handler
+                                        disabled={isAiLoading}
+                                    >
                                         {foodIcons[item.name] ? (
                                             <Image
                                                 source={{ uri: foodIcons[item.name] as string }}
-                                                style={styles.foodIcon}
+                                                style={styles.foodIconSmall}
+                                                onError={() => setFoodIcons(prev => ({...prev, [item.name]: null}))}
                                             />
                                         ) : (
-                                            <Icon
-                                                name="fast-food-outline"
-                                                type="ionicon"
-                                                size={16}
-                                                color={theme.colors.text} // Ensure icon color matches theme
-                                            />
+                                            <View style={[styles.foodIconSmall, styles.iconPlaceholderSmall]}>
+                                                <Icon name="fastfood" type="material" size={12} color={theme.colors.grey2} />
+                                            </View>
                                         )}
-                                        <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]}>{item.name}</Text>
+                                        <Text
+                                            style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]}
+                                            numberOfLines={1}
+                                            ellipsizeMode="tail"
+                                        >
+                                            {item.name}
+                                        </Text>
                                     </TouchableOpacity>
                                 )}
                             />
                         </View>
                     )}
 
-                    {filteredFoods.length > 0 ? (
+                    {/* Food Search Results List (Only show IF searching) */}
+                     {search && (
                         <FlatList
                             data={filteredFoods}
-                            keyExtractor={(item) => item.id}
+                            keyExtractor={(item) => `search-${item.id}`}
                             renderItem={({ item }) => (
-                                <TouchableOpacity onPress={() => handleSelectFood(item)}>
+                                <TouchableOpacity onPress={() => handleInternalSelectFood(item)} disabled={isAiLoading}>
                                     <ListItem
                                         bottomDivider
                                         containerStyle={[
                                             styles.listItemContainer,
-                                            selectedFood?.id === item.id && styles.selectedListItem, // Apply selected style
-                                            { backgroundColor: 'transparent' } // Ensure list item itself is transparent
+                                            selectedFood?.id === item.id && styles.selectedListItem,
                                         ]}
                                     >
                                         {foodIcons[item.name] ? (
                                             <Image
                                                 source={{ uri: foodIcons[item.name] as string }}
                                                 style={styles.foodIcon}
+                                                onError={() => setFoodIcons(prev => ({...prev, [item.name]: null}))}
                                             />
                                         ) : (
-                                            <Icon
-                                                name="fast-food-outline"
-                                                type="ionicon"
-                                                size={16}
-                                                color={theme.colors.text} // Ensure icon color matches theme
-                                            />
+                                            <View style={styles.defaultIconContainer}>
+                                                <Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} />
+                                            </View>
                                         )}
                                         <ListItem.Content>
                                             <ListItem.Title style={styles.listItemTitle}>{item.name}</ListItem.Title>
                                         </ListItem.Content>
+                                         {selectedFood?.id === item.id && (
+                                             <Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />
+                                         )}
                                     </ListItem>
                                 </TouchableOpacity>
                             )}
-                            style={styles.foodList} // Keep max height
-                            // Add flexShrink to prevent pushing content when keyboard is up
-                            contentContainerStyle={{ flexGrow: 0 }} // Prevent internal grow
+                            style={styles.foodList}
+                            ListEmptyComponent={
+                                <Text style={styles.noFoodsText}>No foods found matching "{search}".</Text>
+                            }
+                            initialNumToRender={10}
+                            maxToRenderPerBatch={10}
+                            windowSize={5}
+                            keyboardShouldPersistTaps="handled"
                         />
-                    ) : (
-                        <Text style={styles.noFoodsText}>No foods found.</Text>
-                    )}
+                     )}
 
+                    {/* Amount Input Section (Only show if a food is selected) */}
                     {selectedFood && (
-                        <View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.servingSizeContainer}>
-                                {servingSizeSuggestions.map((suggestion) => (
-                                    <TouchableOpacity
-                                        key={suggestion.label}
-                                        style={styles.servingSizeButton}
-                                        onPress={() => setGrams(suggestion.value)}
-                                    >
-                                        <Text style={styles.servingSizeButtonTitle}>{suggestion.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                            <Input
-                                placeholder="Grams (e.g. 150)"
-                                keyboardType="numeric"
-                                value={grams}
-                                onChangeText={(text) => setGrams(text.replace(/[^0-9]/g, ""))}
-                                inputStyle={styles.gramInputStyle} // Use inputStyle directly
-                                inputContainerStyle={styles.gramInputContainerStyle}
-                                errorMessage={!isValidNumberInput(grams) && grams !== "" ? "Enter a valid number" : ""}
-                                errorStyle={{ color: theme.colors.error }} // Explicit error color
-                            />
+                        <View style={styles.amountSection}>
+                             {/* Unit Mode Selector */}
+                             <View style={styles.unitSelectorContainer}>
+                                <Text style={styles.inputLabel}>Amount</Text>
+                                <ButtonGroup
+                                    buttons={['Grams', 'Auto (AI)']}
+                                    selectedIndex={unitMode === 'grams' ? 0 : 1}
+                                    onPress={(index) => {
+                                        const newMode = index === 0 ? 'grams' : 'auto';
+                                        if (unitMode !== newMode) { // Only update if mode changes
+                                             setUnitMode(newMode);
+                                             // Optional: Clear auto input when switching to it?
+                                             // if (newMode === 'auto') setAutoInput("");
+                                        }
+                                    }}
+                                    containerStyle={styles.buttonGroupContainer}
+                                    selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                                    textStyle={styles.buttonGroupText}
+                                    selectedTextStyle={{ color: theme.colors.white }}
+                                    disabled={isAiLoading} // Disable switching modes while AI runs
+                                />
+                             </View>
+
+                            {/* Conditional Input Field */}
+                            {unitMode === 'grams' && (
+                                <>
+                                     {/* Serving Size Suggestions */}
+                                     {servingSizeSuggestions.length > 0 && (
+                                        <View style={styles.servingSizeRow}>
+                                             <Text style={styles.servingSizeLabel}>Quick Add:</Text>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servingSizeContainer}>
+                                                {servingSizeSuggestions.map((suggestion) => (
+                                                    <TouchableOpacity
+                                                        key={suggestion.label}
+                                                        style={styles.servingSizeButton}
+                                                        onPress={() => {
+                                                            // Only update if value is different
+                                                            if (grams !== suggestion.value) {
+                                                                setGrams(suggestion.value);
+                                                            }
+                                                        }}
+                                                        disabled={isAiLoading}
+                                                    >
+                                                        <Text style={styles.servingSizeButtonTitle}>{suggestion.label}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                     )}
+                                    {/* Grams Input */}
+                                    {/* {console.log(`Rendering GRAMS input - value prop: "${grams}"`)} */}
+                                    <Input
+                                        placeholder="Enter exact grams (e.g., 150)"
+                                        keyboardType="numeric"
+                                        value={grams} // Value is correctly bound to state
+                                        onChangeText={(text) => {
+                                            // Allow only numbers and one decimal point
+                                            const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, '$1');
+                                            if (grams !== cleanedText) { // Prevent unnecessary state updates
+                                                setGrams(cleanedText);
+                                            }
+                                        }}
+                                        inputStyle={styles.gramInputStyle}
+                                        inputContainerStyle={styles.gramInputContainerStyle}
+                                        errorMessage={!isValidNumberInput(grams) && grams !== "" && grams !== "." ? "Enter a valid number" : ""}
+                                        errorStyle={{ color: theme.colors.error }}
+                                        rightIcon={<Text style={styles.unitText}> g</Text>}
+                                        disabled={isAiLoading} // Disable input while AI processing
+                                        containerStyle={{ paddingHorizontal: 0 }}
+                                        // Add key to potentially help ensure re-render reflects state
+                                        key={`grams-input-${selectedFood.id}`}
+                                    />
+                                </>
+                            )}
+
+                            {unitMode === 'auto' && (
+                                <View style={styles.autoInputRow}>
+                                    {/* {console.log(`Rendering AUTO input - autoInput: "${autoInput}"`)} */}
+                                    <Input
+                                        placeholder="Describe quantity (e.g., 1 cup cooked)"
+                                        value={autoInput}
+                                        onChangeText={setAutoInput}
+                                        inputStyle={[styles.gramInputStyle, styles.autoInputField]}
+                                        inputContainerStyle={styles.gramInputContainerStyle}
+                                        containerStyle={styles.autoInputContainer}
+                                        multiline={false}
+                                        disabled={isAiLoading} // Disable while AI processing
+                                        onSubmitEditing={handleEstimateGrams} // Trigger estimation on submit
+                                        key={`auto-input-${selectedFood.id}`}
+                                    />
+                                    <Button
+                                        onPress={handleEstimateGrams}
+                                        disabled={isAiButtonDisabled}
+                                        loading={isAiLoading} // Show loading indicator on the button itself
+                                        buttonStyle={styles.aiButton}
+                                        // title="" // Icon only
+                                        icon={
+                                            isAiLoading ? (
+                                                <ActivityIndicator size="small" color={theme.colors.white} />
+                                            ) : (
+                                                <Icon name="calculator-variant" type="material-community" size={20} color={theme.colors.white} />
+                                            )
+                                        }
+                                    />
+                                </View>
+                            )}
                         </View>
                     )}
+                     {/* Spacer at the bottom */}
+                     <View style={{ height: 20 }} />
                 </View>
             </KeyboardAvoidingView>
+             {/* Toast Component */}
+             <Toast />
         </Overlay>
     );
 };
 
 // --- Styles ---
 const useStyles = makeStyles((theme) => ({
-    // Style for the Overlay container itself (positioning, width)
+    // Paste the full useStyles object here from your original code
+    // ... (Styles remain the same as provided in the previous example) ...
     overlayContainer: {
-        backgroundColor: 'transparent', // Make the overlay container transparent
+        backgroundColor: 'transparent',
         width: '90%',
-        maxWidth: 500, // Max width for larger screens
-        padding: 0, // Remove padding from overlay itself
-        borderRadius: 20,
-        // Remove height and marginVertical
-        // Shadow/Elevation is often better on the content view
+        maxWidth: 500,
+        padding: 0,
+        borderRadius: 15,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2, },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        overflow: 'hidden', // Prevent content spilling before borderRadius
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 6,
+        overflow: 'visible',
     },
-    // Style for the main content View inside KeyboardAvoidingView (visuals, padding)
     overlayStyle: {
-        width: '100%', // Takes width from overlayContainer
-        borderRadius: 20,
-        padding: 20,
-        maxHeight: '90%', // Limit max height to prevent vertical overflow
-        // backgroundColor is applied dynamically based on theme
+        width: '100%',
+        borderRadius: 15,
+        padding: 15,
+        paddingBottom: 0,
+        maxHeight: Dimensions.get('window').height * 0.85,
+        // backgroundColor applied via combinedOverlayStyle using theme.colors.background
     },
     keyboardAvoidingView: {
-         width: "100%", // Match parent overlay container width
-         // flex: 1, // Let KAV manage its size based on content and keyboard
+         width: "100%",
     },
-    // overlayContent removed as overlayStyle serves this purpose now
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 15,
+        paddingHorizontal: 5,
+    },
+     closeIconTouchable: {
+        padding: 5,
+        zIndex: 1, // Ensure it's clickable over title if overlap occurs
     },
     overlayTitle: {
         color: theme.colors.text,
         fontWeight: 'bold',
-        fontSize: 24,
-        flexShrink: 1, // Allow title to shrink if needed
-        marginRight: 10,
+        fontSize: 20,
+        textAlign: 'center',
+        flex: 1,
+        marginHorizontal: 5, // Reduced margin to give more space
     },
     editModeTitle: {
         color: theme.colors.warning,
+    },
+    addButton: {
+        borderRadius: 20,
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        minWidth: 70,
+        backgroundColor: theme.colors.primary,
+        zIndex: 1, // Ensure clickable
+    },
+     updateButton: {
+        backgroundColor: theme.colors.warning,
+    },
+    buttonTitle: {
+        color: theme.colors.white,
+        fontWeight: '600',
+        fontSize: 15,
     },
     searchBarContainer: {
         backgroundColor: "transparent",
         borderBottomColor: "transparent",
         borderTopColor: "transparent",
+        paddingHorizontal: 0,
         marginBottom: 10,
-        paddingHorizontal: 0, // No horizontal padding needed here
     },
     searchBarInputContainer: {
         borderRadius: 25,
-        backgroundColor: theme.colors.grey5,
+        backgroundColor: theme.colors.searchBg || theme.colors.grey5, // Use theme color with fallback
         height: 40,
     },
     searchInputStyle: {
         color: theme.colors.text,
-        marginLeft: 10,
-        fontSize: 16,
+        fontSize: 15,
+        // Adjust if using custom fonts
     },
-    recentFoodsContainer: {
+    // --- Recent Foods ---
+     recentFoodsSection: {
         marginBottom: 15,
     },
     sectionTitle: {
-        fontWeight: 'bold',
+        fontWeight: '600',
         marginBottom: 8,
-        color: theme.colors.text,
-        fontSize: 18,
+        color: theme.colors.grey1,
+        fontSize: 14,
+        marginLeft: 5,
+        textTransform: 'uppercase',
+    },
+     recentFoodsContainer: {
+        paddingHorizontal: 5,
+        paddingVertical: 2, // Small vertical padding for the container
     },
     recentFoodItem: {
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
         backgroundColor: theme.colors.grey5,
-        marginRight: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginRight: 8,
         flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1.5, // Use slightly thicker border for selection
+        borderColor: 'transparent',
     },
     selectedRecentFoodItem: {
-        backgroundColor: theme.colors.grey3,
+        // backgroundColor: theme.colors.grey4, // Optional: darker background on select
         borderColor: theme.colors.primary,
-        borderWidth: 2,
     },
     smallRecentFoodItem: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+    },
+    foodIconSmall: {
+        width: 20,
+        height: 20,
+        marginRight: 6,
+        borderRadius: 10,
+        resizeMode: "contain",
+    },
+     iconPlaceholderSmall: {
+        backgroundColor: theme.colors.grey4,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     recentFoodText: {
         color: theme.colors.text,
-        fontSize: 14,
-        marginLeft: 5,
+        fontSize: 13,
+        maxWidth: 80,
     },
     smallRecentFoodText: {
         fontSize: 12,
+        maxWidth: 70,
     },
-    foodIcon: {
-        width: 30,
-        height: 30,
-        marginRight: 10,
-        borderRadius: 15,
-        resizeMode: "contain", // Use contain or cover usually
-    },
+    // --- Food List (Search Results) ---
     foodList: {
-        // maxHeight: '48%', // Let flexbox handle sizing, or use flex basis
-        flexBasis: '40%', // Give it a basis, but allow shrinking
-        flexShrink: 1,     // Allow list to shrink
-        marginBottom: 8,
+        maxHeight: Dimensions.get('window').height * 0.3, // Max height relative to screen
+        minHeight: 60, // Ensure it has some minimum height even if few results
+        flexGrow: 0,
+        marginBottom: 15,
     },
     listItemContainer: {
-        backgroundColor: 'transparent', // Handled by parent
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center', // Align icon and text vertically
+        backgroundColor: 'transparent',
+        paddingVertical: 8,
+        paddingHorizontal: 5,
+        borderBottomColor: theme.colors.divider,
     },
     selectedListItem: {
         backgroundColor: theme.colors.grey5,
+        borderRadius: 8,
+    },
+     defaultIconContainer: {
+        width: 35,
+        height: 35,
+        marginRight: 12,
+        borderRadius: 17.5,
+        backgroundColor: theme.colors.grey5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    foodIcon: {
+        width: 35,
+        height: 35,
+        marginRight: 12,
+        borderRadius: 17.5,
+        resizeMode: "contain",
+        // Optional: add a background color if images have transparency
+        // backgroundColor: theme.colors.grey5,
     },
     listItemTitle: {
         color: theme.colors.text,
         fontSize: 16,
+        fontWeight: '500',
     },
     noFoodsText: {
         color: theme.colors.grey2,
         fontStyle: 'italic',
         textAlign: 'center',
         marginTop: 20,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    // --- Amount Section ---
+    amountSection: {
+        marginTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+        paddingTop: 15,
+    },
+    unitSelectorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+        paddingHorizontal: 5,
+    },
+    inputLabel: {
+        fontWeight: '600',
+        color: theme.colors.grey1,
+        fontSize: 14,
+        marginRight: 10,
+        textTransform: 'uppercase',
+    },
+    buttonGroupContainer: {
+        flex: 0.7,
+        maxWidth: 220,
+        height: 35,
+        borderRadius: 8,
+        backgroundColor: theme.colors.background // Ensure ButtonGroup background matches modal
+    },
+     buttonGroupText: {
+        fontSize: 14,
+        color: theme.colors.text,
+    },
+     servingSizeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12, // Increased margin below suggestions
+        paddingHorizontal: 5,
+    },
+    servingSizeLabel: {
+        color: theme.colors.grey2,
+        fontSize: 13,
+        marginRight: 8,
     },
     servingSizeContainer: {
-        marginTop: 15,
-        marginBottom: 10,
-        flexGrow: 0, // Prevent scrollview from growing excessively
+        flexGrow: 0, // Prevent ScrollView from taking full width
     },
     servingSizeButton: {
       backgroundColor: theme.colors.grey4,
-      borderRadius: 20,
+      borderRadius: 15,
       marginRight: 8,
-      paddingHorizontal: 15,
-      paddingVertical: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
       justifyContent: 'center',
       alignItems: 'center',
+      height: 30, // Give buttons a consistent height
     },
     servingSizeButtonTitle: {
         color: theme.colors.text,
-        fontSize: 14,
+        fontSize: 13,
     },
-    gramInputStyle: { // Apply styles directly to Input's inputStyle prop
+    gramInputStyle: {
         color: theme.colors.text,
         fontSize: 16,
-        paddingLeft: 10, // Add padding if needed here
+        paddingVertical: 8, // Adjust vertical padding if needed
+        height: 40, // Ensure consistent height with other inputs/buttons
     },
     gramInputContainerStyle: {
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.divider, // Use divider color
-        paddingBottom: 0, // Adjust if needed
-        marginBottom: 5, // Space before error message
+        borderBottomColor: theme.colors.grey3,
+        paddingHorizontal: 5, // Consistent padding
     },
-    addButton: {
-        borderRadius: 20,
-        paddingHorizontal: 20, // Reduced slightly
-        paddingVertical: 8, // Reduced slightly
-        minWidth: 80, // Reduced slightly
+    unitText: {
+        color: theme.colors.grey2,
+        fontSize: 15,
+        fontWeight: '500',
+        paddingRight: 5, // Add padding so 'g' isn't touching edge
     },
-    buttonTitle: {
-        color: theme.colors.white,
-        fontWeight: '600',
-        fontSize: 16,
+     autoInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center', // Vertically align input and button
     },
-    closeIcon: {
-        padding: 5,
-        marginLeft: 10, // Add some space
+    autoInputContainer: {
+       flex: 1, // Take available space
+       paddingHorizontal: 0, // Remove default container padding
+       marginRight: 10, // Space between input and button
     },
+    autoInputField: {
+       // Specific styles if needed, matches gramInputStyle height
+       height: 40,
+    },
+    aiButton: {
+        // marginLeft: 10, // Removed, using marginRight on autoInputContainer
+        backgroundColor: theme.colors.secondary,
+        borderRadius: 20, // Make it round
+        width: 40, // Fixed width
+        height: 40, // Fixed height for circle
+        padding: 0, // Remove padding for icon centering
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiButtonText: {
+        // Not needed for icon-only button
+    }
 }));
 
 export default AddEntryModal;
@@ -967,7 +1356,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  StyleSheet // Import StyleSheet
+  StyleSheet, // Import StyleSheet
+  TouchableOpacity, // Import TouchableOpacity for icon button
 } from "react-native";
 import {
   Button,
@@ -979,10 +1369,12 @@ import {
   Icon,
 } from "@rneui/themed";
 import { Food } from "../types/food";
-// Removed inner SafeAreaView import
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { getMacrosForRecipe } from "../utils/macros";
+// Import the necessary functions
+import { getMacrosForRecipe, getMacrosForImageFile } from "../utils/macros";
+import * as ImagePicker from "expo-image-picker";
+// import { ImagePickerAsset } from 'expo-image-picker'; // Import not strictly needed unless used elsewhere
 import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils"; // Added validation imports
 
 interface AddFoodModalProps {
@@ -1003,7 +1395,7 @@ interface AddFoodModalProps {
 }
 
 // Define a keyboard offset (adjust value based on testing, e.g., header height)
-const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 60 : 0;
+const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 60 : 0;
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
   isVisible,
@@ -1019,31 +1411,36 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
-  const [loading, setLoading] = useState(false);
-  const [apiLoading, setApiLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // For save/update
+  const [apiLoading, setApiLoading] = useState(false); // Keep or remove based on need for global overlay
   const [mode, setMode] = useState<"normal" | "ingredients">("normal");
   const [ingredients, setIngredients] = useState("");
-  const [aiButtonLoading, setAiButtonLoading] = useState(false);
+  const [aiButtonLoading, setAiButtonLoading] = useState(false); // For ingredient AI
+  const [imageLoading, setImageLoading] = useState(false); // For image analysis
 
   useEffect(() => {
     if (isVisible) {
       setErrors({});
       setMode("normal");
       setIngredients("");
+      // Reset loading states when modal opens
+      setAiButtonLoading(false);
+      setImageLoading(false);
+      setLoading(false);
     }
   }, [isVisible, setErrors]);
 
   const getValue = (key: keyof Omit<Food, "id">) => {
     // Ensure numeric fields default to empty string for input if 0
-     const value = (editFood && editFood[key]) ?? newFood[key] ?? "";
-     // Keep 0 as "0" if it's the initial state for a new food
-     if (!editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-         return ""; // Show empty input for new food numeric fields initially
-     }
-     if (editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-         return "0"; // Show "0" if editing and value is actually 0
-     }
-     return String(value);
+    const value = (editFood && editFood[key]) ?? newFood[key] ?? "";
+    // Keep 0 as "0" if it's the initial state for a new food
+    if (!editFood && typeof value === 'number' && value === 0 && key !== 'name') {
+        return ""; // Show empty input for new food numeric fields initially
+    }
+    if (editFood && typeof value === 'number' && value === 0 && key !== 'name') {
+        return "0"; // Show "0" if editing and value is actually 0
+    }
+    return String(value); // Always return string for Input component
   };
 
 
@@ -1060,10 +1457,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
      const dataToValidate: Omit<Food, "id"> = {
         ...foodData,
         name: String(foodData.name).trim(), // Trim name
-        calories: parseFloat(String(foodData.calories)) || 0,
-        protein: parseFloat(String(foodData.protein)) || 0,
-        carbs: parseFloat(String(foodData.carbs)) || 0,
-        fat: parseFloat(String(foodData.fat)) || 0,
+        // Use getValue to ensure consistency with displayed value before parsing
+        calories: parseFloat(getValue("calories")) || 0,
+        protein: parseFloat(getValue("protein")) || 0,
+        carbs: parseFloat(getValue("carbs")) || 0,
+        fat: parseFloat(getValue("fat")) || 0,
     };
 
 
@@ -1083,11 +1481,12 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     setErrors({});
 
     try {
-      // Use dataToValidate which has correctly parsed numbers
+      // Assumes handleUpdateFood/handleCreateFood use the respective state (editFood/newFood)
+      // which was updated via handleInputChange. They need to handle parsing strings back to numbers if needed.
       if (isUpdate) {
-          await handleUpdateFood(); // Assumes handleUpdateFood uses the `editFood` state which was updated via handleInputChange
+          await handleUpdateFood();
       } else {
-          await handleCreateFood(); // Assumes handleCreateFood uses the `newFood` state which was updated via handleInputChange
+          await handleCreateFood();
       }
 
       Toast.show({
@@ -1108,7 +1507,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
   const handleAiButtonClick = async () => {
     const foodName = getValue("name");
-    if (!foodName) {
+     // Require name only when switching to ingredients mode or submitting from it
+    if (!foodName && mode === 'ingredients') {
       Alert.alert("Missing Name", "Please enter a food name first.");
       return;
     }
@@ -1121,13 +1521,16 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
       handleInputChange("carbs", "", !!editFood);
       handleInputChange("fat", "", !!editFood);
     } else if (mode === "ingredients") {
-      // --- MODIFICATION: Allow proceeding even if ingredients are empty ---
-      // The check for foodName is already done above.
+       // Ensure name exists before proceeding (should be caught above, but good failsafe)
+      const currentFoodName = getValue("name");
+      if (!currentFoodName) {
+        Alert.alert("Missing Name", "Please enter a food name before calculating macros.");
+        return;
+      }
 
       setAiButtonLoading(true);
       try {
-        // Pass the potentially empty ingredients string to the function
-        const macros = await getMacrosForRecipe(foodName, ingredients);
+        const macros = await getMacrosForRecipe(currentFoodName, ingredients);
 
         // Update fields with AI results (rounded)
         handleInputChange("calories", String(Math.round(macros.calories)), !!editFood);
@@ -1136,18 +1539,103 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         handleInputChange("fat", String(Math.round(macros.fat)), !!editFood);
 
         setMode("normal"); // Switch back to normal mode to show results
+         Toast.show({ type: 'info', text1: 'Macros estimated from ingredients.', position: 'bottom' });
       } catch (error) {
-        console.error("AI Macro fetch error:", error);
+        console.error("AI Macro fetch error (recipe):", error);
         Alert.alert(
           "AI Error",
-          // Modify error message slightly
-          "Could not calculate macros based on the provided information. Please check the name/ingredients and try again, or input manually."
+           `Could not calculate macros from text. ${error instanceof Error ? error.message : "Please try again or input manually."}`
         );
       } finally {
         setAiButtonLoading(false);
       }
     }
   };
+
+  const handleImagePickAndAnalyze = async () => {
+    // 1. Request Permissions
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You need to allow access to your photo library to select an image."
+      );
+      return;
+    }
+
+    // 2. Launch Image Picker
+    try {
+        const pickerResult = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6, // Reduce quality slightly
+        });
+
+        // 3. Handle Picker Result
+        if (pickerResult.canceled) {
+            console.log("Image selection cancelled");
+            return;
+        }
+
+        if (pickerResult.assets && pickerResult.assets.length > 0) {
+            const asset = pickerResult.assets[0]; // asset is of type ImagePickerAsset
+            console.log("Image selected:", asset.uri);
+            setImageLoading(true); // Start loading indicator
+
+            // --- FIX: Create the parameter object explicitly ---
+            const fileInfoForApi = {
+                uri: asset.uri,
+                // Convert null fileName to undefined to match the expected type
+                fileName: asset.fileName ?? undefined,
+                // Use mimeType from the picker asset if available, otherwise undefined
+                type: asset.mimeType ?? undefined
+            };
+            // --- End FIX ---
+
+            // 4. Call the Image Analysis Function with the correctly typed object
+            try {
+                // Pass the corrected fileInfoForApi object
+                const result = await getMacrosForImageFile(fileInfoForApi);
+
+                // Update form fields with results
+                handleInputChange("name", result.foodName, !!editFood); // Update name too
+                handleInputChange("calories",String(Math.round(result.calories)),!!editFood);
+                handleInputChange("protein",String(Math.round(result.protein)),!!editFood);
+                handleInputChange("carbs",String(Math.round(result.carbs)),!!editFood);
+                handleInputChange("fat", String(Math.round(result.fat)), !!editFood);
+
+                // Switch back to normal mode if in ingredients mode
+                setMode("normal");
+                setIngredients(""); // Clear ingredients if image analysis was successful
+
+                Toast.show({
+                    type: 'success',
+                    text1: 'Food Identified!',
+                    text2: `Identified as ${result.foodName}. Macros estimated.`,
+                    position: 'bottom',
+                });
+
+            } catch (analysisError) {
+                console.error("Error during image analysis:", analysisError);
+                Alert.alert(
+                    "Analysis Failed",
+                    `Could not get macros from the image. ${analysisError instanceof Error ? analysisError.message : "Please try again or enter manually."}`
+                );
+            } finally {
+                setImageLoading(false); // Stop loading indicator
+            }
+        } else {
+            console.log("No assets selected or returned.");
+            // Optional: show a message if no asset was returned unexpectedly
+        }
+    } catch (pickerError) {
+      console.error("Error launching image picker:", pickerError);
+      Alert.alert("Image Picker Error", "Could not open the image library.");
+      setImageLoading(false); // Ensure loading is false if picker fails
+    }
+  };
+
 
     // Combine theme-dependent and static styles
     const combinedOverlayStyle = StyleSheet.flatten([
@@ -1158,9 +1646,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
   return (
     <Overlay
       isVisible={isVisible}
-      onBackdropPress={toggleOverlay}
+      onBackdropPress={!imageLoading && !aiButtonLoading && !loading ? toggleOverlay : undefined} // Prevent closing while loading
       animationType="fade"
-      // statusBarTranslucent={Platform.OS === 'android'} // Consider removing if causing issues
       overlayStyle={styles.overlayContainer} // Use container style
     >
       {/* KeyboardAvoidingView now directly inside Overlay */}
@@ -1187,39 +1674,66 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 },
               ]}
               titleStyle={{ color: theme.colors.white, fontWeight: "600" }}
-              loading={loading}
+              loading={loading} // Use the specific loading state
+              disabled={loading || aiButtonLoading || imageLoading} // Disable while any operation is running
               containerStyle={styles.buttonContainer}
             />
+             {/* Disable close button when loading */}
             <Icon
               name="close"
               type="material"
               size={28}
               color={theme.colors.text}
-              onPress={toggleOverlay}
+              onPress={!imageLoading && !aiButtonLoading && !loading ? toggleOverlay : undefined}
               containerStyle={styles.closeIcon}
+              disabled={imageLoading || aiButtonLoading || loading}
+              disabledStyle={{ backgroundColor: 'transparent' }} // Prevent visual change on disable
             />
           </View>
 
           {/* Use ScrollView to ensure content is scrollable, especially with keyboard */}
           <ScrollView keyboardShouldPersistTaps="handled">
-            <Input
-              label="Food Name"
-              labelStyle={{ color: theme.colors.text }}
-              value={getValue("name")}
-              onChangeText={(text) =>
-                handleInputChange("name", text, !!editFood)
-              }
-              errorMessage={errors.name}
-              inputContainerStyle={styles.inputContainerStyle}
-              inputStyle={styles.inputStyle}
-              leftIcon={
-                <MaterialCommunityIcons
-                  name="food-apple"
-                  size={24}
-                  color={errors.name ? theme.colors.error : theme.colors.grey1} // Use less prominent color when no error
+             {/* --- Food Name Input with Image Icon --- */}
+            <View style={styles.inputRow}>
+                <Input
+                    label="Food Name"
+                    labelStyle={{ color: theme.colors.text }}
+                    value={getValue("name")}
+                    onChangeText={(text) =>
+                        handleInputChange("name", text, !!editFood)
+                    }
+                    errorMessage={errors.name}
+                    inputContainerStyle={[styles.inputContainerStyle, styles.inputContainerFlex]} // Adjust style
+                    inputStyle={styles.inputStyle}
+                    containerStyle={{ flex: 1 }} // Make input take available space
+                    leftIcon={
+                        <MaterialCommunityIcons
+                        name="food-apple"
+                        size={24}
+                        color={errors.name ? theme.colors.error : theme.colors.grey1} // Use less prominent color when no error
+                        />
+                    }
                 />
-              }
-            />
+                {/* --- Image Picker Icon Button --- */}
+                <TouchableOpacity
+                    onPress={handleImagePickAndAnalyze}
+                    disabled={imageLoading || aiButtonLoading || loading} // Disable while loading
+                    style={styles.iconButtonContainer}
+                 >
+                    {imageLoading ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                    ) : (
+                        <Icon
+                            name="camera-enhance-outline" // Or 'image-plus'
+                            type="material-community"
+                            size={28}
+                            color={theme.colors.primary}
+                        />
+                    )}
+                </TouchableOpacity>
+            </View>
+            {/* --- End Food Name Input with Image Icon --- */}
+
             {mode === "normal" && (
               <>
                 <Input
@@ -1231,7 +1745,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "calories",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -1259,8 +1773,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                   onChangeText={(text) =>
                     handleInputChange(
                       "protein",
-                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      // Allow only numbers and one decimal point
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -1289,7 +1803,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "carbs",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -1315,7 +1829,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     handleInputChange(
                       "fat",
                       // Allow only numbers and one decimal point
-                      text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'),
+                      text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
                       !!editFood
                     )
                   }
@@ -1343,10 +1857,13 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     type="material-community"
                     size={24}
                     color={theme.colors.primary}
-                    onPress={() => setMode("normal")}
+                    onPress={() => !aiButtonLoading && setMode("normal")} // Prevent switching during AI call
+                    disabled={aiButtonLoading}
                     containerStyle={styles.backIcon}
                   />
-                  <Text style={styles.backButtonText} onPress={() => setMode("normal")}>Back to Manual Input</Text>
+                  <Text style={[styles.backButtonText, aiButtonLoading && styles.disabledText]} onPress={() => !aiButtonLoading && setMode("normal")}>
+                      Back to Manual Input
+                  </Text>
                 </View>
 
                 <Input
@@ -1356,7 +1873,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                   onChangeText={setIngredients}
                   multiline={true}
                   numberOfLines={4} // Suggests height but allows expansion
-                  inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
+                  inputContainerStyle={[
+                    styles.inputContainerStyle,
+                    styles.multilineInputContainer,
+                  ]}
                   inputStyle={[styles.inputStyle, styles.multilineInput]}
                   placeholder="e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil"
                   placeholderTextColor={theme.colors.grey3}
@@ -1371,13 +1891,14 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 />
               </>
             )}
-            {/* --- AI Button --- */}
+            {/* --- AI (Text) Button --- */}
             <Button
-              title={mode === "normal"
-                  ? "Calculate with AI (Optional)"
+              title={
+                mode === "normal"
+                  ? "Calculate with AI (Recipe/Text)" // Clarify it's for text
                   : ingredients // Check if ingredients have been entered
-                      ? "Get Macros from Ingredients"
-                      : "Get Macros from Name Only" // New title
+                  ? "Get Macros from Ingredients"
+                  : "Get Macros from Name Only" // New title
               }
               onPress={handleAiButtonClick}
               buttonStyle={[
@@ -1386,8 +1907,18 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 { backgroundColor: theme.colors.secondary },
               ]}
               titleStyle={[styles.aiButtonTitle, { color: theme.colors.white }]}
-              loading={aiButtonLoading}
-              icon={mode === 'normal' ? <MaterialCommunityIcons name="brain" size={18} color={theme.colors.white} style={{ marginRight: 8 }} /> : undefined}
+              loading={aiButtonLoading} // Use specific loading state
+              disabled={aiButtonLoading || imageLoading || loading} // Disable while other ops run
+              icon={
+                mode === "normal" ? (
+                  <MaterialCommunityIcons
+                    name="text-box-search-outline" // Changed icon
+                    size={18}
+                    color={theme.colors.white}
+                    style={{ marginRight: 8 }}
+                  />
+                ) : undefined
+              }
               containerStyle={[styles.buttonContainer, { marginTop: 15 }]}
             />
 
@@ -1399,7 +1930,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-      {apiLoading && ( // Keep this loading overlay as is
+      {/* Optional: Central loading overlay (can be removed if specific indicators are sufficient) */}
+      {apiLoading && ( // You might not need this if button indicators are enough
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
@@ -1409,7 +1941,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 };
 
 
-// --- Styles (Includes previous fixes for keyboard avoiding) ---
+// --- Styles (Includes previous fixes and new styles for image icon) ---
 const useStyles = makeStyles((theme) => ({
   // Style for the Overlay container itself (positioning, width)
   overlayContainer: {
@@ -1418,7 +1950,6 @@ const useStyles = makeStyles((theme) => ({
     maxWidth: 500, // Max width for larger screens
     padding: 0, // Remove padding from overlay itself
     borderRadius: 15,
-    // Remove height and marginVertical
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2, },
     shadowOpacity: 0.25,
@@ -1459,6 +1990,27 @@ const useStyles = makeStyles((theme) => ({
     padding: 5,
     marginLeft: 10,
   },
+  // *** Styles for Input Row with Icon Button ***
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end', // Align items to bottom (aligns icon with input line)
+    marginBottom: 5, // Consistent margin like other inputs
+  },
+  inputContainerFlex: {
+    flex: 1, // Allow input container to grow
+    marginRight: 10, // Space between input and icon button
+    marginBottom: 0, // Remove margin bottom from container inside row
+  },
+  iconButtonContainer: {
+    height: 40, // Match input height approximately
+    width: 40,  // Make it square
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10, // Align button bottom with input field bottom roughly (adjust if needed)
+    // backgroundColor: theme.colors.grey5, // Optional: Subtle background
+    // borderRadius: 20, // Optional: Make it circular
+  },
+  // *** End Styles for Input Row ***
   inputContainerStyle: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.grey4,
@@ -1519,7 +2071,7 @@ const useStyles = makeStyles((theme) => ({
       fontSize: 15,
       textAlign: 'center', // Center button text
   },
-  loadingOverlay: { // Keep as is
+  loadingOverlay: { // For general overlay if needed
     position: "absolute",
     top: 0,
     left: 0,
@@ -1545,6 +2097,9 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.primary, // Make text match icon color
     fontSize: 16,
     fontWeight: '500',
+  },
+  disabledText: {
+      color: theme.colors.grey3, // Style for disabled text
   }
 }));
 
@@ -4064,22 +4619,77 @@ export interface Food {
 
 ---------- openRouterTypes.ts ----------
 // src/utils/types.ts
-// Defining types here helps with autocompletion and type safety
+
+// =====================================
+// Consolidated OpenRouter Type Definitions
+// =====================================
+
+// --- Content Parts (for multi-modal input like images) ---
+export type OpenRouterContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } };
+
+// --- Message Structure ---
+// Allows content to be a simple string OR an array of content parts for vision models
+export interface OpenRouterMessage {
+  role: "user" | "assistant" | "system";
+  content: string | OpenRouterContentPart[]; // Consolidated definition
+  name?: string; // Optional name field
+}
+
+// --- Choice Structure (within the response) ---
+// This structure aligns with standard Chat Completion APIs (like OpenAI/OpenRouter)
+export interface OpenRouterChatChoice {
+  index: number;
+  message: OpenRouterMessage; // Contains the actual message content and role
+  logprobs?: any | null; // Optional log probabilities (use a specific type if known)
+  finish_reason: string | null; // Can be null sometimes
+  // text?: string; // Usually the content is inside message.content, keep optional if some models return it differently
+}
+
+// --- API Usage Information ---
+export interface OpenRouterUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+// --- Main Chat Completion Response Structure ---
+// Consolidates the fields from both previous declarations
+export interface OpenRouterChatCompletionResponse {
+  id: string;
+  object: string; // Typically "chat.completion"
+  created: number; // Timestamp
+  model: string; // Model used
+  choices: OpenRouterChatChoice[]; // Array of choices using the defined structure
+  usage?: OpenRouterUsage; // Usage information is often optional
+  // Add any other relevant fields you might encounter from OpenRouter
+  // system_fingerprint?: string; // Example optional field
+}
+
+
+// =====================================
+// Removed Redundant/Conflicting Declarations:
+// =====================================
+
+/*
+// REMOVED - Duplicate/Outdated OpenRouterMessage
 export interface OpenRouterMessage {
   role: "user" | "assistant" | "system"; // Add system role
   content: string;
 }
 
+// REMOVED - Less standard choice structure (often message.content is used instead of top-level text)
 export interface OpenRouterChoice {
-  message: OpenRouterMessage;
-  finish_reason?: string; // Optional properties for handling different responses
+  text: any; // 'any' is vague, content is usually in message
+  message: OpenRouterMessage; // This duplicates content info if 'text' is also present
+  finish_reason?: string;
   index?: number;
 }
 
+// REMOVED - Duplicate/Simpler OpenRouterChatCompletionResponse
 export interface OpenRouterChatCompletionResponse {
-  choices: OpenRouterChoice[];
-  // You might add other fields that OpenRouter returns if you need them.
-  // Example: id, created, model, usage, etc.
+  choices: OpenRouterChoice[]; // Used the less standard choice type
   id?: string;
   created?: number;
   model?: string;
@@ -4089,7 +4699,7 @@ export interface OpenRouterChatCompletionResponse {
     total_tokens: number;
   };
 }
-
+*/
 ---------- END openRouterTypes.ts ----------
 
 
@@ -4306,48 +4916,361 @@ export const getFoodIconUrl = async (foodName: string): Promise<string | null> =
 
 ---------- macros.ts ----------
 // utils/macros.ts
-import { getChatCompletion } from "./ai";
-import { OpenRouterMessage } from "../types/openRouterTypes";
+import * as FileSystem from "expo-file-system";
+// Use the React Native compatible library
+import MimeTypes from 'react-native-mime-types';
+import {
+  OpenRouterChatCompletionResponse,
+  OpenRouterMessage,
+  // Make sure these types are correctly defined in your types file
+} from "../types/openRouterTypes"; // Adjust path if needed (e.g., "../utils/types")
 
+// Interfaces
 export interface Macros {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
-export async function getMacrosForRecipe(foodName: string, Ingredients: string): Promise<Macros> { // Changed parameter
-    const prompt = `
-    Calculate the macros per 100g for the following food.  Output ONLY a JSON object with the keys "calories", "protein", "carbs", and "fat".  Do NOT include any other text, explanations, or calculations.
+export interface MacrosWithFoodName extends Macros {
+  foodName: string;
+}
 
-    Food: ${foodName}
-    Ingredients:
-    ${Ingredients}
+
+// --- MOCK/Placeholder getChatCompletion ---
+// Replace this with your actual implementation if it lives elsewhere
+async function getChatCompletion(model: string, messages: OpenRouterMessage[], response_format?: string): Promise<OpenRouterChatCompletionResponse> {
+    console.log("Mock getChatCompletion called for model:", model);
+    const effectiveApiKey = "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"; // Use your key securely
+
+    const body: any = {
+        model: model,
+        messages: messages,
+    };
+    if (response_format) {
+        body.response_format = { type: response_format };
+    }
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${effectiveApiKey}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Mock API Error:", errorText);
+        throw new Error(`Mock API request failed: ${response.status} ${errorText}`);
+    }
+    const data = await response.json();
+    return data as OpenRouterChatCompletionResponse;
+}
+// --- END MOCK ---
+
+
+// Function to get macros from text description
+export async function getMacrosForRecipe(
+    foodName: string,
+    Ingredients: string
+): Promise<Macros> {
+    const prompt = `
+      Calculate the macros per 100g for the following food. Output ONLY a JSON object with the keys "calories", "protein", "carbs", and "fat". Do NOT include any other text, explanations, or calculations.
+
+      Food: ${foodName}
+      Ingredients:
+      ${Ingredients}
+      `;
+
+    // Content here is definitely a string
+    const messages: OpenRouterMessage[] = [{ role: "user", content: prompt }];
+
+    try {
+        const response = await getChatCompletion(
+            "google/gemini-2.0-flash-thinking-exp-1219:free", // Model for text
+            messages,
+            "json_object" // Request JSON output
+        );
+
+        if (!response.choices || response.choices.length === 0 || !response.choices[0].message) {
+            throw new Error("Invalid response structure from AI.");
+        }
+
+        const messageContent = response.choices[0].message.content;
+        if (typeof messageContent === 'string') {
+            const cleanedContent = messageContent.trim().replace(/^```json\s*|\s*```$/g, "");
+            try {
+                 const macroInfo: Macros = JSON.parse(cleanedContent);
+                 if (typeof macroInfo.calories !== 'number' || typeof macroInfo.protein !== 'number' || typeof macroInfo.carbs !== 'number' || typeof macroInfo.fat !== 'number') {
+                    console.error("Parsed JSON has incorrect structure (recipe):", macroInfo);
+                    throw new Error("AI returned data in an unexpected format.");
+                 }
+                 return macroInfo;
+            } catch (parseError) {
+                 if (parseError instanceof SyntaxError) {
+                    console.error("Error: The recipe response content was not valid JSON.", parseError);
+                    console.error("Cleaned content:", cleanedContent);
+                    throw new Error("Invalid JSON response from AI.");
+                 }
+                 throw parseError;
+            }
+        } else {
+            console.error("Error: AI recipe response content was not a string:", messageContent);
+            throw new Error("Unexpected AI response format: content is not a string.");
+        }
+
+    } catch (error) {
+        console.error("Error fetching/processing macros for recipe:", error);
+        if (error instanceof Error && (error.message.startsWith("Invalid JSON") || error.message.startsWith("Unexpected AI response"))) {
+             throw error; // Re-throw specific errors
+        }
+        throw new Error(`Failed to get macros for recipe: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
+// Utility function to convert a file URI to base64
+export async function getBase64FromUri(uri: string): Promise<string> {
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  } catch (error) {
+    console.error(`Failed to convert file to base64: ${uri}`, error);
+    throw new Error(`Failed to convert file to base64: ${error}`);
+  }
+}
+
+// Function to get macros from an image file
+export async function getMacrosForImageFile(asset: {
+  uri: string;
+  fileName?: string; // Optional filename from ImagePicker
+  type?: string; // Optional MIME type from ImagePicker
+}): Promise<MacrosWithFoodName> {
+  const prompt = `
+    Analyze the food in the image provided and guess the food name, ingredients, and their approximate proportions based on visual estimation.
+    Then, calculate the estimated macros per 100g (calories, protein, carbs, fat) for the food.
+    Output ONLY a JSON object with the keys "foodName", "calories", "protein", "carbs", and "fat".
+    Do NOT include any extra text, explanations, calculations, or markdown formatting like \`\`\`json.
+    Just the raw JSON object.
+  `;
+
+  // 1. Get Base64 Data
+  let base64File: string;
+  try {
+      base64File = await getBase64FromUri(asset.uri);
+  } catch (err) {
+      console.error("Error getting base64 from URI:", err);
+      throw new Error("Failed to read image file.");
+  }
+
+  // 2. Determine MIME Type using react-native-mime-types
+  let mimeType = asset.type; // Prioritize type from ImagePicker asset
+
+  if (!mimeType && asset.fileName) {
+      console.warn(`mimeType missing from ImagePicker asset (fileName: ${asset.fileName}). Attempting lookup.`);
+      // Use the compatible library's lookup function
+      mimeType = MimeTypes.lookup(asset.fileName) || undefined; // Returns false if not found, convert to undefined
+  }
+
+  // Default to jpeg if still undetermined (last resort)
+  if (!mimeType) {
+      console.warn(`Could not determine mimeType for ${asset.fileName}. Defaulting to image/jpeg.`);
+      mimeType = 'image/jpeg';
+  }
+
+  console.log(`Using mimeType: ${mimeType} for image processing.`);
+  const imageUrl = `data:${mimeType};base64,${base64File}`;
+
+  // 3. Construct Messages for Vision Model
+  const messages: OpenRouterMessage[] = [
+    {
+      role: "user",
+      content: [ // Content is an array for multi-modal
+        { type: "text", text: prompt },
+        {
+          type: "image_url",
+          image_url: {
+            url: imageUrl,
+          },
+        },
+      ],
+    },
+  ];
+
+  // 4. Prepare API Request Body
+  const bodyData = {
+    model: "google/gemini-2.0-flash-thinking-exp-1219:free", // DO NOT CHANGE MODEL per user request
+    messages: messages,
+    response_format: { type: "json_object" },
+    // max_tokens: 512, // Optional: Consider adding if responses get cut off
+  };
+
+  // 5. API Key (Use secure storage in production!)
+  const effectiveApiKey =
+    "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";
+  if (!effectiveApiKey) {
+    throw new Error("API key is missing");
+  }
+
+  // 6. Make API Call and Process Response
+  try {
+    console.log("Sending request to OpenRouter vision model...");
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${effectiveApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyData),
+      }
+    );
+
+    const responseBodyText = await response.text(); // Read body once
+
+    if (!response.ok) {
+      console.error("OpenRouter API Error Response Text:", responseBodyText);
+      // Attempt to parse error for more details if possible
+      try {
+          const errorJson = JSON.parse(responseBodyText);
+          console.error("Parsed API Error:", errorJson);
+      } catch (e) { /* Ignore parsing error if body wasn't JSON */ }
+      throw new Error(
+        `API request failed with status ${response.status}: ${responseBodyText}`
+      );
+    }
+
+    console.log("OpenRouter API Success Response Text:", responseBodyText);
+    const data: OpenRouterChatCompletionResponse = JSON.parse(responseBodyText);
+
+    // Validate response structure
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message) {
+         console.error("API Response missing choices or message:", data);
+         throw new Error("Could not find message structure in the AI response.");
+    }
+
+    const choice = data.choices[0];
+    const messageContent = choice.message.content; // Type is string | OpenRouterContentPart[]
+
+    // Use Type Guard to ensure response content is a string
+    let responseContentString: string;
+    if (typeof messageContent === 'string') {
+        responseContentString = messageContent;
+    }
+    // Less likely fallback (check if needed based on testing)
+    // else if (typeof (choice as any).text === 'string') {
+    //     console.warn("Using fallback 'text' field from choice.");
+    //     responseContentString = (choice as any).text;
+    // }
+    else {
+        // Handle unexpected content format (array, null, etc.)
+        console.error("Error: AI response content was not a string as expected:", messageContent);
+        throw new Error("Unexpected AI response format: content is not a string.");
+    }
+
+    console.log("Raw AI content string:", responseContentString);
+
+    // Clean and Parse the JSON String
+    const cleanedContent = responseContentString.trim().replace(/^```json\s*|\s*```$/g, "");
+
+    try {
+        const macroInfo: MacrosWithFoodName = JSON.parse(cleanedContent);
+        // Validate parsed object structure
+        if (typeof macroInfo.foodName !== 'string' ||
+            typeof macroInfo.calories !== 'number' ||
+            typeof macroInfo.protein !== 'number' ||
+            typeof macroInfo.carbs !== 'number' ||
+            typeof macroInfo.fat !== 'number') {
+            console.error("Parsed JSON has incorrect structure (image):", macroInfo);
+            throw new Error("AI returned data in an unexpected format.");
+        }
+        console.log('macroInfo: ', macroInfo);
+        return macroInfo;
+    } catch (parseError) {
+        if (parseError instanceof SyntaxError) {
+            console.error("Error: The AI response was not valid JSON after cleaning.");
+            console.error("Cleaned content:", cleanedContent);
+            throw new Error("Invalid JSON response from AI.");
+        }
+        throw parseError; // Re-throw other parsing errors
+    }
+
+  } catch (error) {
+    // Handle fetch/network errors
+    if (error instanceof TypeError && error.message === 'Network request failed') {
+       console.error("Network Error: Could not connect to the API. Check internet connection and OpenRouter status.");
+       throw new Error("Network error: Failed to reach AI service.");
+    }
+    // Log and re-throw other errors
+    console.error("Error processing image analysis request:", error);
+    if (error instanceof Error && (error.message.startsWith("Invalid JSON") || error.message.startsWith("Unexpected AI response") || error.message.startsWith("Could not find") || error.message.startsWith("API request failed"))) {
+         throw error; // Re-throw specific known error types
+    }
+    // General fallback error
+    throw new Error(`Failed to get macros from image: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+---------- END macros.ts ----------
+
+
+---------- units.ts ----------
+// --- NEW FUNCTION ---
+
+import { OpenRouterMessage } from "../types/openRouterTypes";
+import { getChatCompletion } from "./ai";
+
+/**
+ * Estimates the weight in grams based on a natural language description and food item.
+ * @param foodName The name of the food item (e.g., "Apple").
+ * @param quantityDescription The natural language description (e.g., "2 small", "1 cup chopped").
+ * @returns A promise that resolves with the estimated weight in grams (number).
+ */
+export async function getGramsFromNaturalLanguage(
+    foodName: string,
+    quantityDescription: string
+): Promise<number> {
+    const prompt = `
+    Estimate the approximate weight in grams for the following quantity of food.
+    Food: "${foodName}"
+    Quantity: "${quantityDescription}"
+
+    Respond with ONLY the estimated numeric value in grams. Do not include units (like 'g' or 'grams'), explanations, or any other text. Just the number.
+    Example response: 150
     `;
 
     const messages: OpenRouterMessage[] = [{ role: "user", content: prompt }];
 
     try {
+        // Using a capable but potentially free/cheap model
         const response = await getChatCompletion(
-            "google/gemini-2.0-flash-thinking-exp-1219:free", // Or your chosen model
+            "google/gemini-2.0-flash-thinking-exp-1219:free", // Or try "mistralai/mistral-7b-instruct:free", "nousresearch/nous-hermes-2-mixtral-8x7b-dpo:free"
             messages,
-            "json_object"
+            "text" // Expecting plain text number
         );
 
-        const content = response.choices[0].message.content;
-        const cleanedContent = content.trim().replace(/^```json\s*|\s*```$/g, "");
-        const macroInfo: Macros = JSON.parse(cleanedContent);
-        return macroInfo;
-    } catch (error) {
-        if (error instanceof SyntaxError) {
-            console.error("Error: The response was not valid JSON.");
-            throw new Error("Invalid JSON response from AI.");
+        const content = response.choices[0].message.content.trim();
+
+        // Try to parse the response as a number
+        const estimatedGrams = parseFloat(content);
+
+        if (isNaN(estimatedGrams)) {
+            console.error(`AI response was not a valid number: "${content}"`);
+            throw new Error("AI did not return a valid number for grams.");
         }
-        console.error("Error fetching macros:", error);
+
+        return Math.round(estimatedGrams); // Return rounded integer grams
+
+    } catch (error) {
+        console.error("Error getting grams estimation from AI:", error);
+        // Re-throw the error so the calling component can handle it
         throw error;
     }
 }
----------- END macros.ts ----------
+---------- END units.ts ----------
 
 
 ---------- validationUtils.ts ----------
