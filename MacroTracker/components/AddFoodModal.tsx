@@ -1,4 +1,4 @@
-// components/AddFoodModal.tsx (No changes needed from your provided version)
+// components/AddFoodModal.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -25,7 +25,8 @@ import Toast from "react-native-toast-message";
 // Import the necessary functions
 import { getMacrosForRecipe, getMacrosForImageFile } from "../utils/macros";
 import * as ImagePicker from "expo-image-picker";
-// import { ImagePickerAsset } from 'expo-image-picker'; // Import not strictly needed unless used elsewhere
+// Import the type explicitly if needed for clarity, although often inferred
+import { ImagePickerAsset, ImagePickerResult } from 'expo-image-picker';
 import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils"; // Added validation imports
 
 interface AddFoodModalProps {
@@ -67,7 +68,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
   const [mode, setMode] = useState<"normal" | "ingredients">("normal");
   const [ingredients, setIngredients] = useState("");
   const [aiButtonLoading, setAiButtonLoading] = useState(false); // For ingredient AI
-  const [imageLoading, setImageLoading] = useState(false); // For image analysis
+  const [imageLoading, setImageLoading] = useState(false); // For image analysis (camera/gallery)
 
   useEffect(() => {
     if (isVisible) {
@@ -203,57 +204,34 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     }
   };
 
-  const handleImagePickAndAnalyze = async () => {
-    // 1. Request Permissions
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // --- Function to handle image acquisition (Camera or Gallery) and analysis ---
+  const handleGetImageAndAnalyze = async () => {
 
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required",
-        "You need to allow access to your photo library to select an image."
-      );
-      return;
-    }
-
-    // 2. Launch Image Picker
-    try {
-        const pickerResult = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.6, // Reduce quality slightly
-        });
-
-        // 3. Handle Picker Result
+    const processImage = async (pickerResult: ImagePickerResult) => {
         if (pickerResult.canceled) {
-            console.log("Image selection cancelled");
-            return;
+            console.log("Image selection/capture cancelled");
+            return; // Exit if cancelled
         }
 
         if (pickerResult.assets && pickerResult.assets.length > 0) {
             const asset = pickerResult.assets[0]; // asset is of type ImagePickerAsset
-            console.log("Image selected:", asset.uri);
-            setImageLoading(true); // Start loading indicator
+            console.log("Image acquired:", asset.uri);
+            setImageLoading(true); // Start loading indicator *before* analysis
 
-            // --- FIX: Create the parameter object explicitly ---
             const fileInfoForApi = {
                 uri: asset.uri,
-                // Convert null fileName to undefined to match the expected type
-                fileName: asset.fileName ?? undefined,
-                // Use mimeType from the picker asset if available, otherwise undefined
-                type: asset.mimeType ?? undefined
+                fileName: asset.fileName ?? `photo_${Date.now()}.jpg`, // Provide a default filename if null
+                type: asset.mimeType ?? 'image/jpeg' // Provide a default mimetype if null
             };
-            // --- End FIX ---
 
-            // 4. Call the Image Analysis Function with the correctly typed object
             try {
-                // Pass the corrected fileInfoForApi object
                 const result = await getMacrosForImageFile(fileInfoForApi);
 
                 // Update form fields with results
                 handleInputChange("name", result.foodName, !!editFood); // Update name too
-                handleInputChange("calories",String(Math.round(result.calories)),!!editFood);
-                handleInputChange("protein",String(Math.round(result.protein)),!!editFood);
-                handleInputChange("carbs",String(Math.round(result.carbs)),!!editFood);
+                handleInputChange("calories", String(Math.round(result.calories)), !!editFood);
+                handleInputChange("protein", String(Math.round(result.protein)), !!editFood);
+                handleInputChange("carbs", String(Math.round(result.carbs)), !!editFood);
                 handleInputChange("fat", String(Math.round(result.fat)), !!editFood);
 
                 // Switch back to normal mode if in ingredients mode
@@ -274,17 +252,80 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     `Could not get macros from the image. ${analysisError instanceof Error ? analysisError.message : "Please try again or enter manually."}`
                 );
             } finally {
-                setImageLoading(false); // Stop loading indicator
+                 // Stop loading indicator regardless of success/failure
+                 // Delay slightly to allow UI update before loading stops visually
+                 setTimeout(() => setImageLoading(false), 100);
             }
         } else {
             console.log("No assets selected or returned.");
             // Optional: show a message if no asset was returned unexpectedly
         }
-    } catch (pickerError) {
-      console.error("Error launching image picker:", pickerError);
-      Alert.alert("Image Picker Error", "Could not open the image library.");
-      setImageLoading(false); // Ensure loading is false if picker fails
-    }
+    }; // end processImage
+
+    // --- Present choice to user ---
+    Alert.alert(
+      "Get Image",
+      "Choose a source for the food image:",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Camera",
+          onPress: async () => {
+            setImageLoading(true); // Indicate loading for permission/camera launch
+            try {
+                // Request Camera Permissions
+                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+                if (permissionResult.granted === false) {
+                    Alert.alert("Permission Required", "Camera access is needed to take a photo.");
+                    setImageLoading(false);
+                    return;
+                }
+                // Launch Camera
+                const cameraResult = await ImagePicker.launchCameraAsync({
+                    quality: 0.6, // Keep quality reasonable
+                    allowsEditing: false, // Optional: allow editing after capture
+                });
+                await processImage(cameraResult); // Process the result from camera
+            } catch (error) {
+                console.error("Error launching camera:", error);
+                Alert.alert("Camera Error", "Could not open the camera.");
+                setImageLoading(false); // Ensure loading is stopped on error
+            }
+            // Note: setImageLoading(false) is handled within processImage's finally block on success/analysis error
+          },
+        },
+        {
+          text: "Gallery",
+          onPress: async () => {
+            setImageLoading(true); // Indicate loading for permission/gallery launch
+            try {
+                // Request Media Library Permissions
+                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (permissionResult.granted === false) {
+                    Alert.alert("Permission Required", "Gallery access is needed to choose an image.");
+                    setImageLoading(false);
+                    return;
+                }
+                // Launch Image Library
+                const libraryResult = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    quality: 0.6,
+                });
+                await processImage(libraryResult); // Process the result from gallery
+            } catch (error) {
+                console.error("Error launching image library:", error);
+                Alert.alert("Gallery Error", "Could not open the image library.");
+                 setImageLoading(false); // Ensure loading is stopped on error
+            }
+             // Note: setImageLoading(false) is handled within processImage's finally block on success/analysis error
+          },
+        },
+      ],
+      { cancelable: true } // Allow dismissing the alert by tapping outside
+    );
   };
 
 
@@ -365,9 +406,9 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         />
                     }
                 />
-                {/* --- Image Picker Icon Button --- */}
+                {/* --- Image Picker/Camera Icon Button --- */}
                 <TouchableOpacity
-                    onPress={handleImagePickAndAnalyze}
+                    onPress={handleGetImageAndAnalyze} // Updated function call
                     disabled={imageLoading || aiButtonLoading || loading} // Disable while loading
                     style={styles.iconButtonContainer}
                  >
@@ -375,7 +416,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         <ActivityIndicator size="small" color={theme.colors.primary} />
                     ) : (
                         <Icon
-                            name="camera-enhance-outline" // Or 'image-plus'
+                            name="camera-enhance-outline" // Icon represents getting an image (camera or gallery)
                             type="material-community"
                             size={28}
                             color={theme.colors.primary}
