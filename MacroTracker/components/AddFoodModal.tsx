@@ -1,4 +1,4 @@
-// components/AddFoodModal.tsx
+// components/AddFoodModal.tsx (No changes needed from your provided version)
 import React, { useState, useEffect } from "react";
 import {
   View,
