@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ThemeProvider, createTheme } from "@rneui/themed";
-import { loadSettings, saveSettings } from "./services/storageService";
+import { loadSettings, saveSettings } from "./src/services/storageService";
 import {
   useColorScheme,
   AppState,
@@ -18,7 +18,7 @@ import {
   DarkTheme,
 } from "@react-navigation/native";
 import { Colors } from "@rneui/base";
-import { Settings } from "./types/settings";
+import { Settings } from "./src/types/settings";
 import { LogBox, View, Text } from "react-native"; //Import view for debug
 import { StatusBar } from "expo-status-bar"; // changed import
 
