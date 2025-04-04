@@ -87,29 +87,19 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
     // Effect to handle state resets based on visibility, edit mode, and selected food changes
     useEffect(() => {
-        // --- Logging for Debugging ---
-        // console.log(`>>> useEffect triggered - isVisible: ${isVisible}, isEditMode: ${isEditMode}, selectedFood: ${selectedFood?.id}, initialGrams: ${initialGrams}`);
-
         if (!isVisible) {
             // Reset everything when modal closes
-            // console.log(">>> useEffect: Resetting state on close");
             handleSelectFood(null);
             setGrams("");
             updateSearch("");
             setUnitMode('grams');
             setAutoInput("");
-            setIsAiLoading(false); // Ensure loading state is reset on close
+            setIsAiLoading(false);
         } else {
             // Modal is visible or just became visible
-            // console.log(">>> useEffect: Modal is visible");
-
-            // Always reset AI-related fields when modal becomes visible or food changes
-            // Avoid resetting things that might have just been set by AI estimation
-             if (!isAiLoading) { // Only reset these if AI isn't currently running
+            if (!isAiLoading) {
                  setAutoInput("");
-                 // setIsAiLoading(false); // Don't reset loading here, handleEstimateGrams does it
              }
-
 
             // Determine the correct initial grams value and unit mode based on mode/food
             let targetGrams = grams; // Start with current grams
@@ -117,38 +107,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
             if (isEditMode && selectedFood && initialGrams) {
                 // If editing the *same* item for which we have initial grams, restore it.
-                // console.log(">>> useEffect: Setting state for EDIT mode with initialGrams");
                 targetGrams = initialGrams;
                 targetUnitMode = 'grams'; // Default to grams view when editing existing value
             } else if (!isEditMode && selectedFood) {
-                // If adding a new entry and a food *is* selected (e.g., user just picked one)
-                // Check if grams should be cleared or kept. Let's KEEP grams unless the food *changes*.
-                // The handleSelectFood prop should handle clearing grams if desired when food changes.
-                // console.log(">>> useEffect: Setting state for ADD mode with selected food");
                 targetUnitMode = 'grams'; // Switch to grams mode when a food is selected
-                // targetGrams = ""; // Option: Uncomment to clear grams whenever food changes in ADD mode
             } else if (!selectedFood) {
-                // If no food is selected (either initially or cleared)
-                // console.log(">>> useEffect: No food selected, clearing grams");
                 targetGrams = ""; // Clear grams if no food is selected
                 targetUnitMode = 'grams'; // Default mode
             }
             // Apply the determined state changes *only if they are different* to avoid loops
             if (grams !== targetGrams) {
-                // console.log(`>>> useEffect: Setting grams from "${grams}" to "${targetGrams}"`);
                 setGrams(targetGrams);
             }
-            if (unitMode !== targetUnitMode && !isAiLoading) { // Don't override unit mode if AI is loading/just finished
-                 // console.log(`>>> useEffect: Setting unitMode from "${unitMode}" to "${targetUnitMode}"`);
+            if (unitMode !== targetUnitMode && !isAiLoading) {
                  setUnitMode(targetUnitMode);
             }
-             // Reset search only when modal *initially* becomes visible? Handled outside potentially.
-             // updateSearch("");
         }
 
     // Dependencies: Trigger when visibility, edit mode, selected food, or initial grams change.
-    // handleSelectFood and updateSearch are stable functions.
-    // setGrams and setUnitMode are *not* included to prevent re-triggering the effect from its own actions.
     }, [isVisible, isEditMode, selectedFood, initialGrams, handleSelectFood, updateSearch]);
 
 
@@ -225,19 +201,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
 
         setIsAiLoading(true);
-        // console.log(`handleEstimateGrams - START - autoInput: "${autoInput}", food: ${selectedFood?.name}`);
         try {
             const estimatedGrams = await getGramsFromNaturalLanguage(selectedFood.name, autoInput);
             const roundedGrams = String(Math.round(estimatedGrams));
 
-            // console.log(`handleEstimateGrams - SUCCESS - Estimated: ${estimatedGrams}, Rounded: "${roundedGrams}"`);
-            // console.log(`handleEstimateGrams - BEFORE setGrams - current grams state: "${grams}"`);
             setGrams(roundedGrams); // Update the grams state
-            // console.log(`handleEstimateGrams - AFTER setGrams (will re-render) - setting grams to: "${roundedGrams}"`);
-            // console.log(`handleEstimateGrams - BEFORE setUnitMode - current unitMode state: "${unitMode}"`);
             setUnitMode('grams'); // Switch view back to grams input
-            // console.log(`handleEstimateGrams - AFTER setUnitMode (will re-render) - setting unitMode to: "grams"`);
-
             Toast.show({
                 type: 'success',
                 text1: 'Grams Estimated',
@@ -252,7 +221,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             Alert.alert("AI Estimation Failed", error.message || "Could not estimate grams. Please enter manually.");
              // Keep unitMode as 'auto' on failure so user can retry or see input
         } finally {
-            // console.log("handleEstimateGrams - FINALLY - setting isAiLoading to false");
             setIsAiLoading(false); // Ensure loading state is turned off
         }
     };
@@ -277,7 +245,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
         handleAddEntry(); // Call the prop function
         await addToRecentFoods(selectedFood); // Add to recents
-        // toggleOverlay(); // Consider if closing should happen here or in parent
     };
 
     // Prepare styles and theme
@@ -316,9 +283,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
         // If isEditMode and initialGrams exist, the main useEffect will handle setting grams.
     };
-
-    // --- Render ---
-    // console.log(`Rendering AddEntryModal - grams: "${grams}", unitMode: "${unitMode}", selectedFood: ${selectedFood?.name || 'null'}`);
 
     return (
         <Overlay
@@ -511,7 +475,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                         </View>
                                      )}
                                     {/* Grams Input */}
-                                    {/* {console.log(`Rendering GRAMS input - value prop: "${grams}"`)} */}
                                     <Input
                                         placeholder="Enter exact grams (e.g., 150)"
                                         keyboardType="numeric"
@@ -531,14 +494,13 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                         disabled={isAiLoading} // Disable input while AI processing
                                         containerStyle={{ paddingHorizontal: 0 }}
                                         // Add key to potentially help ensure re-render reflects state
-                                        key={`grams-input-${selectedFood.id}`}
+                                        key={`grams-input-${selectedFood?.id}`}
                                     />
                                 </>
                             )}
 
                             {unitMode === 'auto' && (
                                 <View style={styles.autoInputRow}>
-                                    {/* {console.log(`Rendering AUTO input - autoInput: "${autoInput}"`)} */}
                                     <Input
                                         placeholder="Describe quantity (e.g., 1 cup cooked)"
                                         value={autoInput}
@@ -549,7 +511,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                                         multiline={false}
                                         disabled={isAiLoading} // Disable while AI processing
                                         onSubmitEditing={handleEstimateGrams} // Trigger estimation on submit
-                                        key={`auto-input-${selectedFood.id}`}
+                                        key={`auto-input-${selectedFood?.id}`}
                                     />
                                     <Button
                                         onPress={handleEstimateGrams}
