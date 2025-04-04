@@ -567,20 +567,15 @@ const DailyEntryScreen: React.FC = () => {
                 isVisible={isOverlayVisible}
                 toggleOverlay={toggleOverlay}
                 selectedFood={selectedFood}
-                grams={grams}
-                setGrams={setGrams}
+                grams={grams} // Pass the current grams state
+                setGrams={setGrams} // Pass the setter function
                 foods={foods} // Pass all foods
                 handleAddEntry={handleAddEntry} // Handles both add and edit commit
                 handleSelectFood={handleSelectFood}
                 search={search}
                 updateSearch={updateSearch}
                 isEditMode={editIndex !== null} // Determine if modal is in edit mode
-                 // Pass initial grams if in edit mode (get from original data using original index if needed, or just pass from item)
-                initialGrams={
-                    editIndex !== null && currentEntryItems[editIndex]
-                        ? String(currentEntryItems[editIndex].grams)
-                        : grams // Fallback to grams state if needed
-                }
+                // REMOVED initialGrams prop - it's not needed as 'grams' is already set
             />
         </SafeAreaView>
     );

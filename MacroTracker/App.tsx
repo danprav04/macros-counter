@@ -2,7 +2,7 @@
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
 import React, { useState, useEffect } from "react";
-import AppNavigator from "./navigation/AppNavigator";
+import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ThemeProvider, createTheme } from "@rneui/themed";
 import { loadSettings, saveSettings } from "./services/storageService";
