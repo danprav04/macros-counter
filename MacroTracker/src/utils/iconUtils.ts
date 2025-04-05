@@ -1,5 +1,4 @@
-// utils/iconUtils.ts
-
+// Import necessary modules
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Consider moving API Key to environment variables for better security
@@ -44,12 +43,12 @@ const scoreHit = (hit: any, foodName: string): number => {
     score += 100;
   } else if (foodNameWords.every(word => tags.includes(word))) {
      score += 50;
-  } else if (tags.some((tag: string | string[]) => tag.includes(lowerFoodName))) {
+  } else if (tags.some((tag: string) => tag.includes(lowerFoodName))) {
        score += 10;
    }
 
    // If no food name match at all, it's probably irrelevant
-   if (score === 0 && !tags.some((tag: string | string[]) => foodNameWords.some(foodWord => tag.includes(foodWord)))) {
+   if (score === 0 && !tags.some((tag: string) => foodNameWords.some(foodWord => tag.includes(foodWord)))) {
        return 0;
    }
 
@@ -138,8 +137,6 @@ const fetchAndProcessPixabay = async (
 
     if (scoredHits.length > 0) {
       console.log(`Pixabay: Best match for "${foodName}" (Query: "${query}", Type: ${typeParam}) - Score: ${scoredHits[0].score}, URL: ${scoredHits[0].url}`);
-      // Log top 3 for comparison if debugging:
-      // console.log("Top 3 matches:", scoredHits.slice(0, 3).map(h => ({ score: h.score, tags: h.hit.tags, url: h.url })));
       return scoredHits[0].url;
     } else {
        console.log(`Pixabay: No suitable hits after filtering (score >= 50) for query "${query}" (type: ${typeParam})`);
@@ -153,15 +150,14 @@ const fetchAndProcessPixabay = async (
   }
 };
 
-
 // --- Main Exported Function ---
 
-export const getFoodIconUrl = async (foodName: string): Promise<string | null> => {
+export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
   if (!foodName || foodName.trim() === '') {
       return null;
   }
 
-  const cacheKey = foodName.toLowerCase().trim();
+  const cacheKey = `${locale}_${foodName.toLowerCase().trim()}`;
   const now = Date.now();
 
   // 1. Check Memory Cache
@@ -195,23 +191,8 @@ export const getFoodIconUrl = async (foodName: string): Promise<string | null> =
   // Define query strategies, prioritizing specific terms and types
   const queryStrategies: { query: string; imageType: 'vector' | 'illustration' | 'all' }[] = [
     // Most Specific First
-    { query: `${foodName} minimal illustration icon`, imageType: 'illustration' },
-    { query: `${foodName} flat icon vector`, imageType: 'vector' },
-    { query: `${foodName} simple icon illustration`, imageType: 'illustration' },
-    { query: `${foodName} minimal icon`, imageType: 'vector' }, // Try vector for minimal
-    { query: `${foodName} flat icon`, imageType: 'illustration' }, // Try illustration for flat
-
-    // Slightly Broader Icon/Illustration Terms
-    { query: `${foodName} illustration icon`, imageType: 'illustration' },
-    { query: `${foodName} vector icon`, imageType: 'vector' },
-    { query: `${foodName} food icon`, imageType: 'illustration' }, // Add "food" context
-    { query: `${foodName} food icon`, imageType: 'vector' },
-
-    // Fallback to just name + type
     { query: `${foodName}`, imageType: 'illustration' },
     { query: `${foodName}`, imageType: 'vector' },
-
-     // Last resort: broader search including non-specific icons
      { query: `${foodName} icon`, imageType: 'all' }, // 'all' here will be filtered to illustration,vector by fetchAndProcessPixabay
   ];
 
@@ -221,8 +202,6 @@ export const getFoodIconUrl = async (foodName: string): Promise<string | null> =
     if (iconUrl) {
       break; // Found a suitable icon
     }
-    // Optional small delay can be added here if hitting rate limits, but likely not needed
-    // await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   // 4. Cache the final result (even nulls)
