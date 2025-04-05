@@ -1,4 +1,4 @@
-// ---------- AddEntryModal.tsx (With Quick Add Editing) ----------
+// ---------- AddEntryModal.tsx (With Quick Add Editing & Edit Mode Fix) ----------
 // src/components/AddEntryModal.tsx
 import React, {
     useEffect,
@@ -138,6 +138,7 @@ import React, {
         setEditedGrams(""); // Reset temp edit state
         isInitiallyVisible.current = false;
       } else {
+        // Ensure modal starts in 'normal' mode unless already loading Quick Add
         if (
           !isInitiallyVisible.current &&
           !quickAddLoading &&
@@ -154,6 +155,7 @@ import React, {
         let targetGrams = grams;
         let targetUnitMode = unitMode;
   
+        // Apply initial grams only in edit mode AND normal mode
         if (
           isEditMode &&
           selectedFood &&
@@ -161,19 +163,35 @@ import React, {
           modalMode === "normal"
         ) {
           targetGrams = initialGrams;
-          targetUnitMode = "grams";
+          targetUnitMode = "grams"; // Force grams mode when editing
+          // Make sure auto input is cleared if switching to grams for edit
+          if (unitMode === "auto") {
+              setAutoInput("");
+          }
         } else if (!isEditMode && selectedFood && modalMode === "normal") {
-          targetUnitMode = "grams";
+          targetUnitMode = "grams"; // Default to grams for new selections in normal mode
         } else if (!selectedFood && modalMode === "normal") {
-          targetGrams = "";
+          targetGrams = ""; // Clear grams if no food selected in normal mode
           targetUnitMode = "grams";
         }
   
+        // Only update state if it has actually changed
         if (grams !== targetGrams) {
           setGrams(targetGrams);
         }
         if (unitMode !== targetUnitMode && !isAiLoading && !quickAddLoading) {
           setUnitMode(targetUnitMode);
+        }
+  
+        // If opening in edit mode, ensure quick add state is reset
+        // This prevents leftover quick add state if closed during QA and reopened in edit
+        if (isEditMode) {
+            setModalMode("normal");
+            setQuickAddItems([]);
+            setSelectedQuickAddIndices(new Set());
+            setEditingQuickAddItemIndex(null);
+            setEditedFoodName("");
+            setEditedGrams("");
         }
       }
     }, [
@@ -182,12 +200,12 @@ import React, {
       selectedFood,
       initialGrams,
       quickAddLoading,
-      modalMode, // Added dependency
-      handleSelectFood, // Added dependency
-      updateSearch, // Added dependency
-      setGrams, // Added dependency
-      unitMode, // Added dependency
-      grams, // Added dependency
+      modalMode,
+      handleSelectFood,
+      updateSearch,
+      setGrams,
+      unitMode,
+      grams,
     ]);
   
     // Load recent foods when modal becomes visible in normal mode
@@ -196,6 +214,7 @@ import React, {
         const loadedRecentFoods = await loadRecentFoods();
         setRecentFoods(loadedRecentFoods);
       };
+      // Only load if visible and in normal mode
       if (isVisible && modalMode === "normal") {
         loadRecents();
       }
@@ -232,12 +251,12 @@ import React, {
   
       if (
         isVisible &&
-        modalMode === "normal" &&
+        modalMode === "normal" && // Only load icons in normal mode
         (foods.length > 0 || recentFoods.length > 0)
       ) {
         loadIcons();
       }
-    }, [isVisible, modalMode, search, filteredFoods, recentFoods, foods]);
+    }, [isVisible, modalMode, search, filteredFoods, recentFoods, foods]); // Added modalMode dependency
   
     const addToRecentFoods = async (food: Food) => {
       if (!food || !food.id) {
@@ -312,27 +331,37 @@ import React, {
         );
         return;
       }
-      if (isAiLoading || quickAddLoading) return;
+      if (isAiLoading || quickAddLoading) return; // Prevent action during loading
       handleAddEntry();
       await addToRecentFoods(selectedFood);
     };
   
     const handleInternalSelectFood = (item: Food | null) => {
-      if (selectedFood?.id === item?.id) return;
+      if (selectedFood?.id === item?.id) return; // No change if same food selected
       handleSelectFood(item);
+      // If selecting a new item (and not in edit mode or initialGrams not set), reset grams/unit
       if (item && (!isEditMode || !initialGrams)) {
+        setGrams(""); // Clear grams when selecting a new item in add mode
         setUnitMode("grams");
         setAutoInput("");
       } else if (!item) {
+        // If deselecting food, clear grams/unit
         setGrams("");
         setUnitMode("grams");
         setAutoInput("");
       }
+      // No need to set grams here for edit mode, handled by useEffect
     };
   
     // --- Quick Add Functions ---
   
     const handleQuickAddImage = async () => {
+      // Double check: This function should not be callable in edit mode due to UI hiding
+      if (isEditMode) {
+          console.warn("Attempted to initiate Quick Add while in Edit Mode.");
+          return;
+      }
+  
       // Ensure no other edit is in progress
       if (editingQuickAddItemIndex !== null) {
         Alert.alert(
@@ -353,6 +382,9 @@ import React, {
     };
   
     const pickImageAndAnalyze = async (source: "camera" | "gallery") => {
+      // Again, double check against edit mode
+      if (isEditMode) return;
+  
       let permissionResult;
       let pickerResult: ImagePicker.ImagePickerResult;
   
@@ -410,9 +442,9 @@ import React, {
             setModalMode("normal"); // Go back to normal if nothing found
           } else {
             setQuickAddItems(results);
-            setSelectedQuickAddIndices(new Set()); // Reset selection
+            setSelectedQuickAddIndices(new Set(results.map((_, i) => i))); // Select all by default
             setModalMode("quickAddSelect");
-            // Clear single food selection state
+            // Clear single food selection state when entering quick add
             handleSelectFood(null);
             setGrams("");
             updateSearch("");
@@ -435,6 +467,7 @@ import React, {
         setSelectedQuickAddIndices(new Set());
         setEditingQuickAddItemIndex(null);
       } finally {
+        // Use timeout to ensure loading state hides after modal transition completes
         setTimeout(() => setQuickAddLoading(false), 100);
       }
     };
@@ -498,15 +531,11 @@ import React, {
       // Create a new array with the updated item
       const updatedItems = quickAddItems.map((item, index) => {
         if (index === editingQuickAddItemIndex) {
-          // !!! IMPORTANT: We need to recalculate nutrient estimates based on the *original* per_100g values
-          // if the user only changed the grams. If they changed the name, the original nutrient values might be irrelevant.
-          // For simplicity now, we'll keep the original per_100g values. A more advanced solution
-          // might try to fetch new nutrition data based on the edited name.
+          // Keep original per_100g values, update name and grams
           return {
             ...item,
             foodName: trimmedName,
             estimatedWeightGrams: roundedGrams,
-            // Note: calories_per_100g etc., remain unchanged unless fetched again based on new name
           };
         }
         return item;
@@ -516,10 +545,19 @@ import React, {
       setEditingQuickAddItemIndex(null); // Exit editing mode
       setEditedFoodName("");
       setEditedGrams("");
+      // Re-select the item after editing is saved
+      setSelectedQuickAddIndices((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(editingQuickAddItemIndex); // Add the index back
+          return newSet;
+        });
     };
   
     // *** NEW: Cancel editing a quick add item ***
     const handleCancelQuickAddItemEdit = () => {
+      // Re-select the item if it was selected before editing started (optional, based on desired UX)
+      // If you decided to deselect on edit start, you might want to reselect on cancel
+      // For simplicity, we just exit edit mode here. Re-selection logic could be added if needed.
       setEditingQuickAddItemIndex(null);
       setEditedFoodName("");
       setEditedGrams("");
@@ -527,6 +565,11 @@ import React, {
   
     // *** MODIFIED: Convert and add selected quick add items ***
     const handleConfirmQuickAdd = () => {
+      // Final check: Should not be possible in edit mode
+      if (isEditMode) {
+          console.warn("Attempted Quick Add confirmation while in Edit Mode.");
+          return;
+      }
       try {
         console.log("AddEntryModal: handleConfirmQuickAdd triggered.");
   
@@ -588,21 +631,22 @@ import React, {
       isAiLoading || quickAddLoading || editingQuickAddItemIndex !== null; // Disable actions while editing a QA item
   
     const isAddButtonDisabled =
-      modalMode !== "normal" ||
+      modalMode !== "normal" || // Can only add/update in normal mode
       !selectedFood ||
       !isValidNumberInput(grams) ||
       parseFloat(grams) <= 0 ||
       isActionDisabled;
     const isAiButtonDisabled =
-      modalMode !== "normal" ||
+      modalMode !== "normal" || // AI only in normal mode
       !selectedFood ||
       !autoInput.trim() ||
       isActionDisabled;
     const isQuickAddConfirmDisabled =
+      isEditMode || // Should never be enabled in edit mode
       modalMode !== "quickAddSelect" ||
       selectedQuickAddIndices.size === 0 ||
       isActionDisabled; // Disable confirm if editing
-    const isQuickAddImageButtonDisabled = isActionDisabled; // Disable taking new pic while editing
+    const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled; // Disable taking new pic while editing or if in edit mode
   
     const combinedOverlayStyle = StyleSheet.flatten([
       styles.overlayStyle,
@@ -610,9 +654,13 @@ import React, {
     ]);
   
     useEffect(() => {
-      if (isVisible && modalMode === "quickAddSelect") {
+      if (isVisible && modalMode === "quickAddSelect" && !isEditMode) {
         console.log(
-          `AddEntryModal State Check - isVisible: ${isVisible}, modalMode: ${modalMode}, editingIndex: ${editingQuickAddItemIndex}, quickAddItemsCount: ${quickAddItems.length}, selectedCount: ${selectedQuickAddIndices.size}, isActionDisabled: ${isActionDisabled}, isConfirmDisabled: ${isQuickAddConfirmDisabled}`
+          `AddEntryModal State Check (QuickAdd) - isVisible: ${isVisible}, modalMode: ${modalMode}, editingIndex: ${editingQuickAddItemIndex}, quickAddItemsCount: ${quickAddItems.length}, selectedCount: ${selectedQuickAddIndices.size}, isActionDisabled: ${isActionDisabled}, isConfirmDisabled: ${isQuickAddConfirmDisabled}`
+        );
+      } else if (isVisible && modalMode === "normal") {
+           console.log(
+          `AddEntryModal State Check (Normal) - isVisible: ${isVisible}, modalMode: ${modalMode}, isEditMode: ${isEditMode}, selectedFood: ${selectedFood?.name}, grams: ${grams}, unitMode: ${unitMode}, search: ${search}, isActionDisabled: ${isActionDisabled}, isAddButtonDisabled: ${isAddButtonDisabled}`
         );
       }
     }, [
@@ -622,7 +670,13 @@ import React, {
       selectedQuickAddIndices,
       isActionDisabled,
       isQuickAddConfirmDisabled,
-      editingQuickAddItemIndex, // Added dependency
+      editingQuickAddItemIndex,
+      isEditMode, // Added dependency
+      selectedFood,
+      grams,
+      unitMode,
+      search,
+      isAddButtonDisabled,
     ]);
   
     // Helper to clean grams input for the quick add edit
@@ -665,16 +719,18 @@ import React, {
                 h4
                 h4Style={[
                   styles.overlayTitle,
+                  // Only show edit mode title style when actually in edit mode AND normal mode
                   isEditMode && modalMode === "normal" && styles.editModeTitle,
                 ]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
+                {/* Adjust Title based on mode AND edit state */}
                 {modalMode === "quickAddSelect"
                   ? editingQuickAddItemIndex !== null
-                    ? "Edit Item" // Change title when editing
-                    : "Select Items to Add"
-                  : isEditMode
+                    ? "Edit Item" // Change title when editing QA item
+                    : "Select Items to Add" // Title for QA selection
+                  : isEditMode // Now check edit mode when in 'normal' modalMode
                   ? "Edit Entry"
                   : "Add Entry"}
               </Text>
@@ -682,30 +738,34 @@ import React, {
               {/* Conditional Header Actions */}
               {modalMode === "normal" && (
                 <>
-                  <TouchableOpacity
-                    onPress={handleQuickAddImage}
-                    disabled={isQuickAddImageButtonDisabled} // Use specific disabled flag
-                    style={styles.headerIcon}
-                  >
-                    {quickAddLoading ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.colors.primary}
-                      />
-                    ) : (
-                      <Icon
-                        name="camera-burst"
-                        type="material-community"
-                        size={26}
-                        color={
-                          isQuickAddImageButtonDisabled // Check specific flag
-                            ? theme.colors.grey3
-                            : theme.colors.primary
-                        }
-                      />
-                    )}
-                  </TouchableOpacity>
+                  {/* ----> FIX: Conditionally render Quick Add Icon <---- */}
+                  {!isEditMode && ( // Only show if NOT in edit mode
+                    <TouchableOpacity
+                      onPress={handleQuickAddImage}
+                      disabled={isQuickAddImageButtonDisabled}
+                      style={styles.headerIcon}
+                    >
+                      {quickAddLoading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.primary}
+                        />
+                      ) : (
+                        <Icon
+                          name="camera-burst"
+                          type="material-community"
+                          size={26}
+                          color={
+                            isQuickAddImageButtonDisabled
+                              ? theme.colors.grey3
+                              : theme.colors.primary
+                          }
+                        />
+                      )}
+                    </TouchableOpacity>
+                  )}
   
+                  {/* Add/Update Button */}
                   <Button
                     title={isEditMode ? "Update" : "Add"}
                     onPress={handleAddOrUpdateSingleEntry}
@@ -718,8 +778,9 @@ import React, {
                   />
                 </>
               )}
-              {modalMode === "quickAddSelect" && (
-                // Only show confirm button if *not* editing an item
+              {/* ----> FIX: Ensure Quick Add confirm button never shows in edit mode <---- */}
+              {modalMode === "quickAddSelect" && !isEditMode && (
+                // Only show confirm button if *not* editing an item AND not in edit mode
                 editingQuickAddItemIndex === null && (
                   <Button
                     title={`Add ${selectedQuickAddIndices.size}`}
@@ -746,6 +807,7 @@ import React, {
             )}
   
             {/* --- Conditional Content (Normal Mode) --- */}
+            {/* Only show search, recents, list, and amount input when NOT loading AND in normal mode */}
             {!isActionDisabled && modalMode === "normal" && (
               <>
                 {/* Search Bar */}
@@ -907,7 +969,7 @@ import React, {
                   />
                 )}
   
-                {/* Amount Input Section */}
+                {/* Amount Input Section - Shows only if a food is selected */}
                 {selectedFood && (
                   <View style={styles.amountSection}>
                     {/* Unit Mode Selector */}
@@ -925,14 +987,18 @@ import React, {
                         }}
                         textStyle={styles.buttonGroupText}
                         selectedTextStyle={{ color: theme.colors.white }}
+                        // Disable AI mode when editing
+                        disabled={isEditMode && [1]} // Disable the second button (index 1) if isEditMode
+                        disabledStyle={{ backgroundColor: theme.colors.grey5 }}
+                        disabledTextStyle={{ color: theme.colors.grey3 }}
                       />
                     </View>
   
                     {/* Conditional Input Field */}
                     {unitMode === "grams" && (
                       <>
-                        {/* Serving Size Suggestions */}
-                        {servingSizeSuggestions.length > 0 && (
+                        {/* Serving Size Suggestions (Only show if NOT editing) */}
+                        {!isEditMode && servingSizeSuggestions.length > 0 && (
                           <View style={styles.servingSizeRow}>
                             <Text style={styles.servingSizeLabel}>
                               Quick Add:
@@ -958,7 +1024,7 @@ import React, {
                         )}
                         {/* Grams Input */}
                         <Input
-                          placeholder="Enter exact grams (e.g., 150)"
+                          placeholder={isEditMode ? "Update grams" : "Enter exact grams (e.g., 150)"}
                           keyboardType="numeric"
                           value={grams}
                           onChangeText={(text) => {
@@ -979,12 +1045,14 @@ import React, {
                           errorStyle={{ color: theme.colors.error }}
                           rightIcon={<Text style={styles.unitText}> g</Text>}
                           containerStyle={{ paddingHorizontal: 0 }}
-                          key={`grams-input-${selectedFood?.id}`}
+                          key={`grams-input-${selectedFood?.id}`} // Re-key to ensure value updates correctly
+                          autoFocus={!search && !isEditMode} // Auto-focus only when adding a recent/selected item, not during edit or search
                         />
                       </>
                     )}
   
-                    {unitMode === "auto" && (
+                    {/* Auto Input (Only show if NOT editing) */}
+                    {unitMode === "auto" && !isEditMode && (
                       <View style={styles.autoInputRow}>
                         <Input
                           placeholder="Describe quantity (e.g., 1 cup cooked)"
@@ -999,6 +1067,7 @@ import React, {
                           multiline={false}
                           onSubmitEditing={handleEstimateGrams}
                           key={`auto-input-${selectedFood?.id}`}
+                          autoFocus={true} // Auto-focus when switching to AI mode
                         />
                         <Button
                           onPress={handleEstimateGrams}
@@ -1029,7 +1098,8 @@ import React, {
             )}
   
             {/* --- Conditional Content (Quick Add Selection Mode) --- */}
-            {modalMode === "quickAddSelect" && ( // Always show list if in this mode, even during loading/editing
+            {/* Only show this section if NOT in edit mode AND in quickAddSelect mode */}
+            {!isEditMode && modalMode === "quickAddSelect" && (
               <>
                 <View style={styles.quickAddHeader}>
                   <Text style={styles.sectionTitle}>
@@ -1060,6 +1130,7 @@ import React, {
                           color={theme.colors.primary}
                         />
                       }
+                      disabled={quickAddLoading} // Disable back while initial loading
                     />
                   )}
                 </View>
@@ -1200,7 +1271,7 @@ import React, {
                   ListEmptyComponent={
                     <View style={styles.emptyListContainer}>
                       <Text style={styles.emptyListText}>
-                        No identifiable foods found.
+                        {quickAddLoading ? "Analyzing..." : "No identifiable foods found."}
                       </Text>
                     </View>
                   }
@@ -1222,7 +1293,6 @@ import React, {
   
   // --- Styles ---
   const useStyles = makeStyles((theme) => ({
-    // ... (Keep all existing styles)
     overlayContainer: {
       backgroundColor: "transparent",
       width: "90%",
@@ -1491,7 +1561,7 @@ import React, {
       flexDirection: "row", // Ensure row layout for checkbox/content/icon
       alignItems: "center", // Align items vertically
     },
-    quickAddItemSelected: { backgroundColor: theme.colors.successLight },
+    quickAddItemSelected: { backgroundColor: theme.colors.successLight || '#d4edda' }, // Added fallback color
     quickAddItemEditing: {
       backgroundColor: theme.colors.grey5, // Highlight item being edited
       paddingVertical: 8, // Slightly more padding when editing
