@@ -1163,7 +1163,7 @@ const useStyles = makeStyles((theme) => ({
   sectionTitle: {
     fontWeight: "600",
     marginBottom: 8,
-    color: theme.colors.grey1,
+    color: theme.colors.text,
     fontSize: 14,
     marginLeft: 5,
     textTransform: "uppercase",
