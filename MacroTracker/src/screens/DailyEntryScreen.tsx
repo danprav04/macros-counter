@@ -10,8 +10,7 @@ import {
     loadSettings,
 } from "../services/storageService";
 import {
-    formatDate, // Keep this if used elsewhere, but formatISO is used for storage/keys
-    formatDateReadable,
+    formatDateReadable, // Keep this if used elsewhere, but formatISO is used for storage/keys
     getTodayDateString,
 } from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
@@ -166,16 +165,26 @@ const DailyEntryScreen: React.FC = () => {
 
     // Central function to update dailyEntries state and save to AsyncStorage
     const updateAndSaveEntries = async (updatedEntries: DailyEntry[]) => {
+        // *** ADDED LOG ***
+        const entryForSelectedDate = updatedEntries.find(e => e.date === selectedDate);
+        console.log(`DailyEntryScreen: updateAndSaveEntries called. Saving ${updatedEntries.length} total entries. Entry for ${selectedDate} contains ${entryForSelectedDate?.items?.length ?? 0} items.`);
+
         setDailyEntries(updatedEntries); // Update state immediately for UI responsiveness
+        // *** ADDED LOG ***
+        console.log(`DailyEntryScreen: State set with ${updatedEntries.length} entries.`);
         try {
             await saveDailyEntries(updatedEntries); // Persist changes
+            // *** ADDED LOG ***
+            console.log("DailyEntryScreen: Successfully saved entries to AsyncStorage.");
         } catch (error) {
-            console.error("Failed to save updated entries:", error);
+            // *** ADDED LOG ***
+            console.error("DailyEntryScreen: Failed to save updated entries to AsyncStorage:", error);
             Alert.alert("Save Error", "Could not save changes. Please try again.");
             // Optionally revert state here if save fails critically
             // loadData(); // Or reload data to ensure consistency
         }
     };
+
 
     // --- Inline Editing Handlers ---
     const handleStartEditing = (reversedIndex: number) => {
@@ -333,76 +342,98 @@ const DailyEntryScreen: React.FC = () => {
 
     // --- NEW FUNCTION: Handle Adding Multiple Entries (from Quick Add) ---
     const handleAddMultipleEntries = async (entriesToAdd: { food: Food, grams: number }[]) => {
-        if (!entriesToAdd || entriesToAdd.length === 0) {
-            console.log("handleAddMultipleEntries called with no entries to add.");
-            return; // Nothing to add
-        }
+        // *** ADDED LOG ***
+        console.log("DailyEntryScreen: handleAddMultipleEntries START - Received:", JSON.stringify(entriesToAdd, null, 2));
 
-        // Map the input to the DailyEntryItem format
-        const newItems: DailyEntryItem[] = entriesToAdd.map(entry => ({
-            food: entry.food, // Uses the temporary Food object created in the modal
-            grams: entry.grams,
-        }));
-
-        console.log(`Attempting to add ${newItems.length} items from Quick Add to ${selectedDate}`);
-
-        // Find if an entry already exists for the selected date
-        const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
-        let updatedEntries: DailyEntry[];
-
-        if (existingEntryIndex > -1) {
-            // --- Add to existing entry ---
-            const existingEntry = dailyEntries[existingEntryIndex];
-            // Append the new items to the existing items array
-            const updatedItems = [...existingEntry.items, ...newItems];
-            const updatedEntry = { ...existingEntry, items: updatedItems };
-            // Map over entries to replace the modified one
-            updatedEntries = dailyEntries.map((entry, index) =>
-                index === existingEntryIndex ? updatedEntry : entry
-            );
-            console.log(`Appended ${newItems.length} items to existing entry on ${selectedDate}`);
-        } else {
-            // --- Create new entry for this date ---
-            console.log(`Creating new entry with ${newItems.length} items for ${selectedDate}`);
-            const newDailyEntry: DailyEntry = {
-                date: selectedDate,
-                items: newItems, // Start with the array of new items
-            };
-            updatedEntries = [...dailyEntries, newDailyEntry];
-             // Optional: Sort if date order matters after adding
-             updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
-        }
-
-        // Save the updated entries list
-        await updateAndSaveEntries(updatedEntries);
-
-        // --- Post-Action: Fetch Icons & Show Toast ---
-        // Attempt to load icons for the newly added foods if not already known
-        const iconsToLoad: { [foodName: string]: Promise<string | null> } = {};
-        for (const item of newItems) {
-            if (foodIcons[item.food.name] === undefined) { // Check if status is unknown
-                 iconsToLoad[item.food.name] = getFoodIconUrl(item.food.name).catch(() => null);
+        // *** WRAPPED IN TRY/CATCH ***
+        try {
+            if (!entriesToAdd || entriesToAdd.length === 0) {
+                console.warn("DailyEntryScreen: handleAddMultipleEntries called with no entries to add.");
+                return; // Nothing to add
             }
-        }
-         // Fetch and update icon state if needed
-        if (Object.keys(iconsToLoad).length > 0) {
-            const results = await Promise.all(Object.values(iconsToLoad));
-            const newIcons: { [foodName: string]: string | null } = {};
-            Object.keys(iconsToLoad).forEach((name, index) => {
-                newIcons[name] = results[index];
+
+            // Map the input to the DailyEntryItem format
+            const newItems: DailyEntryItem[] = entriesToAdd.map(entry => ({
+                food: entry.food, // Uses the temporary Food object created in the modal
+                grams: entry.grams,
+            }));
+
+            // *** ADDED LOG ***
+            console.log(`DailyEntryScreen: Mapped to ${newItems.length} DailyEntryItems for ${selectedDate}`);
+
+            // Find if an entry already exists for the selected date
+            const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
+            let updatedEntries: DailyEntry[];
+
+            if (existingEntryIndex > -1) {
+                // --- Add to existing entry ---
+                // *** ADDED LOG ***
+                console.log(`DailyEntryScreen: Found existing entry at index ${existingEntryIndex} for date ${selectedDate}. Appending items.`);
+                const existingEntry = dailyEntries[existingEntryIndex];
+                // Append the new items to the existing items array
+                const updatedItems = [...existingEntry.items, ...newItems];
+                const updatedEntry = { ...existingEntry, items: updatedItems };
+                // Map over entries to replace the modified one
+                updatedEntries = dailyEntries.map((entry, index) =>
+                    index === existingEntryIndex ? updatedEntry : entry
+                );
+            } else {
+                // --- Create new entry for this date ---
+                // *** ADDED LOG ***
+                console.log(`DailyEntryScreen: No existing entry for date ${selectedDate}. Creating new entry.`);
+                const newDailyEntry: DailyEntry = {
+                    date: selectedDate,
+                    items: newItems, // Start with the array of new items
+                };
+                updatedEntries = [...dailyEntries, newDailyEntry];
+                // Optional: Sort if date order matters after adding
+                updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+            }
+
+            // *** ADDED LOG ***
+            const entryBeingSaved = updatedEntries.find(e => e.date === selectedDate);
+            console.log(`DailyEntryScreen: Calculated updatedEntries. Entry for ${selectedDate} will have ${entryBeingSaved?.items?.length ?? 0} items. Preparing to save.`);
+            // console.log("DailyEntryScreen: Full updated entry:", JSON.stringify(entryBeingSaved, null, 2)); // Optional: log full entry
+
+
+            // Save the updated entries list
+            await updateAndSaveEntries(updatedEntries);
+
+            // *** ADDED LOG ***
+            console.log("DailyEntryScreen: updateAndSaveEntries completed. Proceeding with post-actions.");
+
+            // --- Post-Action: Fetch Icons & Show Toast ---
+            // Attempt to load icons for the newly added foods if not already known
+            const iconsToLoad: { [foodName: string]: Promise<string | null> } = {};
+            for (const item of newItems) {
+                if (foodIcons[item.food.name] === undefined) { // Check if status is unknown
+                     iconsToLoad[item.food.name] = getFoodIconUrl(item.food.name).catch(() => null);
+                }
+            }
+            // Fetch and update icon state if needed
+            if (Object.keys(iconsToLoad).length > 0) {
+                const results = await Promise.all(Object.values(iconsToLoad));
+                const newIcons: { [foodName: string]: string | null } = {};
+                Object.keys(iconsToLoad).forEach((name, index) => {
+                    newIcons[name] = results[index];
+                });
+                setFoodIcons(prevIcons => ({ ...prevIcons, ...newIcons }));
+            }
+
+            // Show a success message
+            Toast.show({
+                type: 'success',
+                // *** MODIFIED TOAST TEXT ***
+                text1: `${entriesToAdd.length} item(s) added successfully to ${formatDateReadable(selectedDate)}`,
+                position: 'bottom',
+                visibilityTime: 3000, // Longer time
             });
-            setFoodIcons(prevIcons => ({ ...prevIcons, ...newIcons }));
+
+            // Modal closing is handled by the modal itself after calling this function
+        } catch (error) { // *** CATCH BLOCK ***
+            console.error("!!!!! CRITICAL ERROR inside handleAddMultipleEntries !!!!!", error);
+            Alert.alert("Quick Add Error", `Failed to process items after selection. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-
-        // Show a success message
-        Toast.show({
-            type: 'success',
-            text1: `${entriesToAdd.length} item(s) added`,
-            position: 'bottom',
-            visibilityTime: 2500,
-        });
-
-        // Modal closing is handled by the modal itself after calling this function
     };
     // --- End NEW FUNCTION ---
 
