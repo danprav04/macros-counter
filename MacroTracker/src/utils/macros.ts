@@ -1,6 +1,7 @@
 // src/utils/macros.ts
 import * as FileSystem from 'expo-file-system';
-import MimeTypes from 'react-native-mime-types';
+// Import MimeTypes library if you have it, otherwise use extension mapping
+// import MimeTypes from 'react-native-mime-types'; // Uncomment if using react-native-mime-types
 import {
     getMacrosForRecipe,
     getMacrosForImageSingle,
@@ -10,6 +11,59 @@ import {
 import { Alert } from 'react-native';
 // Import types from the new location
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
+import { ImagePickerAsset } from 'expo-image-picker'; // Import the specific type
+
+// --- Helper function to determine MIME type ---
+function determineMimeType(asset: {
+    uri: string;
+    mimeType?: string | null; // Explicitly use mimeType if provided
+    fileName?: string | null; // Use fileName for fallback
+    type?: string; // Keep existing 'type' for potential backward compatibility? (Less reliable)
+}): string {
+    // 1. Prioritize asset.mimeType if available (most reliable)
+    if (asset.mimeType) {
+        console.log(`Using provided MIME type: ${asset.mimeType}`);
+        return asset.mimeType;
+    }
+
+    // 2. Fallback using react-native-mime-types library (if installed)
+    // const validFileNameForLookup = asset.fileName ?? undefined;
+    // if (validFileNameForLookup) {
+    //     const lookedUpMime = MimeTypes.lookup(validFileNameForLookup);
+    //     if (lookedUpMime) {
+    //         console.log(`Looked up MIME type using filename: ${lookedUpMime}`);
+    //         return lookedUpMime;
+    //     }
+    // }
+
+    // 3. Fallback: Infer from URI extension (less reliable but better than 'image')
+    const uriParts = asset.uri.split('.');
+    const extension = uriParts.pop()?.toLowerCase();
+    console.log(`Inferring MIME type from extension: .${extension}`);
+    switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'gif':
+            return 'image/gif';
+        case 'webp':
+            return 'image/webp';
+        case 'bmp':
+            return 'image/bmp';
+        default:
+            // 4. Use asset.type if available and other methods failed (least reliable)
+            if (asset.type && asset.type.includes('/')) {
+                 console.warn(`Falling back to asset.type: ${asset.type}`);
+                 return asset.type;
+            }
+             // 5. Final fallback
+            console.warn(`Could not determine specific MIME type for URI: ${asset.uri}. Defaulting to image/jpeg.`);
+            return 'image/jpeg';
+    }
+}
+
 
 // --- Refactored Functions ---
 
@@ -47,11 +101,7 @@ export async function getBase64FromUri(uri: string): Promise<string> {
 
 // Function to get macros for a single food item from an image file (using backend)
 // Accepts the specific type structure matching ImagePickerAsset properties needed
-export async function getMacrosForImageFile(asset: {
-    uri: string;
-    fileName?: string | null; // Accept null for fileName
-    type?: string;
-}): Promise<MacrosWithFoodName> {
+export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<MacrosWithFoodName> {
     let base64File: string;
     try {
         base64File = await getBase64FromUri(asset.uri);
@@ -60,15 +110,9 @@ export async function getMacrosForImageFile(asset: {
         throw err; // Re-throw
     }
 
-    let mimeType = asset.type;
-    // Use fileName only if it's not null for lookup
-    const validFileName = asset.fileName ?? undefined; // Convert null to undefined for lookup/logging
-    if (!mimeType && validFileName) {
-        mimeType = MimeTypes.lookup(validFileName) || undefined;
-    }
-    if (!mimeType) {
-        mimeType = 'image/jpeg'; // Default fallback
-    }
+    // --- Determine Correct MIME Type using helper ---
+    const mimeType = determineMimeType(asset);
+    console.log(`Frontend (single-food): Determined MIME type: ${mimeType}`);
 
     try {
         // Backend service already returns the correct MacrosWithFoodName type
@@ -87,11 +131,7 @@ export async function getMacrosForImageFile(asset: {
 
 // Function for Multiple Foods (using backend)
 // Accepts the specific type structure matching ImagePickerAsset properties needed
-export async function getMultipleFoodsFromImage(asset: {
-    uri: string;
-    fileName?: string | null; // Accept null for fileName
-    type?: string;
-}): Promise<EstimatedFoodItem[]> {
+export async function getMultipleFoodsFromImage(asset: ImagePickerAsset): Promise<EstimatedFoodItem[]> {
     console.log(`Frontend: Starting getMultipleFoodsFromImage for asset URI: ${asset.uri}`);
     let base64File: string;
     try {
@@ -102,16 +142,9 @@ export async function getMultipleFoodsFromImage(asset: {
          throw err;
     }
 
-    let mimeType = asset.type;
-    // Use fileName only if it's not null for lookup
-    const validFileName = asset.fileName ?? undefined; // Convert null to undefined
-    if (!mimeType && validFileName) {
-        mimeType = MimeTypes.lookup(validFileName) || undefined;
-    }
-    if (!mimeType) {
-        mimeType = 'image/jpeg'; // Default fallback
-    }
-    console.log(`Frontend: Determined MIME type (multi-food): ${mimeType}`);
+    // --- Determine Correct MIME Type using helper ---
+    const mimeType = determineMimeType(asset);
+    console.log(`Frontend (multi-food): Determined MIME type: ${mimeType}`);
 
     try {
         console.log("Frontend: Calling backendService.getMacrosForImageMultiple...");
@@ -129,4 +162,5 @@ export async function getMultipleFoodsFromImage(asset: {
     }
 }
 
-export { BackendError, EstimatedFoodItem };
+// Re-export BackendError and types if needed by components directly
+export { BackendError, EstimatedFoodItem, Macros, MacrosWithFoodName };
