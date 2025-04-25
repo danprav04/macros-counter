@@ -667,8 +667,9 @@ fs.stat(projectRoot, (err, stats) => {
 
 
 ---------- AddEntryModal.tsx ----------
+
 // src/components/AddEntryModal.tsx
-// ---------- AddEntryModal.tsx (Integrate Backend, Handle Errors) ----------
+// ---------- AddEntryModal.tsx (Fix AI Mode Reset & Refine Effects) ----------
 import React, {
   useEffect,
   useState,
@@ -689,6 +690,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  Keyboard, // Import Keyboard
 } from "react-native";
 import {
   Button,
@@ -706,15 +708,13 @@ import {
 import { Food } from "../types/food";
 import { isValidNumberInput } from "../utils/validationUtils";
 import { loadRecentFoods, saveRecentFoods } from "../services/storageService";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Frontend icon cache remains
-import { getGramsFromNaturalLanguage } from "../utils/units"; // Uses backend now
+import { getFoodIconUrl } from "../utils/iconUtils";
+import { getGramsFromNaturalLanguage } from "../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
-// Import types and backend function for multi-image add
-import { EstimatedFoodItem, getMultipleFoodsFromImage, getBase64FromUri } from "../utils/macros";
+import { EstimatedFoodItem, getMultipleFoodsFromImage } from "../utils/macros";
 import { v4 as uuidv4 } from "uuid";
-import { BackendError } from "../services/backendService"; // Import custom error type
-
+import { BackendError } from "../services/backendService";
 
 interface AddEntryModalProps {
   isVisible: boolean;
@@ -729,7 +729,7 @@ interface AddEntryModalProps {
   updateSearch: (search: string) => void;
   search: string;
   isEditMode: boolean;
-  initialGrams?: string;
+  initialGrams?: string; // This is the grams value passed IN for editing
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -757,16 +757,16 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
   const MAX_RECENT_FOODS = 5;
   const [foodIcons, setFoodIcons] = useState<{
-    [foodName: string]: string | null;
+    [foodName: string]: string | null | undefined; // Allow undefined for loading state
   }>({});
 
-  const [unitMode, setUnitMode] = useState<UnitMode>("grams");
-  const [autoInput, setAutoInput] = useState("");
-  const [isAiLoading, setIsAiLoading] = useState(false); // For natural language grams
+  const [unitMode, setUnitMode] = useState<UnitMode>("grams"); // State for grams/auto toggle
+  const [autoInput, setAutoInput] = useState(""); // State for the "auto" description input
+  const [isAiLoading, setIsAiLoading] = useState(false); // For natural language grams AI call
 
   // --- Quick Add State ---
-  const [modalMode, setModalMode] = useState<ModalMode>("normal");
-  const [quickAddLoading, setQuickAddLoading] = useState(false); // For image analysis
+  const [modalMode, setModalMode] = useState<ModalMode>("normal"); // State for normal vs quick add view
+  const [quickAddLoading, setQuickAddLoading] = useState(false); // For image analysis AI call
   const [quickAddItems, setQuickAddItems] = useState<EstimatedFoodItem[]>([]);
   const [selectedQuickAddIndices, setSelectedQuickAddIndices] = useState<
     Set<number>
@@ -779,7 +779,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   // --- End Quick Add State ---
 
   const screenWidth = Dimensions.get("window").width;
-  const isInitiallyVisible = useRef(false);
+  const isModalOpening = useRef(false); // Track initial opening transition
 
   const filteredFoods = useMemo(() => {
     if (!search) return [];
@@ -788,149 +788,125 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
   }, [foods, search]);
 
-  // Effect to handle state resets on visibility change and mode switches
+  // Effect 1: Reset state when modal closes or switches away from Quick Add
   useEffect(() => {
-    if (!isVisible) {
-      handleSelectFood(null);
-      setGrams("");
-      updateSearch("");
-      setUnitMode("grams");
-      setAutoInput("");
-      setIsAiLoading(false);
-      setModalMode("normal");
-      setQuickAddItems([]);
-      setSelectedQuickAddIndices(new Set());
-      setQuickAddLoading(false);
-      setEditingQuickAddItemIndex(null);
-      setEditedFoodName("");
-      setEditedGrams("");
-      isInitiallyVisible.current = false;
-    } else {
-      if (
-        !isInitiallyVisible.current &&
-        !quickAddLoading &&
-        modalMode !== "quickAddSelect"
-      ) {
-        setModalMode("normal");
-      }
-      isInitiallyVisible.current = true;
-
-      if (!isAiLoading && !quickAddLoading) {
+    if (!isVisible || (isVisible && modalMode !== 'normal' && !quickAddLoading)) {
+        // Reset general states only when closing OR switching out of normal mode
+        if (!isVisible) {
+            handleSelectFood(null); // Clear selected food when modal actually closes
+            updateSearch("");       // Clear search when modal closes
+            setModalMode("normal"); // Reset to normal mode for next open
+            setQuickAddItems([]);   // Clear quick add items
+            setSelectedQuickAddIndices(new Set());
+            setEditingQuickAddItemIndex(null);
+        }
+        // Reset states relevant to the input area when closing or switching mode
+        setGrams("");
+        setUnitMode("grams"); // Default to grams
         setAutoInput("");
-      }
-
-      let targetGrams = grams;
-      let targetUnitMode = unitMode;
-
-      if (
-        isEditMode &&
-        selectedFood &&
-        initialGrams &&
-        modalMode === "normal"
-      ) {
-        targetGrams = initialGrams;
-        targetUnitMode = "grams";
-        if (unitMode === "auto") {
-            setAutoInput("");
-        }
-      } else if (!isEditMode && selectedFood && modalMode === "normal") {
-        targetUnitMode = "grams";
-      } else if (!selectedFood && modalMode === "normal") {
-        targetGrams = "";
-        targetUnitMode = "grams";
-      }
-
-      if (grams !== targetGrams) {
-        setGrams(targetGrams);
-      }
-      if (unitMode !== targetUnitMode && !isAiLoading && !quickAddLoading) {
-        setUnitMode(targetUnitMode);
-      }
-
-      if (isEditMode) {
-          setModalMode("normal");
-          setQuickAddItems([]);
-          setSelectedQuickAddIndices(new Set());
-          setEditingQuickAddItemIndex(null);
-          setEditedFoodName("");
-          setEditedGrams("");
-      }
+        setIsAiLoading(false); // Ensure AI loading stops
+        // Don't reset quickAddLoading here, it's handled in its own flow
     }
-  }, [
-    isVisible, isEditMode, selectedFood, initialGrams, quickAddLoading, modalMode,
-    handleSelectFood, updateSearch, setGrams, unitMode, grams,
-  ]);
+  }, [isVisible, modalMode, handleSelectFood, updateSearch, setGrams, quickAddLoading]); // Added quickAddLoading dependency
 
-  // Load recent foods when modal becomes visible in normal mode
+
+  // Effect 2: Handle initial setup when modal becomes visible in 'normal' mode
   useEffect(() => {
-    const loadRecents = async () => {
-      const loadedRecentFoods = await loadRecentFoods();
-      setRecentFoods(loadedRecentFoods);
-    };
-    if (isVisible && modalMode === "normal") {
+    if (isVisible && modalMode === 'normal') {
+      isModalOpening.current = true; // Mark as opening
+
+      // Determine initial state based on edit mode
+      if (isEditMode && selectedFood && initialGrams !== undefined) {
+        // Edit Mode: Use initialGrams, force 'grams' mode
+        setGrams(initialGrams);
+        setUnitMode('grams');
+        setAutoInput(''); // Ensure auto input is clear
+      } else {
+        // Add Mode (or Edit mode without initialGrams): Default to empty grams, 'grams' mode
+        setGrams('');
+        setUnitMode('grams');
+        setAutoInput('');
+      }
+
+      // Load recent foods when entering normal mode
+      const loadRecents = async () => {
+        const loadedRecentFoods = await loadRecentFoods();
+        setRecentFoods(loadedRecentFoods);
+      };
       loadRecents();
+
+      // Short delay to prevent focus race conditions on modal open
+      const timer = setTimeout(() => {
+        isModalOpening.current = false;
+      }, 100);
+
+      return () => clearTimeout(timer);
+
     }
-  }, [isVisible, modalMode]);
+  }, [isVisible, modalMode, isEditMode, selectedFood, initialGrams, setGrams]); // Dependencies for initial setup
 
-  // Load icons for visible foods (using frontend cache/backend service)
+
+   // Effect 3: Reset grams/mode ONLY if selectedFood changes *while* modal is open in Add mode
+   useEffect(() => {
+     // Don't run this during the initial modal opening transition or if in edit mode
+     if (isVisible && modalMode === 'normal' && !isEditMode && !isModalOpening.current) {
+        // When a new food is selected for *adding*, reset grams and ensure 'grams' mode
+        setGrams("");
+        setUnitMode("grams");
+        setAutoInput("");
+     }
+   }, [selectedFood, isVisible, modalMode, isEditMode]); // Run when selectedFood changes
+
+  // Load icons for visible foods (search results or recent)
   useEffect(() => {
-    const loadIcons = async () => {
-      const iconsToLoad: { [foodName: string]: Promise<string | null> } = {};
-      const relevantFoods = search ? filteredFoods : recentFoods;
-      const uniqueFoodsMap = new Map(
-        relevantFoods.map((food) => [food.id ?? food.name, food]) // Use ID if available, fallback name
-      );
+    if (!isVisible || modalMode !== 'normal') return;
 
-      let shouldUpdateState = false;
+    const loadIcons = async () => {
+      const relevantFoods = search ? filteredFoods : recentFoods;
+      const uniqueFoodsMap = new Map(relevantFoods.map(food => [food.id ?? food.name, food]));
+      let iconsUpdated = false;
+
       for (const food of uniqueFoodsMap.values()) {
-        if (foodIcons[food.name] === undefined) { // Only initiate fetch if status is unknown
-            // No need to await here, let it run in background
-            getFoodIconUrl(food.name)
-              .then(iconUrl => {
-                   // Update state specifically for this food when promise resolves
-                   setFoodIcons(prevIcons => ({ ...prevIcons, [food.name]: iconUrl }));
-              })
-              .catch(error => {
-                   console.warn(`Icon fetch failed for ${food.name}:`, error);
-                   // Still update state to mark as failed (null)
-                   setFoodIcons(prevIcons => ({ ...prevIcons, [food.name]: null }));
-              });
-              // Mark that an update *will* happen, even if async
-              shouldUpdateState = true;
+        const foodName = food.name;
+        if (foodIcons[foodName] === undefined) { // Only fetch if status is unknown
+          iconsUpdated = true; // Mark that an update attempt is happening
+          // Intentionally not awaiting here - let fetches run concurrently
+          getFoodIconUrl(foodName)
+            .then(iconUrl => {
+              setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl }));
+            })
+            .catch(error => {
+              console.warn(`Icon fetch failed for ${foodName}:`, error);
+              setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null })); // Mark as failed
+            });
         }
       }
-       // No need to call setFoodIcons here, it's handled in the .then/.catch callbacks
-       // if (shouldUpdateState) {
-       //     // State updates happen asynchronously now
-       // }
+      // No final setFoodIcons call needed here, updates happen in .then/.catch
     };
 
-    if (
-      isVisible &&
-      modalMode === "normal" &&
-      (foods.length > 0 || recentFoods.length > 0)
-    ) {
-      loadIcons();
-    }
-  }, [isVisible, modalMode, search, filteredFoods, recentFoods, foods]); // Keep dependencies
+    // Debounce or delay icon loading slightly if needed, otherwise load directly
+    loadIcons();
 
-  const addToRecentFoods = async (food: Food) => {
-    if (!food || !food.id) {
-      console.warn("Attempted to add invalid food to recents:", food);
-      return;
-    }
+  }, [isVisible, modalMode, search, filteredFoods, recentFoods]); // foodIcons removed from deps to avoid loops
+
+  // --- Utility Functions ---
+  const addToRecentFoods = useCallback(async (food: Food) => {
+    if (!food || !food.id) return;
+    // Check if it's already the most recent item
     if (recentFoods.length > 0 && recentFoods[0].id === food.id) return;
-    const updatedRecentFoods = recentFoods.filter(
-      (recentFood) => recentFood.id !== food.id
-    );
-    updatedRecentFoods.unshift(food);
-    const trimmedRecentFoods = updatedRecentFoods.slice(0, MAX_RECENT_FOODS);
-    setRecentFoods(trimmedRecentFoods);
-    await saveRecentFoods(trimmedRecentFoods);
-  };
+
+    setRecentFoods((prevRecent) => {
+      const updated = prevRecent.filter((rf) => rf.id !== food.id);
+      updated.unshift(food);
+      const trimmed = updated.slice(0, MAX_RECENT_FOODS);
+      saveRecentFoods(trimmed).catch(err => console.error("Failed to save recent foods:", err)); // Save async
+      return trimmed;
+    });
+  }, [recentFoods]);
 
   const servingSizeSuggestions = useMemo(() => {
     if (!selectedFood) return [];
+    // Basic suggestions, could be dynamic based on food type later
     return [
       { label: "50g", value: "50" },
       { label: "100g", value: "100" },
@@ -939,8 +915,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     ];
   }, [selectedFood]);
 
-  // Uses backend service
-  const handleEstimateGrams = async () => {
+  // --- Action Handlers ---
+
+  // Estimate grams using AI (backend)
+  const handleEstimateGrams = useCallback(async () => {
+    Keyboard.dismiss(); // Dismiss keyboard first
     if (!selectedFood || !autoInput.trim()) {
       Alert.alert(
         "Input Missing",
@@ -948,16 +927,20 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       );
       return;
     }
+    if (isAiLoading) return; // Prevent multiple calls
+
     setIsAiLoading(true);
     try {
-      // Call the refactored utility function (which calls backend service)
+      console.log("here", selectedFood.name, autoInput);
+      
       const estimatedGrams = await getGramsFromNaturalLanguage(
         selectedFood.name,
         autoInput
       );
       const roundedGrams = String(Math.round(estimatedGrams));
       setGrams(roundedGrams);
-      setUnitMode("grams"); // Switch back to grams mode
+      setUnitMode("grams"); // Switch back to grams mode after estimation
+      setAutoInput("");     // Clear the auto input field
       Toast.show({
         type: "success",
         text1: "Grams Estimated",
@@ -966,19 +949,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         visibilityTime: 3000,
       });
     } catch (error: any) {
-      // Error Alert is handled within getGramsFromNaturalLanguage using BackendError check
+      // Error Alert is handled within getGramsFromNaturalLanguage utility
       console.error("AI Gram Estimation Error (Modal Level):", error);
-      // No need for duplicate Alert here if backendService/utils handle it
-      // Alert.alert(
-      //   "AI Estimation Failed",
-      //   error.message || "Could not estimate grams. Please enter manually."
-      // );
     } finally {
       setIsAiLoading(false);
     }
-  };
+  }, [selectedFood, autoInput, isAiLoading, setGrams]); // Added dependencies
 
-  const handleAddOrUpdateSingleEntry = async () => {
+
+  // Handle Add/Update button press for single entry
+  const handleAddOrUpdateSingleEntry = useCallback(async () => {
+    Keyboard.dismiss();
     if (!selectedFood) {
       Alert.alert("Food Not Selected", "Please select a food item.");
       return;
@@ -991,30 +972,38 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       );
       return;
     }
-    if (isAiLoading || quickAddLoading) return;
-    handleAddEntry(); // Call parent function to update DailyEntryScreen state
-    await addToRecentFoods(selectedFood);
-  };
+    if (isAiLoading || quickAddLoading) return; // Prevent action if AI is running
 
-  const handleInternalSelectFood = (item: Food | null) => {
+    // Call parent function (DailyEntryScreen) to handle state update and saving
+    handleAddEntry();
+
+    // Add to recents (no need to await this for UI feedback)
+    addToRecentFoods(selectedFood);
+
+    // Let parent handle closing the modal after state update is confirmed
+    // toggleOverlay(); // Removed - Parent handles close
+
+  }, [selectedFood, grams, isAiLoading, quickAddLoading, handleAddEntry, addToRecentFoods]);
+
+
+  // Handle selecting a food from search/recent list
+  const handleInternalSelectFood = useCallback((item: Food | null) => {
+    // Prevent re-selecting the same food unnecessarily
     if (selectedFood?.id === item?.id) return;
-    handleSelectFood(item);
-    if (item && (!isEditMode || !initialGrams)) {
-      setGrams("");
-      setUnitMode("grams");
-      setAutoInput("");
-    } else if (!item) {
-      setGrams("");
-      setUnitMode("grams");
-      setAutoInput("");
-    }
-  };
+
+    handleSelectFood(item); // Call parent's handler
+
+    // State resets (like clearing grams) are now handled by Effect 3
+    // based on whether it's edit mode or not.
+
+  }, [handleSelectFood, selectedFood?.id]);
 
   // --- Quick Add Functions ---
 
   const handleQuickAddImage = async () => {
+    Keyboard.dismiss();
     if (isEditMode) {
-        console.warn("Attempted to initiate Quick Add while in Edit Mode.");
+        console.warn("Quick Add disabled in Edit Mode.");
         return;
     }
     if (editingQuickAddItemIndex !== null) {
@@ -1024,6 +1013,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       );
       return;
     }
+    // Offer Camera or Gallery
     Alert.alert(
       "Quick Add from Image",
       "Identify multiple foods from a single image.",
@@ -1035,94 +1025,91 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
   };
 
-  // Uses backend service
-  const pickImageAndAnalyze = async (source: "camera" | "gallery") => {
-    if (isEditMode) return;
+  const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
+    if (isEditMode) return; // Double check
 
     let permissionResult;
     let pickerResult: ImagePicker.ImagePickerResult;
 
+    // Set up for quick add mode
     setQuickAddLoading(true);
     setQuickAddItems([]);
     setSelectedQuickAddIndices(new Set());
     setEditingQuickAddItemIndex(null);
+    setModalMode("quickAddSelect"); // Switch view immediately
+    handleSelectFood(null); // Clear any selected food from normal mode
+    updateSearch(""); // Clear search
 
     try {
+      // Request permissions and launch picker
       if (source === "camera") {
         permissionResult = await ImagePicker.requestCameraPermissionsAsync();
         if (!permissionResult.granted) {
           Alert.alert("Permission Required", "Camera access needed.");
+          setModalMode("normal"); // Revert to normal mode on permission denial
           setQuickAddLoading(false);
           return;
         }
         pickerResult = await ImagePicker.launchCameraAsync({ quality: 0.6 });
       } else {
-        permissionResult =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permissionResult.granted) {
           Alert.alert("Permission Required", "Gallery access needed.");
+          setModalMode("normal"); // Revert on permission denial
           setQuickAddLoading(false);
           return;
         }
         pickerResult = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images, // Correct type
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
           quality: 0.6,
         });
       }
 
+      // Handle cancellation
       if (pickerResult.canceled) {
         console.log("Image selection/capture cancelled for Quick Add.");
+        setModalMode("normal"); // Revert if user cancels picker
         setQuickAddLoading(false);
         return;
       }
 
+      // Process the selected image asset
       if (pickerResult.assets && pickerResult.assets.length > 0) {
         const asset = pickerResult.assets[0];
-        // Call the refactored utility function (which calls backend service)
-        const results = await getMultipleFoodsFromImage(asset); // Pass the asset directly
+        // Call backend via utility function
+        const results = await getMultipleFoodsFromImage(asset);
 
         if (results.length === 0) {
           Alert.alert(
             "No Foods Found",
-            "The AI couldn't identify any food items in the image. Try again or add manually."
+            "The AI couldn't identify food items. Try again or add manually."
           );
-          setQuickAddItems([]);
-          setModalMode("normal");
+           setModalMode("normal"); // Revert if no results
         } else {
+          // Populate state with results and select all by default
           setQuickAddItems(results);
           setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
-          setModalMode("quickAddSelect");
-          handleSelectFood(null);
-          setGrams("");
-          updateSearch("");
-          setUnitMode("grams");
-          setAutoInput("");
+          // Keep modalMode as 'quickAddSelect'
         }
       } else {
         console.log("No assets selected or returned for Quick Add.");
         Alert.alert("Error", "Could not select image.");
-        setModalMode("normal");
+        setModalMode("normal"); // Revert on picker error
       }
     } catch (error: any) {
-       // Alert handling is now done within getMultipleFoodsFromImage
+       // Alert handling is done within getMultipleFoodsFromImage utility
        console.error("Error during Quick Add image process (Modal Level):", error);
-       setModalMode("normal"); // Go back to normal mode on error
+       setModalMode("normal"); // Revert to normal mode on any analysis error
        setQuickAddItems([]);
        setSelectedQuickAddIndices(new Set());
-       setEditingQuickAddItemIndex(null);
-       // No need for duplicate Alert here if backendService/utils handle it
-       // Alert.alert(
-       //   "Quick Add Failed",
-       //   `Could not analyze the image. ${error.message || "Please try again."}`
-       // );
     } finally {
-      // Use timeout to ensure loading state hides after modal transition completes
-      setTimeout(() => setQuickAddLoading(false), 100);
+      // Ensure loading indicator stops, possibly after a short delay for transition
+      setTimeout(() => setQuickAddLoading(false), 150);
     }
-  };
+  }, [isEditMode, handleSelectFood]); // Added dependencies
 
   const handleToggleQuickAddItem = (index: number) => {
-    if (editingQuickAddItemIndex !== null) return;
+    if (editingQuickAddItemIndex !== null) return; // Disable toggle while editing another item
 
     setSelectedQuickAddIndices((prev) => {
       const newSet = new Set(prev);
@@ -1137,16 +1124,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
   const handleEditQuickAddItem = (index: number) => {
     if (editingQuickAddItemIndex !== null) {
-      Alert.alert(
-        "Finish Editing",
-        "Please save or cancel the current edit first."
-      );
+      Alert.alert("Finish Editing", "Please save or cancel the current edit first.");
       return;
     }
     const item = quickAddItems[index];
     setEditingQuickAddItemIndex(index);
     setEditedFoodName(item.foodName);
     setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
+    // Deselect the item visually while it's being edited
     setSelectedQuickAddIndices((prev) => {
       const newSet = new Set(prev);
       newSet.delete(index);
@@ -1165,149 +1150,141 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
     const numericGrams = parseFloat(editedGrams);
     if (!isValidNumberInput(editedGrams) || numericGrams <= 0) {
-      Alert.alert(
-        "Invalid Grams",
-        "Please enter a valid positive number for grams."
-      );
+      Alert.alert("Invalid Grams", "Please enter a valid positive number for grams.");
       return;
     }
     const roundedGrams = Math.round(numericGrams);
 
-    const updatedItems = quickAddItems.map((item, index) => {
-      if (index === editingQuickAddItemIndex) {
-        return {
-          ...item,
-          foodName: trimmedName,
-          estimatedWeightGrams: roundedGrams,
-        };
-      }
-      return item;
+    // Update the item in the quickAddItems state
+    setQuickAddItems((prevItems) =>
+      prevItems.map((item, index) => {
+        if (index === editingQuickAddItemIndex) {
+          // Return updated item, keeping original macro per 100g data
+          return {
+            ...item,
+            foodName: trimmedName,
+            estimatedWeightGrams: roundedGrams,
+          };
+        }
+        return item;
+      })
+    );
+
+     // Re-select the item after saving edit
+    const indexToReselect = editingQuickAddItemIndex;
+    setSelectedQuickAddIndices((prev) => {
+         const newSet = new Set(prev);
+         newSet.add(indexToReselect);
+         return newSet;
     });
 
-    setQuickAddItems(updatedItems);
+
+    // Reset editing state
     setEditingQuickAddItemIndex(null);
     setEditedFoodName("");
     setEditedGrams("");
-    setSelectedQuickAddIndices((prev) => {
-        const newSet = new Set(prev);
-        // Use the original index that was stored in editingQuickAddItemIndex
-        if (editingQuickAddItemIndex !== null) {
-            newSet.add(editingQuickAddItemIndex);
-        }
-        return newSet;
-      });
+
   };
 
   const handleCancelQuickAddItemEdit = () => {
-    setEditingQuickAddItemIndex(null);
-    setEditedFoodName("");
-    setEditedGrams("");
-     // Optionally re-select if needed, based on desired UX
+     // Reset editing state without saving changes
+     const indexToReselect = editingQuickAddItemIndex; // Get index before resetting
+     setEditingQuickAddItemIndex(null);
+     setEditedFoodName("");
+     setEditedGrams("");
+     // Re-select the item that was being edited
+     if (indexToReselect !== null) {
+        setSelectedQuickAddIndices((prev) => {
+             const newSet = new Set(prev);
+             newSet.add(indexToReselect);
+             return newSet;
+        });
+     }
   };
 
-  const handleConfirmQuickAdd = () => {
-    if (isEditMode) {
-        console.warn("Attempted Quick Add confirmation while in Edit Mode.");
-        return;
+  const handleConfirmQuickAdd = useCallback(() => {
+    Keyboard.dismiss();
+    if (isEditMode) return; // Should not happen, but check anyway
+
+    if (editingQuickAddItemIndex !== null) {
+      Alert.alert("Finish Editing", "Please save or cancel your edit before adding items.");
+      return;
     }
+    if (selectedQuickAddIndices.size === 0) {
+      Alert.alert("No Items Selected", "Please select or edit at least one item to add.");
+      return;
+    }
+
     try {
-      console.log("AddEntryModal: handleConfirmQuickAdd triggered.");
-
-      if (editingQuickAddItemIndex !== null) {
-        Alert.alert(
-          "Finish Editing",
-          "Please save or cancel your edit before adding items."
-        );
-        return;
-      }
-
-      if (selectedQuickAddIndices.size === 0) {
-        Alert.alert(
-          "No Items Selected",
-          "Please select or edit at least one item to add."
-        );
-        return;
-      }
-
-      const entriesToAdd = Array.from(selectedQuickAddIndices).map((index) => {
+      // Map selected items to the format expected by the parent (DailyEntryScreen)
+      const entriesToAdd: { food: Food; grams: number }[] = Array.from(selectedQuickAddIndices).map((index) => {
         const item = quickAddItems[index];
-        // Create a temporary Food object consistent with Food type
+        // Create a temporary Food object consistent with the Food type
         const quickFood: Food = {
-          id: uuidv4(), // Generate unique ID for this specific entry instance
+          id: uuidv4(), // Generate a unique ID for this entry instance
           name: item.foodName,
-          calories: Math.round(item.calories_per_100g),
-          protein: Math.round(item.protein_per_100g),
-          carbs: Math.round(item.carbs_per_100g),
-          fat: Math.round(item.fat_per_100g),
+          // Ensure macros are rounded and handle potential non-numeric values defensively
+          calories: Math.round(Number(item.calories_per_100g) || 0),
+          protein: Math.round(Number(item.protein_per_100g) || 0),
+          carbs: Math.round(Number(item.carbs_per_100g) || 0),
+          fat: Math.round(Number(item.fat_per_100g) || 0),
         };
-        const entryGrams = Math.max(1, Math.round(item.estimatedWeightGrams));
+        // Ensure grams are positive integers
+        const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1));
         return { food: quickFood, grams: entryGrams };
       });
 
-      console.log(
-        "AddEntryModal: Prepared entriesToAdd:",
-        JSON.stringify(entriesToAdd, null, 2)
-      );
+      console.log("AddEntryModal: Preparing to add multiple entries:", entriesToAdd.length);
 
-      handleAddMultipleEntries(entriesToAdd); // Pass to parent
-      // toggleOverlay(); // Let parent handle closing after state update
+      // Call parent function (DailyEntryScreen) to handle adding these entries
+      handleAddMultipleEntries(entriesToAdd);
+
+      // Parent handles closing the modal after state update
+      // toggleOverlay(); // Removed
+
     } catch (error) {
-      console.error(
-        "AddEntryModal: Error in handleConfirmQuickAdd:",
-        error
-      );
-      Alert.alert(
-        "Error",
-        "A problem occurred while preparing items to add."
-      );
+      console.error("AddEntryModal: Error in handleConfirmQuickAdd:", error);
+      Alert.alert("Error", "A problem occurred while preparing items to add.");
     }
-  };
+  }, [quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, handleAddMultipleEntries, isEditMode]);
 
   // --- End Quick Add Functions ---
-
-  const isActionDisabled =
-    isAiLoading || quickAddLoading || editingQuickAddItemIndex !== null;
-
-  const isAddButtonDisabled =
-    modalMode !== "normal" ||
-    !selectedFood ||
-    !isValidNumberInput(grams) ||
-    parseFloat(grams) <= 0 ||
-    isActionDisabled;
-  const isAiButtonDisabled = // For natural language grams
-    modalMode !== "normal" ||
-    !selectedFood ||
-    !autoInput.trim() ||
-    isActionDisabled;
-  const isQuickAddConfirmDisabled = // For multi-image add
-    isEditMode ||
-    modalMode !== "quickAddSelect" ||
-    selectedQuickAddIndices.size === 0 ||
-    isActionDisabled;
-  const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled;
-
-  const combinedOverlayStyle = StyleSheet.flatten([
-    styles.overlayStyle,
-    { backgroundColor: theme.colors.background },
-  ]);
-
-  useEffect(() => {
-    // Removed console logs for brevity
-  }, [
-    isVisible, modalMode, quickAddItems, selectedQuickAddIndices,
-    isActionDisabled, isQuickAddConfirmDisabled, editingQuickAddItemIndex,
-    isEditMode, selectedFood, grams, unitMode, search, isAddButtonDisabled,
-  ]);
 
   const handleQuickAddGramsChange = (text: string) => {
     const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
     setEditedGrams(cleanedText);
   };
 
+  // --- Computed States for Disabling UI Elements ---
+  const isActionDisabled = isAiLoading || quickAddLoading || editingQuickAddItemIndex !== null;
+  const isAddButtonDisabled =
+    modalMode !== "normal" ||
+    !selectedFood ||
+    !isValidNumberInput(grams) ||
+    parseFloat(grams) <= 0 ||
+    isActionDisabled;
+  const isAiButtonDisabled = // Disable AI estimate button if conditions not met
+    modalMode !== "normal" ||
+    !selectedFood ||
+    !autoInput.trim() ||
+    isActionDisabled;
+  const isQuickAddConfirmDisabled = // Disable confirm quick add button
+    isEditMode ||
+    modalMode !== "quickAddSelect" ||
+    selectedQuickAddIndices.size === 0 ||
+    isActionDisabled;
+  const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled; // Disable camera/gallery button
+
+  // --- Render ---
+  const combinedOverlayStyle = StyleSheet.flatten([
+    styles.overlayStyle,
+    { backgroundColor: theme.colors.background },
+  ]);
+
   return (
     <Overlay
       isVisible={isVisible}
-      onBackdropPress={!isActionDisabled ? toggleOverlay : undefined}
+      onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} // Prevent closing if action in progress
       animationType="slide"
       overlayStyle={styles.overlayContainer}
     >
@@ -1325,83 +1302,56 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               disabled={isActionDisabled}
             >
               <Icon
-                name="close"
-                type="material"
-                size={28}
-                color={
-                  isActionDisabled ? theme.colors.grey3 : theme.colors.text
-                }
+                name="close" type="material" size={28}
+                color={ isActionDisabled ? theme.colors.grey3 : theme.colors.text }
               />
             </TouchableOpacity>
 
-            <Text
-              h4
-              h4Style={[
-                styles.overlayTitle,
-                isEditMode && modalMode === "normal" && styles.editModeTitle,
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
+            <Text h4 h4Style={[ styles.overlayTitle, isEditMode && modalMode === "normal" && styles.editModeTitle, ]}
+              numberOfLines={1} ellipsizeMode="tail" >
               {modalMode === "quickAddSelect"
-                ? editingQuickAddItemIndex !== null
-                  ? "Edit Item"
-                  : "Select Items to Add"
-                : isEditMode
-                ? "Edit Entry"
-                : "Add Entry"}
+                ? editingQuickAddItemIndex !== null ? "Edit Item" : "Select Items to Add"
+                : isEditMode ? "Edit Entry" : "Add Entry"
+              }
             </Text>
 
             {/* Conditional Header Actions */}
             {modalMode === "normal" && (
               <>
-                {!isEditMode && (
+                {!isEditMode && ( // Show Quick Add Camera only if not editing
                   <TouchableOpacity
                     onPress={handleQuickAddImage}
                     disabled={isQuickAddImageButtonDisabled}
                     style={styles.headerIcon}
                   >
-                    {quickAddLoading ? ( // Use quickAddLoading for image analysis
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.colors.primary}
-                      />
+                    {quickAddLoading ? (
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
                     ) : (
-                      <Icon
-                        name="camera-burst"
-                        type="material-community"
-                        size={26}
-                        color={
-                          isQuickAddImageButtonDisabled
-                            ? theme.colors.grey3
-                            : theme.colors.primary
-                        }
+                      <Icon name="camera-burst" type="material-community" size={26}
+                        color={ isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary }
                       />
                     )}
                   </TouchableOpacity>
                 )}
+                {/* Add/Update Button */}
                 <Button
                   title={isEditMode ? "Update" : "Add"}
                   onPress={handleAddOrUpdateSingleEntry}
                   disabled={isAddButtonDisabled}
-                  buttonStyle={[
-                    styles.addButton,
-                    isEditMode && styles.updateButton,
-                  ]}
+                  buttonStyle={[ styles.addButton, isEditMode && styles.updateButton, ]}
                   titleStyle={styles.buttonTitle}
+                  loading={isAiLoading} // Show loading if AI is processing related task (optional)
                 />
               </>
             )}
+            {/* Confirm Quick Add Button */}
             {modalMode === "quickAddSelect" && !isEditMode && (
               editingQuickAddItemIndex === null && (
                 <Button
                   title={`Add ${selectedQuickAddIndices.size}`}
                   onPress={handleConfirmQuickAdd}
                   disabled={isQuickAddConfirmDisabled}
-                  buttonStyle={[
-                    styles.addButton,
-                    { backgroundColor: theme.colors.success },
-                  ]}
+                  buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success }, ]}
                   titleStyle={styles.buttonTitle}
                 />
               )
@@ -1409,7 +1359,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           </View>
 
           {/* Unified Loading Indicator */}
-          {(isAiLoading || quickAddLoading) && (
+          {(isAiLoading || quickAddLoading) && modalMode === 'normal' && ( // Show only in normal mode if needed
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.loadingText}>
@@ -1418,464 +1368,299 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             </View>
           )}
 
-          {/* --- Conditional Content (Normal Mode) --- */}
-          {!isActionDisabled && modalMode === "normal" && (
-            <>
-              {/* Search Bar */}
-              <SearchBar
-                placeholder="Search Foods..."
-                onChangeText={updateSearch}
-                value={search}
-                platform={Platform.OS === "ios" ? "ios" : "android"}
-                containerStyle={styles.searchBarContainer}
-                inputContainerStyle={styles.searchBarInputContainer}
-                inputStyle={styles.searchInputStyle}
-                onCancel={() => updateSearch("")}
-              />
+          {/* --- Content Area --- */}
+          <ScrollView keyboardShouldPersistTaps="handled">
 
-              {/* Recent Foods */}
-              {!search && recentFoods.length > 0 && (
-                <View style={styles.recentFoodsSection}>
-                  <Text style={styles.sectionTitle}>Recent</Text>
-                  <FlatList
-                    data={recentFoods}
-                    keyExtractor={(item) => `recent-${item.id}`}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.recentFoodsContainer}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={[
-                          styles.recentFoodItem,
-                          screenWidth < 350 && styles.smallRecentFoodItem,
-                          selectedFood?.id === item.id &&
-                            styles.selectedRecentFoodItem,
-                        ]}
-                        onPress={() => handleInternalSelectFood(item)}
-                      >
-                        {/* Icon Logic (remains using local cache state) */}
-                         {foodIcons[item.name] !== undefined ? (
-                              foodIcons[item.name] ? (
-                              <Image
-                                  source={{ uri: foodIcons[item.name] as string }}
-                                  style={styles.foodIconSmall}
-                                  onError={() =>
-                                  setFoodIcons((prev) => ({
-                                      ...prev,
-                                      [item.name]: null, // Mark as failed if Image component fails
-                                  }))
-                                  }
-                              />
-                              ) : (
-                              // Icon fetch failed or returned null
-                              <View
-                                  style={[
-                                  styles.foodIconSmall,
-                                  styles.iconPlaceholderSmall,
-                                  ]}
-                              >
-                                  <Icon
-                                  name="fastfood" type="material" size={12}
-                                  color={theme.colors.grey2}
-                                  />
-                              </View>
-                              )
-                          ) : (
-                              // Icon fetch is in progress
-                              <ActivityIndicator
-                              size="small" color={theme.colors.grey3}
-                              style={styles.foodIconSmall}
-                              />
-                          )}
-                        <Text
-                          style={[
-                            styles.recentFoodText,
-                            screenWidth < 350 && styles.smallRecentFoodText,
-                          ]}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {item.name}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-              )}
-
-              {/* Food Search Results List */}
-              {search && (
-                <FlatList
-                  data={filteredFoods}
-                  keyExtractor={(item) => `search-${item.id}`}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      onPress={() => handleInternalSelectFood(item)}
-                    >
-                      <ListItem
-                        bottomDivider
-                        containerStyle={[
-                          styles.listItemContainer,
-                          selectedFood?.id === item.id &&
-                            styles.selectedListItem,
-                        ]}
-                      >
-                         {/* Icon Logic (remains using local cache state) */}
-                         {foodIcons[item.name] !== undefined ? (
-                              foodIcons[item.name] ? (
-                              <Image
-                                  source={{ uri: foodIcons[item.name] as string }}
-                                  style={styles.foodIcon} // Use regular size icon style
-                                  onError={() =>
-                                  setFoodIcons((prev) => ({
-                                      ...prev,
-                                      [item.name]: null,
-                                  }))
-                                  }
-                              />
-                              ) : (
-                              <View style={styles.defaultIconContainer}>
-                                  <Icon
-                                  name="restaurant" type="material" size={18}
-                                  color={theme.colors.grey3}
-                                  />
-                              </View>
-                              )
-                          ) : (
-                              <ActivityIndicator
-                              size="small" color={theme.colors.grey3}
-                              style={styles.foodIcon} // Use regular size icon style
-                              />
-                          )}
-                        <ListItem.Content>
-                          <ListItem.Title style={styles.listItemTitle}>
-                            {item.name}
-                          </ListItem.Title>
-                        </ListItem.Content>
-                        {selectedFood?.id === item.id && (
-                          <Icon
-                            name="checkmark-circle"
-                            type="ionicon"
-                            color={theme.colors.primary}
-                            size={24}
-                          />
-                        )}
-                      </ListItem>
-                    </TouchableOpacity>
-                  )}
-                  style={styles.foodList}
-                  ListEmptyComponent={
-                    <Text style={styles.noFoodsText}>
-                      No foods found matching "{search}".
-                    </Text>
-                  }
-                  initialNumToRender={10}
-                  maxToRenderPerBatch={10}
-                  windowSize={5}
-                  keyboardShouldPersistTaps="handled"
+            {/* --- NORMAL MODE CONTENT --- */}
+            {!isActionDisabled && modalMode === "normal" && (
+              <>
+                {/* Search Bar */}
+                <SearchBar
+                  placeholder="Search Foods..."
+                  onChangeText={updateSearch}
+                  value={search}
+                  platform={Platform.OS === "ios" ? "ios" : "android"}
+                  containerStyle={styles.searchBarContainer}
+                  inputContainerStyle={styles.searchBarInputContainer}
+                  inputStyle={styles.searchInputStyle}
+                  onCancel={() => updateSearch("")}
+                  showCancel={Platform.OS === 'ios'}
+                  onClear={() => updateSearch("")}
                 />
-              )}
 
-              {/* Amount Input Section */}
-              {selectedFood && (
-                <View style={styles.amountSection}>
-                  <View style={styles.unitSelectorContainer}>
-                    <Text style={styles.inputLabel}>Amount</Text>
-                    <ButtonGroup
-                      buttons={["Grams", "Auto (AI)"]}
-                      selectedIndex={unitMode === "grams" ? 0 : 1}
-                      onPress={(index) =>
-                        setUnitMode(index === 0 ? "grams" : "auto")
-                      }
-                      containerStyle={styles.buttonGroupContainer}
-                      selectedButtonStyle={{
-                        backgroundColor: theme.colors.primary,
-                      }}
-                      textStyle={styles.buttonGroupText}
-                      selectedTextStyle={{ color: theme.colors.white }}
-                      disabled={isEditMode && [1]}
-                      disabledStyle={{ backgroundColor: theme.colors.grey5 }}
-                      disabledTextStyle={{ color: theme.colors.grey3 }}
+                {/* Recent Foods */}
+                {!search && recentFoods.length > 0 && (
+                  <View style={styles.recentFoodsSection}>
+                    <Text style={styles.sectionTitle}>Recent</Text>
+                    <FlatList
+                      data={recentFoods}
+                      keyExtractor={(item) => `recent-${item.id}`}
+                      horizontal showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.recentFoodsContainer}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={[ styles.recentFoodItem, screenWidth < 350 && styles.smallRecentFoodItem, selectedFood?.id === item.id && styles.selectedRecentFoodItem, ]}
+                          onPress={() => handleInternalSelectFood(item)} >
+                          {/* Icon Rendering */}
+                           {foodIcons[item.name] !== undefined ? (
+                                foodIcons[item.name] ? (
+                                <Image source={{ uri: foodIcons[item.name] as string }} style={styles.foodIconSmall}
+                                    onError={() => setFoodIcons((prev) => ({ ...prev, [item.name]: null })) } />
+                                ) : ( // Icon fetch failed or returned null
+                                <View style={[styles.foodIconSmall, styles.iconPlaceholderSmall]}>
+                                    <Icon name="fastfood" type="material" size={12} color={theme.colors.grey2} />
+                                </View>
+                                )
+                            ) : ( // Icon fetch is in progress (undefined)
+                                <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIconSmall} />
+                            )}
+                          <Text style={[ styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText, ]}
+                            numberOfLines={1} ellipsizeMode="tail" >
+                            {item.name}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     />
                   </View>
+                )}
 
-                  {unitMode === "grams" && (
-                    <>
-                      {!isEditMode && servingSizeSuggestions.length > 0 && (
-                        <View style={styles.servingSizeRow}>
-                          <Text style={styles.servingSizeLabel}>
-                            Quick Add:
-                          </Text>
-                          <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.servingSizeContainer}
-                          >
-                            {servingSizeSuggestions.map((suggestion) => (
-                              <TouchableOpacity
-                                key={suggestion.label}
-                                style={styles.servingSizeButton}
-                                onPress={() => setGrams(suggestion.value)}
-                              >
-                                <Text style={styles.servingSizeButtonTitle}>
-                                  {suggestion.label}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                      <Input
-                        placeholder={isEditMode ? "Update grams" : "Enter exact grams (e.g., 150)"}
-                        keyboardType="numeric"
-                        value={grams}
-                        onChangeText={(text) => {
-                          const cleanedText = text
-                            .replace(/[^0-9.]/g, "")
-                            .replace(/(\..*)\./g, "$1");
-                          setGrams(cleanedText);
-                        }}
-                        inputStyle={styles.gramInputStyle}
-                        inputContainerStyle={styles.gramInputContainerStyle}
-                        errorMessage={
-                          !isValidNumberInput(grams) &&
-                          grams !== "" &&
-                          grams !== "."
-                            ? "Enter a valid number"
-                            : ""
-                        }
-                        errorStyle={{ color: theme.colors.error }}
-                        rightIcon={<Text style={styles.unitText}> g</Text>}
-                        containerStyle={{ paddingHorizontal: 0 }}
-                        key={`grams-input-${selectedFood?.id}`}
-                        autoFocus={!search && !isEditMode}
-                      />
-                    </>
-                  )}
-
-                  {/* AI Grams Estimation Input */}
-                  {unitMode === "auto" && !isEditMode && (
-                    <View style={styles.autoInputRow}>
-                      <Input
-                        placeholder="Describe quantity (e.g., 1 cup cooked)"
-                        value={autoInput}
-                        onChangeText={setAutoInput}
-                        inputStyle={[
-                          styles.gramInputStyle,
-                          styles.autoInputField,
-                        ]}
-                        inputContainerStyle={styles.gramInputContainerStyle}
-                        containerStyle={styles.autoInputContainer}
-                        multiline={false}
-                        onSubmitEditing={handleEstimateGrams}
-                        key={`auto-input-${selectedFood?.id}`}
-                        autoFocus={true}
-                      />
-                      <Button
-                        onPress={handleEstimateGrams}
-                        disabled={isAiButtonDisabled} // Use specific disable state
-                        loading={isAiLoading} // Use specific loading state
-                        buttonStyle={styles.aiButton}
-                        icon={
-                          isAiLoading ? ( // Use specific loading state
-                            <ActivityIndicator
-                              size="small"
-                              color={theme.colors.white}
-                            />
-                          ) : (
-                            <Icon
-                              name="calculator-variant"
-                              type="material-community"
-                              size={20}
-                              color={theme.colors.white}
-                            />
-                          )
-                        }
-                      />
-                    </View>
-                  )}
-                </View>
-              )}
-            </>
-          )}
-
-          {/* --- Conditional Content (Quick Add Selection Mode) --- */}
-          {!isEditMode && modalMode === "quickAddSelect" && (
-            <>
-              <View style={styles.quickAddHeader}>
-                <Text style={styles.sectionTitle}>
-                  {editingQuickAddItemIndex !== null
-                    ? "Editing Item Details"
-                    : "Select Items from Image"}
-                </Text>
-                {editingQuickAddItemIndex === null && (
-                  <Button
-                    type="clear"
-                    title="Back"
-                    onPress={() => {
-                      setModalMode("normal");
-                      setQuickAddItems([]);
-                      setSelectedQuickAddIndices(new Set());
-                      setEditingQuickAddItemIndex(null);
-                    }}
-                    titleStyle={{
-                      color: theme.colors.primary,
-                      fontSize: 14,
-                    }}
-                    icon={
-                      <Icon
-                        name="arrow-back"
-                        type="ionicon"
-                        size={18}
-                        color={theme.colors.primary}
-                      />
-                    }
-                    disabled={quickAddLoading}
+                {/* Food Search Results List */}
+                {search && (
+                  <FlatList
+                    data={filteredFoods}
+                    keyExtractor={(item) => `search-${item.id}`}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity onPress={() => handleInternalSelectFood(item)}>
+                        <ListItem bottomDivider containerStyle={[ styles.listItemContainer, selectedFood?.id === item.id && styles.selectedListItem, ]} >
+                           {/* Icon Rendering */}
+                           {foodIcons[item.name] !== undefined ? (
+                                foodIcons[item.name] ? (
+                                    <Image source={{ uri: foodIcons[item.name] as string }} style={styles.foodIcon}
+                                        onError={() => setFoodIcons((prev) => ({ ...prev, [item.name]: null })) } />
+                                ) : ( // Failed or null
+                                    <View style={styles.defaultIconContainer}>
+                                    <Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} />
+                                    </View>
+                                )
+                            ) : ( // Loading
+                                <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />
+                            )}
+                          <ListItem.Content>
+                            <ListItem.Title style={styles.listItemTitle}> {item.name} </ListItem.Title>
+                          </ListItem.Content>
+                          {selectedFood?.id === item.id && (
+                            <Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />
+                          )}
+                        </ListItem>
+                      </TouchableOpacity>
+                    )}
+                    style={styles.foodList}
+                    ListEmptyComponent={ <Text style={styles.noFoodsText}> No foods found matching "{search}". </Text> }
+                    initialNumToRender={10} maxToRenderPerBatch={10} windowSize={5}
+                    keyboardShouldPersistTaps="handled"
                   />
                 )}
-              </View>
-              <FlatList
-                data={quickAddItems}
-                keyExtractor={(item, index) =>
-                  `quickadd-${index}-${item.foodName}-${item.estimatedWeightGrams}`
-                }
-                renderItem={({ item, index }) => {
-                  const isSelected = selectedQuickAddIndices.has(index);
-                  const isEditingThisItem =
-                    editingQuickAddItemIndex === index;
-                  const isAnyItemEditing = editingQuickAddItemIndex !== null;
-                  const estimatedCalories = Math.round(
-                    (item.calories_per_100g / 100) * item.estimatedWeightGrams
-                  );
 
-                  return (
-                    <Pressable
-                      onPress={() =>
-                        !isEditingThisItem && handleToggleQuickAddItem(index)
-                      }
-                      disabled={isAnyItemEditing && !isEditingThisItem}
-                    >
-                      <ListItem
-                        bottomDivider
-                        containerStyle={[
-                          styles.quickAddItemContainer,
-                          isEditingThisItem && styles.quickAddItemEditing,
-                          isSelected && styles.quickAddItemSelected,
-                          isAnyItemEditing &&
-                            !isEditingThisItem && { opacity: 0.6 },
-                        ]}
-                      >
-                        {isEditingThisItem ? (
-                          <View style={styles.quickAddEditView}>
-                            <Input
-                              value={editedFoodName}
-                              onChangeText={setEditedFoodName}
-                              placeholder="Food Name"
-                              inputContainerStyle={
-                                styles.quickEditInputContainer
-                              }
-                              inputStyle={styles.quickEditInput}
-                              containerStyle={styles.quickEditNameContainer}
-                              autoFocus
-                            />
-                            <View style={styles.quickEditGramsRow}>
-                              <Input
-                                value={editedGrams}
-                                onChangeText={handleQuickAddGramsChange}
-                                placeholder="Grams"
-                                keyboardType="numeric"
-                                inputContainerStyle={
-                                  styles.quickEditInputContainer
-                                }
-                                inputStyle={styles.quickEditInput}
-                                containerStyle={
-                                  styles.quickEditGramsContainer
-                                }
-                                rightIcon={
-                                  <Text style={styles.quickEditUnitText}>
-                                    g
-                                  </Text>
-                                }
-                              />
-                              <TouchableOpacity
-                                onPress={handleSaveQuickAddItemEdit}
-                                style={styles.quickEditButton}
-                              >
-                                <Icon
-                                  name="checkmark"
-                                  type="ionicon"
-                                  color={theme.colors.success}
-                                  size={26}
-                                />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={handleCancelQuickAddItemEdit}
-                                style={styles.quickEditButton}
-                              >
-                                <Icon
-                                  name="close-circle-outline"
-                                  type="ionicon"
-                                  color={theme.colors.error}
-                                  size={26}
-                                />
-                              </TouchableOpacity>
-                            </View>
+                {/* Amount Input Section - Only show if a food is selected */}
+                {selectedFood && (
+                  <View style={styles.amountSection}>
+                    <View style={styles.unitSelectorContainer}>
+                      <Text style={styles.inputLabel}>Amount</Text>
+                      {/* Unit Mode Toggle (Grams / Auto) */}
+                      <ButtonGroup
+                        buttons={["Grams", "Auto (AI)"]}
+                        selectedIndex={unitMode === "grams" ? 0 : 1}
+                        onPress={(index) => setUnitMode(index === 0 ? "grams" : "auto") }
+                        containerStyle={styles.buttonGroupContainer}
+                        selectedButtonStyle={{ backgroundColor: theme.colors.primary, }}
+                        textStyle={styles.buttonGroupText}
+                        selectedTextStyle={{ color: theme.colors.white }}
+                        disabled={isEditMode ? [1] : []} // Disable "Auto" in edit mode
+                        disabledStyle={{ backgroundColor: theme.colors.grey5 }}
+                        disabledTextStyle={{ color: theme.colors.grey3 }}
+                      />
+                    </View>
+
+                    {/* Grams Input */}
+                    {unitMode === "grams" && (
+                      <>
+                        {/* Quick Add Gram Buttons */}
+                        {!isEditMode && servingSizeSuggestions.length > 0 && (
+                          <View style={styles.servingSizeRow}>
+                            <Text style={styles.servingSizeLabel}> Quick Add: </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servingSizeContainer} >
+                              {servingSizeSuggestions.map((suggestion) => (
+                                <TouchableOpacity key={suggestion.label} style={styles.servingSizeButton}
+                                  onPress={() => setGrams(suggestion.value)} >
+                                  <Text style={styles.servingSizeButtonTitle}> {suggestion.label} </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
                           </View>
-                        ) : (
-                          <>
-                            <CheckBox
-                              checked={isSelected}
-                              onPress={() => handleToggleQuickAddItem(index)}
-                              containerStyle={styles.quickAddCheckbox}
-                              checkedColor={theme.colors.primary}
-                              disabled={isAnyItemEditing}
-                            />
-                            <ListItem.Content>
-                              <ListItem.Title style={styles.quickAddItemTitle}>
-                                {item.foodName}
-                              </ListItem.Title>
-                              <ListItem.Subtitle
-                                style={styles.quickAddItemSubtitle}
-                              >
-                                {`Est: ${Math.round(
-                                  item.estimatedWeightGrams
-                                )}g • ~${estimatedCalories} kcal`}
-                              </ListItem.Subtitle>
-                            </ListItem.Content>
-                            {!isAnyItemEditing && (
-                              <TouchableOpacity
-                                onPress={() => handleEditQuickAddItem(index)}
-                                style={styles.quickEditIconButton}
-                              >
-                                <Icon
-                                  name="pencil"
-                                  type="material-community"
-                                  size={20}
-                                  color={theme.colors.grey1}
-                                />
-                              </TouchableOpacity>
-                            )}
-                          </>
                         )}
-                      </ListItem>
-                    </Pressable>
-                  );
-                }}
-                ListEmptyComponent={
-                  <View style={styles.emptyListContainer}>
-                    <Text style={styles.emptyListText}>
-                      {quickAddLoading ? "Analyzing..." : "No identifiable foods found."}
-                    </Text>
-                  </View>
-                }
-                style={styles.quickAddList}
-                extraData={{ selectedQuickAddIndices, editingQuickAddItemIndex }}
-                keyboardShouldPersistTaps="handled"
-              />
-            </>
-          )}
+                        {/* Grams Input Field */}
+                        <Input
+                          placeholder={isEditMode ? "Update grams" : "Enter grams (e.g., 150)"}
+                          keyboardType="numeric" value={grams}
+                          onChangeText={(text) => {
+                            const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                            setGrams(cleanedText);
+                          }}
+                          inputStyle={styles.gramInputStyle}
+                          inputContainerStyle={styles.gramInputContainerStyle}
+                          errorMessage={ !isValidNumberInput(grams) && grams !== "" && grams !== "." ? "Enter a valid number" : "" }
+                          errorStyle={{ color: theme.colors.error }}
+                          rightIcon={<Text style={styles.unitText}> g</Text>}
+                          containerStyle={{ paddingHorizontal: 0 }}
+                          // AutoFocus only if adding and no search term exists
+                          autoFocus={!search && !isEditMode && Platform.OS !== 'web'} // Avoid autofocus issues on web sometimes
+                          key={`grams-input-${selectedFood?.id}`} // Re-mount on food change if needed
+                        />
+                      </>
+                    )}
 
-          <View style={{ height: 20 }} />
+                    {/* AI Grams Estimation Input */}
+                    {unitMode === "auto" && !isEditMode && ( // Show only if adding
+                      <View style={styles.autoInputRow}>
+                        <Input
+                          placeholder="Describe quantity (e.g., 1 cup cooked)"
+                          value={autoInput} onChangeText={setAutoInput}
+                          inputStyle={[styles.gramInputStyle, styles.autoInputField]}
+                          inputContainerStyle={styles.gramInputContainerStyle}
+                          containerStyle={styles.autoInputContainer}
+                          multiline={false}
+                          onSubmitEditing={handleEstimateGrams} // Estimate on submit
+                          key={`auto-input-${selectedFood?.id}`}
+                          autoFocus={Platform.OS !== 'web'} // Autofocus when switching to auto mode
+                        />
+                        {/* AI Estimate Button */}
+                        <Button
+                          onPress={handleEstimateGrams}
+                          disabled={isAiButtonDisabled}
+                          loading={isAiLoading} // Show loading indicator on button
+                          buttonStyle={styles.aiButton}
+                          icon={ isAiLoading ? undefined // Hide icon when loading text shows
+                              : (<Icon name="calculator-variant" type="material-community" size={20} color={theme.colors.white} />)
+                          }
+                          title={isAiLoading ? 'Estimating...' : ''} // Show text when loading
+                          titleStyle={styles.aiButtonLoadingTitle}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* --- QUICK ADD SELECTION MODE CONTENT --- */}
+            {!isEditMode && modalMode === "quickAddSelect" && (
+               <>
+                 {/* Quick Add Header */}
+                 <View style={styles.quickAddHeader}>
+                   <Text style={styles.sectionTitle}>
+                     {editingQuickAddItemIndex !== null ? "Editing Item Details" : "Select Items from Image"}
+                   </Text>
+                   {/* Back Button */}
+                   {editingQuickAddItemIndex === null && ( // Show back only when not editing an item
+                     <Button type="clear" title="Back"
+                       onPress={() => { // Action to return to normal mode
+                         setModalMode("normal");
+                         setQuickAddItems([]);
+                         setSelectedQuickAddIndices(new Set());
+                         setEditingQuickAddItemIndex(null); // Ensure edit state is clear
+                       }}
+                       titleStyle={{ color: theme.colors.primary, fontSize: 14, }}
+                       icon={ <Icon name="arrow-back" type="ionicon" size={18} color={theme.colors.primary} /> }
+                       disabled={quickAddLoading} // Disable if analysis is still somehow running
+                     />
+                   )}
+                 </View>
+
+                {/* Loading indicator specifically for quick add list */}
+                {quickAddLoading && (
+                    <View style={styles.centeredContent}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={styles.loadingText}>Analyzing Image...</Text>
+                    </View>
+                 )}
+
+                 {/* Quick Add Item List */}
+                 {!quickAddLoading && (
+                    <FlatList
+                        data={quickAddItems}
+                        keyExtractor={(item, index) => `quickadd-${index}-${item.foodName}`}
+                        renderItem={({ item, index }) => {
+                        const isSelected = selectedQuickAddIndices.has(index);
+                        const isEditingThisItem = editingQuickAddItemIndex === index;
+                        const isAnyItemEditing = editingQuickAddItemIndex !== null;
+                        const estimatedCalories = Math.round( (item.calories_per_100g / 100) * item.estimatedWeightGrams );
+
+                        return (
+                            <Pressable onPress={() => !isEditingThisItem && handleToggleQuickAddItem(index)}
+                            disabled={isAnyItemEditing && !isEditingThisItem} >
+                            <ListItem bottomDivider containerStyle={[ styles.quickAddItemContainer, isEditingThisItem && styles.quickAddItemEditing, isSelected && styles.quickAddItemSelected, isAnyItemEditing && !isEditingThisItem && { opacity: 0.6 }, ]} >
+                                {isEditingThisItem ? (
+                                // --- EDIT VIEW for Quick Add Item ---
+                                <View style={styles.quickAddEditView}>
+                                    <Input value={editedFoodName} onChangeText={setEditedFoodName}
+                                    placeholder="Food Name" inputContainerStyle={ styles.quickEditInputContainer }
+                                    inputStyle={styles.quickEditInput} containerStyle={styles.quickEditNameContainer}
+                                    autoFocus selectTextOnFocus />
+                                    <View style={styles.quickEditGramsRow}>
+                                    <Input value={editedGrams} onChangeText={handleQuickAddGramsChange}
+                                        placeholder="Grams" keyboardType="numeric"
+                                        inputContainerStyle={ styles.quickEditInputContainer } inputStyle={styles.quickEditInput}
+                                        containerStyle={ styles.quickEditGramsContainer }
+                                        rightIcon={ <Text style={styles.quickEditUnitText}> g </Text> } />
+                                    {/* Save/Cancel Edit Buttons */}
+                                    <TouchableOpacity onPress={handleSaveQuickAddItemEdit} style={styles.quickEditButton}>
+                                        <Icon name="checkmark" type="ionicon" color={theme.colors.success} size={26} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={handleCancelQuickAddItemEdit} style={styles.quickEditButton}>
+                                        <Icon name="close-circle-outline" type="ionicon" color={theme.colors.error} size={26} />
+                                    </TouchableOpacity>
+                                    </View>
+                                </View>
+                                ) : (
+                                // --- DISPLAY VIEW for Quick Add Item ---
+                                <>
+                                    <CheckBox checked={isSelected} onPress={() => handleToggleQuickAddItem(index)}
+                                    containerStyle={styles.quickAddCheckbox} checkedColor={theme.colors.primary}
+                                    disabled={isAnyItemEditing} />
+                                    <ListItem.Content>
+                                    <ListItem.Title style={styles.quickAddItemTitle}> {item.foodName} </ListItem.Title>
+                                    <ListItem.Subtitle style={styles.quickAddItemSubtitle}>
+                                        {`Est: ${Math.round( item.estimatedWeightGrams )}g • ~${estimatedCalories} kcal`}
+                                    </ListItem.Subtitle>
+                                    </ListItem.Content>
+                                    {/* Edit Icon */}
+                                    {!isAnyItemEditing && (
+                                    <TouchableOpacity onPress={() => handleEditQuickAddItem(index)} style={styles.quickEditIconButton} >
+                                        <Icon name="pencil" type="material-community" size={20} color={theme.colors.grey1} />
+                                    </TouchableOpacity>
+                                    )}
+                                </>
+                                )}
+                            </ListItem>
+                            </Pressable>
+                        );
+                        }}
+                        ListEmptyComponent={ // Show if API returned no items initially
+                        <View style={styles.emptyListContainer}>
+                            <Text style={styles.emptyListText}> No identifiable foods found in the image. </Text>
+                        </View>
+                        }
+                        style={styles.quickAddList}
+                        extraData={{ selectedQuickAddIndices, editingQuickAddItemIndex }} // Ensure re-render on state change
+                        keyboardShouldPersistTaps="handled"
+                    />
+                 )}
+               </>
+            )}
+            {/* Spacer at the bottom of scroll view */}
+            <View style={{ height: 40 }} />
+
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
       <Toast />
@@ -1883,7 +1668,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   );
 };
 
-// --- Styles (Keep existing styles, ensure they are up-to-date) ---
+// --- Styles ---
 const useStyles = makeStyles((theme) => ({
   overlayContainer: {
     backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0,
@@ -1892,7 +1677,7 @@ const useStyles = makeStyles((theme) => ({
   },
   overlayStyle: {
     width: "100%", borderRadius: 15, padding: 15, paddingBottom: 0,
-    maxHeight: Dimensions.get("window").height * 0.85,
+    maxHeight: Dimensions.get("window").height * 0.85, // Limit height
   },
   keyboardAvoidingView: { width: "100%" },
   header: {
@@ -1942,21 +1727,22 @@ const useStyles = makeStyles((theme) => ({
   },
   recentFoodText: { color: theme.colors.text, fontSize: 13, maxWidth: 80 },
   smallRecentFoodText: { fontSize: 12, maxWidth: 70 },
-  foodList: {
-    maxHeight: Dimensions.get("window").height * 0.3, minHeight: 60, flexGrow: 0, marginBottom: 15,
+  foodList: { // Limit height of search results list
+    maxHeight: Dimensions.get("window").height * 0.25, // Adjusted height
+    minHeight: 60, flexGrow: 0, marginBottom: 15,
   },
   listItemContainer: {
     backgroundColor: "transparent", paddingVertical: 8, paddingHorizontal: 5,
     borderBottomColor: theme.colors.divider,
   },
   selectedListItem: { backgroundColor: theme.colors.grey5, borderRadius: 8 },
-  defaultIconContainer: { // Style for placeholder when icon fetch fails
+  defaultIconContainer: {
       width: 35, height: 35, marginRight: 12, borderRadius: 17.5,
       backgroundColor: theme.colors.grey5, alignItems: "center", justifyContent: "center",
   },
-  foodIcon: { // Style for successfully loaded icons in the list
+  foodIcon: {
       width: 35, height: 35, marginRight: 12, borderRadius: 17.5, resizeMode: "contain",
-      backgroundColor: theme.colors.grey5, // Background for loading/activity indicator
+      backgroundColor: theme.colors.grey5, // BG for loading state
       alignItems: "center", justifyContent: "center",
   },
   listItemTitle: { color: theme.colors.text, fontSize: 16, fontWeight: "500" },
@@ -1977,6 +1763,8 @@ const useStyles = makeStyles((theme) => ({
   },
   buttonGroupContainer: {
     flex: 0.7, maxWidth: 220, height: 35, borderRadius: 8,
+    borderColor: theme.colors.primary, // Add border to button group
+    borderWidth: 1,
     backgroundColor: theme.colors.background,
   },
   buttonGroupText: { fontSize: 14, color: theme.colors.text },
@@ -2000,19 +1788,34 @@ const useStyles = makeStyles((theme) => ({
   aiButton: {
     backgroundColor: theme.colors.secondary, borderRadius: 20, width: 40, height: 40,
     padding: 0, justifyContent: "center", alignItems: "center",
+    minWidth: 40, // Ensure it doesn't shrink too much when title is shown
   },
-  loadingContainer: { // Unified loading overlay
-    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.1)", alignItems: "center", justifyContent: "center",
-    zIndex: 10, borderRadius: 15,
+  aiButtonLoadingTitle: { // Style for the 'Estimating...' text
+    color: theme.colors.white,
+    fontSize: 10,
+    textAlign: 'center',
   },
+  loadingContainer: { // Unified loading overlay for normal mode AI actions
+    position: "absolute", top: 60, left: 0, right: 0, // Position below header
+    alignItems: "center", justifyContent: "center",
+    zIndex: 10, // Above content but below header actions
+    padding: 10,
+    // backgroundColor: 'rgba(0,0,0,0.1)' // Optional subtle background
+  },
+   centeredContent: { // Centered loading/empty states within main area
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 20,
+      minHeight: 150, // Ensure it takes some space
+   },
   loadingText: { marginTop: 10, color: theme.colors.text, fontSize: 16, fontWeight: "500", },
   quickAddHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     marginBottom: 10, paddingHorizontal: 5, borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider, paddingBottom: 8,
   },
-  quickAddList: { maxHeight: Dimensions.get("window").height * 0.5, flexGrow: 0, marginBottom: 10, },
+  quickAddList: { maxHeight: Dimensions.get("window").height * 0.55, flexGrow: 0, marginBottom: 10, }, // Increased height
   quickAddItemContainer: {
     paddingVertical: 6, paddingHorizontal: 5, backgroundColor: theme.colors.background,
     borderBottomColor: theme.colors.divider, flexDirection: "row", alignItems: "center",
@@ -2038,6 +1841,7 @@ const useStyles = makeStyles((theme) => ({
 
 
 export default AddEntryModal;
+
 ---------- END AddEntryModal.tsx ----------
 
 
@@ -3550,7 +3354,12 @@ export default AppNavigator;
 
 
 ---------- DailyEntryScreen.tsx ----------
-// src/screens/DailyEntryScreen.tsx (Refined Icon Handling, Loading States)
+// src/screens/DailyEntryScreen.tsx
+// This version aims to restore the visual appearance and interaction patterns
+// of the provided "before" code, while retaining the underlying functional
+// improvements (like improved state management, backend integration hooks,
+// multi-add support) from the "current" code.
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -3561,17 +3370,21 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Keyboard,
+  Keyboard, // Import Keyboard
 } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
-import { getFoods } from "../services/foodService"; // Assuming foodService is primary now
+import { getFoods } from "../services/foodService"; // Still use foodService
 import {
   saveDailyEntries,
   loadDailyEntries,
   loadSettings,
 } from "../services/storageService";
-import { formatDateReadable, getTodayDateString } from "../utils/dateUtils";
+import {
+  formatDateReadable,
+  getTodayDateString,
+  formatDateISO, // Use ISO format internally
+} from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
 import DailyProgress from "../components/DailyProgress";
 import {
@@ -3589,12 +3402,12 @@ import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns"; // Im
 import { Icon } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
-import "react-native-get-random-values";
+import "react-native-get-random-values"; // Ensure this is imported before uuid
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Uses backend service now, but keeps local cache
+import { getFoodIconUrl } from "../utils/iconUtils"; // Use the refactored icon util
 
-// Interface for daily goals structure
+// Interface for daily goals structure (remains the same)
 interface DailyGoals {
   calories: number;
   protein: number;
@@ -3603,9 +3416,9 @@ interface DailyGoals {
 }
 
 const DailyEntryScreen: React.FC = () => {
-  // State variables
+  // State variables - Combining states from both versions where necessary
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString()); // YYYY-MM-DD format
   const [foods, setFoods] = useState<Food[]>([]); // All available foods
   const [selectedFood, setSelectedFood] = useState<Food | null>(null); // For modal
   const [grams, setGrams] = useState(""); // For modal input
@@ -3614,114 +3427,93 @@ const DailyEntryScreen: React.FC = () => {
   const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
     calories: 2000, protein: 150, carbs: 200, fat: 70, // Example goals
   });
-  const [editingIndex, setEditingIndex] = useState<number | null>(null); // Inline edit ORIGINAL index
-  const [tempGrams, setTempGrams] = useState(""); // Inline edit temporary grams
+  const [editingIndex, setEditingIndex] = useState<number | null>(null); // *Inline* edit ORIGINAL index
+  const [tempGrams, setTempGrams] = useState(""); // *Inline* edit temporary grams
   const [search, setSearch] = useState(""); // Modal search term
-  const [editIndexModal, setEditIndexModal] = useState<number | null>(null); // Modal edit REVERSED index
-  // Icon Cache State: key=foodName, value=undefined(loading), null(failed/no_icon), string(url)
-  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
+  // *** Reverted State Variable: Use 'editIndex' for MODAL edit index as per "before" code ***
+  const [editIndex, setEditIndex] = useState<number | null>(null); // *Modal* edit REVERSED index
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({}); // Cache: name -> url | null | undefined
   const [isLoadingData, setIsLoadingData] = useState(true); // Initial data load state
-  const [isSaving, setIsSaving] = useState(false); // Saving state to prevent clashes
+  const [isSaving, setIsSaving] = useState(false); // Saving state
 
   const { theme } = useTheme();
-  const styles = useStyles();
+  const styles = useStyles(); // Use the styles from the "before" code (pasted below)
 
-  // --- Data Loading and Icon Fetching ---
-
+  // --- Data Loading and Icon Fetching (Uses improved logic) ---
   const loadData = useCallback(async () => {
     console.log(`DailyEntryScreen: Loading data for date: ${selectedDate}`);
     setIsLoadingData(true);
     try {
-      // Fetch all data concurrently
       const [loadedFoods, loadedEntries, loadedSettings] = await Promise.all([
-        getFoods(), // Use foodService to get all foods
+        getFoods(),
         loadDailyEntries(),
         loadSettings(),
       ]);
 
-      // Use defaults if goals are missing
       const currentGoals = loadedSettings?.dailyGoals ?? { calories: 2000, protein: 150, carbs: 200, fat: 70 };
       setDailyGoals(currentGoals);
 
-      // Sort loaded foods alphabetically (optional, but nice for consistency)
       loadedFoods.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(loadedFoods);
 
       setDailyEntries(loadedEntries);
       console.log(`DailyEntryScreen: Loaded ${loadedFoods.length} foods, ${loadedEntries.length} entry days.`);
 
-      // Trigger Icon Fetching for relevant foods
       triggerIconFetches(loadedFoods, loadedEntries, selectedDate);
     } catch (error) {
       console.error("DailyEntryScreen: Error loading data:", error);
-      Alert.alert("Load Error", "Failed to load necessary data. Please check connection or try again.");
-      // Reset state on error
+      Alert.alert("Load Error", "Failed to load necessary data.");
       setFoods([]);
       setDailyEntries([]);
-      setDailyGoals({ calories: 0, protein: 0, carbs: 0, fat: 0 }); // Reset goals?
+      setDailyGoals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
     } finally {
       setIsLoadingData(false);
     }
-  }, [selectedDate]); // Re-run if selectedDate changes
+  }, [selectedDate]);
 
-  // Function to trigger icon fetches without blocking
   const triggerIconFetches = useCallback((allFoods: Food[], allEntries: DailyEntry[], currentDate: string) => {
     const relevantFoodNames = new Set<string>();
-
-    // Add names from the global food list
     allFoods.forEach((f) => relevantFoodNames.add(f.name));
-
-    // Add names from the current day's entries
     const currentOriginalEntry = allEntries.find((entry) => entry.date === currentDate);
     if (currentOriginalEntry) {
-        currentOriginalEntry.items.forEach((item) => {
-            if (item.food?.name) { // Check if food and name exist
-                relevantFoodNames.add(item.food.name);
-            }
-        });
-    }
-
-    console.log(`DailyEntryScreen: Triggering icon fetches for ${relevantFoodNames.size} unique food names.`);
-
-    relevantFoodNames.forEach((foodName) => {
-        // Check if icon status is unknown (undefined) before fetching
-        if (foodIcons[foodName] === undefined) {
-            // Fetch async, update state individually on resolve/reject
-            getFoodIconUrl(foodName)
-                .then((iconUrl) => {
-                    // Use functional update to avoid stale closures if many fetches run
-                    setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: iconUrl }));
-                })
-                .catch((error) => {
-                    // Error is logged within getFoodIconUrl or backend service
-                    console.warn(`Icon fetch failed for ${foodName} in background:`, error);
-                    setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null })); // Ensure state reflects failure
-                });
+      currentOriginalEntry.items.forEach((item) => {
+        if (item.food?.name) {
+          relevantFoodNames.add(item.food.name);
         }
+      });
+    }
+    console.log(`DailyEntryScreen: Triggering icon fetches for ${relevantFoodNames.size} unique food names.`);
+    relevantFoodNames.forEach((foodName) => {
+      if (foodIcons[foodName] === undefined) {
+        getFoodIconUrl(foodName)
+          .then((iconUrl) => {
+            setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: iconUrl }));
+          })
+          .catch((error) => {
+            console.warn(`Icon fetch failed for ${foodName} in background:`, error);
+            setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null }));
+          });
+      }
     });
-  }, [foodIcons]); // Depend on foodIcons state to avoid re-fetching known icons
+  }, [foodIcons]);
 
-  // Load data when the screen comes into focus or selectedDate changes
   useFocusEffect(
     useCallback(() => {
       loadData();
       return () => {
-        // Cleanup on unfocus
         console.log("DailyEntryScreen: Unfocused.");
-        // Reset potentially sensitive states if needed
         setSearch("");
         setIsOverlayVisible(false);
-        setEditingIndex(null);
+        setEditingIndex(null); // Clear inline edit
         setTempGrams("");
-        setEditIndexModal(null);
+        setEditIndex(null); // Clear modal edit
       };
-    }, [loadData]) // loadData dependency includes selectedDate
+    }, [loadData])
   );
 
-  // --- List and Index Management ---
+  // --- List and Index Management (Uses improved logic) ---
   const currentEntryItems = useMemo(() => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
-    // Create a stable reversed list for the FlatList
     return entry ? [...entry.items].reverse() : [];
   }, [dailyEntries, selectedDate]);
 
@@ -3729,68 +3521,59 @@ const DailyEntryScreen: React.FC = () => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
     if (!entry || reversedIndex < 0 || reversedIndex >= entry.items.length) {
       console.error(`getOriginalIndex: Invalid reversedIndex ${reversedIndex} for entry length ${entry?.items?.length}`);
-      return -1; // Return -1 for invalid index
+      return -1;
     }
-    // Calculate original index from reversed index
     return entry.items.length - 1 - reversedIndex;
   }, [dailyEntries, selectedDate]);
 
-  // --- State Update Helper ---
+  // --- State Update Helper (Uses improved logic) ---
   const updateAndSaveEntries = useCallback(async (updatedEntries: DailyEntry[]) => {
-    setIsSaving(true); // Indicate saving start
-    // Find the entry for the currently selected date to log its item count
+    setIsSaving(true);
     const entryForSelectedDate = updatedEntries.find((e) => e.date === selectedDate);
     console.log(`DailyEntryScreen: updateAndSaveEntries called. Saving ${updatedEntries.length} total entries.`);
     console.log(`Entry for ${selectedDate} contains ${entryForSelectedDate?.items?.length ?? 0} items.`);
-
-    // Optimistically update local state immediately for responsiveness
     setDailyEntries(updatedEntries);
-
     try {
       await saveDailyEntries(updatedEntries);
       console.log("DailyEntryScreen: Successfully saved updated entries to storage.");
     } catch (error) {
       console.error("DailyEntryScreen: Failed to save updated entries to storage:", error);
       Alert.alert("Save Error", "Could not save changes. Please try again.");
-      // Optionally revert state or reload data here if save fails critically
-      // await loadData(); // Example: Reload data on save failure
     } finally {
-        setIsSaving(false); // Indicate saving end
+      setIsSaving(false);
     }
-  }, [selectedDate]); // Dependency ensures selectedDate is current if needed, though primarily operates on structure
+  }, [selectedDate]);
 
-  // --- Inline Editing Handlers ---
+  // --- Inline Editing Handlers (Logic from 'before', adapted for state) ---
   const handleStartEditing = (reversedIndex: number) => {
-     if (isSaving) return; // Prevent starting edit while saving
+     if (isSaving) return;
     const originalIndex = getOriginalIndex(reversedIndex);
     if (originalIndex === -1) return;
 
     const currentEntry = dailyEntries.find((e) => e.date === selectedDate);
-    if (!currentEntry || !currentEntry.items[originalIndex]) {
-        console.error(`handleStartEditing: Could not find item at original index ${originalIndex}`);
-        return;
-    }
+    if (!currentEntry || !currentEntry.items[originalIndex]) return;
+
     console.log(`Starting inline edit for item at original index: ${originalIndex}`);
-    setEditingIndex(originalIndex); // Store ORIGINAL index
+    setEditingIndex(originalIndex); // Store ORIGINAL index for inline
     setTempGrams(String(currentEntry.items[originalIndex].grams));
-    setEditIndexModal(null); // Ensure modal edit state is cleared
+    setEditIndex(null); // Ensure modal edit state is cleared
+    Keyboard.dismiss(); // Dismiss if opening edit overlay
   };
 
   const handleSaveInlineEdit = useCallback(async () => {
-    if (editingIndex === null || isSaving) return; // Prevent saving if not editing or already saving
-    Keyboard.dismiss(); // Dismiss keyboard on save attempt
+    if (editingIndex === null || isSaving) return;
+    Keyboard.dismiss();
 
     const trimmedGrams = tempGrams.trim();
     if (!isValidNumberInput(trimmedGrams) || parseFloat(trimmedGrams) <= 0) {
       Alert.alert("Invalid Input", "Please enter a valid, positive number for grams.");
-      return; // Keep editing state active
+      return;
     }
     const newGramsValue = parseFloat(trimmedGrams);
     console.log(`Saving inline edit for index ${editingIndex} with grams: ${newGramsValue}`);
 
     const updatedEntries = dailyEntries.map((entry) => {
       if (entry.date === selectedDate) {
-        // Ensure items exist before mapping
         const items = entry.items ?? [];
         const updatedItems = items.map((item, index) => {
           if (index === editingIndex) {
@@ -3803,10 +3586,7 @@ const DailyEntryScreen: React.FC = () => {
       return entry;
     });
 
-    // Update state and persist changes
     await updateAndSaveEntries(updatedEntries);
-
-    // Reset editing state
     setEditingIndex(null);
     setTempGrams("");
 
@@ -3818,11 +3598,11 @@ const DailyEntryScreen: React.FC = () => {
     setTempGrams("");
     Keyboard.dismiss();
   };
-  // --- End Inline Editing ---
 
-  // --- Add/Update/Remove Entry Handlers (triggered by Modal) ---
+  // --- Add/Update/Remove Entry Handlers (Using combined logic) ---
+  // Handles single add/update from MODAL
   const handleSingleEntryAction = useCallback(async () => {
-    if (isSaving) return; // Prevent action if already saving
+    if (isSaving) return;
     if (!selectedFood || !selectedFood.id) {
       Alert.alert("Food Not Selected", "Please select a valid food item.");
       return;
@@ -3835,28 +3615,29 @@ const DailyEntryScreen: React.FC = () => {
 
     const numericGrams = parseFloat(trimmedGrams);
     const entryItem: DailyEntryItem = {
-      food: selectedFood, // Use the selected food object
+      food: selectedFood,
       grams: numericGrams,
     };
 
-    const isEditMode = editIndexModal !== null;
-    console.log(`handleSingleEntryAction: Mode=${isEditMode ? 'Edit' : 'Add'}, Food=${selectedFood.name}, Grams=${numericGrams}, ReversedIndex=${editIndexModal}`);
+    // *** Use 'editIndex' for modal edit mode check (reverted variable name) ***
+    const isEditMode = editIndex !== null;
+    console.log(`handleSingleEntryAction: Mode=${isEditMode ? 'Edit' : 'Add'}, Food=${selectedFood.name}, Grams=${numericGrams}, ReversedIndex=${editIndex}`);
 
     const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
     let updatedEntries: DailyEntry[];
 
     if (existingEntryIndex > -1) {
-      // Entry for the date exists
       const existingEntry = dailyEntries[existingEntryIndex];
       let updatedItems;
       if (isEditMode) {
         // --- Modal Edit Mode ---
-        const originalEditIndex = getOriginalIndex(editIndexModal!); // Get original index from reversed
+        // *** Use 'editIndex' (reverted variable name) ***
+        const originalEditIndex = getOriginalIndex(editIndex!);
         if (originalEditIndex === -1) {
           console.error("DailyEntryScreen: Error updating entry via modal - Could not find original index.");
           Alert.alert("Update Error", "An internal error occurred while trying to update the entry.");
-          setIsOverlayVisible(false); // Close modal on error
-          setIsSaving(false); // Ensure saving state is reset
+          setIsOverlayVisible(false);
+          setIsSaving(false);
           return;
         }
         console.log(`Updating item at original index ${originalEditIndex}`);
@@ -3864,7 +3645,6 @@ const DailyEntryScreen: React.FC = () => {
           index === originalEditIndex ? entryItem : item
         );
       } else {
-        // --- Adding new single item ---
         console.log("Adding new single item to existing date entry.");
         updatedItems = [...existingEntry.items, entryItem];
       }
@@ -3873,9 +3653,7 @@ const DailyEntryScreen: React.FC = () => {
         index === existingEntryIndex ? updatedEntry : entry
       );
     } else {
-      // --- New entry for the date ---
       if (isEditMode) {
-        // This case should ideally not happen if editIndexModal is only set when an entry exists
         console.error("DailyEntryScreen: Error - Trying to edit an entry for a date that doesn't exist.");
         Alert.alert("Update Error", "Cannot edit an entry for a day with no previous entries.");
          setIsOverlayVisible(false);
@@ -3885,30 +3663,28 @@ const DailyEntryScreen: React.FC = () => {
       console.log("Creating new date entry with the first item.");
       const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
       updatedEntries = [...dailyEntries, newDailyEntry];
-      updatedEntries.sort((a, b) => a.date.localeCompare(b.date)); // Keep entries sorted by date
+      updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
     }
 
-    // Update state and persist
     await updateAndSaveEntries(updatedEntries);
 
-    // Trigger icon fetch for the added/edited food if its status is unknown
     if (foodIcons[selectedFood.name] === undefined) {
-        triggerIconFetches([selectedFood], [], selectedDate);
+      triggerIconFetches([selectedFood], [], selectedDate);
     }
 
-    // Reset modal state and close
     setSelectedFood(null);
     setGrams("");
-    setEditIndexModal(null); // Reset modal edit index
+    // *** Use 'editIndex' (reverted variable name) ***
+    setEditIndex(null); // Reset modal edit index
     setIsOverlayVisible(false);
-    setSearch(""); // Clear search on successful action
+    setSearch("");
 
   }, [
-    selectedFood, grams, editIndexModal, dailyEntries, selectedDate, isSaving,
+    selectedFood, grams, editIndex, dailyEntries, selectedDate, isSaving,
     getOriginalIndex, updateAndSaveEntries, foodIcons, triggerIconFetches
   ]);
 
-  // --- NEW: Handle Adding Multiple Entries ---
+  // Handles multi-add from MODAL (using improved logic)
   const handleAddMultipleEntries = useCallback(
     async (entriesToAdd: { food: Food; grams: number }[]) => {
       if (isSaving) return;
@@ -3918,10 +3694,8 @@ const DailyEntryScreen: React.FC = () => {
              console.warn("handleAddMultipleEntries called with no items.");
              return;
         }
-
-        // Map to DailyEntryItem format
         const newItems: DailyEntryItem[] = entriesToAdd.map((entry) => ({
-          food: entry.food, // Contains unique ID generated in modal
+          food: entry.food,
           grams: entry.grams,
         }));
         console.log(`DailyEntryScreen: Mapped to ${newItems.length} DailyEntryItems.`);
@@ -3932,7 +3706,7 @@ const DailyEntryScreen: React.FC = () => {
         if (existingEntryIndex > -1) {
           console.log(`DailyEntryScreen: Appending ${newItems.length} items to existing entry for ${selectedDate}.`);
           const existingEntry = dailyEntries[existingEntryIndex];
-          const updatedItems = [...(existingEntry.items ?? []), ...newItems]; // Append new items
+          const updatedItems = [...(existingEntry.items ?? []), ...newItems];
           const updatedEntry = { ...existingEntry, items: updatedItems };
           updatedEntries = dailyEntries.map((entry, index) =>
             index === existingEntryIndex ? updatedEntry : entry
@@ -3941,30 +3715,29 @@ const DailyEntryScreen: React.FC = () => {
           console.log(`DailyEntryScreen: Creating new entry for ${selectedDate} with ${newItems.length} items.`);
           const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
           updatedEntries = [...dailyEntries, newDailyEntry];
-          updatedEntries.sort((a, b) => a.date.localeCompare(b.date)); // Keep sorted
+          updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
         }
 
-        // Update state and save
         await updateAndSaveEntries(updatedEntries);
         console.log("DailyEntryScreen: updateAndSaveEntries completed for multiple items.");
 
-        // Trigger icon fetches for the newly added foods
         const foodsToFetchIconsFor = newItems.map((item) => item.food);
         triggerIconFetches(foodsToFetchIconsFor, [], selectedDate);
 
         Toast.show({
           type: "success",
           text1: `${entriesToAdd.length} item(s) added`,
-          text2: `to ${formatDateReadable(parseISO(selectedDate))}`, // Ensure readable date format
+          // *** Use readable date format from 'before' logic ***
+          text2: `to ${formatDateReadable(parseISO(selectedDate))}`,
           position: "bottom",
           visibilityTime: 3000,
         });
 
-        // Close the modal and reset related state AFTER state update and save
         setIsOverlayVisible(false);
         setSelectedFood(null);
         setGrams("");
-        setEditIndexModal(null);
+        // *** Use 'editIndex' (reverted variable name) ***
+        setEditIndex(null);
         setSearch("");
 
       } catch (error) {
@@ -3973,19 +3746,23 @@ const DailyEntryScreen: React.FC = () => {
           "Quick Add Error",
           `Failed to add items. ${error instanceof Error ? error.message : "Please try again."}`
         );
-        // Close modal even on error? Or leave it open? Let's close it.
         setIsOverlayVisible(false);
       }
     },
     [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, triggerIconFetches]
   );
-  // --- End NEW FUNCTION ---
 
   const handleSelectFood = (item: Food | null) => {
      console.log("Modal selecting food:", item?.name ?? 'null');
     setSelectedFood(item);
+     // If selecting a food for *adding* (not editing), maybe clear grams?
+     // *** Use 'editIndex' (reverted variable name) ***
+     if (item && editIndex === null) {
+          setGrams(''); // Clear grams when selecting a new food for adding
+     }
   };
 
+  // Handles remove from swipe (using combined logic)
   const handleRemoveEntry = useCallback(async (reversedIndex: number) => {
     if (isSaving) return;
     const originalIndex = getOriginalIndex(reversedIndex);
@@ -4003,71 +3780,61 @@ const DailyEntryScreen: React.FC = () => {
     const itemToRemove = currentEntry.items[originalIndex];
     console.log(`Attempting to remove item at original index ${originalIndex}: ${itemToRemove.food.name}`);
 
-    // Optimistically update UI state
     const updatedItems = currentEntry.items.filter((_, i) => i !== originalIndex);
     let finalEntries: DailyEntry[];
     if (updatedItems.length === 0) {
-         // If last item removed, remove the entire entry for that date
          console.log(`Removing last item for date ${selectedDate}, entry will be removed.`);
          finalEntries = dailyEntries.filter((entry) => entry.date !== selectedDate);
     } else {
-         // Otherwise, just update the items for the date
          const updatedEntry = { ...currentEntry, items: updatedItems };
          finalEntries = dailyEntries.map((entry) =>
             entry.date === selectedDate ? updatedEntry : entry
          );
     }
 
-    // Update state and save
     await updateAndSaveEntries(finalEntries);
 
-    // Show Undo Toast
     Toast.show({
       type: "info",
       text1: `${itemToRemove.food.name} removed`,
       text2: "Tap here to undo",
       position: "bottom",
-      bottomOffset: 80, // Adjust if needed
-      visibilityTime: 4000, // Give enough time to tap
+      bottomOffset: 80,
+      visibilityTime: 4000,
       onPress: () => handleUndoRemoveEntry(itemToRemove, selectedDate, originalIndex),
     });
 
-  }, [dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries]); // Added handleUndoRemoveEntry dependency
+  }, [dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries]);
 
+  // Handles undo remove from toast (using combined logic)
   const handleUndoRemoveEntry = useCallback(async (
     itemToRestore: DailyEntryItem,
-    entryDate: string, // The date the item belonged to
-    originalIndex: number // The original position in that date's items array
+    entryDate: string,
+    originalIndex: number
   ) => {
-    if (isSaving) return; // Prevent undo while saving something else
+    if (isSaving) return;
     console.log(`Undoing removal of ${itemToRestore.food.name} at original index ${originalIndex} on ${entryDate}`);
 
-    // Find the entry for the date, or prepare to create it if it was deleted
     const existingEntryIndex = dailyEntries.findIndex((e) => e.date === entryDate);
     let updatedEntries;
 
     if (existingEntryIndex > -1) {
-        // Entry exists, insert the item back at its original position
         const entryToUpdate = dailyEntries[existingEntryIndex];
-        const updatedItems = [...entryToUpdate.items]; // Create a new array
-        updatedItems.splice(originalIndex, 0, itemToRestore); // Insert item at original index
+        const updatedItems = [...entryToUpdate.items];
+        updatedItems.splice(originalIndex, 0, itemToRestore);
         const restoredEntry = { ...entryToUpdate, items: updatedItems };
         updatedEntries = dailyEntries.map((entry, index) =>
             index === existingEntryIndex ? restoredEntry : entry
         );
         console.log(`Item inserted back into existing entry at index ${originalIndex}.`);
     } else {
-        // Entry was removed (last item deleted), create a new entry with the restored item
         console.log(`Creating new entry for date ${entryDate} as it was removed.`);
         const newEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
         updatedEntries = [...dailyEntries, newEntry];
-        updatedEntries.sort((a, b) => a.date.localeCompare(b.date)); // Re-sort after adding
+        updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
     }
 
-    // Update state and save
     await updateAndSaveEntries(updatedEntries);
-
-    // Hide the "Undo" toast and show confirmation
     Toast.hide();
     Toast.show({
       type: "success",
@@ -4075,29 +3842,36 @@ const DailyEntryScreen: React.FC = () => {
       visibilityTime: 1500,
       position: "bottom",
     });
-  }, [dailyEntries, isSaving, updateAndSaveEntries]); // Ensure dependencies are correct
+  }, [dailyEntries, isSaving, updateAndSaveEntries]);
 
   const updateSearch = (search: string) => setSearch(search);
 
-  // --- Modal Toggle Logic ---
+  // --- Modal Toggle Logic (Adapted from 'before' to use 'editIndex') ---
   const toggleOverlay = useCallback((
     itemToEdit: DailyEntryItem | null = null,
     reversedIndex: number | null = null
   ) => {
     if (isSaving) {
         console.warn("Attempted to toggle modal while saving.");
-        return; // Don't open modal while saving
+        return;
     }
+
+    // *** Reset state based on 'before' logic ***
+    setSelectedFood(null);
+    setGrams("");
+    setEditIndex(null); // Clear modal edit index by default
+    setSearch("");
+    setEditingIndex(null); // Clear inline edit state
+    setTempGrams("");
+
     if (itemToEdit && reversedIndex !== null) {
       // --- Setup for MODAL EDIT ---
       console.log(`Opening modal to edit item '${itemToEdit.food.name}' at reversed index ${reversedIndex}`);
       setSelectedFood(itemToEdit.food);
       setGrams(String(itemToEdit.grams)); // Set initial grams for edit
-      setEditIndexModal(reversedIndex); // Store REVERSED index for modal context
-      setEditingIndex(null); // Clear inline edit state
-      setTempGrams("");
-      setSearch(""); // Clear search when opening for edit
-      setIsOverlayVisible(true);
+      // *** Use 'editIndex' (reverted variable name) ***
+      setEditIndex(reversedIndex); // Store REVERSED index for modal context
+      setIsOverlayVisible(true); // Show modal
     } else {
       // --- Setup for ADD or Closing ---
       if (isOverlayVisible) {
@@ -4105,46 +3879,37 @@ const DailyEntryScreen: React.FC = () => {
       } else {
            console.log("Opening modal for Add.");
       }
-      setSelectedFood(null);
-      setGrams("");
-      setEditIndexModal(null); // Ensure edit mode is off for add
-      setSearch(""); // Clear search on close/add open
-      setEditingIndex(null); // Clear inline edit state
-      setTempGrams("");
       setIsOverlayVisible((current) => !current); // Toggle visibility
     }
-  }, [isSaving, isOverlayVisible]); // Added isOverlayVisible to dependencies
+  }, [isSaving, isOverlayVisible]); // Added isOverlayVisible dependency
 
   const handleEditEntryViaModal = (item: DailyEntryItem, reversedIndex: number) => {
     toggleOverlay(item, reversedIndex); // Call toggleOverlay with edit context
   };
-  // --- End Modal Toggle ---
 
-  // --- Date Navigation Handlers ---
+  // --- Date Navigation Handlers (Using combined logic) ---
   const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDateValue?: Date) => {
     const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
-    setShowDatePicker(Platform.OS === "ios"); // Keep visible on iOS until done/cancel
+    setShowDatePicker(Platform.OS === "ios");
 
     if (!isAndroidDismiss && event.type === "set" && selectedDateValue) {
-        // Check if the date is valid before formatting
         if (isValid(selectedDateValue)) {
              const formattedDate = formatISO(selectedDateValue, { representation: "date" });
             if (formattedDate !== selectedDate) {
                  console.log(`Date changed via picker to: ${formattedDate}`);
-                 setSelectedDate(formattedDate); // This will trigger useFocusEffect -> loadData
-                 setEditingIndex(null); // Cancel inline edit when changing date
+                 setSelectedDate(formattedDate);
+                 setEditingIndex(null); // Cancel inline edit
                  setTempGrams("");
+                 setEditIndex(null); // Cancel modal edit
             }
         } else {
             console.warn("Date picker returned invalid date:", selectedDateValue);
             Alert.alert("Invalid Date", "The selected date is not valid.");
         }
     } else if (Platform.OS === "android") {
-         setShowDatePicker(false); // Hide on dismiss/cancel on Android
+         setShowDatePicker(false);
     }
-    // On iOS, the user needs to tap "Done" or "Cancel" which dismisses the picker,
-    // so we don't explicitly hide it here based on the event.
-  }, [selectedDate]); // Depend on selectedDate to compare
+  }, [selectedDate]);
 
   const handlePreviousDay = useCallback(() => {
     try {
@@ -4159,6 +3924,7 @@ const DailyEntryScreen: React.FC = () => {
         setSelectedDate(newDateString);
         setEditingIndex(null); // Cancel inline edit
         setTempGrams("");
+        setEditIndex(null); // Cancel modal edit
     } catch (e) {
       console.error("Error calculating previous day:", selectedDate, e);
     }
@@ -4177,20 +3943,19 @@ const DailyEntryScreen: React.FC = () => {
         setSelectedDate(newDateString);
         setEditingIndex(null); // Cancel inline edit
         setTempGrams("");
+        setEditIndex(null); // Cancel modal edit
     } catch (e) {
       console.error("Error calculating next day:", selectedDate, e);
     }
   }, [selectedDate]);
-  // --- End Date Navigation ---
 
-  // --- Totals Calculation ---
+  // --- Totals Calculation (Using improved logic) ---
   const calculateTotals = useMemo(() => {
     const currentOriginalEntry = dailyEntries.find((entry) => entry.date === selectedDate);
     let totals = { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 };
 
     if (currentOriginalEntry) {
       currentOriginalEntry.items.forEach((item) => {
-        // Check if food object and its properties exist and are numbers
         if (item.food && typeof item.food.calories === 'number' &&
             typeof item.food.protein === 'number' &&
             typeof item.food.carbs === 'number' &&
@@ -4206,8 +3971,6 @@ const DailyEntryScreen: React.FC = () => {
         }
       });
     }
-
-    // Round totals at the end for display
     return {
       totalCalories: Math.round(totals.totalCalories),
       totalProtein: Math.round(totals.totalProtein),
@@ -4216,66 +3979,76 @@ const DailyEntryScreen: React.FC = () => {
     };
   }, [dailyEntries, selectedDate]);
 
-  // --- Render Item Component (Memoized) ---
+   // --- Render Item Component (Memoized, adapted to 'before' look) ---
    const RenderItem = React.memo(({ item, reversedIndex }: { item: DailyEntryItem, reversedIndex: number }) => {
         const [iconLoadError, setIconLoadError] = useState(false); // Local state for image errors
         const originalIndex = getOriginalIndex(reversedIndex);
         const isInlineEditing = editingIndex === originalIndex;
-        const iconStatus = foodIcons[item.food.name]; // Check cache by name
+        const iconStatus = foodIcons[item.food.name];
         const isLoadingIcon = iconStatus === undefined;
 
         const handleImageError = useCallback(() => {
             console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
             setIconLoadError(true);
+            // *** Explicitly update state in cache to null if Image fails ***
+            if (foodIcons[item.food.name] !== null) {
+                setFoodIcons(prev => ({ ...prev, [item.food.name]: null }));
+            }
         }, [item.food.name, iconStatus]);
 
-        // Reset error if icon URL changes
         useEffect(() => {
-            setIconLoadError(false);
+            setIconLoadError(false); // Reset error if icon URL changes
         }, [iconStatus]);
 
         const renderListItemIcon = () => {
-            if (isLoadingIcon) {
-                return <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIconContainer} />;
-            } else if (iconStatus && !iconLoadError) {
-                return <Image source={{ uri: iconStatus }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain"/>;
-            } else {
-                return (
-                    <View style={styles.foodIconContainer}>
-                         <Icon name="restaurant-outline" type="ionicon" color={theme.colors.grey3} size={20} />
-                    </View>
-                );
-            }
+             // Uses styles from 'before' code
+             if (isLoadingIcon) {
+                return <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />;
+             } else if (iconStatus && !iconLoadError) {
+                 return <Image source={{ uri: iconStatus }} style={styles.foodIcon} onError={handleImageError} />;
+             } else {
+                 // Use placeholder from 'before' code
+                 return (
+                     <Icon
+                         name="restaurant-outline"
+                         type="ionicon"
+                         color={theme.colors.grey3}
+                         containerStyle={styles.defaultIconContainer} // Use container style
+                     />
+                 );
+             }
         };
 
         return (
             <ListItem.Swipeable
                 bottomDivider
                 leftContent={(reset) => (
+                    // Style from 'before' code
                     <Button
                         title="Edit"
                         onPress={() => {
-                            if (!isSaving) { // Prevent action while saving
+                            if (!isSaving) {
                                 handleEditEntryViaModal(item, reversedIndex);
                                 reset();
                             }
                         }}
                         icon={{ name: "edit", color: "white" }}
-                        buttonStyle={styles.swipeButtonEdit}
+                        buttonStyle={{ minHeight: "100%", backgroundColor: theme.colors.warning }}
                         disabled={isSaving}
                     />
                 )}
                 rightContent={(reset) => (
+                     // Style from 'before' code
                     <Button
                         title="Delete"
                         onPress={() => {
-                            if (!isSaving) { // Prevent action while saving
+                            if (!isSaving) {
                                 handleRemoveEntry(reversedIndex);
                                 reset();
                             }
                         }}
                         icon={{ name: "delete", color: "white" }}
-                        buttonStyle={styles.swipeButtonDelete}
+                        buttonStyle={{ minHeight: "100%", backgroundColor: theme.colors.error }}
                         disabled={isSaving}
                     />
                 )}
@@ -4284,12 +4057,13 @@ const DailyEntryScreen: React.FC = () => {
                 {/* Icon Rendering Logic */}
                 {renderListItemIcon()}
 
-                {/* Content: Title and Subtitle/Inline Edit */}
+                {/* Content: Title and Subtitle/Inline Edit (structure from 'before') */}
                 <ListItem.Content>
-                    <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                    <ListItem.Title style={styles.listItemTitle}>
                         {item.food.name}
                     </ListItem.Title>
                     {isInlineEditing ? (
+                        // --- Inline Edit View (structure/styles from 'before') ---
                         <View style={styles.inlineEditContainer}>
                             <Input
                                 value={tempGrams}
@@ -4303,7 +4077,7 @@ const DailyEntryScreen: React.FC = () => {
                                 maxLength={6}
                                 onSubmitEditing={handleSaveInlineEdit} // Save on submit
                                 onBlur={handleSaveInlineEdit} // Also save on blur
-                                disabled={isSaving} // Disable input while saving
+                                disabled={isSaving}
                             />
                             <Text style={styles.inlineInputSuffix}>g</Text>
                             <Button
@@ -4322,74 +4096,73 @@ const DailyEntryScreen: React.FC = () => {
                             />
                         </View>
                     ) : (
-                         // Make subtitle touchable to initiate edit
-                        <TouchableOpacity onPress={() => handleStartEditing(reversedIndex)} disabled={isSaving}>
-                            <ListItem.Subtitle style={styles.listItemSubtitle}>
-                                {`${item.grams}g • ${Math.round((item.food.calories / 100) * item.grams)} kcal`}
-                            </ListItem.Subtitle>
-                        </TouchableOpacity>
+                         // --- Display View (structure from 'before') ---
+                        <ListItem.Subtitle
+                            style={styles.listItemSubtitle}
+                            onPress={() => !isSaving && handleStartEditing(reversedIndex)} // Subtitle press triggers inline edit
+                            disabled={isSaving}
+                        >
+                            {`${item.grams}g • ${Math.round((item.food.calories / 100) * item.grams)} kcal`}
+                        </ListItem.Subtitle>
                     )}
                 </ListItem.Content>
-                {!isInlineEditing && (
-                    <TouchableOpacity onPress={() => handleStartEditing(reversedIndex)} disabled={isSaving}>
-                         <Icon name="pencil-outline" type="ionicon" color={theme.colors.grey3} size={20} />
-                    </TouchableOpacity>
-                )}
+                 {/* Show Chevron only when NOT editing (as per 'before' code) */}
+                 {!isInlineEditing && <ListItem.Chevron color={theme.colors.grey3} />}
             </ListItem.Swipeable>
         );
    });
 
-
-  // --- Main Render ---
+  // --- Main Render (Structure from 'before') ---
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      {/* Date Navigation Header */}
+      {/* Date Navigation Header (styles/icons from 'before') */}
       <View style={styles.dateNavigation}>
         <Button
           type="clear"
           onPress={handlePreviousDay}
-          icon={<Icon name="chevron-back-outline" type="ionicon" color={theme.colors.primary} size={28} />}
+           // *** Use theme.colors.text for icon color as per 'before' ***
+          icon={<Icon name="chevron-back-outline" type="ionicon" color={theme.colors.text} size={28} />}
           buttonStyle={styles.navButton}
-          disabled={isSaving || isLoadingData} // Disable nav while loading/saving
+          disabled={isSaving || isLoadingData}
         />
+        {/* TouchableOpacity around Text for date */}
         <TouchableOpacity onPress={() => !isSaving && !isLoadingData && setShowDatePicker(true)} disabled={isSaving || isLoadingData}>
           <Text h4 style={styles.dateText}>
-             {formatDateReadable(parseISO(selectedDate))} {/* Parse ISO string for formatting */}
+             {formatDateReadable(parseISO(selectedDate))}
           </Text>
         </TouchableOpacity>
         <Button
           type="clear"
           onPress={handleNextDay}
-          icon={<Icon name="chevron-forward-outline" type="ionicon" color={theme.colors.primary} size={28} />}
+          // *** Use theme.colors.text for icon color as per 'before' ***
+          icon={<Icon name="chevron-forward-outline" type="ionicon" color={theme.colors.text} size={28} />}
           buttonStyle={styles.navButton}
-          disabled={isSaving || isLoadingData} // Disable nav while loading/saving
+          disabled={isSaving || isLoadingData}
         />
       </View>
 
       {/* Date Picker */}
       {showDatePicker && (
         <DateTimePicker
-          value={parseISO(selectedDate)} // Ensure value is a Date object
+          value={parseISO(selectedDate)}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={handleDateChange}
-          // maximumDate={new Date()} // Optional: Prevent future dates
+          // maximumDate={new Date()}
         />
       )}
 
       {/* Progress Bars */}
-       <View style={styles.progressContainer}>
-            <DailyProgress
-                calories={calculateTotals.totalCalories}
-                protein={calculateTotals.totalProtein}
-                carbs={calculateTotals.totalCarbs}
-                fat={calculateTotals.totalFat}
-                goals={dailyGoals}
-            />
-       </View>
+      <DailyProgress
+        calories={calculateTotals.totalCalories}
+        protein={calculateTotals.totalProtein}
+        carbs={calculateTotals.totalCarbs}
+        fat={calculateTotals.totalFat}
+        goals={dailyGoals}
+      />
       <Divider style={styles.divider} />
 
-      {/* Saving Indicator */}
+       {/* Saving Indicator (subtle) */}
       {isSaving && (
           <View style={styles.savingIndicator}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -4397,6 +4170,10 @@ const DailyEntryScreen: React.FC = () => {
           </View>
       )}
 
+      {/* Section Title (style from 'before') */}
+      <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        Today's Entries
+      </Text>
 
       {/* Entries List */}
       {isLoadingData ? (
@@ -4407,14 +4184,10 @@ const DailyEntryScreen: React.FC = () => {
       ) : (
         <FlatList
             data={currentEntryItems}
-            // Use food.id and original index if available, fallback to reversedIndex
-            keyExtractor={(item, index) => `entry-${item?.food?.id ?? 'unknown'}-${getOriginalIndex(index)}-${item?.grams ?? index}`}
+            // Key needs stability - use food ID, index, and grams
+             keyExtractor={(item, index) => `entry-${item?.food?.id ?? 'unknown'}-${getOriginalIndex(index)}-${item?.grams ?? index}`}
             renderItem={({ item, index }) => <RenderItem item={item} reversedIndex={index} />}
-            ListHeaderComponent={
-                 <Text h4 style={styles.sectionTitle}>
-                    Today's Entries
-                 </Text>
-            }
+             // Empty Component (structure/icon/styles from 'before')
             ListEmptyComponent={
             <View style={styles.emptyListContainer}>
                 <Icon name="leaf-outline" type="ionicon" size={40} color={theme.colors.grey3} />
@@ -4422,24 +4195,24 @@ const DailyEntryScreen: React.FC = () => {
                 <Text style={styles.emptyListSubText}>Tap the '+' button to add food.</Text>
             </View>
             }
-            initialNumToRender={15} // Render more initially if performance allows
-            maxToRenderPerBatch={10}
-            windowSize={21} // Larger window size
+            // Optimization props from 'before'
+            initialNumToRender={10}
+            maxToRenderPerBatch={5}
+            windowSize={11}
             contentContainerStyle={styles.listContentContainer}
-            keyboardShouldPersistTaps="handled" // Allow taps inside list while keyboard is up
+            keyboardShouldPersistTaps="handled"
         />
       )}
 
-
-      {/* FAB */}
+      {/* FAB (style from 'before') */}
       <FAB
         icon={<Icon name="add" color="white" />}
         color={theme.colors.primary}
-        onPress={() => !isSaving && toggleOverlay()} // Prevent opening while saving
+        onPress={() => !isSaving && toggleOverlay()}
         placement="right"
         size="large"
-        style={styles.fab}
-        disabled={isSaving || isLoadingData} // Disable FAB while loading/saving
+        style={styles.fab} // Use style from 'before' for positioning
+        disabled={isSaving || isLoadingData}
       />
 
       {/* Add/Edit Modal */}
@@ -4449,185 +4222,189 @@ const DailyEntryScreen: React.FC = () => {
         selectedFood={selectedFood}
         grams={grams}
         setGrams={setGrams}
-        foods={foods} // Pass full food list for searching in modal
-        handleAddEntry={handleSingleEntryAction} // Callback for single add/update
-        handleAddMultipleEntries={handleAddMultipleEntries} // Callback for multi-add
+        foods={foods}
+        handleAddEntry={handleSingleEntryAction} // For single add/update
+        handleAddMultipleEntries={handleAddMultipleEntries} // For multi-add
         handleSelectFood={handleSelectFood}
         search={search}
         updateSearch={updateSearch}
-        isEditMode={editIndexModal !== null} // True if modal is in edit mode
-        initialGrams={editIndexModal !== null ? grams : undefined} // Pass initial grams only in edit mode
-        // Pass isSaving status to potentially disable modal actions
+        // *** Pass isEditMode based on 'editIndex' (reverted variable name) ***
+        isEditMode={editIndex !== null}
+        // *** Pass initialGrams based on 'editIndex' for modal edit ***
+        initialGrams={editIndex !== null ? grams : undefined}
       />
     </SafeAreaView>
   );
 };
 
-// Styles definition using makeStyles
+// Styles definition using makeStyles - **PASTED FROM 'BEFORE' CODE**
 const useStyles = makeStyles((theme) => ({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  dateNavigation: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 6, // Reduced padding
-    paddingHorizontal: 5,
-    backgroundColor: theme.colors.background, // Ensure background match
-    // borderBottomWidth: StyleSheet.hairlineWidth,
-    // borderBottomColor: theme.colors.divider,
-  },
-  navButton: { paddingHorizontal: 10, paddingVertical: 5 },
-  dateText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.text,
-    textAlign: "center",
-    paddingVertical: 5,
-    paddingHorizontal: 10, // Add padding for touch area
-  },
-  progressContainer: {
-      paddingHorizontal: 10,
-      paddingTop: 5, // Add some space above progress bars
-  },
-   divider: {
-        marginTop: 5, // Reduced margin
-        marginBottom: 8,
-        backgroundColor: theme.colors.divider,
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background,
     },
-  centeredLoader: {
+    dateNavigation: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: 8,
+        paddingHorizontal: 5, // Reduced horizontal padding for buttons
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.divider,
+    },
+    navButton: { // Style for the arrow buttons
+        paddingHorizontal: 8, // Give arrows some horizontal tap space
+    },
+    dateText: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: theme.colors.text,
+        textAlign: 'center', // Center the date text
+        paddingVertical: 5, // Add vertical padding for touchability
+    },
+    foodIcon: { // Consistent style for list item icons
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        borderRadius: 20, // Circular
+        resizeMode: "contain", // Ensure icon fits well
+        backgroundColor: theme.colors.grey5, // Background shown while loading/if error
+        alignItems: 'center', // Center activity indicator if shown
+        justifyContent: 'center', // Center activity indicator if shown
+        overflow: 'hidden', // Hide overflow for clean look
+    },
+    defaultIconContainer: { // Container used when icon fetch fails or returns null
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        borderRadius: 20,
+        backgroundColor: theme.colors.grey5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    listItemTitle: {
+        color: theme.colors.text,
+        fontWeight: 'bold',
+        fontSize: 16, // Slightly larger title
+    },
+    listItemSubtitle: {
+        color: theme.colors.grey1, // Subtitle color
+        fontSize: 14,
+        marginTop: 3, // Space below title
+        // *** Added padding for better touch target for inline edit ***
+        paddingVertical: 2,
+        paddingHorizontal: 5, // Some horizontal padding too
+    },
+    divider: {
+        marginVertical: 10,
+    },
+    sectionTitle: {
+        marginTop: 15, // Increased top margin
+        marginBottom: 8,
+        paddingHorizontal: 15,
+        fontWeight: '600', // Slightly less bold than h3 default
+        fontSize: 18, // Adjust font size
+        // *** Color changed back to grey1 as per 'before' ***
+        color: theme.colors.grey1,
+    },
+    fab: { // Style for the FAB component itself
+        position: 'absolute', // Keep absolute positioning
+        margin: 16, // Standard margin
+        right: 10, // Adjust position slightly
+        bottom: 10, // Adjust position slightly
+    },
+     emptyListContainer: { // Styling for the empty list message
+        flex: 1, // Allow it to take space if needed
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 50,
+        paddingHorizontal: 30, // More padding
+    },
+    emptyListText: {
+        fontSize: 17, // Slightly larger text
+        color: theme.colors.grey2,
+        textAlign: 'center',
+        marginTop: 10, // Space below icon
+    },
+     emptyListSubText: {
+        fontSize: 14,
+        color: theme.colors.grey3,
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    // --- Inline Editing Styles (from 'before' code) ---
+    inlineEditContainer: { // Container for the input and buttons during inline edit
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 5, // Space below the title
+        width: '100%', // Take full width of content area
+    },
+    inlineInputContainer: { // RNE Input component's outer container
+        width: 80, // Fixed width for the input area
+        height: 38, // Match button height approximately
+        paddingHorizontal: 0, // Remove default padding
+        // *** Added marginRight to space from suffix ***
+        marginRight: 4,
+    },
+    inlineInputInnerContainer: { // RNE Input component's inner container (handles underline)
+        borderBottomWidth: 1,
+        borderColor: theme.colors.primary,
+        paddingHorizontal: 6,
+        height: '100%',
+        paddingVertical: 0, // Remove vertical padding if any
+        justifyContent: 'center', // Center text vertically
+        // *** Added background to match theme, prevents potential transparency issues ***
+        backgroundColor: theme.colors.background,
+    },
+    inlineInput: { // Style for the text *inside* the inline input
+        fontSize: 14, // Match subtitle size
+        color: theme.colors.text, // Use theme text color
+        textAlign: 'right', // Align number to the right
+        paddingVertical: 0, // No extra vertical padding
+    },
+    inlineInputSuffix: { // Style for the "g" text next to the input
+         fontSize: 14,
+         color: theme.colors.grey1,
+         // *** Adjusted margins as per 'before' ***
+         marginLeft: 0,
+         marginRight: 8, // Space before buttons
+    },
+     inlineButtonContainer: { // Container for the checkmark/cross buttons
+        padding: 0, // Remove padding
+        // *** Adjusted margins as per 'before' ***
+        marginHorizontal: 0, // No horizontal margin between buttons
+        minWidth: 30, // Ensure decent tap area
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // --- Loader and Saving Styles ---
+    centeredLoader: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-  },
-   loadingText: {
+    },
+    loadingText: {
         marginTop: 10,
         color: theme.colors.grey2,
         fontSize: 16,
     },
-  savingIndicator: {
+    savingIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 4,
       // backgroundColor: theme.colors.grey5, // Optional subtle background
-  },
-   savingText: {
+    },
+    savingText: {
         marginLeft: 8,
         color: theme.colors.primary,
         fontSize: 14,
         fontStyle: 'italic',
     },
-  sectionTitle: {
-    marginTop: 0, // Remove top margin, rely on divider
-    marginBottom: 10,
-    paddingHorizontal: 15,
-    fontWeight: "600",
-    fontSize: 18,
-    color: theme.colors.text, // Use main text color
-  },
-  listContentContainer: {
-      paddingBottom: 80, // Ensure space for FAB
-  },
-  // Styles for list items within RenderItem memo component
-   foodIconContainer: { // Container for icon/activity indicator
-       width: 40,
-       height: 40,
-       marginRight: 15,
-       borderRadius: 20, // Circular
-       backgroundColor: theme.colors.grey5,
-       alignItems: "center",
-       justifyContent: "center",
-       overflow: "hidden", // Clip image if needed
-   },
-   foodIconImage: {
-       width: '100%',
-       height: '100%',
-   },
-  listItemTitle: {
-        color: theme.colors.text,
-        fontWeight: "bold",
-        fontSize: 16,
-    },
-  listItemSubtitle: {
-      color: theme.colors.grey1,
-      fontSize: 14,
-      marginTop: 3,
-      paddingVertical: 2, // Make touch area slightly larger
-  },
-  inlineEditContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 3, // Reduced margin
-    width: "100%", // Take available width
-  },
-  inlineInputContainer: {
-      flex: 1, // Allow input to grow
-      maxWidth: 80, // Max width
-      height: 35, // Reduced height
-      paddingHorizontal: 0,
-      marginRight: 4,
-   },
-  inlineInputInnerContainer: {
-    borderBottomWidth: 1,
-    borderColor: theme.colors.primary,
-    paddingHorizontal: 6,
-    height: "100%",
-    paddingVertical: 0,
-    justifyContent: "center",
-    backgroundColor: theme.colors.background, // Match background
-  },
-  inlineInput: {
-    fontSize: 14,
-    color: theme.colors.text,
-    textAlign: "right",
-    paddingVertical: 0, // Remove extra padding
-  },
-  inlineInputSuffix: {
-    fontSize: 14,
-    color: theme.colors.grey1,
-    marginLeft: 0,
-    marginRight: 8, // Space before buttons
-  },
-  inlineButtonContainer: {
-    padding: 0,
-    marginHorizontal: 0, // Reduced margin
-    minWidth: 30, // Ensure button touch area
-    justifyContent: "center",
-    alignItems: "center",
-  },
-   swipeButtonEdit: {
-       minHeight: '100%',
-       backgroundColor: theme.colors.warning,
-       justifyContent: 'center',
-       alignItems: 'center', // Center content
-   },
-   swipeButtonDelete: {
-       minHeight: '100%',
-       backgroundColor: theme.colors.error,
-       justifyContent: 'center',
-       alignItems: 'center', // Center content
-   },
-  // Empty List Styles
-  emptyListContainer: {
-    flex: 1, // Allow centering
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-    marginTop: 30, // Add some space from header
-  },
-  emptyListText: {
-    fontSize: 17,
-    color: theme.colors.grey2,
-    textAlign: "center",
-    marginTop: 10,
-  },
-  emptyListSubText: {
-    fontSize: 14,
-    color: theme.colors.grey3,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  fab: { position: "absolute", margin: 16, right: 5, bottom: 5 }, // Adjusted position slightly
+    // --- List Content Container Style ---
+    listContentContainer: {
+        paddingBottom: 80, // Ensure space for FAB
+    }
 }));
 
 export default DailyEntryScreen;
