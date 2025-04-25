@@ -23,7 +23,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.macrotracker",
       "infoPlist": {
-        "UIStatusBarStyle": "UIStatusBarStyleAutomatic"
+        "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis."
       }
     },
     "android": {
@@ -37,7 +39,12 @@
         "backgroundColor": "#00000000",
         "translucent": true,
         "barStyle": "auto"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -47,6 +54,13 @@
         "expo-document-picker",
         {
           "appleTeamId": "YOUR_TEAM_ID"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis."
         }
       ]
     ],

@@ -1,37 +1,35 @@
 // src/services/backendService.ts
-// ---------- backendService.ts ----------
-// src/services/backendService.ts
+// ---------- backendService.ts (Improved Error Handling and Logging) ----------
 import Constants from 'expo-constants';
 import { getClientId } from './clientIDService';
-// Correctly import types from their new location
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
+import { Platform } from 'react-native'; // For logging platform info
 
 // --- Configuration ---
-// Use environment variable from Expo config (extra.env.BACKEND_URL) or fallback
-// Ensure you set this in app.json or app.config.js/ts
 const getBackendUrl = (): string => {
-    // Access environment variables defined in app.json extra field
-    const backendUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL;
-    if (!backendUrl) {
-        console.warn("BACKEND_URL not found in app.json extra.env, using default development URL.");
-        // Fallback to a default development URL if needed
-        // IMPORTANT: Replace this with your actual development backend IP/hostname
-        // Make sure the path includes the /api/v1 prefix if your backend expects it
-        return 'http://192.168.1.15:8000/api/v1';
+    // Prefer environment variable set during build (e.g., EXPO_PUBLIC_BACKEND_URL)
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (envUrl) {
+        console.log("Using Backend URL from EXPO_PUBLIC_BACKEND_URL:", envUrl);
+        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
     }
-    console.log("Using Backend URL:", backendUrl);
-    // Ensure the URL ends with /api/v1 if the backend is structured that way
-    // Check if backendUrl already includes the prefix
-    const apiPrefix = "/api/v1";
-    if (backendUrl.endsWith(apiPrefix)) {
-        return backendUrl;
-    } else {
-        // Append the prefix, removing trailing slashes if they exist
-        return `${backendUrl.replace(/\/$/, '')}${apiPrefix}`;
+
+    // Fallback to expoConfig (less ideal for production secrets)
+    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL;
+    if (configUrl) {
+        console.warn("Using Backend URL from app.json extra.env. Consider using build-time environment variables (EXPO_PUBLIC_*) for production.");
+        return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
     }
+
+    // Final fallback for local development (clearly indicate this)
+    console.error("BACKEND_URL not found in environment variables or app.json extra.env. Using default DEVELOPMENT URL. THIS IS NOT FOR PRODUCTION.");
+    // Replace with your actual development backend IP/hostname
+    const DEV_URL = 'http://192.168.1.15:8000'; // Or your machine's local IP
+    return `${DEV_URL}/api/v1`;
 };
 
 const BASE_URL = getBackendUrl();
+console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 
 // --- Interfaces ---
@@ -43,26 +41,35 @@ interface IconResponse {
     icon_url: string | null;
 }
 
-// Interface representing the user status response from the backend
 export interface UserStatus {
     client_id: string;
     coins: number;
 }
 
 interface BackendErrorDetail {
-    detail?: string | any;
+    // Matches FastAPI validation error structure
+    loc?: (string | number)[];
+    msg?: string;
+    type?: string;
 }
+
+interface BackendErrorResponse {
+    detail?: string | BackendErrorDetail[]; // Can be string or validation error list
+}
+
 
 // --- Custom Error Class ---
 export class BackendError extends Error {
     status: number;
-    detail?: string | any;
+    detail?: string | BackendErrorDetail[]; // Can be string or parsed validation errors
+    requestId?: string | null; // Optional request ID from response header
 
-    constructor(message: string, status: number, detail?: string | any) {
+    constructor(message: string, status: number, detail?: string | BackendErrorDetail[], requestId?: string | null) {
         super(message);
         this.name = 'BackendError';
         this.status = status;
         this.detail = detail;
+        this.requestId = requestId;
     }
 }
 
@@ -71,122 +78,168 @@ async function fetchBackend<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    // Ensure endpoint starts with a '/' for clean joining
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${BASE_URL}${cleanEndpoint}`;
-    console.log(`Calling Backend: ${options.method || 'GET'} ${url}`);
+    const method = options.method || 'GET';
+    let response: Response | null = null; // Define response outside try block
+    let requestId: string | null = null; // For logging correlation
+
+    console.log(`[API Request] ${method} ${url} - Starting`);
 
     const defaultHeaders: HeadersInit = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        // Add platform info for backend logging/debugging
+        'X-Platform': Platform.OS,
+        // 'X-App-Version': Constants.expoConfig?.version || 'unknown', // Example app version
     };
 
-    // Add Client ID header to every request automatically
     const clientId = await getClientId();
-    const authHeaders: HeadersInit = {
-        'X-Client-ID': clientId, // Backend expects this header
-    };
-
+    const authHeaders: HeadersInit = { 'X-Client-ID': clientId };
 
     const config: RequestInit = {
         ...options,
         headers: {
             ...defaultHeaders,
-            ...authHeaders, // Add client ID header
+            ...authHeaders,
             ...options.headers,
         },
+        // Consider adding a timeout (if not using default)
+        // signal: AbortSignal.timeout(30000), // Example 30 second timeout
     };
 
+     // Log request body structure carefully (avoid logging full sensitive data)
+     if (config.body && typeof config.body === 'string') {
+          try {
+              const bodyObj = JSON.parse(config.body);
+              const bodyKeys = Object.keys(bodyObj);
+              const bodyPreview = bodyKeys.length > 0 ? `{ keys: [${bodyKeys.join(', ')}] }` : '{}';
+              console.log(`[API Request] ${method} ${url} - Body Preview: ${bodyPreview}`);
+              // DEBUG only: Log snippet of body value for specific fields if safe
+              // if (bodyObj.food_name) console.debug(`[API Request] Body food_name: ${String(bodyObj.food_name).substring(0, 50)}`);
+              // if (bodyObj.image_base64) console.debug(`[API Request] Body image_base64: (length ${bodyObj.image_base64.length})`);
+          } catch {
+              console.log(`[API Request] ${method} ${url} - Body: (non-JSON or failed parse)`);
+          }
+     }
+
+
     try {
-        const response = await fetch(url, config);
-
-        // Attempt to parse JSON regardless of status code for error details
-        let responseBody: any;
+        response = await fetch(url, config);
+        requestId = response.headers.get("X-Request-ID"); // Get request ID from response
+        const status = response.status;
         const contentType = response.headers.get("content-type");
+
+        console.log(`[API Response] ${method} ${url} - Status: ${status}, Content-Type: ${contentType}, RequestID: ${requestId || 'N/A'}`);
+
+        // Handle No Content success case
+        if (status === 204) {
+             console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
+             return null as T; // Or appropriate value for T if null isn't expected
+        }
+
+        // Attempt to parse JSON, otherwise get text
+        let responseBody: any;
+        let isJson = false;
         try {
-            if (contentType && contentType.indexOf("application/json") !== -1) {
+            if (contentType && contentType.includes("application/json")) {
                 responseBody = await response.json();
+                isJson = true;
             } else {
-                 // Handle non-JSON responses (e.g., plain text errors from proxies/servers)
-                 responseBody = await response.text();
-                 // If response was not OK, throw using the text body
-                 if (!response.ok) {
-                    console.error(`Backend Error (${response.status}) on ${url}: Received non-JSON response: ${responseBody}`);
-                    throw new BackendError(`Backend request failed with status ${response.status}. Non-JSON response: ${responseBody}`, response.status, responseBody);
-                 }
-                 // If response was OK but non-JSON, it might be unexpected. Log or handle.
-                 console.warn(`Backend Success (${response.status}) on ${url}: Received non-JSON response: ${responseBody}`);
-                 // Depending on expected T, you might return null or throw.
-                 // If T is expected to be always JSON, this should be an error.
-                 // If T could be string, return responseBody. For now, assume JSON is expected.
-                  if (typeof responseBody === 'string' && responseBody === '') {
-                     // Handle empty successful responses (e.g., 204 No Content)
-                     return null as T;
-                 }
-                 throw new BackendError(`Received unexpected non-JSON response from backend. Status: ${response.status}`, response.status, responseBody);
+                responseBody = await response.text(); // Read as text for non-JSON
+                console.log(`[API Response] ${method} ${url} - Received Text: ${responseBody.substring(0, 200)}...`);
             }
-        } catch (e) {
-            // JSON parsing failed specifically
-            console.error(`Backend response for ${url} was not valid JSON. Status: ${response.status}`, e);
-            // Throw a specific error if response wasn't OK, otherwise might be empty 204 etc.
+        } catch (parseError) {
+            // Handle cases where parsing fails (e.g., empty body, malformed JSON)
+            console.error(`[API Error] ${method} ${url} - Failed to parse response body (Status: ${status}):`, parseError);
+             // Use raw text if available and parsing failed
+            const rawText = await response.text().catch(() => '(Could not get raw text)');
             if (!response.ok) {
-                 const errorText = await response.text(); // Try to get raw text
-                throw new BackendError(`Backend request failed with status ${response.status}. Response was not valid JSON.`, response.status, errorText);
+                throw new BackendError(`Backend request failed (Status ${status}), failed to parse response.`, status, rawText, requestId);
+            } else {
+                // If response was OK but parsing failed, this might be an issue
+                console.warn(`[API Warning] ${method} ${url} - Status ${status} OK, but failed to parse response body.`);
+                 // Depending on T, might return null or throw
+                 return null as T;
             }
-            // If response was OK but no JSON body (or failed parsing), return null or handle as appropriate for T
-            return null as T; // Adjust based on expected return types
         }
 
-
+        // Check if the response status indicates failure
         if (!response.ok) {
-            console.error(`Backend Error (${response.status}) on ${url}:`, responseBody);
-            const detail = (responseBody as BackendErrorDetail)?.detail || 'Unknown backend error';
-            let message = `Backend request failed with status ${response.status}`;
-            if (response.status === 402) {
-                message = 'Insufficient coins.';
-            } else if (typeof detail === 'string') {
-                message = detail; // Use detail message from backend if available and string
-            } else if (detail && typeof detail === 'object') {
-                // Try to extract a meaningful message from object detail, e.g., validation errors
-                 try {
-                     message = JSON.stringify(detail); // Show the structure if it's an object
-                 } catch { /* ignore stringify error */ }
+            let errorMessage = `Backend request failed (Status ${status})`;
+            let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
+
+            if (isJson && responseBody) {
+                 const errorData = responseBody as BackendErrorResponse;
+                 if (typeof errorData.detail === 'string') {
+                    errorMessage = errorData.detail; // Use backend's string detail
+                    errorDetail = errorMessage;
+                 } else if (Array.isArray(errorData.detail)) {
+                     // Handle validation errors
+                     errorMessage = "Validation failed. Please check your input.";
+                     errorDetail = errorData.detail; // Keep the array of details
+                     console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
+                 } else {
+                      // Fallback if detail is missing or not string/array
+                      errorMessage = `Backend error (Status ${status}), unexpected detail format.`;
+                      errorDetail = JSON.stringify(responseBody); // Stringify the whole body as detail
+                 }
+            } else if (!isJson) {
+                 // Use the text response as detail if it wasn't JSON
+                 errorMessage = `Backend request failed (Status ${status}). Server response: ${responseBody.substring(0, 100)}...`;
+                 errorDetail = responseBody;
             }
-            throw new BackendError(message, response.status, detail);
+
+            // Specific handling for common error codes
+            if (status === 401) errorMessage = "Authentication failed. Please log in again.";
+            if (status === 403) errorMessage = "Permission denied.";
+            if (status === 404) errorMessage = "Resource not found.";
+            if (status === 429) errorMessage = "Too many requests. Please try again later.";
+            if (status === 402) errorMessage = "Insufficient coins for this action."; // Specific message for 402
+
+            console.error(`[API Error] ${method} ${url} - Status: ${status}, Message: "${errorMessage}", Detail:`, errorDetail);
+            throw new BackendError(errorMessage, status, errorDetail, requestId);
         }
 
-        console.log(`Backend Success (${response.status}) on ${url}`);
+        // Success case
+        console.log(`[API Response] ${method} ${url} - Success (Status: ${status})`);
+        // DEBUG only: Log successful response body snippet
+        // if (isJson) console.debug(`[API Response] Body: ${JSON.stringify(responseBody).substring(0, 200)}...`);
         return responseBody as T;
 
     } catch (error) {
+        // Log request ID if available
+        const logRequestId = requestId ? ` (RequestID: ${requestId})` : '';
+
         if (error instanceof BackendError) {
+            // Already logged in the block above
             throw error; // Re-throw known backend errors
         }
-        // Handle network errors (e.g., server unreachable)
-        console.error(`Network or other error calling ${url}:`, error);
-        let errorMessage = `Failed to communicate with the backend.`;
-         // Check for common fetch error messages
+
+        // Handle network errors, timeouts, etc.
+        console.error(`[API Network Error] ${method} ${url}${logRequestId} - Error:`, error);
+        let networkErrorMessage = `Failed to communicate with the backend.`;
          if (error instanceof Error) {
-             if (error.message.includes('Network request failed')) {
-                 errorMessage += ' Please check your network connection and ensure the backend server is running.';
-             } else if (error.message.includes('fetch')) { // Generic fetch error
-                 errorMessage += ' A network error occurred during the request.';
+             if (error.name === 'AbortError' || error.message.includes('timed out')) {
+                 networkErrorMessage = 'The request timed out. Please try again.';
+             } else if (error.message.includes('Network request failed')) {
+                 networkErrorMessage += ' Please check your network connection.';
              } else {
-                 errorMessage += ` Details: ${error.message}`;
+                 networkErrorMessage += ` Details: ${error.message}`;
              }
          } else {
-             errorMessage += ' An unknown network error occurred.';
+             networkErrorMessage += ' An unknown network error occurred.';
          }
-        // Throw a generic error for network issues or unexpected problems
-        // Use status 0 or a custom code to indicate client-side network error
-        throw new BackendError(errorMessage, 0, errorMessage);
+        // Use status 0 or a custom code (e.g., 599) for client-side network errors
+        throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
 
-// --- Service Functions ---
+// --- Service Functions (Endpoints remain the same) ---
 
 export const getUserStatus = async (): Promise<UserStatus> => {
     const clientId = await getClientId();
+    // Ensure clientId is valid UUID format before sending? Maybe not necessary if backend handles it.
     return fetchBackend<UserStatus>(`/users/status/${clientId}`);
 };
 
@@ -220,8 +273,10 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
         method: 'POST',
         body: JSON.stringify(body),
     });
-    if (!response) {
-        throw new Error("Received unexpected null response while estimating grams.");
+    // Handle potential null response from fetchBackend if server returned 204 or non-JSON OK
+    if (response === null || typeof response.grams !== 'number') {
+        console.error("Received unexpected null or invalid response format while estimating grams.");
+        throw new BackendError("Failed to get grams estimation due to unexpected response.", 500, "Invalid response format");
     }
     return response.grams;
 };
@@ -230,30 +285,34 @@ export const getFoodIcon = async (foodName: string, locale: string = 'en'): Prom
     const encodedFoodName = encodeURIComponent(foodName);
     const encodedLocale = encodeURIComponent(locale);
     try {
+        // Expecting IconResponse = { icon_url: string | null }
         const response = await fetchBackend<IconResponse>(`/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`);
-         if (!response) {
-            console.warn(`Received null response when fetching icon for ${foodName}. Treating as no icon found.`);
+        // Handle null response from fetchBackend (e.g., 204 No Content)
+        if (response === null) {
+            // console.log(`Received null response for icon ${foodName}, treating as not found.`);
             return null;
-         }
-        return response.icon_url;
+        }
+        return response.icon_url; // Can be string or null as intended by backend
     } catch (error) {
-         console.error(`Failed to get icon for ${foodName} via backend service:`, error);
+        if (error instanceof BackendError && error.status === 404) {
+             console.log(`Icon not found for ${foodName} (404).`);
+             return null;
+        }
+        // Log other errors but return null to calling function
+        console.error(`Failed to get icon for ${foodName} via backend service:`, error);
          return null;
     }
 };
 
-/**
- * Adds a specified amount of coins to the current user via the backend.
- * @param amount The number of coins to add.
- * @returns A promise resolving to the updated UserStatus (client_id, coins).
- */
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
-    const clientId = await getClientId(); // Client ID is needed for the endpoint URL
-    const body = { amount }; // Amount goes into the body as per updated backend endpoint
+    const clientId = await getClientId();
+    const body = { amount };
+    if (amount <= 0) {
+        // Basic client-side validation
+        throw new BackendError("Amount to add must be positive.", 400, "Amount must be positive.");
+    }
     return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, {
         method: 'POST',
         body: JSON.stringify(body),
     });
 };
-
-// ---------- END backendService.ts ----------

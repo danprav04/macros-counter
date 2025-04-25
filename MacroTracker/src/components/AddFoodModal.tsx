@@ -1,6 +1,6 @@
 // src/components/AddFoodModal.tsx
-// components/AddFoodModal.tsx (Integrate Backend, Handle Errors)
-import React, { useState, useEffect } from "react";
+// components/AddFoodModal.tsx (With Image Compression)
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   KeyboardAvoidingView,
@@ -23,16 +23,15 @@ import {
 import { Food } from "../types/food";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-// Import backend service functions and error type
 import {
-    getMacrosFromText, // Renamed utility function using backend
-    getMacrosForImageFile, // Utility function using backend
-    getBase64FromUri, // Keep utility
-    BackendError
+    getMacrosFromText, // Utility using backend
+    getMacrosForImageFile, // Utility using backend
+    BackendError, // Import error type
 } from "../utils/macros";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from 'expo-image-manipulator'; // Import manipulator
 import { ImagePickerAsset, ImagePickerResult } from 'expo-image-picker';
-import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
+import { isValidNumberInput } from "../utils/validationUtils"; // Keep isNotEmpty validation
 
 interface AddFoodModalProps {
   isVisible: boolean;
@@ -52,6 +51,8 @@ interface AddFoodModalProps {
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 60 : 0;
+const MAX_IMAGE_DIMENSION = 1024; // Max width/height for compressed image
+const IMAGE_COMPRESSION_QUALITY = 0.7; // Compression quality (0.0 - 1.0)
 
 const AddFoodModal: React.FC<AddFoodModalProps> = ({
   isVisible,
@@ -68,7 +69,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
   const { theme } = useTheme();
   const styles = useStyles();
   const [loading, setLoading] = useState(false); // For save/update button
-  const [apiLoading, setApiLoading] = useState(false); // General API loading (may not be needed)
+  // const [apiLoading, setApiLoading] = useState(false); // Not currently used, imageLoading is specific
   const [mode, setMode] = useState<"normal" | "ingredients">("normal");
   const [ingredients, setIngredients] = useState("");
   const [aiButtonLoading, setAiButtonLoading] = useState(false); // For ingredient text AI
@@ -85,18 +86,23 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     }
   }, [isVisible, setErrors]);
 
+  // Helper to get value from correct state (edit or new)
   const getValue = (key: keyof Omit<Food, "id">) => {
-    const value = (editFood && editFood[key]) ?? newFood[key] ?? "";
-    if (!editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-        return "";
+    const source = editFood ?? newFood;
+    const value = source[key];
+
+    // Handle display formatting for numeric fields
+    if (typeof value === 'number' && key !== 'name') {
+        // Return "0" if value is 0, otherwise string representation
+        // Return empty string if it's the initial 0 in the newFood state
+        if (value === 0 && source === newFood) return "";
+        return String(value);
     }
-    if (editFood && typeof value === 'number' && value === 0 && key !== 'name') {
-        return "0";
-    }
-    return String(value);
+    return String(value ?? ""); // Ensure name is treated as string
   };
 
-  // Handles local state update and triggers parent save/update
+
+  // Handles local state update and triggers parent save/update (Unchanged)
   const handleCreateOrUpdate = async (isUpdate: boolean) => {
     setLoading(true);
     const foodData = isUpdate ? editFood : newFood;
@@ -106,8 +112,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     }
 
      const dataToValidate: Omit<Food, "id"> = {
-        ...foodData,
-        name: String(foodData.name).trim(),
+        name: getValue("name").trim(), // Trim name for validation
+        // Ensure numeric values are parsed correctly, defaulting to 0 if invalid/empty
         calories: parseFloat(getValue("calories")) || 0,
         protein: parseFloat(getValue("protein")) || 0,
         carbs: parseFloat(getValue("carbs")) || 0,
@@ -141,8 +147,6 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
       });
       toggleOverlay(); // Close modal on success
     } catch (error: any) {
-        // Errors during storage save (handled by parent) might show alerts
-        // This catch block is more for unexpected issues during the call
       console.error(`Error during ${isUpdate ? 'update' : 'create'} food handler:`, error);
       Alert.alert(
         "Error",
@@ -153,7 +157,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     }
   };
 
-  // Uses backend service for recipe text analysis
+  // Uses backend service for recipe text analysis (Unchanged)
   const handleAiButtonClick = async () => {
     const foodName = getValue("name");
     if (!foodName && mode === 'ingredients') {
@@ -176,24 +180,59 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
       setAiButtonLoading(true);
       try {
-        // Call the refactored utility function (uses backend)
         const macros = await getMacrosFromText(currentFoodName, ingredients);
-
         handleInputChange("calories", String(Math.round(macros.calories)), !!editFood);
         handleInputChange("protein", String(Math.round(macros.protein)), !!editFood);
         handleInputChange("carbs", String(Math.round(macros.carbs)), !!editFood);
         handleInputChange("fat", String(Math.round(macros.fat)), !!editFood);
-
         setMode("normal");
         Toast.show({ type: 'info', text1: 'Macros estimated from text.', position: 'bottom' });
       } catch (error) {
          // Alert is handled within getMacrosFromText utility now
          console.error("AI Macro fetch error (recipe - modal):", error);
-         // Optional: Additional handling specific to this modal if needed
       } finally {
         setAiButtonLoading(false);
       }
     }
+  };
+
+  // Function to compress image before processing
+  const compressImage = async (asset: ImagePicker.ImagePickerAsset): Promise<ImageManipulator.ImageResult | null> => {
+     console.log(`Original image dimensions: ${asset.width}x${asset.height}`);
+     try {
+         const actions: ImageManipulator.Action[] = [];
+         // Resize if dimensions exceed max
+         if (asset.width > MAX_IMAGE_DIMENSION || asset.height > MAX_IMAGE_DIMENSION) {
+              const options: ImageManipulator.ActionResize = {
+                resize: {
+                  width: undefined,
+                  height: undefined
+                }
+              };
+              if (asset.width > asset.height) {
+                 options.resize.width = MAX_IMAGE_DIMENSION;
+             } else {
+                 options.resize.height = MAX_IMAGE_DIMENSION;
+             }
+             actions.push({ resize: options.resize });
+             console.log(`Resizing image to max dimension ${MAX_IMAGE_DIMENSION}`);
+         }
+
+         const saveOptions: ImageManipulator.SaveOptions = {
+             compress: IMAGE_COMPRESSION_QUALITY,
+             format: ImageManipulator.SaveFormat.JPEG, // Compress to JPEG for smaller size
+             base64: false, // We don't need base64 from manipulator
+         };
+
+         const result = await ImageManipulator.manipulateAsync(asset.uri, actions, saveOptions);
+         console.log(`Compressed image dimensions: ${result.width}x${result.height}`);
+         console.log(`Compressed image URI: ${result.uri}`);
+         return result;
+     } catch (error) {
+          console.error("Failed to compress image:", error);
+          Alert.alert("Compression Error", "Could not process the image for compression.");
+          return null;
+     }
   };
 
   // Uses backend service for image analysis
@@ -202,18 +241,33 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const processImage = async (pickerResult: ImagePickerResult) => {
         if (pickerResult.canceled) {
             console.log("Image selection/capture cancelled");
-            setImageLoading(false); // Stop loading if cancelled
-            return;
+            setImageLoading(false); return;
         }
 
         if (pickerResult.assets && pickerResult.assets.length > 0) {
-            const asset = pickerResult.assets[0];
-            console.log("Image acquired:", asset.uri);
-            setImageLoading(true); // Loading starts before backend call
+            const originalAsset = pickerResult.assets[0];
+            console.log("Image acquired:", originalAsset.uri);
+            setImageLoading(true); // Loading starts
+
+            // *** Compress the image ***
+            const compressedAsset = await compressImage(originalAsset);
+            if (!compressedAsset) {
+                 setImageLoading(false); // Stop loading if compression failed
+                 return;
+            }
+
+            // *** Use compressed asset for analysis ***
+            const assetForAnalysis: ImagePicker.ImagePickerAsset = {
+               ...originalAsset,
+               uri: compressedAsset.uri,
+               width: compressedAsset.width,
+               height: compressedAsset.height,
+               mimeType: 'image/jpeg', // Compressed to JPEG
+            };
 
             try {
-                 // Call the refactored utility function (uses backend)
-                 const result = await getMacrosForImageFile(asset); // Pass asset directly
+                 // Call utility function (uses backend) with compressed asset
+                 const result = await getMacrosForImageFile(assetForAnalysis);
 
                 // Update form fields with results
                 handleInputChange("name", result.foodName, !!editFood);
@@ -235,44 +289,47 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             } catch (analysisError) {
                 // Alert is handled within getMacrosForImageFile utility now
                 console.error("Error during image analysis (modal):", analysisError);
-                 // Optional: Specific modal handling if needed
             } finally {
                  setTimeout(() => setImageLoading(false), 100); // Stop loading
             }
         } else {
             console.log("No assets selected or returned.");
-            setImageLoading(false); // Stop loading if no assets
+            setImageLoading(false);
         }
     };
 
+    // --- Image Picker Logic ---
     Alert.alert(
       "Get Image",
       "Choose a source for the food image:",
       [
-        { text: "Cancel", style: "cancel", onPress: () => setImageLoading(false) }, // Ensure loading stops
+        { text: "Cancel", style: "cancel", onPress: () => setImageLoading(false) },
         {
           text: "Camera",
           onPress: async () => {
-            setImageLoading(true); // Indicate loading
+            setImageLoading(true); // Indicate loading immediately
             try {
                 const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
                 if (!permissionResult.granted) {
                     Alert.alert("Permission Required", "Camera access is needed.");
                     setImageLoading(false); return;
                 }
-                const cameraResult = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+                const cameraResult = await ImagePicker.launchCameraAsync({
+                    quality: 1, // Capture high quality
+                    exif: false,
+                });
                 await processImage(cameraResult);
             } catch (error) {
                 console.error("Error launching camera:", error);
                 Alert.alert("Camera Error", "Could not open the camera.");
-                setImageLoading(false); // Stop loading on error
+                setImageLoading(false);
             }
           },
         },
         {
           text: "Gallery",
           onPress: async () => {
-            setImageLoading(true); // Indicate loading
+            setImageLoading(true); // Indicate loading immediately
             try {
                 const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (!permissionResult.granted) {
@@ -280,18 +337,19 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                     setImageLoading(false); return;
                 }
                 const libraryResult = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6,
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    quality: 1, // Select high quality
                 });
                 await processImage(libraryResult);
             } catch (error) {
                 console.error("Error launching image library:", error);
                 Alert.alert("Gallery Error", "Could not open the image library.");
-                 setImageLoading(false); // Stop loading on error
+                 setImageLoading(false);
             }
           },
         },
       ],
-      { cancelable: true, onDismiss: () => setImageLoading(false) } // Stop loading if dismissed
+      { cancelable: true, onDismiss: () => setImageLoading(false) }
     );
   };
 
@@ -387,7 +445,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 <Input
                   label="Calories (per 100g)" labelStyle={{ color: theme.colors.text }}
                   keyboardType="numeric" value={getValue("calories")}
-                  onChangeText={(text) => handleInputChange("calories", text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"), !!editFood)}
+                  onChangeText={(text) => handleInputChange("calories", text, !!editFood)}
                   errorMessage={errors.calories} inputContainerStyle={styles.inputContainerStyle}
                   inputStyle={styles.inputStyle}
                   leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey1}/>}
@@ -396,7 +454,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 <Input
                   label="Protein (per 100g)" labelStyle={{ color: theme.colors.text }}
                   keyboardType="numeric" value={getValue("protein")}
-                  onChangeText={(text) => handleInputChange("protein", text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"), !!editFood)}
+                  onChangeText={(text) => handleInputChange("protein", text, !!editFood)}
                   errorMessage={errors.protein} inputContainerStyle={styles.inputContainerStyle}
                   inputStyle={styles.inputStyle}
                   leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey1}/>}
@@ -405,7 +463,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 <Input
                   label="Carbs (per 100g)" labelStyle={{ color: theme.colors.text }}
                   keyboardType="numeric" value={getValue("carbs")}
-                  onChangeText={(text) => handleInputChange("carbs", text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"), !!editFood)}
+                  onChangeText={(text) => handleInputChange("carbs", text, !!editFood)}
                   errorMessage={errors.carbs} inputContainerStyle={styles.inputContainerStyle}
                   inputStyle={styles.inputStyle}
                   leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey1}/>}
@@ -414,7 +472,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 <Input
                   label="Fat (per 100g)" labelStyle={{ color: theme.colors.text }}
                   keyboardType="numeric" value={getValue("fat")}
-                  onChangeText={(text) => handleInputChange("fat", text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"), !!editFood)}
+                  onChangeText={(text) => handleInputChange("fat", text, !!editFood)}
                   errorMessage={errors.fat} inputContainerStyle={styles.inputContainerStyle}
                   inputStyle={styles.inputStyle}
                   leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey1}/>}
@@ -459,7 +517,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
               containerStyle={[styles.buttonContainer, { marginTop: 15 }]}
             />
 
-            {/* Barcode Placeholder */}
+            {/* Barcode Placeholder (Unchanged) */}
             <View style={styles.futureInputContainer}>
               <Text style={styles.futureInputLabel}>
                 Barcode Input (Coming Soon)
@@ -468,12 +526,6 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-      {/* General API Loading Overlay (Optional) */}
-      {/* {apiLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      )} */}
     </Overlay>
   );
 };
@@ -498,7 +550,7 @@ const useStyles = makeStyles((theme) => ({
     inputRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 5, },
     inputContainerFlex: { flex: 1, marginRight: 10, marginBottom: 0, },
     iconButtonContainer: {
-        height: 40, width: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10,
+        height: 40, width: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10, // Align with input bottom
     },
     inputContainerStyle: { borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, marginBottom: 5, paddingBottom: 2, },
     inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, },
@@ -517,7 +569,7 @@ const useStyles = makeStyles((theme) => ({
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     aiButton: { paddingVertical: 12, },
     aiButtonTitle: { fontWeight: "600", fontSize: 15, textAlign: 'center', },
-    loadingOverlay: {
+    loadingOverlay: { // Keep if generic overlay is needed
         position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.5)",
         justifyContent: "center", alignItems: "center", zIndex: 10, borderRadius: 15,
     },
