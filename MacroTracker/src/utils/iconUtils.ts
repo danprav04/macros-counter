@@ -1,7 +1,7 @@
 // src/utils/iconUtils.ts
 // Import necessary modules
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFoodIcon, BackendError } from '../services/backendService'; // Import backend service
+import { getFoodIcon } from '../services/backendService'; // Import backend service
 
 // Define the cache entry type (URL only, no expiry handled here)
 type CacheEntry = {
@@ -16,8 +16,18 @@ const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v1_'; // BE = Backend
 
 // --- Main Exported Function ---
 
+/**
+ * Gets the icon URL for a food item.
+ * Checks memory cache, then AsyncStorage, then calls the backend service.
+ * Caches the result (including null for failures/not found).
+ *
+ * @param foodName The name of the food item.
+ * @param locale The desired locale for the icon search (defaults to 'en').
+ * @returns A Promise resolving to the icon URL (string) or null if not found or an error occurred.
+ */
 export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
   if (!foodName || foodName.trim() === '') {
+      console.warn("getFoodIconUrl called with empty foodName.");
       return null;
   }
 
@@ -25,8 +35,8 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
 
   // 1. Check Memory Cache
   const memoryEntry = memoryCache.get(cacheKey);
-  if (memoryEntry) {
-    // console.log(`Icon Cache HIT (Memory): ${cacheKey}`);
+  if (memoryEntry !== undefined) { // Check existence, not just truthiness (null is valid cached value)
+    // console.log(`Icon Cache HIT (Memory): ${cacheKey} -> ${memoryEntry.url}`);
     return memoryEntry.url;
   }
 
@@ -34,40 +44,40 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   const storageKey = STORAGE_KEY_PREFIX + cacheKey;
   try {
     const storedValue = await AsyncStorage.getItem(storageKey);
-    if (storedValue) {
+    if (storedValue !== null) {
       const parsed: CacheEntry = JSON.parse(storedValue);
-      // console.log(`Icon Cache HIT (Storage): ${cacheKey}`);
+      // console.log(`Icon Cache HIT (Storage): ${cacheKey} -> ${parsed.url}`);
       memoryCache.set(cacheKey, parsed); // Update memory cache
       return parsed.url;
     }
   } catch (error) {
-    console.error('Error reading icon cache from AsyncStorage:', error);
+    console.error(`Error reading icon cache from AsyncStorage for key ${storageKey}:`, error);
     // Continue to fetch if storage read fails
   }
 
   // 3. Fetch from Backend API
-  console.log(`Icon Cache MISS / Fetching Backend API: ${cacheKey}`);
+  // console.log(`Icon Cache MISS / Fetching Backend API: ${cacheKey}`);
   let iconUrl: string | null = null;
   try {
-      // Call the backend service function
+      // Call the backend service function - it handles its own errors and returns null on failure
       iconUrl = await getFoodIcon(foodName, locale);
-      console.log(`Backend returned icon URL for ${foodName}: ${iconUrl}`);
+      // console.log(`Backend returned icon URL for ${foodName}: ${iconUrl}`);
 
   } catch (error) {
-      // Backend service already logs errors, just handle the outcome
-      console.error(`Error fetching icon from backend for ${foodName}:`, error);
-      iconUrl = null; // Ensure null is cached on error
-      // Do not show Alert here, let the calling component decide UI response
+      // This catch block might be redundant if getFoodIcon handles all errors,
+      // but kept as a safeguard against unexpected issues in the service call itself.
+      console.error(`Unexpected error calling getFoodIcon service for ${foodName}:`, error);
+      iconUrl = null; // Ensure null is cached on unexpected error during service call
   }
-
 
   // 4. Cache the final result (even nulls) from backend
   const newCacheEntry: CacheEntry = { url: iconUrl };
-  memoryCache.set(cacheKey, newCacheEntry);
+  memoryCache.set(cacheKey, newCacheEntry); // Cache in memory
   try {
+    // Cache in AsyncStorage
     await AsyncStorage.setItem(storageKey, JSON.stringify(newCacheEntry));
   } catch (error) {
-    console.error('Error saving icon cache to AsyncStorage:', error);
+    console.error(`Error saving icon cache to AsyncStorage for key ${storageKey}:`, error);
   }
 
   return iconUrl;
@@ -92,5 +102,3 @@ export const clearIconCache = async () => {
 export const logMemoryCacheSize = () => {
     console.log(`In-memory icon cache size: ${memoryCache.size}`);
 };
-
-// Removed scoring and direct Pixabay fetch logic as it's now in the backend service.
