@@ -4,7 +4,7 @@ import { getClientId } from './clientIDService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 
 // --- Configuration ---
-const BASE_URL = process.env.BACKEND_URL || 'http://localhost:8000/api/v1';
+const BASE_URL = 'http://192.168.1.15:8000/api/v1';
 
 // --- Interfaces ---
 interface GramsResponse {
