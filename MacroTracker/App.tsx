@@ -1,4 +1,5 @@
-// App.tsx (Modified - Removed AppState-triggered remount)
+// App.tsx
+// App.tsx (Initialize Client ID)
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
 import React, { useState, useEffect } from "react";
@@ -21,6 +22,7 @@ import { Colors } from "@rneui/base";
 import { Settings } from "./src/types/settings";
 import { LogBox, View, Text } from "react-native"; //Import view for debug
 import { StatusBar } from "expo-status-bar"; // changed import
+import { getClientId } from "./src/services/clientIDService"; // Import client ID service
 
 LogBox.ignoreLogs(["Function components cannot be given refs"]);
 
@@ -93,13 +95,12 @@ const lightTheme: MyTheme = {
         warning: "",
       },
     },
-    // Complete the missing grey colors
-    grey0: "#f8f9fa", // Very light, almost white
-    grey1: "#e9ecef", // Light grey, same as grey5 (can adjust)
-    grey2: "#dee2e6", // Medium-light grey
-    grey3: "#ced4da", // Medium grey, same as grey4
-    greyOutline: "#adb5bd", // Slightly darker for outlines
-    searchBg: "#ffffff", // Background for search input, usually white
+    grey0: "#f8f9fa",
+    grey1: "#e9ecef",
+    grey2: "#dee2e6",
+    grey3: "#ced4da",
+    greyOutline: "#adb5bd",
+    searchBg: "#ffffff",
   },
 };
 
@@ -159,13 +160,12 @@ const darkTheme: MyTheme = {
         warning: "",
       },
     },
-    // Complete the missing grey colors
-    grey0: "#212529", // Very dark, almost black
-    grey1: "#2c2c2c", // Dark grey, same as grey5
-    grey2: "#343a40", // Medium-dark grey, same as grey4
-    grey3: "#495057", // Medium grey
-    greyOutline: "#6c757d", // Lighter grey for outlines, same as disabled
-    searchBg: "#1e1e1e", // Background for search, dark to match card
+    grey0: "#212529",
+    grey1: "#2c2c2c",
+    grey2: "#343a40",
+    grey3: "#495057",
+    greyOutline: "#6c757d",
+    searchBg: "#1e1e1e",
   },
 };
 
@@ -175,43 +175,36 @@ const App = () => {
   );
   const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
-  // --- REMOVED: reloadKey state is no longer needed for AppState changes ---
-  // const [reloadKey, setReloadKey] = useState(0);
-  const [appState, setAppState] = useState(AppState.currentState); // AppState
-  const [themeCheck, setThemeCheck] = useState(0); //Added theme check
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [themeCheck, setThemeCheck] = useState(0);
+  const [isClientIdReady, setIsClientIdReady] = useState(false); // Track client ID readiness
 
-  // Load initial settings
+  // Initialize Client ID and Load initial settings
   useEffect(() => {
     const initializeApp = async () => {
-      const settings = await loadSettings();
-      setThemeMode(settings.theme);
-      setLoadedSettings(settings);
+      try {
+          // Ensure Client ID is ready before loading other data
+          await getClientId(); // This generates/retrieves and caches the ID
+          setIsClientIdReady(true);
+          console.log('Client ID is ready.');
+
+          // Load settings after client ID is confirmed
+          const settings = await loadSettings();
+          setThemeMode(settings.theme);
+          setLoadedSettings(settings);
+          console.log('Settings loaded.');
+      } catch (error) {
+            console.error("Initialization Error:", error);
+            // Handle error, maybe show an error screen
+      }
     };
     initializeApp();
-  }, []);
+  }, []); // Run only once on mount
 
-  // --- REMOVED: triggerReload function is no longer needed ---
-  // const triggerReload = () => {
-  //   setReloadKey((prevKey) => prevKey + 1);
-  // };
-
-  // --- MODIFIED: Removed triggerReload() from AppState listener ---
+  // AppState Listener
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      // --- REMOVED THIS BLOCK ---
-      // This block caused the entire navigator to remount when the app
-      // returned from the background (e.g., after image picker closed),
-      // which prematurely closed the AddFoodModal.
-      /*
-      if (appState.match(/inactive|background/) && nextAppState === "active") {
-        // App has come to the foreground, DON'T trigger reload anymore
-        console.log("App came to foreground - Reload Trigger REMOVED");
-        // triggerReload(); // <<< REMOVED THIS LINE
-      }
-      */
-      // --- END REMOVED BLOCK ---
-
-      setAppState(nextAppState); // Still track app state if needed elsewhere
+      setAppState(nextAppState);
     };
 
     const subscription = AppState.addEventListener(
@@ -222,7 +215,7 @@ const App = () => {
     return () => {
       subscription.remove();
     };
-  }, [appState]); // Keep appState dependency if you still use setAppState
+  }, []); // No appState dependency needed here
 
   const updateTheme = (newThemeMode: "light" | "dark" | "system") => {
     const isDark =
@@ -274,22 +267,26 @@ const App = () => {
     },
   };
 
-  // Determine status bar style based on theme
   const statusBarTheme = themeMode === "system" ? colorScheme : themeMode;
-
   const backgroundColor = currentTheme.colors.background;
 
+  // Show loading or placeholder until client ID is ready
+  if (!isClientIdReady) {
+      return (
+          <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: backgroundColor }}>
+              <Text style={{ color: currentTheme.colors.text }}>Initializing...</Text>
+              {/* Optionally add an ActivityIndicator */}
+          </SafeAreaView>
+      );
+  }
+
   return (
-    // --- REMOVED: key={themeMode} - Re-evalute if needed, usually not necessary for theme changes handled internally ---
-    // <ThemeProvider theme={createTheme(currentTheme)} key={themeMode}>
     <ThemeProvider theme={createTheme(currentTheme)}>
-      {/* Added to try force to behave like a normal text */}
       <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}>
-        {/* Enclose everything in SafeAreaView */}
         <StatusBar
-          style={statusBarTheme === "dark" ? "light" : "dark"} // Text color
-          backgroundColor={backgroundColor} // Background color from theme
-          translucent={false} // Disable translucency for now (easier debugging)
+          style={statusBarTheme === "dark" ? "light" : "dark"}
+          backgroundColor={backgroundColor}
+          translucent={false}
         />
         <NavigationContainer
           theme={
@@ -298,8 +295,6 @@ const App = () => {
               : navigationTheme.light
           }
         >
-          {/* --- REMOVED: key={reloadKey} - Navigator no longer forced to remount --- */}
-          {/* <AppNavigator onThemeChange={handleThemeChange} key={reloadKey} /> */}
           <AppNavigator onThemeChange={handleThemeChange} />
         </NavigationContainer>
         <Toast />
