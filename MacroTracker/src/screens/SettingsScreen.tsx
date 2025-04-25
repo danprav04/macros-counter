@@ -1,7 +1,7 @@
-// src/screens/SettingsScreen.tsx (Corrected Focus Loop)
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, ScrollView, Alert, StyleSheet } from "react-native";
-import { Text, makeStyles, Button, Icon } from "@rneui/themed";
+// src/screens/SettingsScreen.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator } from "react-native";
+import { Text, makeStyles, Button, Icon, ListItem, useTheme } from "@rneui/themed"; // Import ListItem
 import DailyGoalsInput from "../components/DailyGoalsInput";
 import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
@@ -9,11 +9,12 @@ import StatisticsChart from "../components/StatisticsChart";
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
 import { Settings, Statistics, MacroType, MacroData } from "../types/settings";
 import { parseISO, isValid } from "date-fns";
-import { useTheme } from "@rneui/themed";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect } from "@react-navigation/native";
 import { clearIconCache } from "../utils/iconUtils";
 import Toast from "react-native-toast-message";
+// Import backend service functions
+import { getUserStatus, addCoinsToUser, UserStatus, BackendError } from "../services/backendService";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -32,6 +33,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  // State for user coins
+  const [userCoins, setUserCoins] = useState<number | null>(null);
+  const [isLoadingCoins, setIsLoadingCoins] = useState(false);
+  const [isAddingCoins, setIsAddingCoins] = useState(false);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -109,12 +114,36 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
     // Dependency only on the calculation function now
   }, [getStatisticsData]);
 
+  // --- Fetch User Status ---
+  const fetchUserStatus = useCallback(async () => {
+    setIsLoadingCoins(true);
+    try {
+        console.log("SettingsScreen: Fetching user status...");
+        const status = await getUserStatus();
+        setUserCoins(status.coins);
+        console.log(`SettingsScreen: User status fetched. Coins: ${status.coins}`);
+    } catch (error) {
+        console.error("SettingsScreen: Failed to fetch user status:", error);
+        setUserCoins(null); // Indicate error state
+        // Optionally show a toast or alert
+         Toast.show({
+           type: 'error',
+           text1: 'Could not load coin balance',
+           text2: error instanceof BackendError ? error.message : 'Please check connection.',
+           position: 'bottom',
+         });
+    } finally {
+        setIsLoadingCoins(false);
+    }
+  }, []);
+
+
   // --- Load Data on Focus ---
-  // Modified: Loads settings, sets state, then calls updateStatistics with loaded goals
+  // Modified: Loads settings, sets state, then calls updateStatistics and fetchUserStatus
   useFocusEffect(
     useCallback(() => {
       let isActive = true; // Prevent state updates if component is unmounted quickly
-      console.log("SettingsScreen: Focused. Loading settings and statistics.");
+      console.log("SettingsScreen: Focused. Loading settings, user status, and statistics.");
 
       const loadAndProcessData = async () => {
         try {
@@ -122,6 +151,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
           const loadedSettings = await loadSettings();
           if (!isActive) return; // Check flag before state update
           setSettings(loadedSettings); // Update settings state
+
+          // Fetch user status (coins)
+          await fetchUserStatus(); // Fetch coins
 
           // Now update statistics using the just-loaded goals
           // Pass the goals directly to avoid dependency loop
@@ -142,8 +174,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         isActive = false; // Set flag on unmount/blur
         console.log("SettingsScreen: Unfocused.");
       };
-      // Dependency is now only on the stable updateStatistics callback
-    }, [updateStatistics])
+      // Dependencies are now only on the stable updateStatistics and fetchUserStatus callbacks
+    }, [updateStatistics, fetchUserStatus])
   );
 
 
@@ -181,13 +213,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
 
 
   // --- Handle Data Management Button Trigger ---
-  // Modified: Reloads settings AND passes the new goals to updateStatistics
+  // Modified: Reloads settings AND passes the new goals to updateStatistics, AND refetches user status
   const handleDataOperation = useCallback(async () => {
-    console.log("SettingsScreen: Data operation triggered. Reloading settings and statistics.");
+    console.log("SettingsScreen: Data operation triggered. Reloading settings, user status, and statistics.");
     try {
         const reloadedSettings = await loadSettings();
         setSettings(reloadedSettings); // Update settings state
         updateStatistics(reloadedSettings.dailyGoals); // Update stats with new goals
+        fetchUserStatus(); // Refetch user status
         // Trigger theme change if it was altered by import
         onThemeChange(reloadedSettings.theme);
         Toast.show({ type: 'info', text1: 'Data reloaded.', position: 'bottom'});
@@ -195,7 +228,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
         console.error("Error reloading data after operation:", error);
         Alert.alert("Reload Error", "Failed to reload data after operation.");
     }
-  }, [updateStatistics, onThemeChange]);
+  }, [updateStatistics, onThemeChange, fetchUserStatus]);
 
   // --- Handle Icon Cache Clearing (No change needed) ---
    const handleClearIconCache = useCallback(async () => {
@@ -223,9 +256,64 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
       }
    }, []);
 
+    // --- Handle Add Coins Button ---
+    const handleAddTestCoins = useCallback(async () => {
+        setIsAddingCoins(true);
+        try {
+            const amountToAdd = 10;
+            console.log(`SettingsScreen: Attempting to add ${amountToAdd} coins...`);
+            const updatedStatus = await addCoinsToUser(amountToAdd);
+            setUserCoins(updatedStatus.coins); // Update displayed coins
+            console.log(`SettingsScreen: Coins added successfully. New balance: ${updatedStatus.coins}`);
+            Toast.show({
+                type: 'success',
+                text1: `${amountToAdd} Coins Added!`,
+                text2: `New balance: ${updatedStatus.coins}`,
+                position: 'bottom'
+            });
+        } catch (error) {
+            console.error("SettingsScreen: Failed to add coins:", error);
+             Toast.show({
+                type: 'error',
+                text1: 'Failed to Add Coins',
+                text2: error instanceof BackendError ? error.message : 'Please try again.',
+                position: 'bottom'
+             });
+        } finally {
+            setIsAddingCoins(false);
+        }
+    }, []);
+
   // --- Render ---
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer}>
+      <Text h3 style={styles.sectionTitle}>Account</Text>
+        <ListItem bottomDivider containerStyle={styles.listItem}>
+            {/* Changed Icon */}
+            <Icon name="database" type="material-community" color={theme.colors.warning} />
+            <ListItem.Content>
+                <ListItem.Title style={styles.listItemTitle}>Coin Balance</ListItem.Title>
+            </ListItem.Content>
+            {isLoadingCoins ? (
+                 <ActivityIndicator size="small" color={theme.colors.primary} />
+             ) : (
+                 <Text style={styles.coinValue}>{userCoins !== null ? userCoins : 'N/A'}</Text>
+             )}
+        </ListItem>
+        {/* REMOVE OR PROTECT THIS BUTTON IN PRODUCTION */}
+        <Button
+            title="Add 10 Coins (Test)"
+            onPress={handleAddTestCoins}
+            buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
+            icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+            loading={isAddingCoins}
+            disabled={isAddingCoins || isLoadingCoins}
+        />
+        <Text style={styles.testButtonWarning}>
+             Note: The "Add Coins" button is for testing/development only and should be removed or secured for production releases.
+        </Text>
+
+
       <Text h3 style={styles.sectionTitle}>General</Text>
       {/* Pass settings.theme which is updated by useFocusEffect */}
       <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
@@ -264,7 +352,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange }) => {
   );
 };
 
-// Styles (no changes needed from original)
+// Styles (adjusted from original)
 const useStyles = makeStyles((theme) => ({
   container: {
     flex: 1,
@@ -295,11 +383,32 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: 8,
   },
   chartContainer: {
-    // Ensure the chart has enough space. Adjust height as needed.
-    // Using minHeight avoids potential issues with dynamic content if any.
-    minHeight: 300, // Start with a reasonable height for the chart view
-    height: 'auto', // Allow it to grow if the content inside needs more space
+    minHeight: 300,
+    height: 'auto',
     marginBottom: 20,
+  },
+  // Styles for Coin Display
+  listItem: {
+    backgroundColor: theme.colors.background,
+    paddingVertical: 15, // Add some padding
+  },
+  listItemTitle: {
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  coinValue: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  testButtonWarning: {
+    fontSize: 12,
+    color: theme.colors.grey3,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 0,
+    marginBottom: 15,
+    marginHorizontal: 10,
   },
 }));
 

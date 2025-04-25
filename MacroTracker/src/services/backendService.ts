@@ -43,6 +43,12 @@ interface IconResponse {
     icon_url: string | null;
 }
 
+// Interface representing the user status response from the backend
+export interface UserStatus {
+    client_id: string;
+    coins: number;
+}
+
 interface BackendErrorDetail {
     detail?: string | any;
 }
@@ -179,16 +185,12 @@ async function fetchBackend<T>(
 
 // --- Service Functions ---
 
-export const getUserStatus = async (): Promise<{ client_id: string; coins: number }> => {
-    // Client ID is added automatically in fetchBackend helper
-    // However, the endpoint URL needs the client ID
+export const getUserStatus = async (): Promise<UserStatus> => {
     const clientId = await getClientId();
-    return fetchBackend<{ client_id: string; coins: number }>(`/users/status/${clientId}`);
+    return fetchBackend<UserStatus>(`/users/status/${clientId}`);
 };
 
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
-    // Client ID is added automatically by fetchBackend header
-    // Remove client_id from the body
     const body = { food_name: foodName, ingredients };
     return fetchBackend<Macros>('/ai/macros_recipe', {
         method: 'POST',
@@ -197,8 +199,6 @@ export const getMacrosForRecipe = async (foodName: string, ingredients: string):
 };
 
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
-    // Client ID added automatically by fetchBackend header
-    // Remove client_id from the body
     const body = { image_base64, mime_type };
     return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', {
         method: 'POST',
@@ -207,8 +207,6 @@ export const getMacrosForImageSingle = async (image_base64: string, mime_type: s
 };
 
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
-    // Client ID added automatically by fetchBackend header
-    // Remove client_id from the body
     const body = { image_base64, mime_type };
     return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', {
         method: 'POST',
@@ -217,14 +215,11 @@ export const getMacrosForImageMultiple = async (image_base64: string, mime_type:
 };
 
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
-    // Client ID added automatically by fetchBackend header
-    // Remove client_id from the body
     const body = { food_name: foodName, quantity_description: quantityDescription };
     const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', {
         method: 'POST',
         body: JSON.stringify(body),
     });
-    // Handle potential null response if fetchBackend returns null for non-JSON OK response
     if (!response) {
         throw new Error("Received unexpected null response while estimating grams.");
     }
@@ -234,11 +229,8 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
 export const getFoodIcon = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
     const encodedFoodName = encodeURIComponent(foodName);
     const encodedLocale = encodeURIComponent(locale);
-    // Client ID added automatically by fetchBackend header
     try {
-        // Endpoint does not require client ID in path or body
         const response = await fetchBackend<IconResponse>(`/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`);
-         // Handle potential null response
          if (!response) {
             console.warn(`Received null response when fetching icon for ${foodName}. Treating as no icon found.`);
             return null;
@@ -246,9 +238,22 @@ export const getFoodIcon = async (foodName: string, locale: string = 'en'): Prom
         return response.icon_url;
     } catch (error) {
          console.error(`Failed to get icon for ${foodName} via backend service:`, error);
-         // Don't re-throw here, iconUtils handles the null return
          return null;
     }
+};
+
+/**
+ * Adds a specified amount of coins to the current user via the backend.
+ * @param amount The number of coins to add.
+ * @returns A promise resolving to the updated UserStatus (client_id, coins).
+ */
+export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
+    const clientId = await getClientId(); // Client ID is needed for the endpoint URL
+    const body = { amount }; // Amount goes into the body as per updated backend endpoint
+    return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
 };
 
 // ---------- END backendService.ts ----------
