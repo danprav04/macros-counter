@@ -91,7 +91,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
               reset();
             }}
             icon={{ name: "edit", color: theme.colors.white }}
-            buttonStyle={styles.swipeButtonEdit} // Consistent style
+            buttonStyle={styles.swipeButtonEdit} // Apply centered style
             titleStyle={styles.swipeButtonTitle}
           />
         )}
@@ -103,7 +103,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
                 reset();
             }}
             icon={{ name: "delete", color: theme.colors.white }}
-            buttonStyle={styles.swipeButtonDelete} // Consistent style
+            buttonStyle={styles.swipeButtonDelete} // Apply centered style
             titleStyle={styles.swipeButtonTitle}
           />
         )}
@@ -148,16 +148,14 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: {
         minHeight: "100%",
         backgroundColor: theme.colors.warning, // Theme color
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingLeft: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonDelete: {
         minHeight: "100%",
         backgroundColor: theme.colors.error, // Theme color
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        paddingRight: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonTitle: {
         color: theme.colors.white, // White text on colored buttons

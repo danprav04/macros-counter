@@ -1,4 +1,3 @@
-// src/screens/DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -879,16 +878,14 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: {
         minHeight: "100%",
         backgroundColor: theme.colors.warning, // Use theme color
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingLeft: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonDelete: {
         minHeight: "100%",
         backgroundColor: theme.colors.error, // Use theme color
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        paddingRight: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonTitle: {
         color: theme.colors.white,
