@@ -1,4 +1,4 @@
-// FoodListScreen.tsx (Corrected State Key and Prop Passing)
+// src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet } from "react-native";
 import {
@@ -8,9 +8,9 @@ import {
     deleteFood,
 } from "../services/foodService";
 import { Food } from "../types/food";
-import { isValidNumberInput, isNotEmpty } from "../utils/validationUtils";
+import { isNotEmpty } from "../utils/validationUtils"; // Removed unused isValidNumberInput
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
+import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed"; // Renamed import
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
@@ -19,14 +19,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getFoodIconUrl } from "../utils/iconUtils";
 
 interface FoodListScreenProps {
-    onFoodChange?: () => void; // Optional callback when food data changes
+    onFoodChange?: () => void;
 }
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
     // State: key=food.name, value=undefined(loading), null(failed/no_icon), string(url)
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
-    const [isLoading, setIsLoading] = useState(true); // Loading state for initial fetch
+    const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id">>({
@@ -34,11 +34,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isSaving, setIsSaving] = useState(false); // State to disable buttons during save
+    const [isSaving, setIsSaving] = useState(false);
 
     const { theme } = useTheme();
     const styles = useStyles();
-    const flatListRef = useRef<FlatList>(null); // Ref for FlatList
+    const flatListRef = useRef<FlatList>(null);
 
     // --- Data Loading and Icon Fetching ---
     const loadFoodData = useCallback(async () => {
@@ -47,11 +47,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setFoodIcons({}); // Clear icons on reload
         try {
             const loadedFoods = await getFoods();
-            loadedFoods.sort((a, b) => a.name.localeCompare(b.name));
+            loadedFoods.sort((a, b) => a.name.localeCompare(b.name)); // Sort by name
             setFoods(loadedFoods);
             console.log(`FoodListScreen: Loaded ${loadedFoods.length} foods.`);
-            // Trigger icon fetches after foods are loaded
-            fetchIconsForFoods(loadedFoods); // Pass loaded foods directly
+            // Trigger icon fetches for the loaded foods
+            fetchIconsForFoods(loadedFoods);
         } catch (error) {
             console.error("FoodListScreen: Error loading food data:", error);
             Alert.alert("Error", "Failed to load food list.");
@@ -59,70 +59,66 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } finally {
             setIsLoading(false);
         }
-    }, []); // No dependencies, should run once or on focus
+    }, []); // No dependencies, runs on focus/mount
 
+    // Fetch icons only for the specified list of foods
     const fetchIconsForFoods = useCallback(async (foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        console.log(`FoodListScreen: Fetching icons for ${foodsToFetch.length} foods.`);
+        console.log(`FoodListScreen: Fetching icons for ${foodsToFetch.length} visible foods.`);
 
-        // Use food.name as the key
-        const iconPromises = foodsToFetch.map(async (food) => {
-            // Check if icon status is unknown (undefined) using food.name
-            if (foodIcons[food.name] === undefined) {
-                try {
-                    const iconUrl = await getFoodIconUrl(food.name);
-                    return { name: food.name, url: iconUrl }; // Return name and URL
+        const iconUpdates: { [key: string]: string | null } = {};
+        const promises = foodsToFetch.map(async (food) => {
+            const foodName = food.name;
+            // Only fetch if status is unknown (undefined)
+            if (foodIcons[foodName] === undefined) {
+                 setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Mark as loading immediately
+                 try {
+                    const iconUrl = await getFoodIconUrl(foodName);
+                    iconUpdates[foodName] = iconUrl;
                 } catch (error) {
-                    console.warn(`Icon fetch failed for ${food.name}:`, error);
-                    return { name: food.name, url: null }; // Ensure null on error
+                    console.warn(`Icon fetch failed for ${foodName}:`, error);
+                    iconUpdates[foodName] = null; // Store null on error
                 }
             }
-            return null; // Skip fetch if already checked/cached in state
         });
 
-        const results = await Promise.all(iconPromises);
-        // Use functional update for reliability
-        setFoodIcons(prevIcons => {
-             const newIcons = { ...prevIcons }; // Copy previous state
-             results.forEach(result => {
-                 if (result) {
-                     newIcons[result.name] = result.url; // Use food.name as key
-                 }
-             });
-             // Log only if there were actual updates
-             const updatedKeys = results.filter(r => r !== null).length;
-             if (updatedKeys > 0) {
-                  console.log(`FoodListScreen: Updated icons state for ${updatedKeys} food names.`);
-             }
-             return newIcons;
-        });
+        await Promise.all(promises);
 
-    }, []); // Remove foodIcons dependency to allow re-fetching if needed, managed by undefined check
+        if (Object.keys(iconUpdates).length > 0) {
+            setFoodIcons(prevIcons => ({ ...prevIcons, ...iconUpdates }));
+            console.log(`FoodListScreen: Updated icons state for ${Object.keys(iconUpdates).length} food names.`);
+        }
 
-    // Load data when the screen comes into focus
+    }, [foodIcons]); // Depend on foodIcons to know fetch status
+
     useFocusEffect(
         useCallback(() => {
             loadFoodData();
             return () => {
                  console.log("FoodListScreen: Unfocused.");
+                 setSearch(""); // Clear search on blur
+                 setIsOverlayVisible(false); // Ensure modal is closed
             };
         }, [loadFoodData])
     );
 
     // --- Validation ---
-    const validateFood = (food: Omit<Food, "id">): { [key: string]: string } | null => {
+    const validateFood = (food: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
+        // Check if name is provided and not just whitespace
         if (!isNotEmpty(food.name)) newErrors.name = "Name is required";
-        if (isNaN(food.calories) || food.calories < 0) newErrors.calories = "Invalid number (>= 0)";
-        if (isNaN(food.protein) || food.protein < 0) newErrors.protein = "Invalid number (>= 0)";
-        if (isNaN(food.carbs) || food.carbs < 0) newErrors.carbs = "Invalid number (>= 0)";
-        if (isNaN(food.fat) || food.fat < 0) newErrors.fat = "Invalid number (>= 0)";
+        // Ensure macros are non-negative numbers
+        if (isNaN(food.calories) || food.calories < 0) newErrors.calories = "Must be a non-negative number";
+        if (isNaN(food.protein) || food.protein < 0) newErrors.protein = "Must be a non-negative number";
+        if (isNaN(food.carbs) || food.carbs < 0) newErrors.carbs = "Must be a non-negative number";
+        if (isNaN(food.fat) || food.fat < 0) newErrors.fat = "Must be a non-negative number";
         return Object.keys(newErrors).length === 0 ? null : newErrors;
     };
 
     // --- CRUD Operations ---
     const handleCreateFood = async () => {
-        const validationErrors = validateFood(newFood);
+        const trimmedFood = { ...newFood, name: newFood.name.trim() };
+        const validationErrors = validateFood(trimmedFood);
         if (validationErrors) {
             setErrors(validationErrors);
             Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' });
@@ -131,21 +127,20 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsSaving(true);
         try {
-            const foodToCreate = { ...newFood, name: newFood.name.trim() }; // Trim name before saving
-            console.log("FoodListScreen: Creating food:", foodToCreate);
-            const createdFood = await createFood(foodToCreate);
+            console.log("FoodListScreen: Creating food:", trimmedFood);
+            const createdFood = await createFood(trimmedFood);
             console.log("FoodListScreen: Food created successfully:", createdFood);
 
+            // Add and re-sort
             const updatedFoods = [...foods, createdFood].sort((a, b) => a.name.localeCompare(b.name));
             setFoods(updatedFoods);
 
-             // Fetch icon for the newly created food using its name
-             const iconUrl = await getFoodIconUrl(createdFood.name);
-             setFoodIcons(prev => ({ ...prev, [createdFood.name]: iconUrl })); // Use name as key
+             // Fetch icon for the new food immediately
+             fetchIconsForFoods([createdFood]); // Fetch just for the new one
 
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Reset form
             setIsOverlayVisible(false);
-            onFoodChange?.();
+            onFoodChange?.(); // Notify parent/navigator if needed
             Toast.show({ type: 'success', text1: `${createdFood.name} added`, position: 'bottom' });
 
         } catch (error: any) {
@@ -158,8 +153,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const handleUpdateFood = async () => {
         if (!editFood) return;
-        const foodToUpdate = { ...editFood, name: editFood.name.trim() }; // Trim name
-        const validationErrors = validateFood(foodToUpdate);
+        const trimmedFood = { ...editFood, name: editFood.name.trim() };
+        const validationErrors = validateFood(trimmedFood);
         if (validationErrors) {
             setErrors(validationErrors);
             Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' });
@@ -168,24 +163,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsSaving(true);
         try {
-            console.log("FoodListScreen: Updating food:", foodToUpdate);
-            const updated = await updateFood(foodToUpdate); // Use trimmed version
+            console.log("FoodListScreen: Updating food:", trimmedFood);
+            const updated = await updateFood(trimmedFood);
             console.log("FoodListScreen: Food updated successfully:", updated);
 
-            const originalFood = foods.find(f => f.id === updated.id); // Find original for comparison
+            const originalFood = foods.find(f => f.id === updated.id); // Find original for name comparison
             const updatedFoods = foods.map((f) => (f.id === updated.id ? updated : f))
-                                      .sort((a, b) => a.name.localeCompare(b.name));
+                                      .sort((a, b) => a.name.localeCompare(b.name)); // Update and re-sort
             setFoods(updatedFoods);
 
-             // Check if the name changed and if the icon needs refetching
+             // If name changed, trigger icon refetch for the new name
             if (originalFood && originalFood.name.toLowerCase() !== updated.name.toLowerCase()) {
                  console.log(`Food name changed from "${originalFood.name}" to "${updated.name}", refetching icon.`);
-                 const iconUrl = await getFoodIconUrl(updated.name);
-                 setFoodIcons(prev => ({ ...prev, [updated.name]: iconUrl }));
+                 fetchIconsForFoods([updated]);
                  // Optionally remove old icon state if name was key: delete newIcons[originalFood.name];
             }
 
-            setEditFood(null);
+            setEditFood(null); // Clear edit state
             setIsOverlayVisible(false);
             onFoodChange?.();
             Toast.show({ type: 'success', text1: `${updated.name} updated`, position: 'bottom' });
@@ -201,14 +195,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         const foodToDelete = foods.find((f) => f.id === foodId);
         if (!foodToDelete) return;
 
-        setFoods(foods.filter((f) => f.id !== foodId)); // Optimistic UI update
+        // Optimistic UI update: Remove immediately
+        setFoods(foods.filter((f) => f.id !== foodId));
 
         try {
             console.log("FoodListScreen: Deleting food:", foodToDelete.name, foodId);
             await deleteFood(foodId);
             console.log("FoodListScreen: Food deleted successfully from storage.");
-            // Toast is handled by FoodItem callback
+            // Success toast is handled by the callback from FoodItem
             onFoodChange?.();
+
+            // Remove icon from cache if needed (using name as key)
+            setFoodIcons(prev => {
+                const newIcons = {...prev};
+                delete newIcons[foodToDelete.name];
+                return newIcons;
+            });
+
         } catch (error) {
             console.error("FoodListScreen: Error deleting food:", error);
             // Revert UI change on error
@@ -217,48 +220,49 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     };
 
-    const handleUndoDeleteFood = async (food: Food) => {
-         console.log("FoodListScreen: Undoing delete for:", food.name, food.id);
+    // Handles the UI restoration after optimistic delete
+    const handleUndoDeleteFood = useCallback((food: Food) => {
+        console.log("FoodListScreen: Undoing delete for:", food.name, food.id);
+        // Add back and re-sort
         const restoredFoods = [...foods, food].sort((a, b) => a.name.localeCompare(b.name));
         setFoods(restoredFoods);
-        Toast.hide();
-
-        // --- Important Note on Undo ---
-        // This UNDO is primarily client-side for the UI.
-        // A robust backend implementation would ideally require an "undelete" endpoint
-        // or use soft deletes. Re-creating the food via `createFood` would generate
-        // a NEW ID, which is usually not the desired behavior for an undo.
-        // We are skipping backend interaction here, assuming the user wants the UI restored.
-        console.log("FoodListScreen: Food restored in UI state. Backend state not modified by undo.");
+        Toast.hide(); // Hide the undo toast
+        // Note: This doesn't re-add to backend, assumes delete failed or user changed mind before persistence
         onFoodChange?.();
         Toast.show({ type: 'success', text1: `${food.name} restored`, position: 'bottom', visibilityTime: 2000 });
-    };
+
+        // Re-fetch icon if it was removed from cache
+        if (foodIcons[food.name] === undefined) {
+            fetchIconsForFoods([food]);
+        }
+    }, [foods, onFoodChange, foodIcons, fetchIconsForFoods]); // Add dependencies
 
     // --- Modal and Input Handling ---
     const toggleOverlay = (foodToEdit?: Food) => {
-        if (isSaving) return; // Prevent toggle while saving
+        if (isSaving) return;
         if (foodToEdit) {
             console.log("FoodListScreen: Opening modal to edit:", foodToEdit.name);
-            setEditFood(foodToEdit);
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+            setEditFood({ ...foodToEdit }); // Set as edit target
+            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Clear add form
         } else {
              console.log("FoodListScreen: Opening modal to add new food.");
-            setEditFood(null);
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+            setEditFood(null); // Clear edit target
+            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Clear add form
         }
-        setErrors({});
+        setErrors({}); // Clear errors on modal open
         setIsOverlayVisible(!isOverlayVisible);
     };
 
     const updateSearch = (search: string) => setSearch(search);
 
+    // Filter foods based on search query
     const filteredFoods = useMemo(() => {
         return foods.filter((food) =>
             food.name.toLowerCase().includes(search.toLowerCase())
         );
     }, [foods, search]);
 
-    // Using useCallback for stability if passed down, though AddFoodModal might not need it
+    // Handle input changes in the Add/Edit modal
     const handleInputChange = useCallback((
         key: keyof Omit<Food, "id">,
         value: string,
@@ -267,28 +271,31 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
 
+        // Clean numeric inputs, allow empty string or just "." temporarily
         if (numericKeys.includes(key)) {
             if (value === "" || value === ".") {
-                 processedValue = value;
+                 processedValue = value; // Keep as is for intermediate state
             } else {
+                // Allow only numbers and one decimal point
                 const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                // Allow empty string result from cleaning, treat as 0 later
+                // Only update if it's a valid partial number or empty
                 if (cleaned === "" || !isNaN(parseFloat(cleaned))) {
                      processedValue = cleaned;
                 } else {
-                    return; // Prevent update if cleaning results in invalid state like ".."
+                    return; // Do not update state if cleaning results in invalid format
                 }
             }
         }
 
+        // Determine the final value to store (0 for empty/invalid numerics, string for name)
         const updateState = (prevState: any) => {
              let finalValue: string | number;
              if (numericKeys.includes(key)) {
-                  // Store 0 in state if input is empty or just "."
+                  // Store number 0 if empty or just ".", otherwise parse the valid numeric string
                   if (processedValue === "" || processedValue === ".") {
                       finalValue = 0;
                   } else {
-                      finalValue = parseFloat(processedValue as string); // Convert valid string to number
+                      finalValue = parseFloat(processedValue as string);
                   }
              } else {
                 finalValue = processedValue; // Use the string value for name
@@ -296,19 +303,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
              return { ...prevState, [key]: finalValue };
         };
 
+        // Update the correct state object (editFood or newFood)
         if (isEdit) {
-            // Update the editFood state which holds the actual numeric values
             setEditFood(updateState);
         } else {
-            // Update the newFood state similarly
             setNewFood(updateState);
         }
-    }, []); // No dependencies needed as it operates on arguments
+    }, []);
 
     // --- Render ---
     if (isLoading) {
         return (
-            <SafeAreaView style={styles.centered}>
+            <SafeAreaView style={styles.centeredLoader}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={styles.loadingText}>Loading Foods...</Text>
             </SafeAreaView>
@@ -318,53 +324,61 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <SearchBar
-                placeholder="Search Foods..."
+                placeholder="Search Your Food Library..." // More descriptive placeholder
                 onChangeText={updateSearch}
                 value={search}
                 platform={Platform.OS === "ios" ? "ios" : "android"}
                 containerStyle={styles.searchBarContainer}
                 inputContainerStyle={styles.searchBarInputContainer}
                 inputStyle={styles.searchInputStyle}
-                onClear={() => setSearch('')}
-                showCancel={Platform.OS === 'ios'}
+                onClear={() => setSearch('')} // Clear button action
+                showCancel={Platform.OS === 'ios'} // iOS convention
             />
             <FlatList
                 ref={flatListRef}
                 data={filteredFoods}
-                keyExtractor={(item) => item.id} // Key remains the food ID
+                keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <FoodItem
                         food={item}
                         onEdit={toggleOverlay}
-                        onDelete={handleDeleteFood}
-                        onUndoDelete={handleUndoDeleteFood}
+                        onDelete={handleDeleteFood} // Pass delete handler
+                        onUndoDelete={handleUndoDeleteFood} // Pass undo handler
                         foodIconUrl={foodIcons[item.name]} // Pass icon state using food NAME
                     />
                 )}
                 ListEmptyComponent={
-                    <View style={styles.centered}>
-                        <RNEIcon name="fast-food-outline" type="ionicon" size={50} color={theme.colors.grey3} />
-                        <Text style={styles.emptyText}>
-                            {search ? `No foods found matching "${search}"` : "No foods added yet."}
+                    <View style={styles.emptyListContainer}>
+                        <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
+                        <Text style={styles.emptyListText}>
+                            {search ? `No foods found matching "${search}"` : "Your food library is empty."}
                         </Text>
-                        {!search && <Text style={styles.emptySubText}>Tap '+' to add your first food!</Text>}
+                        {!search && <Text style={styles.emptyListSubText}>Tap '+' to add your first food item!</Text>}
                     </View>
                 }
-                contentContainerStyle={filteredFoods.length === 0 ? styles.listContainerEmpty : styles.listContainer}
-                initialNumToRender={15} // Increased initial render
+                contentContainerStyle={filteredFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
+                initialNumToRender={15}
                 maxToRenderPerBatch={10}
                 windowSize={21}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="handled" // Important for search bar interaction
             />
 
+            {/* Saving Indicator Overlay (Optional, more prominent) */}
+            {/* {isSaving && (
+                <View style={styles.savingOverlay}>
+                    <ActivityIndicator size="large" color={theme.colors.white} />
+                    <Text style={styles.savingOverlayText}>Saving...</Text>
+                </View>
+            )} */}
+
             <FAB
-                icon={{ name: "add", color: "white" }}
+                icon={<RNEIcon name="add" color={theme.colors.white} />} // Use white icon for contrast
                 color={theme.colors.primary}
-                onPress={() => !isSaving && toggleOverlay()}
+                onPress={() => !isSaving && toggleOverlay()} // Prevent opening modal while saving
                 placement="right"
                 size="large"
                 style={styles.fab}
-                disabled={isSaving}
+                disabled={isSaving} // Disable FAB during save
             />
 
             <AddFoodModal
@@ -378,73 +392,91 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 handleUpdateFood={handleUpdateFood}
                 validateFood={validateFood}
                 setErrors={setErrors}
-                // Consider passing isSaving to disable modal inputs/buttons
             />
         </SafeAreaView>
     );
 };
 
-// Use makeStyles for theme-aware styles (keep existing styles from previous correction)
+// --- Styles ---
 const useStyles = makeStyles((theme) => ({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
     },
-    centered: {
+    centeredLoader: { // Centered style for initial loading
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-        marginTop: 50, // Add some top margin
+        backgroundColor: theme.colors.background, // Ensure background matches
     },
     loadingText: {
-        marginTop: 10,
+        marginTop: 15,
         color: theme.colors.grey1,
         fontSize: 16,
     },
-    emptyText: {
-        marginTop: 15,
-        fontSize: 18,
+    emptyListContainer: { // Consistent Empty State Style
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 30,
+        marginTop: 50,
+    },
+    emptyListText: {
+        fontSize: 17, // Slightly larger text
         color: theme.colors.grey2,
         textAlign: 'center',
+        marginTop: 15,
     },
-     emptySubText: {
-        marginTop: 8,
+    emptyListSubText: {
         fontSize: 14,
         color: theme.colors.grey3,
         textAlign: 'center',
+        marginTop: 8,
     },
-    searchBarContainer: {
+    searchBarContainer: { // Improved Search Bar Style
         backgroundColor: theme.colors.background,
-        borderBottomColor: theme.colors.divider,
+        borderBottomColor: theme.colors.divider, // Use divider color
         borderTopColor: theme.colors.background, // Match background
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderTopWidth: 0,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        marginBottom: 0,
+        paddingHorizontal: 10, // Adjust padding
+        paddingVertical: 8,
+        marginBottom: 0, // Remove margin if list items handle spacing
     },
-    searchBarInputContainer: {
-        backgroundColor: theme.colors.searchBg || theme.colors.grey5,
-        borderRadius: 10,
+    searchBarInputContainer: { // Style for the input field itself
+        backgroundColor: theme.colors.searchBg || theme.colors.grey5, // Use specific theme color or fallback
         height: 40,
+        borderRadius: 20, // Make it round
     },
     searchInputStyle: {
         color: theme.colors.text,
         fontSize: 15,
     },
-    listContainer: {
-        paddingBottom: 80, // Ensure space for FAB
+    listContentContainer: { // Add padding at the bottom for FAB
+        paddingBottom: 80,
     },
-    listContainerEmpty: {
-        flexGrow: 1, // Ensure empty component takes full height if needed
+    listContentContainerEmpty: { // Ensure empty component can take up space
+        flexGrow: 1,
+        justifyContent: 'center',
     },
-    fab: {
+    fab: { // Standard FAB styling
         position: 'absolute',
         margin: 16,
-        right: 5, // Adjusted position slightly
-        bottom: 5, // Adjusted position slightly
+        right: 10,
+        bottom: 10,
     },
+    // Optional Saving Overlay Styles
+    // savingOverlay: {
+    //     ...StyleSheet.absoluteFillObject, // Cover the whole screen
+    //     backgroundColor: 'rgba(0, 0, 0, 0.4)', // Semi-transparent background
+    //     justifyContent: 'center',
+    //     alignItems: 'center',
+    //     zIndex: 10, // Ensure it's on top
+    // },
+    // savingOverlayText: {
+    //     color: theme.colors.white,
+    //     marginTop: 10,
+    //     fontSize: 16,
+    // },
 }));
 
 export default FoodListScreen;

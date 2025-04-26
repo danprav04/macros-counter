@@ -1,9 +1,4 @@
 // src/screens/DailyEntryScreen.tsx
-// This version aims to restore the visual appearance and interaction patterns
-// of the provided "before" code, while retaining the underlying functional
-// improvements (like improved state management, backend integration hooks,
-// multi-add support) from the "current" code.
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -14,11 +9,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Keyboard, // Import Keyboard
 } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
-import { getFoods } from "../services/foodService"; // Still use foodService
+import { getFoods } from "../services/foodService";
 import {
   saveDailyEntries,
   loadDailyEntries,
@@ -27,7 +21,7 @@ import {
 import {
   formatDateReadable,
   getTodayDateString,
-  formatDateISO, // Use ISO format internally
+  formatDateISO,
 } from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
 import DailyProgress from "../components/DailyProgress";
@@ -39,19 +33,17 @@ import {
   makeStyles,
   useTheme,
   Divider,
-  Input,
+  Icon as RNEIcon, // Renamed import
 } from "@rneui/themed";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker"; // Import event type
-import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns"; // Import isValid
-import { Icon } from "@rneui/base";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
-import "react-native-get-random-values"; // Ensure this is imported before uuid
+import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Use the refactored icon util
+import { getFoodIconUrl } from "../utils/iconUtils";
 
-// Interface for daily goals structure (remains the same)
 interface DailyGoals {
   calories: number;
   protein: number;
@@ -60,30 +52,26 @@ interface DailyGoals {
 }
 
 const DailyEntryScreen: React.FC = () => {
-  // State variables - Combining states from both versions where necessary
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString()); // YYYY-MM-DD format
-  const [foods, setFoods] = useState<Food[]>([]); // All available foods
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null); // For modal
-  const [grams, setGrams] = useState(""); // For modal input
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  const [foods, setFoods] = useState<Food[]>([]);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
-    calories: 2000, protein: 150, carbs: 200, fat: 70, // Example goals
+    calories: 2000, protein: 150, carbs: 200, fat: 70,
   });
-  const [editingIndex, setEditingIndex] = useState<number | null>(null); // *Inline* edit ORIGINAL index
-  const [tempGrams, setTempGrams] = useState(""); // *Inline* edit temporary grams
-  const [search, setSearch] = useState(""); // Modal search term
-  // *** Reverted State Variable: Use 'editIndex' for MODAL edit index as per "before" code ***
-  const [editIndex, setEditIndex] = useState<number | null>(null); // *Modal* edit REVERSED index
-  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({}); // Cache: name -> url | null | undefined
-  const [isLoadingData, setIsLoadingData] = useState(true); // Initial data load state
-  const [isSaving, setIsSaving] = useState(false); // Saving state
+  const [search, setSearch] = useState("");
+  const [editIndex, setEditIndex] = useState<number | null>(null); // Modal edit index (reversed)
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { theme } = useTheme();
-  const styles = useStyles(); // Use the styles from the "before" code (pasted below)
+  const styles = useStyles();
 
-  // --- Data Loading and Icon Fetching (Uses improved logic) ---
+  // --- Data Loading and Icon Fetching ---
   const loadData = useCallback(async () => {
     console.log(`DailyEntryScreen: Loading data for date: ${selectedDate}`);
     setIsLoadingData(true);
@@ -113,33 +101,40 @@ const DailyEntryScreen: React.FC = () => {
     } finally {
       setIsLoadingData(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate]); // Dependency only on selectedDate
 
-  const triggerIconFetches = useCallback((allFoods: Food[], allEntries: DailyEntry[], currentDate: string) => {
+   // Fetch icons based on currently visible items and all available foods
+   const triggerIconFetches = useCallback((allFoods: Food[], allEntries: DailyEntry[], currentDate: string) => {
     const relevantFoodNames = new Set<string>();
-    allFoods.forEach((f) => relevantFoodNames.add(f.name));
+
+    // Add names from the current day's entries
     const currentOriginalEntry = allEntries.find((entry) => entry.date === currentDate);
     if (currentOriginalEntry) {
-      currentOriginalEntry.items.forEach((item) => {
-        if (item.food?.name) {
-          relevantFoodNames.add(item.food.name);
-        }
-      });
+        currentOriginalEntry.items.forEach((item) => {
+            if (item.food?.name) {
+                relevantFoodNames.add(item.food.name);
+            }
+        });
     }
+
+    // Add names from all available foods (for the modal) - optional optimization: only fetch if modal opens?
+    // allFoods.forEach((f) => relevantFoodNames.add(f.name));
+
     console.log(`DailyEntryScreen: Triggering icon fetches for ${relevantFoodNames.size} unique food names.`);
     relevantFoodNames.forEach((foodName) => {
-      if (foodIcons[foodName] === undefined) {
+      if (foodIcons[foodName] === undefined) { // Only fetch if status is unknown
+        setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: undefined })); // Mark as loading
         getFoodIconUrl(foodName)
           .then((iconUrl) => {
             setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: iconUrl }));
           })
           .catch((error) => {
             console.warn(`Icon fetch failed for ${foodName} in background:`, error);
-            setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null }));
+            setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null })); // Mark as failed/no icon
           });
       }
     });
-  }, [foodIcons]);
+  }, [foodIcons]); // Depend on foodIcons to know which ones are already fetched/fetching
 
   useFocusEffect(
     useCallback(() => {
@@ -148,16 +143,15 @@ const DailyEntryScreen: React.FC = () => {
         console.log("DailyEntryScreen: Unfocused.");
         setSearch("");
         setIsOverlayVisible(false);
-        setEditingIndex(null); // Clear inline edit
-        setTempGrams("");
-        setEditIndex(null); // Clear modal edit
+        setEditIndex(null);
       };
-    }, [loadData])
+    }, [loadData]) // Depend on loadData callback
   );
 
-  // --- List and Index Management (Uses improved logic) ---
+  // --- List and Index Management ---
   const currentEntryItems = useMemo(() => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
+    // Display most recent first
     return entry ? [...entry.items].reverse() : [];
   }, [dailyEntries, selectedDate]);
 
@@ -170,81 +164,27 @@ const DailyEntryScreen: React.FC = () => {
     return entry.items.length - 1 - reversedIndex;
   }, [dailyEntries, selectedDate]);
 
-  // --- State Update Helper (Uses improved logic) ---
+  // --- State Update Helper ---
   const updateAndSaveEntries = useCallback(async (updatedEntries: DailyEntry[]) => {
     setIsSaving(true);
     const entryForSelectedDate = updatedEntries.find((e) => e.date === selectedDate);
     console.log(`DailyEntryScreen: updateAndSaveEntries called. Saving ${updatedEntries.length} total entries.`);
     console.log(`Entry for ${selectedDate} contains ${entryForSelectedDate?.items?.length ?? 0} items.`);
-    setDailyEntries(updatedEntries);
+    setDailyEntries(updatedEntries); // Update UI state immediately
     try {
       await saveDailyEntries(updatedEntries);
       console.log("DailyEntryScreen: Successfully saved updated entries to storage.");
     } catch (error) {
       console.error("DailyEntryScreen: Failed to save updated entries to storage:", error);
       Alert.alert("Save Error", "Could not save changes. Please try again.");
+      // Consider reverting state here if save fails critically
+      // loadData(); // Or reload data to ensure consistency
     } finally {
       setIsSaving(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate]); // Added selectedDate dependency
 
-  // --- Inline Editing Handlers (Logic from 'before', adapted for state) ---
-  const handleStartEditing = (reversedIndex: number) => {
-     if (isSaving) return;
-    const originalIndex = getOriginalIndex(reversedIndex);
-    if (originalIndex === -1) return;
-
-    const currentEntry = dailyEntries.find((e) => e.date === selectedDate);
-    if (!currentEntry || !currentEntry.items[originalIndex]) return;
-
-    console.log(`Starting inline edit for item at original index: ${originalIndex}`);
-    setEditingIndex(originalIndex); // Store ORIGINAL index for inline
-    setTempGrams(String(currentEntry.items[originalIndex].grams));
-    setEditIndex(null); // Ensure modal edit state is cleared
-    Keyboard.dismiss(); // Dismiss if opening edit overlay
-  };
-
-  const handleSaveInlineEdit = useCallback(async () => {
-    if (editingIndex === null || isSaving) return;
-    Keyboard.dismiss();
-
-    const trimmedGrams = tempGrams.trim();
-    if (!isValidNumberInput(trimmedGrams) || parseFloat(trimmedGrams) <= 0) {
-      Alert.alert("Invalid Input", "Please enter a valid, positive number for grams.");
-      return;
-    }
-    const newGramsValue = parseFloat(trimmedGrams);
-    console.log(`Saving inline edit for index ${editingIndex} with grams: ${newGramsValue}`);
-
-    const updatedEntries = dailyEntries.map((entry) => {
-      if (entry.date === selectedDate) {
-        const items = entry.items ?? [];
-        const updatedItems = items.map((item, index) => {
-          if (index === editingIndex) {
-            return { ...item, grams: newGramsValue };
-          }
-          return item;
-        });
-        return { ...entry, items: updatedItems };
-      }
-      return entry;
-    });
-
-    await updateAndSaveEntries(updatedEntries);
-    setEditingIndex(null);
-    setTempGrams("");
-
-  }, [editingIndex, tempGrams, dailyEntries, selectedDate, updateAndSaveEntries, isSaving]);
-
-  const handleCancelInlineEdit = () => {
-    console.log(`Canceling inline edit for index ${editingIndex}`);
-    setEditingIndex(null);
-    setTempGrams("");
-    Keyboard.dismiss();
-  };
-
-  // --- Add/Update/Remove Entry Handlers (Using combined logic) ---
-  // Handles single add/update from MODAL
+  // --- Add/Update/Remove Entry Handlers ---
   const handleSingleEntryAction = useCallback(async () => {
     if (isSaving) return;
     if (!selectedFood || !selectedFood.id) {
@@ -263,7 +203,6 @@ const DailyEntryScreen: React.FC = () => {
       grams: numericGrams,
     };
 
-    // *** Use 'editIndex' for modal edit mode check (reverted variable name) ***
     const isEditMode = editIndex !== null;
     console.log(`handleSingleEntryAction: Mode=${isEditMode ? 'Edit' : 'Add'}, Food=${selectedFood.name}, Grams=${numericGrams}, ReversedIndex=${editIndex}`);
 
@@ -274,8 +213,6 @@ const DailyEntryScreen: React.FC = () => {
       const existingEntry = dailyEntries[existingEntryIndex];
       let updatedItems;
       if (isEditMode) {
-        // --- Modal Edit Mode ---
-        // *** Use 'editIndex' (reverted variable name) ***
         const originalEditIndex = getOriginalIndex(editIndex!);
         if (originalEditIndex === -1) {
           console.error("DailyEntryScreen: Error updating entry via modal - Could not find original index.");
@@ -290,7 +227,8 @@ const DailyEntryScreen: React.FC = () => {
         );
       } else {
         console.log("Adding new single item to existing date entry.");
-        updatedItems = [...existingEntry.items, entryItem];
+        // Add to the beginning of the original array before reversing
+        updatedItems = [entryItem, ...(existingEntry.items ?? [])];
       }
       const updatedEntry = { ...existingEntry, items: updatedItems };
       updatedEntries = dailyEntries.map((entry, index) =>
@@ -307,28 +245,33 @@ const DailyEntryScreen: React.FC = () => {
       console.log("Creating new date entry with the first item.");
       const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
       updatedEntries = [...dailyEntries, newDailyEntry];
-      updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+      updatedEntries.sort((a, b) => a.date.localeCompare(b.date)); // Keep entries sorted by date
     }
 
     await updateAndSaveEntries(updatedEntries);
 
+    // Trigger icon fetch if needed for the added/edited food
     if (foodIcons[selectedFood.name] === undefined) {
       triggerIconFetches([selectedFood], [], selectedDate);
     }
 
     setSelectedFood(null);
     setGrams("");
-    // *** Use 'editIndex' (reverted variable name) ***
-    setEditIndex(null); // Reset modal edit index
+    setEditIndex(null);
     setIsOverlayVisible(false);
     setSearch("");
+    Toast.show({
+        type: "success",
+        text1: `Entry ${isEditMode ? 'updated' : 'added'}`,
+        position: "bottom",
+        visibilityTime: 2000,
+      });
 
   }, [
     selectedFood, grams, editIndex, dailyEntries, selectedDate, isSaving,
     getOriginalIndex, updateAndSaveEntries, foodIcons, triggerIconFetches
   ]);
 
-  // Handles multi-add from MODAL (using improved logic)
   const handleAddMultipleEntries = useCallback(
     async (entriesToAdd: { food: Food; grams: number }[]) => {
       if (isSaving) return;
@@ -350,7 +293,8 @@ const DailyEntryScreen: React.FC = () => {
         if (existingEntryIndex > -1) {
           console.log(`DailyEntryScreen: Appending ${newItems.length} items to existing entry for ${selectedDate}.`);
           const existingEntry = dailyEntries[existingEntryIndex];
-          const updatedItems = [...(existingEntry.items ?? []), ...newItems];
+          // Add new items to the beginning of the original array
+          const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
           const updatedEntry = { ...existingEntry, items: updatedItems };
           updatedEntries = dailyEntries.map((entry, index) =>
             index === existingEntryIndex ? updatedEntry : entry
@@ -371,7 +315,6 @@ const DailyEntryScreen: React.FC = () => {
         Toast.show({
           type: "success",
           text1: `${entriesToAdd.length} item(s) added`,
-          // *** Use readable date format from 'before' logic ***
           text2: `to ${formatDateReadable(parseISO(selectedDate))}`,
           position: "bottom",
           visibilityTime: 3000,
@@ -380,7 +323,6 @@ const DailyEntryScreen: React.FC = () => {
         setIsOverlayVisible(false);
         setSelectedFood(null);
         setGrams("");
-        // *** Use 'editIndex' (reverted variable name) ***
         setEditIndex(null);
         setSearch("");
 
@@ -390,23 +332,20 @@ const DailyEntryScreen: React.FC = () => {
           "Quick Add Error",
           `Failed to add items. ${error instanceof Error ? error.message : "Please try again."}`
         );
-        setIsOverlayVisible(false);
+        setIsOverlayVisible(false); // Ensure modal closes on error
       }
     },
-    [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, triggerIconFetches]
+    [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, triggerIconFetches] // Added triggerIconFetches
   );
 
   const handleSelectFood = (item: Food | null) => {
      console.log("Modal selecting food:", item?.name ?? 'null');
     setSelectedFood(item);
-     // If selecting a food for *adding* (not editing), maybe clear grams?
-     // *** Use 'editIndex' (reverted variable name) ***
-     if (item && editIndex === null) {
-          setGrams(''); // Clear grams when selecting a new food for adding
+     if (item && editIndex === null) { // Clear grams only when selecting for ADD
+          setGrams('');
      }
   };
 
-  // Handles remove from swipe (using combined logic)
   const handleRemoveEntry = useCallback(async (reversedIndex: number) => {
     if (isSaving) return;
     const originalIndex = getOriginalIndex(reversedIndex);
@@ -443,14 +382,13 @@ const DailyEntryScreen: React.FC = () => {
       text1: `${itemToRemove.food.name} removed`,
       text2: "Tap here to undo",
       position: "bottom",
-      bottomOffset: 80,
+      bottomOffset: 80, // Adjust if needed based on FAB/navbar
       visibilityTime: 4000,
       onPress: () => handleUndoRemoveEntry(itemToRemove, selectedDate, originalIndex),
     });
 
   }, [dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries]);
 
-  // Handles undo remove from toast (using combined logic)
   const handleUndoRemoveEntry = useCallback(async (
     itemToRestore: DailyEntryItem,
     entryDate: string,
@@ -465,6 +403,7 @@ const DailyEntryScreen: React.FC = () => {
     if (existingEntryIndex > -1) {
         const entryToUpdate = dailyEntries[existingEntryIndex];
         const updatedItems = [...entryToUpdate.items];
+        // Insert back at the original position
         updatedItems.splice(originalIndex, 0, itemToRestore);
         const restoredEntry = { ...entryToUpdate, items: updatedItems };
         updatedEntries = dailyEntries.map((entry, index) =>
@@ -472,14 +411,15 @@ const DailyEntryScreen: React.FC = () => {
         );
         console.log(`Item inserted back into existing entry at index ${originalIndex}.`);
     } else {
+        // If the whole entry was removed, re-create it
         console.log(`Creating new entry for date ${entryDate} as it was removed.`);
         const newEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
         updatedEntries = [...dailyEntries, newEntry];
-        updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+        updatedEntries.sort((a, b) => a.date.localeCompare(b.date)); // Keep sorted
     }
 
     await updateAndSaveEntries(updatedEntries);
-    Toast.hide();
+    Toast.hide(); // Hide the undo toast
     Toast.show({
       type: "success",
       text1: "Entry restored!",
@@ -490,7 +430,7 @@ const DailyEntryScreen: React.FC = () => {
 
   const updateSearch = (search: string) => setSearch(search);
 
-  // --- Modal Toggle Logic (Adapted from 'before' to use 'editIndex') ---
+  // --- Modal Toggle Logic ---
   const toggleOverlay = useCallback((
     itemToEdit: DailyEntryItem | null = null,
     reversedIndex: number | null = null
@@ -500,41 +440,34 @@ const DailyEntryScreen: React.FC = () => {
         return;
     }
 
-    // *** Reset state based on 'before' logic ***
+    // Clear general modal state first
     setSelectedFood(null);
     setGrams("");
-    setEditIndex(null); // Clear modal edit index by default
+    setEditIndex(null);
     setSearch("");
-    setEditingIndex(null); // Clear inline edit state
-    setTempGrams("");
 
     if (itemToEdit && reversedIndex !== null) {
       // --- Setup for MODAL EDIT ---
       console.log(`Opening modal to edit item '${itemToEdit.food.name}' at reversed index ${reversedIndex}`);
       setSelectedFood(itemToEdit.food);
-      setGrams(String(itemToEdit.grams)); // Set initial grams for edit
-      // *** Use 'editIndex' (reverted variable name) ***
+      setGrams(String(itemToEdit.grams));
       setEditIndex(reversedIndex); // Store REVERSED index for modal context
-      setIsOverlayVisible(true); // Show modal
+      setIsOverlayVisible(true);
     } else {
       // --- Setup for ADD or Closing ---
-      if (isOverlayVisible) {
-         console.log("Closing modal.");
-      } else {
-           console.log("Opening modal for Add.");
-      }
-      setIsOverlayVisible((current) => !current); // Toggle visibility
+      setIsOverlayVisible((current) => !current);
     }
-  }, [isSaving, isOverlayVisible]); // Added isOverlayVisible dependency
+  }, [isSaving]); // Added isSaving dependency
 
+  // Explicit handler for swipe-edit action
   const handleEditEntryViaModal = (item: DailyEntryItem, reversedIndex: number) => {
-    toggleOverlay(item, reversedIndex); // Call toggleOverlay with edit context
+    toggleOverlay(item, reversedIndex);
   };
 
-  // --- Date Navigation Handlers (Using combined logic) ---
+  // --- Date Navigation Handlers ---
   const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDateValue?: Date) => {
     const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
-    setShowDatePicker(Platform.OS === "ios");
+    setShowDatePicker(Platform.OS === "ios"); // Keep iOS picker open until done
 
     if (!isAndroidDismiss && event.type === "set" && selectedDateValue) {
         if (isValid(selectedDateValue)) {
@@ -542,18 +475,17 @@ const DailyEntryScreen: React.FC = () => {
             if (formattedDate !== selectedDate) {
                  console.log(`Date changed via picker to: ${formattedDate}`);
                  setSelectedDate(formattedDate);
-                 setEditingIndex(null); // Cancel inline edit
-                 setTempGrams("");
-                 setEditIndex(null); // Cancel modal edit
+                 setEditIndex(null); // Cancel modal edit if date changes
             }
         } else {
             console.warn("Date picker returned invalid date:", selectedDateValue);
             Alert.alert("Invalid Date", "The selected date is not valid.");
         }
-    } else if (Platform.OS === "android") {
-         setShowDatePicker(false);
     }
-  }, [selectedDate]);
+     if (Platform.OS === "android") { // Always close Android picker after action/dismiss
+         setShowDatePicker(false);
+     }
+  }, [selectedDate]); // Depend only on selectedDate
 
   const handlePreviousDay = useCallback(() => {
     try {
@@ -566,9 +498,7 @@ const DailyEntryScreen: React.FC = () => {
         const newDateString = formatISO(newDate, { representation: "date" });
         console.log(`Navigating to previous day: ${newDateString}`);
         setSelectedDate(newDateString);
-        setEditingIndex(null); // Cancel inline edit
-        setTempGrams("");
-        setEditIndex(null); // Cancel modal edit
+        setEditIndex(null);
     } catch (e) {
       console.error("Error calculating previous day:", selectedDate, e);
     }
@@ -585,21 +515,20 @@ const DailyEntryScreen: React.FC = () => {
          const newDateString = formatISO(newDate, { representation: "date" });
         console.log(`Navigating to next day: ${newDateString}`);
         setSelectedDate(newDateString);
-        setEditingIndex(null); // Cancel inline edit
-        setTempGrams("");
-        setEditIndex(null); // Cancel modal edit
+        setEditIndex(null);
     } catch (e) {
       console.error("Error calculating next day:", selectedDate, e);
     }
   }, [selectedDate]);
 
-  // --- Totals Calculation (Using improved logic) ---
+  // --- Totals Calculation ---
   const calculateTotals = useMemo(() => {
     const currentOriginalEntry = dailyEntries.find((entry) => entry.date === selectedDate);
     let totals = { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 };
 
     if (currentOriginalEntry) {
       currentOriginalEntry.items.forEach((item) => {
+        // Check for valid food object and numeric macros/grams
         if (item.food && typeof item.food.calories === 'number' &&
             typeof item.food.protein === 'number' &&
             typeof item.food.carbs === 'number' &&
@@ -615,6 +544,7 @@ const DailyEntryScreen: React.FC = () => {
         }
       });
     }
+    // Round totals for display
     return {
       totalCalories: Math.round(totals.totalCalories),
       totalProtein: Math.round(totals.totalProtein),
@@ -623,42 +553,48 @@ const DailyEntryScreen: React.FC = () => {
     };
   }, [dailyEntries, selectedDate]);
 
-   // --- Render Item Component (Memoized, adapted to 'before' look) ---
+   // --- Render Item Component (Memoized, Styled for consistency) ---
    const RenderItem = React.memo(({ item, reversedIndex }: { item: DailyEntryItem, reversedIndex: number }) => {
-        const [iconLoadError, setIconLoadError] = useState(false); // Local state for image errors
-        const originalIndex = getOriginalIndex(reversedIndex);
-        const isInlineEditing = editingIndex === originalIndex;
-        const iconStatus = foodIcons[item.food.name];
+        const [iconLoadError, setIconLoadError] = useState(false);
+        const iconStatus = foodIcons[item.food.name]; // Check status using name
         const isLoadingIcon = iconStatus === undefined;
 
         const handleImageError = useCallback(() => {
             console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
             setIconLoadError(true);
-            // *** Explicitly update state in cache to null if Image fails ***
+            // Explicitly update state in cache to null if Image fails
             if (foodIcons[item.food.name] !== null) {
                 setFoodIcons(prev => ({ ...prev, [item.food.name]: null }));
             }
-        }, [item.food.name, iconStatus]);
+        }, [item.food.name, iconStatus]); // Depend on iconStatus
 
+        // Reset error state if the URL changes (e.g., during refresh)
         useEffect(() => {
-            setIconLoadError(false); // Reset error if icon URL changes
+            setIconLoadError(false);
         }, [iconStatus]);
 
         const renderListItemIcon = () => {
-             // Uses styles from 'before' code
              if (isLoadingIcon) {
-                return <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />;
-             } else if (iconStatus && !iconLoadError) {
-                 return <Image source={{ uri: iconStatus }} style={styles.foodIcon} onError={handleImageError} />;
-             } else {
-                 // Use placeholder from 'before' code
+                 // Consistent Loading Placeholder
                  return (
-                     <Icon
-                         name="restaurant-outline"
-                         type="ionicon"
-                         color={theme.colors.grey3}
-                         containerStyle={styles.defaultIconContainer} // Use container style
-                     />
+                    <View style={[styles.foodIcon, styles.iconPlaceholder]}>
+                        <ActivityIndicator size="small" color={theme.colors.grey3} />
+                    </View>
+                 );
+             } else if (iconStatus && !iconLoadError) {
+                 // Display Image
+                 return <Image source={{ uri: iconStatus }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain" />;
+             } else {
+                 // Consistent Default/Error Placeholder
+                 return (
+                     <View style={[styles.foodIcon, styles.iconPlaceholder]}>
+                         <RNEIcon
+                             name="fast-food-outline" // Default icon consistent with FoodListScreen
+                             type="ionicon"
+                             size={20}
+                             color={theme.colors.grey3}
+                         />
+                     </View>
                  );
              }
         };
@@ -667,22 +603,21 @@ const DailyEntryScreen: React.FC = () => {
             <ListItem.Swipeable
                 bottomDivider
                 leftContent={(reset) => (
-                    // Style from 'before' code
                     <Button
                         title="Edit"
                         onPress={() => {
                             if (!isSaving) {
-                                handleEditEntryViaModal(item, reversedIndex);
+                                handleEditEntryViaModal(item, reversedIndex); // Use modal edit
                                 reset();
                             }
                         }}
-                        icon={{ name: "edit", color: "white" }}
-                        buttonStyle={{ minHeight: "100%", backgroundColor: theme.colors.warning }}
+                        icon={{ name: "edit", color: theme.colors.white }}
+                        buttonStyle={styles.swipeButtonEdit} // Consistent style
+                        titleStyle={styles.swipeButtonTitle}
                         disabled={isSaving}
                     />
                 )}
                 rightContent={(reset) => (
-                     // Style from 'before' code
                     <Button
                         title="Delete"
                         onPress={() => {
@@ -691,95 +626,52 @@ const DailyEntryScreen: React.FC = () => {
                                 reset();
                             }
                         }}
-                        icon={{ name: "delete", color: "white" }}
-                        buttonStyle={{ minHeight: "100%", backgroundColor: theme.colors.error }}
+                        icon={{ name: "delete", color: theme.colors.white }}
+                        buttonStyle={styles.swipeButtonDelete} // Consistent style
+                        titleStyle={styles.swipeButtonTitle}
                         disabled={isSaving}
                     />
                 )}
-                containerStyle={{ backgroundColor: theme.colors.background }}
+                containerStyle={styles.listItemContainer} // Use consistent list item style
             >
-                {/* Icon Rendering Logic */}
                 {renderListItemIcon()}
 
-                {/* Content: Title and Subtitle/Inline Edit (structure from 'before') */}
                 <ListItem.Content>
                     <ListItem.Title style={styles.listItemTitle}>
                         {item.food.name}
                     </ListItem.Title>
-                    {isInlineEditing ? (
-                        // --- Inline Edit View (structure/styles from 'before') ---
-                        <View style={styles.inlineEditContainer}>
-                            <Input
-                                value={tempGrams}
-                                onChangeText={setTempGrams}
-                                keyboardType="numeric"
-                                containerStyle={styles.inlineInputContainer}
-                                inputContainerStyle={styles.inlineInputInnerContainer}
-                                inputStyle={styles.inlineInput}
-                                autoFocus
-                                selectTextOnFocus
-                                maxLength={6}
-                                onSubmitEditing={handleSaveInlineEdit} // Save on submit
-                                onBlur={handleSaveInlineEdit} // Also save on blur
-                                disabled={isSaving}
-                            />
-                            <Text style={styles.inlineInputSuffix}>g</Text>
-                            <Button
-                                type="clear"
-                                onPress={handleSaveInlineEdit}
-                                icon={<Icon name="checkmark-circle" type="ionicon" color={theme.colors.success} size={24} />}
-                                containerStyle={styles.inlineButtonContainer}
-                                disabled={isSaving}
-                            />
-                            <Button
-                                type="clear"
-                                onPress={handleCancelInlineEdit}
-                                icon={<Icon name="close-circle" type="ionicon" color={theme.colors.error} size={24} />}
-                                containerStyle={styles.inlineButtonContainer}
-                                disabled={isSaving}
-                            />
-                        </View>
-                    ) : (
-                         // --- Display View (structure from 'before') ---
-                        <ListItem.Subtitle
-                            style={styles.listItemSubtitle}
-                            onPress={() => !isSaving && handleStartEditing(reversedIndex)} // Subtitle press triggers inline edit
-                            disabled={isSaving}
-                        >
-                            {`${item.grams}g • ${Math.round((item.food.calories / 100) * item.grams)} kcal`}
-                        </ListItem.Subtitle>
-                    )}
+                     {/* Display Grams and Calculated Calories */}
+                    <ListItem.Subtitle style={styles.listItemSubtitle}>
+                        {`${item.grams}g • ${Math.round((item.food.calories / 100) * item.grams)} kcal`}
+                    </ListItem.Subtitle>
                 </ListItem.Content>
-                 {/* Show Chevron only when NOT editing (as per 'before' code) */}
-                 {!isInlineEditing && <ListItem.Chevron color={theme.colors.grey3} />}
+                {/* Chevron indicates interactibility (swipe) */}
+                <ListItem.Chevron color={theme.colors.grey3} />
             </ListItem.Swipeable>
         );
    });
 
-  // --- Main Render (Structure from 'before') ---
+  // --- Main Render ---
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      {/* Date Navigation Header (styles/icons from 'before') */}
+      {/* Date Navigation Header */}
       <View style={styles.dateNavigation}>
         <Button
           type="clear"
           onPress={handlePreviousDay}
-           // *** Use theme.colors.text for icon color as per 'before' ***
-          icon={<Icon name="chevron-back-outline" type="ionicon" color={theme.colors.text} size={28} />}
+          icon={<RNEIcon name="chevron-back-outline" type="ionicon" color={theme.colors.primary} size={28} />} // Use Primary color
           buttonStyle={styles.navButton}
           disabled={isSaving || isLoadingData}
         />
-        {/* TouchableOpacity around Text for date */}
         <TouchableOpacity onPress={() => !isSaving && !isLoadingData && setShowDatePicker(true)} disabled={isSaving || isLoadingData}>
-          <Text h4 style={styles.dateText}>
+          <Text h4 h4Style={styles.dateText}>
              {formatDateReadable(parseISO(selectedDate))}
           </Text>
         </TouchableOpacity>
         <Button
           type="clear"
           onPress={handleNextDay}
-          // *** Use theme.colors.text for icon color as per 'before' ***
-          icon={<Icon name="chevron-forward-outline" type="ionicon" color={theme.colors.text} size={28} />}
+          icon={<RNEIcon name="chevron-forward-outline" type="ionicon" color={theme.colors.primary} size={28} />} // Use Primary color
           buttonStyle={styles.navButton}
           disabled={isSaving || isLoadingData}
         />
@@ -792,21 +684,24 @@ const DailyEntryScreen: React.FC = () => {
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={handleDateChange}
-          // maximumDate={new Date()}
+          // maximumDate={new Date()} // Consider if future dates should be disallowed
         />
       )}
 
-      {/* Progress Bars */}
-      <DailyProgress
-        calories={calculateTotals.totalCalories}
-        protein={calculateTotals.totalProtein}
-        carbs={calculateTotals.totalCarbs}
-        fat={calculateTotals.totalFat}
-        goals={dailyGoals}
-      />
+       {/* Progress Section - Added padding */}
+      <View style={styles.progressContainer}>
+            <DailyProgress
+                calories={calculateTotals.totalCalories}
+                protein={calculateTotals.totalProtein}
+                carbs={calculateTotals.totalCarbs}
+                fat={calculateTotals.totalFat}
+                goals={dailyGoals}
+            />
+      </View>
+
       <Divider style={styles.divider} />
 
-       {/* Saving Indicator (subtle) */}
+      {/* Saving Indicator */}
       {isSaving && (
           <View style={styles.savingIndicator}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -814,8 +709,8 @@ const DailyEntryScreen: React.FC = () => {
           </View>
       )}
 
-      {/* Section Title (style from 'before') */}
-      <Text h4 style={[styles.sectionTitle, { color: theme.colors.text }]}>
+      {/* Section Title */}
+      <Text style={styles.sectionTitle}>
         Today's Entries
       </Text>
 
@@ -828,35 +723,32 @@ const DailyEntryScreen: React.FC = () => {
       ) : (
         <FlatList
             data={currentEntryItems}
-            // Key needs stability - use food ID, index, and grams
-             keyExtractor={(item, index) => `entry-${item?.food?.id ?? 'unknown'}-${getOriginalIndex(index)}-${item?.grams ?? index}`}
+            keyExtractor={(item, index) => `entry-${item?.food?.id ?? 'unknown'}-${getOriginalIndex(index)}-${item?.grams ?? index}`}
             renderItem={({ item, index }) => <RenderItem item={item} reversedIndex={index} />}
-             // Empty Component (structure/icon/styles from 'before')
             ListEmptyComponent={
-            <View style={styles.emptyListContainer}>
-                <Icon name="leaf-outline" type="ionicon" size={40} color={theme.colors.grey3} />
-                <Text style={styles.emptyListText}>No entries for this day yet.</Text>
-                <Text style={styles.emptyListSubText}>Tap the '+' button to add food.</Text>
-            </View>
+                <View style={styles.emptyListContainer}>
+                    <RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} />
+                    <Text style={styles.emptyListText}>No entries recorded for this day.</Text>
+                    <Text style={styles.emptyListSubText}>Tap the '+' button to add your first meal.</Text>
+                </View>
             }
-            // Optimization props from 'before'
             initialNumToRender={10}
             maxToRenderPerBatch={5}
             windowSize={11}
-            contentContainerStyle={styles.listContentContainer}
-            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.listContentContainer} // Handles paddingBottom for FAB
+            keyboardShouldPersistTaps="handled" // Good for modals
         />
       )}
 
-      {/* FAB (style from 'before') */}
+      {/* FAB */}
       <FAB
-        icon={<Icon name="add" color="white" />}
+        icon={<RNEIcon name="add" color="white" />}
         color={theme.colors.primary}
-        onPress={() => !isSaving && toggleOverlay()}
+        onPress={() => !isSaving && toggleOverlay()} // Open Add modal
         placement="right"
         size="large"
-        style={styles.fab} // Use style from 'before' for positioning
-        disabled={isSaving || isLoadingData}
+        style={styles.fab}
+        disabled={isSaving || isLoadingData} // Disable while saving/loading
       />
 
       {/* Add/Edit Modal */}
@@ -866,22 +758,20 @@ const DailyEntryScreen: React.FC = () => {
         selectedFood={selectedFood}
         grams={grams}
         setGrams={setGrams}
-        foods={foods}
-        handleAddEntry={handleSingleEntryAction} // For single add/update
-        handleAddMultipleEntries={handleAddMultipleEntries} // For multi-add
+        foods={foods} // Pass available foods
+        handleAddEntry={handleSingleEntryAction}
+        handleAddMultipleEntries={handleAddMultipleEntries}
         handleSelectFood={handleSelectFood}
         search={search}
         updateSearch={updateSearch}
-        // *** Pass isEditMode based on 'editIndex' (reverted variable name) ***
-        isEditMode={editIndex !== null}
-        // *** Pass initialGrams based on 'editIndex' for modal edit ***
-        initialGrams={editIndex !== null ? grams : undefined}
+        isEditMode={editIndex !== null} // Correctly pass edit mode status
+        initialGrams={editIndex !== null ? grams : undefined} // Pass grams only if editing
       />
     </SafeAreaView>
   );
 };
 
-// Styles definition using makeStyles - **PASTED FROM 'BEFORE' CODE**
+// --- Styles ---
 const useStyles = makeStyles((theme) => ({
     container: {
         flex: 1,
@@ -891,141 +781,126 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 8,
-        paddingHorizontal: 5, // Reduced horizontal padding for buttons
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.divider,
+        paddingVertical: 10, // Increased padding
+        paddingHorizontal: 10, // Balanced padding
+        backgroundColor: theme.colors.background, // Ensure background consistency
+        // Optional: add subtle shadow or border if needed
+        // borderBottomWidth: StyleSheet.hairlineWidth,
+        // borderBottomColor: theme.colors.divider,
     },
-    navButton: { // Style for the arrow buttons
-        paddingHorizontal: 8, // Give arrows some horizontal tap space
+    navButton: {
+        paddingHorizontal: 8,
     },
     dateText: {
         fontSize: 18,
         fontWeight: "bold",
         color: theme.colors.text,
-        textAlign: 'center', // Center the date text
-        paddingVertical: 5, // Add vertical padding for touchability
+        textAlign: 'center',
+        paddingVertical: 5, // Maintain touchability
     },
-    foodIcon: { // Consistent style for list item icons
-        width: 40,
-        height: 40,
-        marginRight: 15,
-        borderRadius: 20, // Circular
-        resizeMode: "contain", // Ensure icon fits well
-        backgroundColor: theme.colors.grey5, // Background shown while loading/if error
-        alignItems: 'center', // Center activity indicator if shown
-        justifyContent: 'center', // Center activity indicator if shown
-        overflow: 'hidden', // Hide overflow for clean look
+    progressContainer: { // Added container for padding
+        paddingHorizontal: 15,
+        paddingTop: 10, // Add space above progress bars
     },
-    defaultIconContainer: { // Container used when icon fetch fails or returns null
-        width: 40,
-        height: 40,
-        marginRight: 15,
-        borderRadius: 20,
-        backgroundColor: theme.colors.grey5,
-        alignItems: 'center',
-        justifyContent: 'center',
+    // Consistent Icon Styles (Adopted from FoodItem/FoodListScreen)
+     foodIcon: { // Container style for placeholder/loading icon
+       width: 40,
+       height: 40,
+       marginRight: 15, // Consistent spacing
+       borderRadius: 8, // Consistent shape
+       alignItems: 'center',
+       justifyContent: 'center',
+   },
+   foodIconImage: { // Specific style for the Image component itself
+       width: 40,
+       height: 40,
+       marginRight: 15,
+       borderRadius: 8, // Consistent shape
+   },
+   iconPlaceholder: {
+      backgroundColor: theme.colors.grey5, // Consistent placeholder background
+   },
+    // Consistent List Item Styles
+    listItemContainer: {
+        backgroundColor: theme.colors.background,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        borderBottomColor: theme.colors.divider,
     },
     listItemTitle: {
         color: theme.colors.text,
-        fontWeight: 'bold',
-        fontSize: 16, // Slightly larger title
+        fontWeight: "600", // Slightly bolder than default
+        fontSize: 16,
+        marginBottom: 3, // Space between title and subtitle
     },
     listItemSubtitle: {
-        color: theme.colors.grey1, // Subtitle color
+        color: theme.colors.grey1,
         fontSize: 14,
-        marginTop: 3, // Space below title
-        // *** Added padding for better touch target for inline edit ***
-        paddingVertical: 2,
-        paddingHorizontal: 5, // Some horizontal padding too
     },
     divider: {
-        marginVertical: 10,
+        marginVertical: 0, // Remove vertical margin, use padding on sections
+        height: StyleSheet.hairlineWidth, // Thinner divider
+        backgroundColor: theme.colors.divider,
     },
-    sectionTitle: {
-        marginTop: 15, // Increased top margin
-        marginBottom: 8,
+    sectionTitle: { // Consistent Section Title Style
+        marginTop: 15,
+        marginBottom: 10,
         paddingHorizontal: 15,
-        fontWeight: '600', // Slightly less bold than h3 default
-        fontSize: 18, // Adjust font size
-        // *** Color changed back to grey1 as per 'before' ***
-        color: theme.colors.grey1,
+        fontWeight: 'bold', // Bold title
+        fontSize: 18,
+        color: theme.colors.text, // Use main text color
     },
-    fab: { // Style for the FAB component itself
-        position: 'absolute', // Keep absolute positioning
-        margin: 16, // Standard margin
-        right: 10, // Adjust position slightly
-        bottom: 10, // Adjust position slightly
+    fab: {
+        position: 'absolute',
+        margin: 16,
+        right: 10,
+        bottom: 10,
     },
-     emptyListContainer: { // Styling for the empty list message
-        flex: 1, // Allow it to take space if needed
+    emptyListContainer: { // Consistent Empty State Style
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 50,
-        paddingHorizontal: 30, // More padding
+        padding: 30,
+        marginTop: 50, // Add some space from top elements
     },
     emptyListText: {
-        fontSize: 17, // Slightly larger text
+        fontSize: 17,
         color: theme.colors.grey2,
         textAlign: 'center',
-        marginTop: 10, // Space below icon
+        marginTop: 15,
     },
-     emptyListSubText: {
+    emptyListSubText: {
         fontSize: 14,
         color: theme.colors.grey3,
         textAlign: 'center',
         marginTop: 8,
     },
-    // --- Inline Editing Styles (from 'before' code) ---
-    inlineEditContainer: { // Container for the input and buttons during inline edit
-        flexDirection: "row",
-        alignItems: "center",
-        marginTop: 5, // Space below the title
-        width: '100%', // Take full width of content area
-    },
-    inlineInputContainer: { // RNE Input component's outer container
-        width: 80, // Fixed width for the input area
-        height: 38, // Match button height approximately
-        paddingHorizontal: 0, // Remove default padding
-        // *** Added marginRight to space from suffix ***
-        marginRight: 4,
-    },
-    inlineInputInnerContainer: { // RNE Input component's inner container (handles underline)
-        borderBottomWidth: 1,
-        borderColor: theme.colors.primary,
-        paddingHorizontal: 6,
-        height: '100%',
-        paddingVertical: 0, // Remove vertical padding if any
-        justifyContent: 'center', // Center text vertically
-        // *** Added background to match theme, prevents potential transparency issues ***
-        backgroundColor: theme.colors.background,
-    },
-    inlineInput: { // Style for the text *inside* the inline input
-        fontSize: 14, // Match subtitle size
-        color: theme.colors.text, // Use theme text color
-        textAlign: 'right', // Align number to the right
-        paddingVertical: 0, // No extra vertical padding
-    },
-    inlineInputSuffix: { // Style for the "g" text next to the input
-         fontSize: 14,
-         color: theme.colors.grey1,
-         // *** Adjusted margins as per 'before' ***
-         marginLeft: 0,
-         marginRight: 8, // Space before buttons
-    },
-     inlineButtonContainer: { // Container for the checkmark/cross buttons
-        padding: 0, // Remove padding
-        // *** Adjusted margins as per 'before' ***
-        marginHorizontal: 0, // No horizontal margin between buttons
-        minWidth: 30, // Ensure decent tap area
+    // Consistent Swipe Button Styles
+    swipeButtonEdit: {
+        minHeight: "100%",
+        backgroundColor: theme.colors.warning, // Use theme color
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        paddingLeft: 20,
+    },
+    swipeButtonDelete: {
+        minHeight: "100%",
+        backgroundColor: theme.colors.error, // Use theme color
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        paddingRight: 20,
+    },
+    swipeButtonTitle: {
+        color: theme.colors.white,
+        fontWeight: 'bold',
+        fontSize: 15,
     },
     // --- Loader and Saving Styles ---
     centeredLoader: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingBottom: 50, // Avoid overlap with potential header/FAB
     },
     loadingText: {
         marginTop: 10,
@@ -1036,8 +911,8 @@ const useStyles = makeStyles((theme) => ({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 4,
-      // backgroundColor: theme.colors.grey5, // Optional subtle background
+      paddingVertical: 5, // Increased padding
+      backgroundColor: theme.colors.grey5, // Subtle background indication
     },
     savingText: {
         marginLeft: 8,
@@ -1047,7 +922,7 @@ const useStyles = makeStyles((theme) => ({
     },
     // --- List Content Container Style ---
     listContentContainer: {
-        paddingBottom: 80, // Ensure space for FAB
+        paddingBottom: 80, // Ensure space below list for FAB
     }
 }));
 
