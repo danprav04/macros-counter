@@ -834,7 +834,7 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 3, // Space between title and subtitle
     },
     listItemSubtitle: {
-        color: theme.colors.grey1,
+        color: theme.colors.secondary,
         fontSize: 14,
     },
     divider: {

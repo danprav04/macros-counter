@@ -141,7 +141,7 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 3,
     },
     subtitle: {
-        color: theme.colors.grey1, // Use theme grey
+        color: theme.colors.secondary, // Use theme grey
         fontSize: 13, // Slightly smaller subtitle
         marginTop: 2,
     },
