@@ -2939,7 +2939,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
               reset();
             }}
             icon={{ name: "edit", color: theme.colors.white }}
-            buttonStyle={styles.swipeButtonEdit} // Consistent style
+            buttonStyle={styles.swipeButtonEdit} // Apply centered style
             titleStyle={styles.swipeButtonTitle}
           />
         )}
@@ -2951,7 +2951,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
                 reset();
             }}
             icon={{ name: "delete", color: theme.colors.white }}
-            buttonStyle={styles.swipeButtonDelete} // Consistent style
+            buttonStyle={styles.swipeButtonDelete} // Apply centered style
             titleStyle={styles.swipeButtonTitle}
           />
         )}
@@ -2989,23 +2989,21 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 3,
     },
     subtitle: {
-        color: theme.colors.grey1, // Use theme grey
+        color: theme.colors.secondary, // Use theme grey
         fontSize: 13, // Slightly smaller subtitle
         marginTop: 2,
     },
     swipeButtonEdit: {
         minHeight: "100%",
         backgroundColor: theme.colors.warning, // Theme color
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingLeft: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonDelete: {
         minHeight: "100%",
         backgroundColor: theme.colors.error, // Theme color
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        paddingRight: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonTitle: {
         color: theme.colors.white, // White text on colored buttons
@@ -3617,7 +3615,6 @@ export default AppNavigator;
 
 
 ---------- DailyEntryScreen.tsx ----------
-// src/screens/DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -4453,7 +4450,7 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 3, // Space between title and subtitle
     },
     listItemSubtitle: {
-        color: theme.colors.grey1,
+        color: theme.colors.secondary,
         fontSize: 14,
     },
     divider: {
@@ -4498,16 +4495,14 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: {
         minHeight: "100%",
         backgroundColor: theme.colors.warning, // Use theme color
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingLeft: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonDelete: {
         minHeight: "100%",
         backgroundColor: theme.colors.error, // Use theme color
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        paddingRight: 20,
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
     },
     swipeButtonTitle: {
         color: theme.colors.white,
