@@ -1,9 +1,10 @@
-// src/services/backendService.ts
-// ---------- backendService.ts (Improved Error Handling and Logging) ----------
+// ---------- src/services/backendService.ts ----------
+// ---------- backendService.ts (Improved Error Handling, Logging, Auth Flag) ----------
 import Constants from 'expo-constants';
 import { getClientId } from './clientIDService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native'; // For logging platform info
+import uuid from 'react-native-uuid'; // Import uuid
 
 // --- Configuration ---
 const getBackendUrl = (): string => {
@@ -42,7 +43,7 @@ interface IconResponse {
 }
 
 export interface UserStatus {
-    client_id: string;
+    client_id: string; // Changed to string to match backend UUID string representation
     coins: number;
 }
 
@@ -76,7 +77,8 @@ export class BackendError extends Error {
 // --- API Call Helper ---
 async function fetchBackend<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    needsAuth: boolean = true // <<< Added flag to control auth header
 ): Promise<T> {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${BASE_URL}${cleanEndpoint}`;
@@ -84,7 +86,7 @@ async function fetchBackend<T>(
     let response: Response | null = null; // Define response outside try block
     let requestId: string | null = null; // For logging correlation
 
-    console.log(`[API Request] ${method} ${url} - Starting`);
+    console.log(`[API Request] ${method} ${url} - Starting (Auth: ${needsAuth})`);
 
     const defaultHeaders: HeadersInit = {
         'Content-Type': 'application/json',
@@ -94,14 +96,24 @@ async function fetchBackend<T>(
         // 'X-App-Version': Constants.expoConfig?.version || 'unknown', // Example app version
     };
 
-    const clientId = await getClientId();
-    const authHeaders: HeadersInit = { 'X-Client-ID': clientId };
+    let authHeaders: HeadersInit = {};
+    if (needsAuth) {
+        const clientId = await getClientId(); // Fetch client ID only if needed
+         // Validate client ID format before sending
+        if (!uuid.validate(clientId)) {
+            console.error(`[API Request] Invalid Client ID format detected: ${clientId}. Aborting request.`);
+            throw new BackendError("Invalid client ID format.", 400, "Invalid client ID format.");
+        }
+        authHeaders = { 'X-Client-ID': clientId };
+        console.log(`[API Request] Adding X-Client-ID header.`);
+    }
+
 
     const config: RequestInit = {
         ...options,
         headers: {
             ...defaultHeaders,
-            ...authHeaders,
+            ...authHeaders, // Add auth headers only if needsAuth is true
             ...options.headers,
         },
         // Consider adding a timeout (if not using default)
@@ -135,7 +147,9 @@ async function fetchBackend<T>(
         // Handle No Content success case
         if (status === 204) {
              console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
-             return null as T; // Or appropriate value for T if null isn't expected
+             // Return null or an appropriate empty value based on expected type T
+             // Casting to T might be unsafe if T doesn't expect null. Consider checking T.
+             return null as T;
         }
 
         // Attempt to parse JSON, otherwise get text
@@ -191,7 +205,7 @@ async function fetchBackend<T>(
             }
 
             // Specific handling for common error codes
-            if (status === 401) errorMessage = "Authentication failed. Please log in again.";
+            if (status === 401 && needsAuth) errorMessage = "Authentication failed. Invalid Client ID."; // Modify 401 message context
             if (status === 403) errorMessage = "Permission denied.";
             if (status === 404) errorMessage = "Resource not found.";
             if (status === 429) errorMessage = "Too many requests. Please try again later.";
@@ -235,12 +249,12 @@ async function fetchBackend<T>(
     }
 }
 
-// --- Service Functions (Endpoints remain the same) ---
+// --- Service Functions (Endpoints remain the same, auth flag used) ---
 
 export const getUserStatus = async (): Promise<UserStatus> => {
     const clientId = await getClientId();
-    // Ensure clientId is valid UUID format before sending? Maybe not necessary if backend handles it.
-    return fetchBackend<UserStatus>(`/users/status/${clientId}`);
+    // Ensure clientId is valid UUID format before sending? Backend likely handles.
+    return fetchBackend<UserStatus>(`/users/status/${clientId}`, {}, true); // needsAuth = true
 };
 
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
@@ -248,7 +262,7 @@ export const getMacrosForRecipe = async (foodName: string, ingredients: string):
     return fetchBackend<Macros>('/ai/macros_recipe', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
@@ -256,7 +270,7 @@ export const getMacrosForImageSingle = async (image_base64: string, mime_type: s
     return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
@@ -264,7 +278,7 @@ export const getMacrosForImageMultiple = async (image_base64: string, mime_type:
     return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
@@ -272,7 +286,7 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
     const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
     // Handle potential null response from fetchBackend if server returned 204 or non-JSON OK
     if (response === null || typeof response.grams !== 'number') {
         console.error("Received unexpected null or invalid response format while estimating grams.");
@@ -286,7 +300,11 @@ export const getFoodIcon = async (foodName: string, locale: string = 'en'): Prom
     const encodedLocale = encodeURIComponent(locale);
     try {
         // Expecting IconResponse = { icon_url: string | null }
-        const response = await fetchBackend<IconResponse>(`/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`);
+        const response = await fetchBackend<IconResponse>(
+            `/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`,
+            {}, // Default GET options
+            false // <<< Set needsAuth = false for this endpoint
+        );
         // Handle null response from fetchBackend (e.g., 204 No Content)
         if (response === null) {
             // console.log(`Received null response for icon ${foodName}, treating as not found.`);
@@ -314,5 +332,5 @@ export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };

@@ -1,25 +1,29 @@
-// src/utils/iconUtils.ts
+// ---------- src/utils/iconUtils.ts ----------
 // Import necessary modules
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFoodIcon } from '../services/backendService'; // Import backend service
 
-// Define the cache entry type (URL only, no expiry handled here)
+// Cache Configuration
+const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+// Define the cache entry type including timestamp
 type CacheEntry = {
   url: string | null;
+  timestamp: number; // Unix timestamp (ms) when the entry was created/updated
 };
 
 // In-memory cache for fast access
 const memoryCache = new Map<string, CacheEntry>();
 
-// Prefix for AsyncStorage keys (keeping versioning)
-const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v1_'; // BE = Backend
+// Prefix for AsyncStorage keys (versioned)
+const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v2_'; // Updated version for TTL change
 
 // --- Main Exported Function ---
 
 /**
  * Gets the icon URL for a food item.
- * Checks memory cache, then AsyncStorage, then calls the backend service.
- * Caches the result (including null for failures/not found).
+ * Checks memory cache, then AsyncStorage (respecting TTL), then calls the backend service.
+ * Caches the result (including null for failures/not found) with a timestamp.
  *
  * @param foodName The name of the food item.
  * @param locale The desired locale for the icon search (defaults to 'en').
@@ -32,23 +36,39 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   }
 
   const cacheKey = `${locale}_${foodName.toLowerCase().trim()}`;
+  const now = Date.now();
 
-  // 1. Check Memory Cache
+  // 1. Check Memory Cache (and TTL)
   const memoryEntry = memoryCache.get(cacheKey);
-  if (memoryEntry !== undefined) { // Check existence, not just truthiness (null is valid cached value)
-    // console.log(`Icon Cache HIT (Memory): ${cacheKey} -> ${memoryEntry.url}`);
-    return memoryEntry.url;
+  if (memoryEntry !== undefined) {
+    if (now < memoryEntry.timestamp + ICON_CACHE_TTL_MS) {
+        // console.log(`Icon Cache HIT (Memory, valid): ${cacheKey} -> ${memoryEntry.url}`);
+        return memoryEntry.url;
+    } else {
+        // console.log(`Icon Cache STALE (Memory): ${cacheKey}`);
+        memoryCache.delete(cacheKey); // Remove stale entry from memory
+    }
   }
 
-  // 2. Check AsyncStorage
+  // 2. Check AsyncStorage (and TTL)
   const storageKey = STORAGE_KEY_PREFIX + cacheKey;
   try {
     const storedValue = await AsyncStorage.getItem(storageKey);
     if (storedValue !== null) {
       const parsed: CacheEntry = JSON.parse(storedValue);
-      // console.log(`Icon Cache HIT (Storage): ${cacheKey} -> ${parsed.url}`);
-      memoryCache.set(cacheKey, parsed); // Update memory cache
-      return parsed.url;
+      if (parsed && typeof parsed.timestamp === 'number' && typeof parsed.url !== 'undefined') {
+        if (now < parsed.timestamp + ICON_CACHE_TTL_MS) {
+            // console.log(`Icon Cache HIT (Storage, valid): ${cacheKey} -> ${parsed.url}`);
+            memoryCache.set(cacheKey, parsed); // Update memory cache
+            return parsed.url;
+        } else {
+            // console.log(`Icon Cache STALE (Storage): ${cacheKey}`);
+            // Don't need to remove from storage here, fetching new will overwrite
+        }
+      } else {
+         console.warn(`Invalid cache entry format found in storage for ${storageKey}. Ignoring.`);
+         // Optionally remove invalid entry: await AsyncStorage.removeItem(storageKey);
+      }
     }
   } catch (error) {
     console.error(`Error reading icon cache from AsyncStorage for key ${storageKey}:`, error);
@@ -56,7 +76,7 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   }
 
   // 3. Fetch from Backend API
-  // console.log(`Icon Cache MISS / Fetching Backend API: ${cacheKey}`);
+  // console.log(`Icon Cache MISS or STALE / Fetching Backend API: ${cacheKey}`);
   let iconUrl: string | null = null;
   try {
       // Call the backend service function - it handles its own errors and returns null on failure
@@ -70,8 +90,8 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
       iconUrl = null; // Ensure null is cached on unexpected error during service call
   }
 
-  // 4. Cache the final result (even nulls) from backend
-  const newCacheEntry: CacheEntry = { url: iconUrl };
+  // 4. Cache the final result (even nulls) from backend with current timestamp
+  const newCacheEntry: CacheEntry = { url: iconUrl, timestamp: now };
   memoryCache.set(cacheKey, newCacheEntry); // Cache in memory
   try {
     // Cache in AsyncStorage
@@ -83,7 +103,7 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   return iconUrl;
 };
 
-// --- Cache Management (Optional but recommended) ---
+// --- Cache Management (Unchanged - manual clear still useful) ---
 
 export const clearIconCache = async () => {
     memoryCache.clear();
