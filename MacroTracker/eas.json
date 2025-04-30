@@ -11,6 +11,9 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "BACKEND_URL": "https://macros-counter.mooo.com"
       }
     },
     "production": {
