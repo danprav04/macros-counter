@@ -1,5 +1,5 @@
 // src/components/QuickAddList.tsx
-// ---------- NEW FILE ----------
+// ---------- Corrected File ----------
 import React from 'react';
 import {
     View,
@@ -100,7 +100,8 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                                     inputContainerStyle={styles.quickEditInputContainer}
                                     inputStyle={styles.quickEditInput}
                                     containerStyle={styles.quickEditGramsContainer}
-                                    rightIcon={<Text style={styles.quickEditUnitText}> g </Text>}
+                                    // *** CORRECTED THIS LINE ***
+                                    rightIcon={<Text style={styles.quickEditUnitText}>g</Text>}
                                     errorMessage={ !isValidNumberInput(editedGrams) && editedGrams !== "" ? "Invalid" : "" }
                                     errorStyle={styles.inputError}
                                 />
@@ -125,10 +126,10 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                             />
                             <ListItem.Content>
                                 <ListItem.Title style={styles.quickAddItemTitle}>
-                                    {item.foodName}
+                                    <Text>{item.foodName}</Text>
                                 </ListItem.Title>
                                 <ListItem.Subtitle style={styles.quickAddItemSubtitle}>
-                                    {`Est: ${Math.round(item.estimatedWeightGrams)}g • ~${estimatedCalories} kcal`}
+                                    <Text>{`Est: ${Math.round(item.estimatedWeightGrams)}g • ~${estimatedCalories} kcal`}</Text>
                                 </ListItem.Subtitle>
                             </ListItem.Content>
                             {/* Edit Icon */}
@@ -208,7 +209,7 @@ const useStyles = makeStyles((theme) => ({
     quickEditNameContainer: { paddingHorizontal: 0, marginBottom: 5, },
     quickEditGramsRow: { flexDirection: "row", alignItems: "center", },
     quickEditGramsContainer: { flex: 1, paddingHorizontal: 0, },
-    quickEditUnitText: { color: theme.colors.grey2, fontSize: 14, fontWeight: "500", },
+    quickEditUnitText: { color: theme.colors.grey2, fontSize: 14, fontWeight: "500", paddingRight: 5 /* Add padding if needed */ },
     quickEditButton: { paddingLeft: 10, paddingVertical: 5, },
     emptyListContainer: {
         alignItems: "center", paddingVertical: 30, paddingHorizontal: 15,

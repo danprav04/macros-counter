@@ -1,4 +1,3 @@
-// src/components/AddFoodModal.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
     View,
@@ -24,14 +23,15 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import {
     getMacrosFromText,
-    getMacrosForImageFile, // Use utility that handles base64/mime
+    getMacrosForImageFile,
     BackendError,
-    determineMimeType // Import mime type util
+    determineMimeType
 } from "../utils/macros";
 import * as ImagePicker from "expo-image-picker";
 import { ImagePickerAsset, ImagePickerResult } from 'expo-image-picker';
-import { isNotEmpty } from "../utils/validationUtils"; // Correct validation import
-import { compressImageIfNeeded, getBase64FromUri } from '../utils/imageUtils'; // Import shared utilities
+import { isNotEmpty } from "../utils/validationUtils";
+import { compressImageIfNeeded, getBase64FromUri } from '../utils/imageUtils';
+import FoodFormFields from "./FoodFormFields"; // Import the extracted component
 
 interface AddFoodModalProps {
     isVisible: boolean;
@@ -42,10 +42,10 @@ interface AddFoodModalProps {
     handleInputChange: (
         key: keyof Omit<Food, "id">,
         value: string,
-        isEdit: boolean // Indicate if change applies to editFood or newFood
+        isEdit: boolean
     ) => void;
-    handleCreateFood: () => Promise<void>; // Expects promise for loading state
-    handleUpdateFood: () => Promise<void>; // Expects promise for loading state
+    handleCreateFood: () => Promise<void>;
+    handleUpdateFood: () => Promise<void>;
     validateFood: (food: Omit<Food, "id"> | Food) => { [key: string]: string } | null;
     setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
@@ -66,13 +66,12 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [loading, setLoading] = useState(false); // For the main Add/Update button
+    const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState<"normal" | "ingredients">("normal");
     const [ingredients, setIngredients] = useState("");
-    const [aiTextLoading, setAiTextLoading] = useState(false); // Specific loading for recipe/text AI
-    const [aiImageLoading, setAiImageLoading] = useState(false); // Specific loading for image AI
+    const [aiTextLoading, setAiTextLoading] = useState(false);
+    const [aiImageLoading, setAiImageLoading] = useState(false);
 
-    // Reset state when modal visibility changes
     useEffect(() => {
         if (isVisible) {
             setErrors({});
@@ -80,35 +79,27 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setIngredients("");
             setAiTextLoading(false);
             setAiImageLoading(false);
-            setLoading(false); // Ensure main button loading is reset
+            setLoading(false);
         }
     }, [isVisible, setErrors]);
 
-    // Helper to get the current value (from editFood or newFood state)
-    const getValue = (key: keyof Omit<Food, "id">): string => {
-        const source = editFood ?? newFood;
-        const value = source[key];
-        // Format numeric fields for display, handle initial 0 for newFood
-        if (typeof value === 'number' && key !== 'name') {
-            if (value === 0 && source === newFood) return ""; // Show empty for initial 0
-            return String(value);
-        }
-        return String(value ?? ""); // Default to empty string for name if null/undefined
+    // Helper to get the current food object (editFood or newFood)
+    const getCurrentFoodData = (): Partial<Omit<Food, 'id'>> => {
+        return editFood ? editFood : newFood;
     };
 
     // Handle Add/Update button press
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
-        const foodData = isUpdate ? editFood : newFood;
-        if (!foodData) return; // Should not happen, but safeguard
+        const currentData = getCurrentFoodData();
 
-        // Prepare data with trimmed name and parsed numbers for validation
-        const dataToValidate: Omit<Food, "id"> = {
-            name: getValue("name").trim(),
-            calories: parseFloat(getValue("calories")) || 0,
-            protein: parseFloat(getValue("protein")) || 0,
-            carbs: parseFloat(getValue("carbs")) || 0,
-            fat: parseFloat(getValue("fat")) || 0,
+        // Ensure name is present and trimmed for validation
+        const dataToValidate = {
+            name: (currentData.name ?? "").trim(),
+            calories: currentData.calories ?? 0,
+            protein: currentData.protein ?? 0,
+            carbs: currentData.carbs ?? 0,
+            fat: currentData.fat ?? 0,
         };
 
         const validationErrors = validateFood(dataToValidate);
@@ -118,170 +109,78 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             return;
         }
         setErrors({});
-        setLoading(true); // Start loading for the main action button
+        setLoading(true);
 
         try {
             if (isUpdate) {
-                await handleUpdateFood(); // Call parent update handler
+                await handleUpdateFood();
                 Toast.show({ type: "success", text1: `"${dataToValidate.name}" Updated!`, position: 'bottom' });
             } else {
-                await handleCreateFood(); // Call parent create handler
+                await handleCreateFood();
                 Toast.show({ type: "success", text1: `"${dataToValidate.name}" Added!`, position: 'bottom' });
             }
-            toggleOverlay(); // Close modal on success
+            toggleOverlay();
         } catch (error: any) {
             console.error(`AddFoodModal: Error during ${isUpdate ? 'update' : 'create'} food handler:`, error);
-            Alert.alert(
-                "Error",
-                error.message || `Failed to ${isUpdate ? "update" : "add"} food.`
-            );
+            Alert.alert("Error", error.message || `Failed to ${isUpdate ? "update" : "add"} food.`);
         } finally {
-            setLoading(false); // Stop loading for the main action button
+            setLoading(false);
         }
     };
 
-    // Handle AI Text/Recipe button click
+    // Handle AI Text/Recipe button click (unchanged)
     const handleAiTextButtonClick = async () => {
-        const currentFoodName = getValue("name").trim(); // Use trimmed name
+        const currentFoodName = (getCurrentFoodData().name ?? "").trim();
         const isUpdate = !!editFood;
-
         if (mode === "normal") {
-            // Switch to ingredients mode, clear macro fields
             setMode("ingredients");
-            handleInputChange("calories", "", isUpdate);
-            handleInputChange("protein", "", isUpdate);
-            handleInputChange("carbs", "", isUpdate);
-            handleInputChange("fat", "", isUpdate);
-        } else { // mode === "ingredients"
-            if (!currentFoodName && !ingredients.trim()) {
-                Alert.alert("Input Needed", "Please enter a food name or ingredients to analyze.");
-                return;
-            }
+            handleInputChange("calories", "", isUpdate); handleInputChange("protein", "", isUpdate);
+            handleInputChange("carbs", "", isUpdate); handleInputChange("fat", "", isUpdate);
+        } else {
+            if (!currentFoodName && !ingredients.trim()) { Alert.alert("Input Needed", "Please enter a food name or ingredients to analyze."); return; }
             setAiTextLoading(true);
             try {
-                // Call utility which uses backend service
                 const macros = await getMacrosFromText(currentFoodName, ingredients);
-                // Update form fields with results (rounded)
-                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
-                handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
-                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
-                handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-                setMode("normal"); // Switch back to normal mode
+                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate); handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
+                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate); handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
+                setMode("normal");
                 Toast.show({ type: 'info', text1: 'Macros estimated from text.', position: 'bottom' });
-            } catch (error) {
-                console.error("AI Macro fetch error (recipe - modal):", error);
-                // Alert is handled within getMacrosFromText utility
-            } finally {
-                setAiTextLoading(false);
-            }
+            } catch (error) { console.error("AI Macro fetch error (recipe - modal):", error); }
+            finally { setAiTextLoading(false); }
         }
     };
 
-    // Handle Get Macros from Image button click
+    // Handle Get Macros from Image button click (unchanged)
     const handleGetImageAndAnalyze = async () => {
-        if (aiImageLoading || aiTextLoading || loading) return; // Prevent if any action is running
-
+        if (aiImageLoading || aiTextLoading || loading) return;
         const processImage = async (pickerResult: ImagePickerResult) => {
-            if (pickerResult.canceled) {
-                console.log("Image selection/capture cancelled");
-                return; // Don't set loading false here, handled in outer block
-            }
-
+            if (pickerResult.canceled) return;
             if (pickerResult.assets && pickerResult.assets.length > 0) {
-                const originalAsset = pickerResult.assets[0];
-                console.log("Image acquired:", originalAsset.uri);
-                setAiImageLoading(true); // Start image-specific loading
-
+                const originalAsset = pickerResult.assets[0]; setAiImageLoading(true);
                 try {
-                     // Compress the image using the shared utility
                      const compressedResult = await compressImageIfNeeded(originalAsset);
-                     const assetForAnalysis = compressedResult
-                         ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' }
-                         : originalAsset;
-
-                    // Call utility function which uses backend service
-                    // This function now internally handles base64 conversion and MIME type
-                    const result = await getMacrosForImageFile(assetForAnalysis);
-
-                    // Update form fields with results
-                    const isUpdate = !!editFood;
-                    handleInputChange("name", result.foodName, isUpdate);
-                    handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
-                    handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
-                    handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
-                    handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
-
-                    setMode("normal"); // Ensure normal mode
-                    setIngredients(""); // Clear ingredients
-
-                    Toast.show({
-                        type: 'success',
-                        text1: 'Food Identified!',
-                        text2: `Identified as ${result.foodName}. Macros estimated.`,
-                        position: 'bottom',
-                    });
-
-                } catch (analysisError) {
-                    console.error("Error during image analysis (modal):", analysisError);
-                    // Alert is handled within getMacrosForImageFile utility
-                } finally {
-                     setAiImageLoading(false); // Stop image-specific loading
-                }
-            } else {
-                console.log("No assets selected or returned.");
-                Alert.alert("Error", "Could not get image asset.");
-                // Ensure loading is stopped if picker fails unexpectedly
-                setAiImageLoading(false);
-            }
+                     const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
+                     const result = await getMacrosForImageFile(assetForAnalysis);
+                     const isUpdate = !!editFood;
+                     handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
+                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate); handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
+                     handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
+                     setMode("normal"); setIngredients("");
+                     Toast.show({ type: 'success', text1: 'Food Identified!', text2: `Identified as ${result.foodName}. Macros estimated.`, position: 'bottom', });
+                } catch (analysisError) { console.error("Error during image analysis (modal):", analysisError); }
+                finally { setAiImageLoading(false); }
+            } else { Alert.alert("Error", "Could not get image asset."); setAiImageLoading(false); }
         };
-
-        // --- Image Picker Logic ---
-        Alert.alert(
-            "Get Image",
-            "Choose a source for the food image:",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Camera",
-                    onPress: async () => {
-                        try {
-                            const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-                            if (!permissionResult.granted) {
-                                Alert.alert("Permission Required", "Camera access is needed."); return;
-                            }
-                            const cameraResult = await ImagePicker.launchCameraAsync({ quality: 1, exif: false });
-                            await processImage(cameraResult); // Process the result
-                        } catch (error) {
-                            console.error("Error launching camera:", error);
-                            Alert.alert("Camera Error", "Could not open the camera.");
-                        }
-                    },
-                },
-                {
-                    text: "Gallery",
-                    onPress: async () => {
-                        try {
-                            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                            if (!permissionResult.granted) {
-                                Alert.alert("Permission Required", "Gallery access needed."); return;
-                            }
-                            const libraryResult = await ImagePicker.launchImageLibraryAsync({
-                                mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1,
-                            });
-                            await processImage(libraryResult); // Process the result
-                        } catch (error) {
-                            console.error("Error launching image library:", error);
-                            Alert.alert("Gallery Error", "Could not open the image library.");
-                        }
-                    },
-                },
-            ],
+        Alert.alert("Get Image", "Choose a source for the food image:",
+            [ { text: "Cancel", style: "cancel" },
+              { text: "Camera", onPress: async () => { try { const perm = await ImagePicker.requestCameraPermissionsAsync(); if (!perm.granted) { Alert.alert("Permission Required", "Camera access needed."); return; } const res = await ImagePicker.launchCameraAsync({ quality: 1, exif: false }); await processImage(res); } catch (e) { console.error(e); Alert.alert("Camera Error"); } } },
+              { text: "Gallery", onPress: async () => { try { const perm = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!perm.granted) { Alert.alert("Permission Required", "Gallery access needed."); return; } const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 }); await processImage(res); } catch (e) { console.error(e); Alert.alert("Gallery Error"); } } }, ],
             { cancelable: true }
         );
     };
 
     // --- Computed State ---
-    const isAnyLoading = loading || aiTextLoading || aiImageLoading; // Combined loading state
+    const isAnyLoading = loading || aiTextLoading || aiImageLoading;
 
     // --- Render ---
     const combinedOverlayStyle = StyleSheet.flatten([
@@ -290,150 +189,68 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     ]);
 
     return (
-        <Overlay
-            isVisible={isVisible}
-            onBackdropPress={!isAnyLoading ? toggleOverlay : undefined} // Prevent closing while loading
-            animationType="fade"
-            overlayStyle={styles.overlayContainer}
-        >
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.keyboardAvoidingView}
-                keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}
-            >
+        <Overlay isVisible={isVisible} onBackdropPress={!isAnyLoading ? toggleOverlay : undefined} animationType="fade" overlayStyle={styles.overlayContainer} >
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
                 <View style={combinedOverlayStyle}>
-                    {/* Header */}
+                    {/* Header (unchanged) */}
                     <View style={styles.header}>
-                        <Text h4 style={styles.overlayTitle}>
-                            {editFood ? "Edit Food" : "Add New Food"}
-                        </Text>
-                        <Button
-                            title={editFood ? "Update" : "Add"}
-                            onPress={handleCreateOrUpdate}
-                            buttonStyle={[ styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } ]}
-                            titleStyle={styles.buttonTitle}
-                            loading={loading} // Only show loading for the main Add/Update action
-                            disabled={isAnyLoading} // Disable if any operation is running
-                            containerStyle={styles.buttonContainer}
-                        />
-                        <Icon
-                            name="close" type="material" size={28} color={theme.colors.text}
-                            onPress={!isAnyLoading ? toggleOverlay : undefined} // Disable close when loading
-                            containerStyle={styles.closeIcon}
-                            disabled={isAnyLoading}
-                            disabledStyle={{ backgroundColor: 'transparent' }}
-                        />
+                        <Text h4 style={styles.overlayTitle}> {editFood ? "Edit Food" : "Add New Food"} </Text>
+                        <Button title={editFood ? "Update" : "Add"} onPress={handleCreateOrUpdate}
+                                buttonStyle={[ styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } ]}
+                                titleStyle={styles.buttonTitle} loading={loading} disabled={isAnyLoading} containerStyle={styles.buttonContainer} />
+                        <Icon name="close" type="material" size={28} color={theme.colors.text} onPress={!isAnyLoading ? toggleOverlay : undefined}
+                              containerStyle={styles.closeIcon} disabled={isAnyLoading} disabledStyle={{ backgroundColor: 'transparent' }} />
                     </View>
 
                     <ScrollView keyboardShouldPersistTaps="handled">
-                        {/* Food Name Input with Image Icon */}
-                        <View style={styles.inputRow}>
-                            <Input
-                                label="Food Name" labelStyle={styles.inputLabel}
-                                value={getValue("name")}
-                                onChangeText={(text) => handleInputChange("name", text, !!editFood)}
-                                errorMessage={errors.name}
-                                inputContainerStyle={[styles.inputContainerStyle, styles.inputContainerFlex]}
-                                inputStyle={styles.inputStyle}
-                                containerStyle={{ flex: 1 }}
-                                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey1} />}
-                                disabled={isAnyLoading} // Disable input while loading
-                            />
-                            {/* Image Picker/Camera Icon Button */}
-                            <TouchableOpacity
-                                onPress={handleGetImageAndAnalyze}
-                                disabled={isAnyLoading} // Disable while loading
-                                style={styles.iconButtonContainer}
-                            >
-                                {aiImageLoading ? ( // Use specific loading state for this button
-                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                ) : (
+                        {/* Image Picker/Camera Icon Button */}
+                        <View style={styles.imageButtonContainer}>
+                            <TouchableOpacity onPress={handleGetImageAndAnalyze} disabled={isAnyLoading} style={styles.iconButton}>
+                                {aiImageLoading ? ( <ActivityIndicator size="small" color={theme.colors.primary} /> ) : (
                                     <Icon name="camera-enhance-outline" type="material-community" size={28} color={isAnyLoading ? theme.colors.grey3 : theme.colors.primary} />
                                 )}
                             </TouchableOpacity>
+                             <Text style={styles.imageButtonLabel}>Get from Image</Text>
                         </View>
 
                         {/* Macro Inputs or Ingredient Input */}
                         {mode === "normal" ? (
-                            <>
-                                <Input
-                                    label="Calories (per 100g)" labelStyle={styles.inputLabel}
-                                    keyboardType="numeric" value={getValue("calories")}
-                                    onChangeText={(text) => handleInputChange("calories", text, !!editFood)}
-                                    errorMessage={errors.calories} inputContainerStyle={styles.inputContainerStyle}
-                                    inputStyle={styles.inputStyle}
-                                    leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey1} />}
-                                    disabled={isAnyLoading}
-                                />
-                                <Input
-                                    label="Protein (per 100g)" labelStyle={styles.inputLabel}
-                                    keyboardType="numeric" value={getValue("protein")}
-                                    onChangeText={(text) => handleInputChange("protein", text, !!editFood)}
-                                    errorMessage={errors.protein} inputContainerStyle={styles.inputContainerStyle}
-                                    inputStyle={styles.inputStyle}
-                                    leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey1} />}
-                                    disabled={isAnyLoading}
-                                />
-                                <Input
-                                    label="Carbs (per 100g)" labelStyle={styles.inputLabel}
-                                    keyboardType="numeric" value={getValue("carbs")}
-                                    onChangeText={(text) => handleInputChange("carbs", text, !!editFood)}
-                                    errorMessage={errors.carbs} inputContainerStyle={styles.inputContainerStyle}
-                                    inputStyle={styles.inputStyle}
-                                    leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey1} />}
-                                    disabled={isAnyLoading}
-                                />
-                                <Input
-                                    label="Fat (per 100g)" labelStyle={styles.inputLabel}
-                                    keyboardType="numeric" value={getValue("fat")}
-                                    onChangeText={(text) => handleInputChange("fat", text, !!editFood)}
-                                    errorMessage={errors.fat} inputContainerStyle={styles.inputContainerStyle}
-                                    inputStyle={styles.inputStyle}
-                                    leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey1} />}
-                                    disabled={isAnyLoading}
-                                />
-                            </>
+                             // Use the extracted FoodFormFields component
+                            <FoodFormFields
+                                values={getCurrentFoodData()} // Pass the current data object
+                                errors={errors}
+                                onInputChange={handleInputChange}
+                                isEditing={!!editFood}
+                                disabled={isAnyLoading}
+                            />
                         ) : ( // mode === "ingredients"
                             <>
                                 <View style={styles.backButtonContainer}>
-                                    <Icon name="arrow-left" type="material-community" size={24} color={theme.colors.primary}
-                                        onPress={() => !isAnyLoading && setMode("normal")} // Prevent switching during AI call
-                                        disabled={isAnyLoading} containerStyle={styles.backIcon}
-                                    />
-                                    <Text style={[styles.backButtonText, isAnyLoading && styles.disabledText]} onPress={() => !isAnyLoading && setMode("normal")}>
-                                        Back to Manual Input
-                                    </Text>
+                                    <Icon name="arrow-left" type="material-community" size={24} color={theme.colors.primary} onPress={() => !isAnyLoading && setMode("normal")} disabled={isAnyLoading} containerStyle={styles.backIcon} />
+                                    <Text style={[styles.backButtonText, isAnyLoading && styles.disabledText]} onPress={() => !isAnyLoading && setMode("normal")}> Back to Manual Input </Text>
                                 </View>
-                                <Input
-                                    label="Ingredients (Optional)" labelStyle={styles.inputLabel}
-                                    value={ingredients} onChangeText={setIngredients} multiline={true}
-                                    numberOfLines={4} inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
-                                    inputStyle={[styles.inputStyle, styles.multilineInput]}
-                                    placeholder="e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil"
-                                    placeholderTextColor={theme.colors.grey3}
+                                {/* Keep ingredient input here as it's specific to this mode */}
+                                 <Input
+                                    label="Ingredients (Optional)" labelStyle={styles.inputLabel} value={ingredients} onChangeText={setIngredients} multiline={true}
+                                    numberOfLines={4} inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]} inputStyle={[styles.inputStyle, styles.multilineInput]}
+                                    placeholder="e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil" placeholderTextColor={theme.colors.grey3}
                                     leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey1} style={styles.multilineIcon} />}
-                                    disabled={isAnyLoading} // Disable input during any loading
+                                    disabled={isAnyLoading}
                                 />
                             </>
                         )}
 
-                        {/* AI (Text) Button */}
+                        {/* AI (Text) Button (unchanged) */}
                         <Button
                             title={mode === "normal" ? "Calculate with AI (Recipe/Text)" : ingredients ? "Get Macros from Ingredients" : "Get Macros from Name Only"}
-                            onPress={handleAiTextButtonClick}
-                            buttonStyle={[styles.button, styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                            titleStyle={styles.aiButtonTitle}
-                            loading={aiTextLoading} // Use specific loading state
-                            disabled={isAnyLoading} // Disable while any operation runs
+                            onPress={handleAiTextButtonClick} buttonStyle={[styles.button, styles.aiButton, { backgroundColor: theme.colors.secondary }]}
+                            titleStyle={styles.aiButtonTitle} loading={aiTextLoading} disabled={isAnyLoading}
                             icon={mode === "normal" ? <MaterialCommunityIcons name="text-box-search-outline" size={18} color={theme.colors.white} style={{ marginRight: 8 }} /> : undefined}
-                            containerStyle={[styles.buttonContainer, { marginTop: 15 }]}
-                        />
+                            containerStyle={[styles.buttonContainer, { marginTop: 15 }]} />
 
-                        {/* Barcode Placeholder */}
+                        {/* Barcode Placeholder (unchanged) */}
                         <View style={styles.futureInputContainer}>
-                            <Text style={styles.futureInputLabel}>
-                                Barcode Input (Coming Soon)
-                            </Text>
+                            <Text style={styles.futureInputLabel}> Barcode Input (Coming Soon) </Text>
                         </View>
                     </ScrollView>
                 </View>
@@ -442,16 +259,14 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     );
 };
 
-// --- Styles ---
+// --- Styles --- (Removed redundant input styles now in FoodFormFields)
 const useStyles = makeStyles((theme) => ({
     overlayContainer: {
         backgroundColor: 'transparent', width: '90%', maxWidth: 500, padding: 0, borderRadius: 15,
         shadowColor: "#000", shadowOffset: { width: 0, height: 2, }, shadowOpacity: 0.25,
         shadowRadius: 3.84, elevation: 5, overflow: 'hidden',
     },
-    overlayStyle: {
-        width: '100%', borderRadius: 15, padding: 20, paddingBottom: 30, maxHeight: '90%',
-    },
+    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 30, maxHeight: '90%', backgroundColor: theme.colors.background },
     keyboardAvoidingView: { width: "100%", },
     header: {
         flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -459,18 +274,35 @@ const useStyles = makeStyles((theme) => ({
     },
     overlayTitle: { color: theme.colors.text, fontWeight: "bold", fontSize: 20, flexShrink: 1, marginRight: 10, },
     closeIcon: { padding: 5, marginLeft: 10, },
-    inputRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 5, },
-    inputContainerFlex: { flex: 1, marginRight: 10, marginBottom: 0, },
-    iconButtonContainer: {
-        height: 40, width: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10, // Align with input bottom
+    // Image Button Styles
+     imageButtonContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start', // Align to left
+        marginBottom: 15, // Space before next inputs
+        paddingHorizontal: 10, // Match input padding
     },
+    iconButton: {
+        padding: 8,
+        marginRight: 8,
+        // Optional: add border or background for visual cue
+        // borderWidth: 1,
+        // borderColor: theme.colors.grey3,
+        // borderRadius: 20,
+    },
+    imageButtonLabel: {
+        color: theme.colors.primary,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    // Styles still needed in the modal
     inputLabel: { color: theme.colors.text, fontWeight: '500', marginBottom: 2, fontSize: 14 },
     inputContainerStyle: { borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, marginBottom: 5, paddingBottom: 2, },
     inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, },
     multilineInputContainer: {
         borderWidth: 1, borderColor: theme.colors.grey4, borderRadius: 8, paddingVertical: 8,
         paddingHorizontal: 5, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.grey4,
-        minHeight: 100, // Ensure decent height for multiline
+        minHeight: 100,
     },
     multilineInput: { marginLeft: 5, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, },
     multilineIcon: { marginTop: 8, marginRight: 5, },
