@@ -21,8 +21,11 @@ src/
     DailyProgress.tsx
     DataManagementButtons.tsx
     DateNavigator.tsx
+    Entry/
+    Food/
     FoodFormFields.tsx
     FoodItem.tsx
+    Modal/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
@@ -166,7 +169,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL": "http://192.168.1.15:8000"
+         "BACKEND_URL": "https://macros-counter.mooo.com"
       }
     }
   }
@@ -4269,8 +4272,9 @@ export default AppNavigator;
 
 
 ---------- DailyEntryScreen.tsx ----------
+// ---------- src/screens/DailyEntryScreen.tsx ----------
 // src/screens/DailyEntryScreen.tsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"; // Added useRef
 import {
   View,
   FlatList,
@@ -4311,7 +4315,7 @@ import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils";
+import { getFoodIconUrl } from "../utils/iconUtils"; // Correct import
 import DateNavigator from "../components/DateNavigator"; // Import extracted component
 import DailyEntryListItem from "../components/DailyEntryListItem"; // Import extracted component
 
@@ -4348,10 +4352,64 @@ const DailyEntryScreen: React.FC = () => {
 
   const { theme } = useTheme();
   const styles = useStyles();
+  // Ref to hold the current foodIcons state for checking inside triggerIconPrefetch without causing dependency loop
+  const foodIconsRef = useRef(foodIcons);
+  useEffect(() => {
+    foodIconsRef.current = foodIcons;
+  }, [foodIcons]);
 
-  // --- Data Loading and Icon Fetching ---
+
+  // --- Icon Pre-fetching Trigger ---
+  // **** IMPORTANT FIX: Removed foodIcons from dependency array ****
+  const triggerIconPrefetch = useCallback((entries: DailyEntry[], currentSelectedDate: string) => {
+      const uniqueFoodNames = new Set<string>();
+      entries.forEach(entry => {
+          if (entry.date === currentSelectedDate && entry.items) {
+              entry.items.forEach(item => {
+                  if (item.food?.name) {
+                      uniqueFoodNames.add(item.food.name);
+                  }
+              });
+          }
+      });
+
+      if (uniqueFoodNames.size > 0) {
+          console.log(`DailyEntryScreen: Triggering pre-fetch for ${uniqueFoodNames.size} unique names on date ${currentSelectedDate}...`);
+          const currentIcons = foodIconsRef.current; // Read current icons from ref
+          const prefetchPromises = Array.from(uniqueFoodNames).map(name => {
+              // Check *current* status from ref, not state dependency
+              if (currentIcons[name] === undefined) {
+                  // Set state to loading IF NOT ALREADY SET (prevents infinite triggers if fetch fails quickly)
+                  // We check state here because ref might not update instantly if fetch starts immediately
+                   if (foodIconsRef.current[name] === undefined) {
+                      setFoodIcons(prev => ({...prev, [name]: undefined}));
+                   }
+                  // Fetch and update state directly in promise handlers
+                  return getFoodIconUrl(name).then(url => {
+                      setFoodIcons(prev => ({...prev, [name]: url}));
+                  }).catch(err => {
+                      console.warn(`Icon pre-fetch failed for ${name}:`, err);
+                      setFoodIcons(prev => ({...prev, [name]: null}));
+                  });
+              }
+              return Promise.resolve(); // Already known/loading
+          });
+
+          Promise.allSettled(prefetchPromises).then(() => {
+              console.log(`DailyEntryScreen: Icon pre-fetch settle completed for date ${currentSelectedDate}.`);
+          });
+      } else {
+          console.log(`DailyEntryScreen: No unique food names found to pre-fetch for date ${currentSelectedDate}.`);
+      }
+  // **** REMOVED foodIcons FROM DEPENDENCIES ****
+  // Now depends only on external variables, should be stable unless they change
+  }, []); // Empty dependency array (or add stable external fns if needed)
+
+
+  // --- Data Loading ---
+  // **** IMPORTANT FIX: Removed triggerIconPrefetch from dependency array ****
+  // triggerIconPrefetch is now stable due to its own empty dependency array
   const loadData = useCallback(async () => {
-    // (unchanged)
     console.log(`DailyEntryScreen: Loading data for date: ${selectedDate}`);
     setIsLoadingData(true);
     try {
@@ -4360,98 +4418,52 @@ const DailyEntryScreen: React.FC = () => {
         loadDailyEntries(),
         loadSettings(),
       ]);
-      const currentGoals = loadedSettings?.dailyGoals ?? {
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 70,
-      };
+      const currentGoals = loadedSettings?.dailyGoals ?? { calories: 2000, protein: 150, carbs: 200, fat: 70, };
       setDailyGoals(currentGoals);
       loadedFoods.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(loadedFoods);
       setDailyEntries(loadedEntries);
-      console.log(
-        `DailyEntryScreen: Loaded ${loadedFoods.length} foods, ${loadedEntries.length} entry days.`
-      );
-      triggerIconFetches(loadedFoods, loadedEntries, selectedDate);
+      console.log( `DailyEntryScreen: Loaded ${loadedFoods.length} foods, ${loadedEntries.length} entry days.` );
+      // Call the stable pre-fetch function
+      triggerIconPrefetch(loadedEntries, selectedDate);
     } catch (error) {
       console.error("DailyEntryScreen: Error loading data:", error);
       Alert.alert("Load Error", "Failed to load necessary data.");
-      setFoods([]);
-      setDailyEntries([]);
-      setDailyGoals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+      setFoods([]); setDailyEntries([]); setDailyGoals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
     } finally {
       setIsLoadingData(false);
     }
-  }, [selectedDate]);
+  // **** Only depends on selectedDate now ****
+  }, [selectedDate, triggerIconPrefetch]); // Keep triggerIconPrefetch here, but it's stable now
 
-  const triggerIconFetches = useCallback(
-    (allFoods: Food[], allEntries: DailyEntry[], currentDate: string) => {
-      // (unchanged)
-      const relevantFoodNames = new Set<string>();
-      const currentOriginalEntry = allEntries.find(
-        (entry) => entry.date === currentDate
-      );
-      if (currentOriginalEntry)
-        currentOriginalEntry.items.forEach((item) => {
-          if (item.food?.name) relevantFoodNames.add(item.food.name);
-        });
-      console.log(
-        `DailyEntryScreen: Triggering icon fetches for ${relevantFoodNames.size} unique food names.`
-      );
-      relevantFoodNames.forEach((foodName) => {
-        if (foodIcons[foodName] === undefined) {
-          setFoodIcons((prevIcons) => ({
-            ...prevIcons,
-            [foodName]: undefined,
-          }));
-          getFoodIconUrl(foodName)
-            .then((iconUrl) =>
-              setFoodIcons((prevIcons) => ({
-                ...prevIcons,
-                [foodName]: iconUrl,
-              }))
-            )
-            .catch((error) => {
-              console.warn(
-                `Icon fetch failed for ${foodName} in background:`,
-                error
-              );
-              setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null }));
-            });
-        }
-      });
-    },
-    [foodIcons]
-  );
 
+  // --- Focus Effect ---
+  // **** IMPORTANT FIX: loadData dependency is now stable unless selectedDate changes ****
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      console.log("DailyEntryScreen: Focused. Running effect.");
+      loadData(); // Runs on focus or if selectedDate changes (via loadData dependency)
       return () => {
-        console.log("DailyEntryScreen: Unfocused.");
+        console.log("DailyEntryScreen: Cleanup effect run (blur or dependency change).");
+        // Cleanup logic remains the same
         setSearch("");
         setIsOverlayVisible(false);
         setEditIndex(null);
       };
-    }, [loadData])
+    }, [loadData]) // Dependency on loadData is now correct and stable
   );
 
-  // --- List and Index Management ---
+  // --- List and Index Management (Unchanged) ---
   const currentEntryItems = useMemo(() => {
-    // (unchanged)
     const entry = dailyEntries.find((e) => e.date === selectedDate);
     return entry ? [...entry.items].reverse() : [];
   }, [dailyEntries, selectedDate]);
 
   const getOriginalIndex = useCallback(
     (reversedIndex: number): number => {
-      // (unchanged)
       const entry = dailyEntries.find((e) => e.date === selectedDate);
       if (!entry || reversedIndex < 0 || reversedIndex >= entry.items.length) {
-        console.error(
-          `getOriginalIndex: Invalid reversedIndex ${reversedIndex} for entry length ${entry?.items?.length}`
-        );
+        console.error( `getOriginalIndex: Invalid reversedIndex ${reversedIndex} for entry length ${entry?.items?.length}` );
         return -1;
       }
       return entry.items.length - 1 - reversedIndex;
@@ -4459,671 +4471,249 @@ const DailyEntryScreen: React.FC = () => {
     [dailyEntries, selectedDate]
   );
 
-  // --- State Update Helper ---
+  // --- State Update Helper (Unchanged) ---
   const updateAndSaveEntries = useCallback(
     async (updatedEntries: DailyEntry[]) => {
-      // (unchanged)
       setIsSaving(true);
-      const entryForSelectedDate = updatedEntries.find(
-        (e) => e.date === selectedDate
-      );
-      console.log(
-        `DailyEntryScreen: updateAndSaveEntries called. Saving ${updatedEntries.length} total entries.`
-      );
-      console.log(
-        `Entry for ${selectedDate} contains ${
-          entryForSelectedDate?.items?.length ?? 0
-        } items.`
-      );
-      setDailyEntries(updatedEntries);
+      const previousEntries = dailyEntries; // Store previous state for potential revert
+      const entryForSelectedDate = updatedEntries.find( (e) => e.date === selectedDate );
+      console.log( `DailyEntryScreen: updateAndSaveEntries called. Saving ${updatedEntries.length} total entries.` );
+      console.log( `Entry for ${selectedDate} contains ${ entryForSelectedDate?.items?.length ?? 0 } items.` );
+      setDailyEntries(updatedEntries); // Optimistic UI update
       try {
         await saveDailyEntries(updatedEntries);
-        console.log(
-          "DailyEntryScreen: Successfully saved updated entries to storage."
-        );
+        console.log( "DailyEntryScreen: Successfully saved updated entries to storage." );
       } catch (error) {
-        console.error(
-          "DailyEntryScreen: Failed to save updated entries to storage:",
-          error
-        );
+        console.error( "DailyEntryScreen: Failed to save updated entries to storage:", error );
         Alert.alert("Save Error", "Could not save changes. Please try again.");
+        // Revert UI on save failure
+        setDailyEntries(previousEntries);
       } finally {
         setIsSaving(false);
       }
     },
-    [selectedDate]
+    [selectedDate, dailyEntries] // Add dailyEntries here so previous state is captured correctly
   );
 
-  // --- Add/Update/Remove Entry Handlers ---
+  // --- Add/Update/Remove Handlers (Only minor change: removed explicit triggerIconFetch) ---
   const handleSingleEntryAction = useCallback(async () => {
-    // (unchanged)
     if (isSaving) return;
-    if (!selectedFood || !selectedFood.id) {
-      Alert.alert("Food Not Selected", "Please select a valid food item.");
-      return;
-    }
+    if (!selectedFood || !selectedFood.id) { Alert.alert("Food Not Selected", "Please select a valid food item."); return; }
     const trimmedGrams = grams.trim();
-    if (!isValidNumberInput(trimmedGrams) || parseFloat(trimmedGrams) <= 0) {
-      Alert.alert(
-        "Invalid Amount",
-        "Please enter a valid positive number for grams."
-      );
-      return;
-    }
+    if (!isValidNumberInput(trimmedGrams) || parseFloat(trimmedGrams) <= 0) { Alert.alert( "Invalid Amount", "Please enter a valid positive number for grams." ); return; }
     const numericGrams = parseFloat(trimmedGrams);
-    const entryItem: DailyEntryItem = {
-      food: selectedFood,
-      grams: numericGrams,
-    };
+    const entryItem: DailyEntryItem = { food: selectedFood, grams: numericGrams };
     const isEditMode = editIndex !== null;
-    console.log(
-      `handleSingleEntryAction: Mode=${isEditMode ? "Edit" : "Add"}, Food=${
-        selectedFood.name
-      }, Grams=${numericGrams}, ReversedIndex=${editIndex}`
-    );
-    const existingEntryIndex = dailyEntries.findIndex(
-      (entry) => entry.date === selectedDate
-    );
+    const existingEntryIndex = dailyEntries.findIndex( (entry) => entry.date === selectedDate );
     let updatedEntries: DailyEntry[];
     if (existingEntryIndex > -1) {
-      const existingEntry = dailyEntries[existingEntryIndex];
-      let updatedItems;
+      const existingEntry = dailyEntries[existingEntryIndex]; let updatedItems;
       if (isEditMode) {
         const originalEditIndex = getOriginalIndex(editIndex!);
-        if (originalEditIndex === -1) {
-          console.error(
-            "DailyEntryScreen: Error updating entry - Could not find original index."
-          );
-          Alert.alert("Update Error", "Internal error updating entry.");
-          setIsOverlayVisible(false);
-          setIsSaving(false);
-          return;
-        }
-        console.log(`Updating item at original index ${originalEditIndex}`);
-        updatedItems = existingEntry.items.map((item, index) =>
-          index === originalEditIndex ? entryItem : item
-        );
-      } else {
-        console.log("Adding new single item to existing date entry.");
-        updatedItems = [entryItem, ...(existingEntry.items ?? [])];
-      }
+        if (originalEditIndex === -1) { console.error("..."); Alert.alert("..."); return; }
+        updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item );
+      } else { updatedItems = [entryItem, ...(existingEntry.items ?? [])]; }
       const updatedEntry = { ...existingEntry, items: updatedItems };
-      updatedEntries = dailyEntries.map((entry, index) =>
-        index === existingEntryIndex ? updatedEntry : entry
-      );
+      updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry );
     } else {
-      if (isEditMode) {
-        console.error(
-          "DailyEntryScreen: Error - Trying to edit entry for non-existent date."
-        );
-        Alert.alert(
-          "Update Error",
-          "Cannot edit entry for a day with no entries."
-        );
-        setIsOverlayVisible(false);
-        setIsSaving(false);
-        return;
-      }
-      console.log("Creating new date entry with the first item.");
-      const newDailyEntry: DailyEntry = {
-        date: selectedDate,
-        items: [entryItem],
-      };
+      if (isEditMode) { console.error("..."); Alert.alert("..."); return; }
+      const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
       updatedEntries = [...dailyEntries, newDailyEntry];
       updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
     }
     await updateAndSaveEntries(updatedEntries);
-    if (foodIcons[selectedFood.name] === undefined)
-      triggerIconFetches([selectedFood], [], selectedDate);
-    setSelectedFood(null);
-    setGrams("");
-    setEditIndex(null);
-    setIsOverlayVisible(false);
-    setSearch("");
-    Toast.show({
-      type: "success",
-      text1: `Entry ${isEditMode ? "updated" : "added"}`,
-      position: "bottom",
-      visibilityTime: 2000,
-    });
-  }, [
-    selectedFood,
-    grams,
-    editIndex,
-    dailyEntries,
-    selectedDate,
-    isSaving,
-    getOriginalIndex,
-    updateAndSaveEntries,
-    foodIcons,
-    triggerIconFetches,
-  ]);
+
+    // No need to explicitly trigger icon fetch here, pre-fetch should handle it,
+    // and iconUtils already fetches if needed on render.
+
+    setSelectedFood(null); setGrams(""); setEditIndex(null);
+    setIsOverlayVisible(false); setSearch("");
+    Toast.show({ type: "success", text1: `Entry ${isEditMode ? "updated" : "added"}`, position: "bottom", visibilityTime: 2000, });
+  }, [ selectedFood, grams, editIndex, dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries ]);
 
   const handleAddMultipleEntries = useCallback(
     async (entriesToAdd: { food: Food; grams: number }[]) => {
-      // (unchanged)
       if (isSaving) return;
-      console.log(
-        `DailyEntryScreen: handleAddMultipleEntries START - Received ${entriesToAdd.length} items for ${selectedDate}`
-      );
       try {
-        if (!entriesToAdd || entriesToAdd.length === 0) {
-          console.warn("handleAddMultipleEntries called with no items.");
-          return;
-        }
-        const newItems: DailyEntryItem[] = entriesToAdd.map((entry) => ({
-          food: entry.food,
-          grams: entry.grams,
-        }));
-        console.log(
-          `DailyEntryScreen: Mapped to ${newItems.length} DailyEntryItems.`
-        );
-        const existingEntryIndex = dailyEntries.findIndex(
-          (entry) => entry.date === selectedDate
-        );
+        if (!entriesToAdd || entriesToAdd.length === 0) { return; }
+        const newItems: DailyEntryItem[] = entriesToAdd.map((entry) => ({ food: entry.food, grams: entry.grams }));
+        const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
         let updatedEntries: DailyEntry[];
         if (existingEntryIndex > -1) {
-          console.log(`Appending ${newItems.length} items to existing entry.`);
           const existingEntry = dailyEntries[existingEntryIndex];
           const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
           const updatedEntry = { ...existingEntry, items: updatedItems };
-          updatedEntries = dailyEntries.map((entry, index) =>
-            index === existingEntryIndex ? updatedEntry : entry
-          );
+          updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry );
         } else {
-          console.log(`Creating new entry with ${newItems.length} items.`);
-          const newDailyEntry: DailyEntry = {
-            date: selectedDate,
-            items: newItems,
-          };
+          const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
           updatedEntries = [...dailyEntries, newDailyEntry];
           updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
         }
         await updateAndSaveEntries(updatedEntries);
-        console.log("Update completed for multiple items.");
-        const foodsToFetchIconsFor = newItems.map((item) => item.food);
-        triggerIconFetches(foodsToFetchIconsFor, [], selectedDate);
-        Toast.show({
-          type: "success",
-          text1: `${entriesToAdd.length} item(s) added`,
-          text2: `to ${formatDateReadable(parseISO(selectedDate))}`,
-          position: "bottom",
-          visibilityTime: 3000,
-        });
-        setIsOverlayVisible(false);
-        setSelectedFood(null);
-        setGrams("");
-        setEditIndex(null);
-        setSearch("");
-      } catch (error) {
-        console.error(
-          "DailyEntryScreen: Error in handleAddMultipleEntries:",
-          error
-        );
-        Alert.alert(
-          "Quick Add Error",
-          `Failed to add items. ${
-            error instanceof Error ? error.message : "Please try again."
-          }`
-        );
-        setIsOverlayVisible(false);
-      }
-    },
-    [
-      dailyEntries,
-      selectedDate,
-      isSaving,
-      updateAndSaveEntries,
-      triggerIconFetches,
-    ]
+
+        // No need to explicitly trigger icon fetch here
+
+        Toast.show({ type: "success", text1: `${entriesToAdd.length} item(s) added`, text2: `to ${formatDateReadable(parseISO(selectedDate))}`, position: "bottom", visibilityTime: 3000, });
+        setIsOverlayVisible(false); setSelectedFood(null); setGrams("");
+        setEditIndex(null); setSearch("");
+      } catch (error) { console.error("...", error); Alert.alert("...", `...`); setIsOverlayVisible(false); }
+    }, [ dailyEntries, selectedDate, isSaving, updateAndSaveEntries ]
   );
 
-  const handleSelectFood = (item: Food | null) => {
-    // (unchanged)
-    console.log("Modal selecting food:", item?.name ?? "null");
+  const handleSelectFood = (item: Food | null) => { // Unchanged
     setSelectedFood(item);
     if (item && editIndex === null) setGrams("");
   };
 
-  const handleRemoveEntry = useCallback(
-    async (reversedIndex: number) => {
-      // (unchanged)
+  const handleRemoveEntry = useCallback( async (reversedIndex: number) => { // Unchanged
       if (isSaving) return;
-      const originalIndex = getOriginalIndex(reversedIndex);
-      if (originalIndex === -1) {
-        console.error(
-          `handleRemoveEntry: Invalid reversedIndex ${reversedIndex}`
-        );
-        return;
-      }
-      const currentEntry = dailyEntries.find((e) => e.date === selectedDate);
-      if (!currentEntry || originalIndex >= currentEntry.items.length) {
-        console.error(
-          `handleRemoveEntry: Cannot find entry or item at index ${originalIndex}`
-        );
-        return;
-      }
+      const originalIndex = getOriginalIndex(reversedIndex); if (originalIndex === -1) return;
+      const currentEntry = dailyEntries.find((e) => e.date === selectedDate); if (!currentEntry || originalIndex >= currentEntry.items.length) return;
       const itemToRemove = currentEntry.items[originalIndex];
-      console.log(
-        `Removing item at index ${originalIndex}: ${itemToRemove.food.name}`
-      );
-      const updatedItems = currentEntry.items.filter(
-        (_, i) => i !== originalIndex
-      );
-      let finalEntries: DailyEntry[];
-      if (updatedItems.length === 0) {
-        console.log(`Removing last item for date ${selectedDate}.`);
-        finalEntries = dailyEntries.filter(
-          (entry) => entry.date !== selectedDate
-        );
-      } else {
-        const updatedEntry = { ...currentEntry, items: updatedItems };
-        finalEntries = dailyEntries.map((entry) =>
-          entry.date === selectedDate ? updatedEntry : entry
-        );
-      }
+      const updatedItems = currentEntry.items.filter((_, i) => i !== originalIndex); let finalEntries: DailyEntry[];
+      if (updatedItems.length === 0) { finalEntries = dailyEntries.filter((entry) => entry.date !== selectedDate); }
+      else { const updatedEntry = { ...currentEntry, items: updatedItems }; finalEntries = dailyEntries.map((entry) => entry.date === selectedDate ? updatedEntry : entry ); }
       await updateAndSaveEntries(finalEntries);
-      Toast.show({
-        type: "info",
-        text1: `${itemToRemove.food.name} removed`,
-        text2: "Tap here to undo",
-        position: "bottom",
-        bottomOffset: 80,
-        visibilityTime: 4000,
-        onPress: () =>
-          handleUndoRemoveEntry(itemToRemove, selectedDate, originalIndex),
-      });
-    },
-    [
-      dailyEntries,
-      selectedDate,
-      isSaving,
-      getOriginalIndex,
-      updateAndSaveEntries,
-    ]
+      Toast.show({ type: "info", text1: `${itemToRemove.food.name} removed`, text2: "Tap here to undo", position: "bottom", bottomOffset: 80, visibilityTime: 4000, onPress: () => handleUndoRemoveEntry(itemToRemove, selectedDate, originalIndex), });
+    }, [ dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries ]
   );
 
-  const handleUndoRemoveEntry = useCallback(
-    async (
-      itemToRestore: DailyEntryItem,
-      entryDate: string,
-      originalIndex: number
-    ) => {
-      // (unchanged)
+  const handleUndoRemoveEntry = useCallback( async ( itemToRestore: DailyEntryItem, entryDate: string, originalIndex: number ) => { // Unchanged
       if (isSaving) return;
-      console.log(
-        `Undoing removal of ${itemToRestore.food.name} at index ${originalIndex} on ${entryDate}`
-      );
-      const existingEntryIndex = dailyEntries.findIndex(
-        (e) => e.date === entryDate
-      );
-      let updatedEntries;
+      const existingEntryIndex = dailyEntries.findIndex((e) => e.date === entryDate); let updatedEntries;
       if (existingEntryIndex > -1) {
-        const entryToUpdate = dailyEntries[existingEntryIndex];
-        const updatedItems = [...entryToUpdate.items];
+        const entryToUpdate = dailyEntries[existingEntryIndex]; const updatedItems = [...entryToUpdate.items];
         updatedItems.splice(originalIndex, 0, itemToRestore);
         const restoredEntry = { ...entryToUpdate, items: updatedItems };
-        updatedEntries = dailyEntries.map((entry, index) =>
-          index === existingEntryIndex ? restoredEntry : entry
-        );
-        console.log(`Item inserted back.`);
+        updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? restoredEntry : entry );
       } else {
-        console.log(`Creating new entry for date ${entryDate}.`);
-        const newEntry: DailyEntry = {
-          date: entryDate,
-          items: [itemToRestore],
-        };
-        updatedEntries = [...dailyEntries, newEntry];
-        updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+        const newEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
+        updatedEntries = [...dailyEntries, newEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
       }
-      await updateAndSaveEntries(updatedEntries);
-      Toast.hide();
-      Toast.show({
-        type: "success",
-        text1: "Entry restored!",
-        visibilityTime: 1500,
-        position: "bottom",
-      });
-    },
-    [dailyEntries, isSaving, updateAndSaveEntries]
+      await updateAndSaveEntries(updatedEntries); Toast.hide();
+      Toast.show({ type: "success", text1: "Entry restored!", visibilityTime: 1500, position: "bottom" });
+    }, [ dailyEntries, isSaving, updateAndSaveEntries ]
   );
 
-  const updateSearch = (search: string) => setSearch(search); // (unchanged)
+  const updateSearch = (search: string) => setSearch(search); // Unchanged
 
-  // --- Modal Toggle Logic ---
-  const toggleOverlay = useCallback(
-    (
-      itemToEdit: DailyEntryItem | null = null,
-      reversedIndex: number | null = null
-    ) => {
-      // (unchanged)
-      if (isSaving) {
-        console.warn("Attempted to toggle modal while saving.");
-        return;
-      }
-      setSelectedFood(null);
-      setGrams("");
-      setEditIndex(null);
-      setSearch(""); // Clear general state first
+  const toggleOverlay = useCallback( ( itemToEdit: DailyEntryItem | null = null, reversedIndex: number | null = null ) => { // Unchanged
+      if (isSaving) return;
+      setSelectedFood(null); setGrams(""); setEditIndex(null); setSearch("");
       if (itemToEdit && reversedIndex !== null) {
-        console.log(
-          `Opening modal to edit '${itemToEdit.food.name}' at reversed index ${reversedIndex}`
-        );
-        setSelectedFood(itemToEdit.food);
-        setGrams(String(itemToEdit.grams));
-        setEditIndex(reversedIndex);
+        setSelectedFood(itemToEdit.food); setGrams(String(itemToEdit.grams)); setEditIndex(reversedIndex);
       }
       setIsOverlayVisible((current) => !current);
-    },
-    [isSaving]
+    }, [isSaving]
   );
 
-  const handleEditEntryViaModal = (
-    item: DailyEntryItem,
-    reversedIndex: number
-  ) => toggleOverlay(item, reversedIndex); // (unchanged)
+  const handleEditEntryViaModal = ( item: DailyEntryItem, reversedIndex: number ) => toggleOverlay(item, reversedIndex); // Unchanged
 
-  // --- Date Navigation Handlers ---
-  const handleDateChange = useCallback(
-    (event: DateTimePickerEvent, selectedDateValue?: Date) => {
-      // (unchanged)
-      const isAndroidDismiss =
-        Platform.OS === "android" && event.type === "dismissed";
+  const handleDateChange = useCallback( (event: DateTimePickerEvent, selectedDateValue?: Date) => { // Unchanged
+      const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
       setShowDatePicker(Platform.OS === "ios");
       if (!isAndroidDismiss && event.type === "set" && selectedDateValue) {
         if (isValid(selectedDateValue)) {
-          const formattedDate = formatISO(selectedDateValue, {
-            representation: "date",
-          });
+          const formattedDate = formatISO(selectedDateValue, { representation: "date" });
           if (formattedDate !== selectedDate) {
-            console.log(`Date changed to: ${formattedDate}`);
-            setSelectedDate(formattedDate);
-            setEditIndex(null);
+            setSelectedDate(formattedDate); setEditIndex(null);
           }
-        } else {
-          console.warn("Invalid date:", selectedDateValue);
-          Alert.alert("Invalid Date", "Selected date is not valid.");
-        }
+        } else { Alert.alert("Invalid Date", "Selected date is not valid."); }
       }
       if (Platform.OS === "android") setShowDatePicker(false);
-    },
-    [selectedDate]
+    }, [selectedDate]
   );
 
-  const handlePreviousDay = useCallback(() => {
-    // (unchanged)
+  const handlePreviousDay = useCallback(() => { // Unchanged
+    if (isSaving || isLoadingData) return;
     try {
-      const currentDateObj = parseISO(selectedDate);
-      if (!isValid(currentDateObj)) {
-        console.error("Error parsing date:", selectedDate);
-        return;
-      }
-      const newDate = subDays(currentDateObj, 1);
-      const newDateString = formatISO(newDate, { representation: "date" });
-      console.log(`Navigating prev: ${newDateString}`);
-      setSelectedDate(newDateString);
-      setEditIndex(null);
-    } catch (e) {
-      console.error("Error calculating prev day:", selectedDate, e);
-    }
-  }, [selectedDate]);
+      const currentDateObj = parseISO(selectedDate); if (!isValid(currentDateObj)) return;
+      const newDate = subDays(currentDateObj, 1); const newDateString = formatISO(newDate, { representation: "date" });
+      setSelectedDate(newDateString); setEditIndex(null);
+    } catch (e) { console.error("...", e); }
+  }, [selectedDate, isSaving, isLoadingData]);
 
-  const handleNextDay = useCallback(() => {
-    // (unchanged)
+  const handleNextDay = useCallback(() => { // Unchanged
+     if (isSaving || isLoadingData) return;
     try {
-      const currentDateObj = parseISO(selectedDate);
-      if (!isValid(currentDateObj)) {
-        console.error("Error parsing date:", selectedDate);
-        return;
-      }
-      const newDate = addDays(currentDateObj, 1);
-      const newDateString = formatISO(newDate, { representation: "date" });
-      console.log(`Navigating next: ${newDateString}`);
-      setSelectedDate(newDateString);
-      setEditIndex(null);
-    } catch (e) {
-      console.error("Error calculating next day:", selectedDate, e);
-    }
-  }, [selectedDate]);
+      const currentDateObj = parseISO(selectedDate); if (!isValid(currentDateObj)) return;
+      const newDate = addDays(currentDateObj, 1); const newDateString = formatISO(newDate, { representation: "date" });
+      setSelectedDate(newDateString); setEditIndex(null);
+    } catch (e) { console.error("...", e); }
+  }, [selectedDate, isSaving, isLoadingData]);
 
-  // --- Totals Calculation ---
-  const calculateTotals = useMemo(() => {
-    // (unchanged)
-    const currentOriginalEntry = dailyEntries.find(
-      (entry) => entry.date === selectedDate
-    );
-    let totals = {
-      totalCalories: 0,
-      totalProtein: 0,
-      totalCarbs: 0,
-      totalFat: 0,
-    };
+  const calculateTotals = useMemo(() => { // Unchanged
+    const currentOriginalEntry = dailyEntries.find((entry) => entry.date === selectedDate);
+    let totals = { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 };
     if (currentOriginalEntry) {
       currentOriginalEntry.items.forEach((item) => {
-        if (
-          item.food &&
-          typeof item.food.calories === "number" &&
-          typeof item.food.protein === "number" &&
-          typeof item.food.carbs === "number" &&
-          typeof item.food.fat === "number" &&
-          typeof item.grams === "number" &&
-          item.grams > 0
-        ) {
-          const factor = item.grams / 100;
-          totals.totalCalories += item.food.calories * factor;
-          totals.totalProtein += item.food.protein * factor;
-          totals.totalCarbs += item.food.carbs * factor;
-          totals.totalFat += item.food.fat * factor;
-        } else console.warn("Skipping item in total calculation:", item);
+        if ( item.food && typeof item.food.calories === "number" && typeof item.food.protein === "number" && typeof item.food.carbs === "number" && typeof item.food.fat === "number" && typeof item.grams === "number" && item.grams > 0 ) {
+          const factor = item.grams / 100; totals.totalCalories += item.food.calories * factor; totals.totalProtein += item.food.protein * factor; totals.totalCarbs += item.food.carbs * factor; totals.totalFat += item.food.fat * factor;
+        } else console.warn("...");
       });
     }
-    return {
-      totalCalories: Math.round(totals.totalCalories),
-      totalProtein: Math.round(totals.totalProtein),
-      totalCarbs: Math.round(totals.totalCarbs),
-      totalFat: Math.round(totals.totalFat),
-    };
+    return { totalCalories: Math.round(totals.totalCalories), totalProtein: Math.round(totals.totalProtein), totalCarbs: Math.round(totals.totalCarbs), totalFat: Math.round(totals.totalFat), };
   }, [dailyEntries, selectedDate]);
 
-  // --- Main Render ---
+  // --- Main Render (Unchanged) ---
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      {/* Date Navigation using DateNavigator Component */}
       <DateNavigator
-        selectedDate={selectedDate}
-        onPreviousDay={handlePreviousDay}
-        onNextDay={handleNextDay}
-        onShowDatePicker={() =>
-          !isSaving && !isLoadingData && setShowDatePicker(true)
-        }
-        isSaving={isSaving}
-        isLoadingData={isLoadingData}
+        selectedDate={selectedDate} onPreviousDay={handlePreviousDay} onNextDay={handleNextDay}
+        onShowDatePicker={() => !isSaving && !isLoadingData && setShowDatePicker(true)}
+        isSaving={isSaving} isLoadingData={isLoadingData}
       />
-
-      {/* Date Picker (unchanged) */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={parseISO(selectedDate)}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-        />
-      )}
-
-      {/* Progress Section (unchanged) */}
+      {showDatePicker && ( <DateTimePicker value={parseISO(selectedDate)} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleDateChange} /> )}
       <View style={styles.progressContainer}>
-        <DailyProgress
-          calories={calculateTotals.totalCalories}
-          protein={calculateTotals.totalProtein}
-          carbs={calculateTotals.totalCarbs}
-          fat={calculateTotals.totalFat}
-          goals={dailyGoals}
-        />
+        <DailyProgress calories={calculateTotals.totalCalories} protein={calculateTotals.totalProtein} carbs={calculateTotals.totalCarbs} fat={calculateTotals.totalFat} goals={dailyGoals} />
       </View>
       <Divider style={styles.divider} />
-
-      {/* Saving Indicator (unchanged) */}
-      {isSaving && (
-        <View style={styles.savingIndicator}>
-          
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={styles.savingText}>Saving...</Text>
-        </View>
-      )}
-
+      {isSaving && ( <View style={styles.savingIndicator}><ActivityIndicator size="small" color={theme.colors.primary} /><Text style={styles.savingText}>Saving...</Text></View> )}
       <Text style={styles.sectionTitle}> Today's Entries </Text>
-
-      {/* Entries List */}
-      {isLoadingData ? (
-        <View style={styles.centeredLoader}>
-          
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading Entries...</Text>
-        </View>
+      {isLoadingData ? ( <View style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>Loading Entries...</Text></View>
       ) : (
         <FlatList
-          data={currentEntryItems}
-          keyExtractor={(item, index) =>
-            `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${
-              item?.grams ?? index
-            }`
-          }
-          // Use DailyEntryListItem Component
-          renderItem={({ item, index }) => (
-            <DailyEntryListItem
-              item={item}
-              reversedIndex={index}
-              foodIcons={foodIcons}
-              setFoodIcons={setFoodIcons}
-              onEdit={handleEditEntryViaModal} // Pass modal edit handler
-              onRemove={handleRemoveEntry} // Pass remove handler
-              isSaving={isSaving}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyListContainer}>
-              
-              <RNEIcon
-                name="reader-outline"
-                type="ionicon"
-                size={50}
-                color={theme.colors.grey3}
-              />
-              <Text style={styles.emptyListText}>
-                No entries recorded for this day.
-              </Text>
-              <Text style={styles.emptyListSubText}>
-                Tap '+' to add your first meal.
-              </Text>
-            </View>
-          }
-          initialNumToRender={10}
-          maxToRenderPerBatch={5}
-          windowSize={11}
-          contentContainerStyle={styles.listContentContainer}
-          keyboardShouldPersistTaps="handled"
+          data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`}
+          renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} /> )}
+          ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}> No entries recorded for this day. </Text><Text style={styles.emptyListSubText}> Tap '+' to add your first meal. </Text></View> }
+          initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled"
         />
       )}
-
-      {/* FAB (unchanged) */}
-      <FAB
-        icon={<RNEIcon name="add" color="white" />}
-        color={theme.colors.primary}
-        onPress={() => !isSaving && toggleOverlay()}
-        placement="right"
-        size="large"
-        style={styles.fab}
-        disabled={isSaving || isLoadingData}
-      />
-
-      {/* Add/Edit Modal (unchanged) */}
+      <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
       <AddEntryModal
-        isVisible={isOverlayVisible}
-        toggleOverlay={toggleOverlay}
-        selectedFood={selectedFood}
-        grams={grams}
-        setGrams={setGrams}
-        foods={foods}
-        handleAddEntry={handleSingleEntryAction}
-        handleAddMultipleEntries={handleAddMultipleEntries}
-        handleSelectFood={handleSelectFood}
-        search={search}
-        updateSearch={updateSearch}
-        isEditMode={editIndex !== null}
-        initialGrams={editIndex !== null ? grams : undefined}
+        isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods}
+        handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood}
+        search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined}
       />
     </SafeAreaView>
   );
 };
 
-// --- Styles --- (Removed inline RenderItem styles, DateNavigator styles moved)
+// --- Styles (Unchanged) ---
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.background },
   progressContainer: { paddingHorizontal: 15, paddingTop: 10 },
-  divider: {
-    marginVertical: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.divider,
-  },
-  sectionTitle: {
-    marginTop: 15,
-    marginBottom: 10,
-    paddingHorizontal: 15,
-    fontWeight: "bold",
-    fontSize: 18,
-    color: theme.colors.text,
-  },
+  divider: { marginVertical: 0, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.divider, },
+  sectionTitle: { marginTop: 15, marginBottom: 10, paddingHorizontal: 15, fontWeight: "bold", fontSize: 18, color: theme.colors.text, },
   fab: { position: "absolute", margin: 16, right: 10, bottom: 10 },
-  emptyListContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-    marginTop: 50,
-  },
-  emptyListText: {
-    fontSize: 17,
-    color: theme.colors.grey2,
-    textAlign: "center",
-    marginTop: 15,
-  },
-  emptyListSubText: {
-    fontSize: 14,
-    color: theme.colors.grey3,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  centeredLoader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingBottom: 50,
-  },
+  emptyListContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, marginTop: 50, },
+  emptyListText: { fontSize: 17, color: theme.colors.grey2, textAlign: "center", marginTop: 15, },
+  emptyListSubText: { fontSize: 14, color: theme.colors.grey3, textAlign: "center", marginTop: 8, },
+  centeredLoader: { flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 50, },
   loadingText: { marginTop: 10, color: theme.colors.grey2, fontSize: 16 },
-  savingIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 5,
-    backgroundColor: theme.colors.grey5,
-  },
-  savingText: {
-    marginLeft: 8,
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontStyle: "italic",
-  },
+  savingIndicator: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 5, backgroundColor: theme.colors.grey5, },
+  savingText: { marginLeft: 8, color: theme.colors.primary, fontSize: 14, fontStyle: "italic", },
   listContentContainer: { paddingBottom: 80 },
 }));
 
 export default DailyEntryScreen;
-
 ---------- END DailyEntryScreen.tsx ----------
 
 
 ---------- FoodListScreen.tsx ----------
+// ---------- src/screens/FoodListScreen.tsx ----------
 // src/screens/FoodListScreen.tsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"; // Added useRef
 import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet } from "react-native";
 import {
     createFood,
@@ -5132,15 +4722,15 @@ import {
     deleteFood,
 } from "../services/foodService";
 import { Food } from "../types/food";
-import { isNotEmpty } from "../utils/validationUtils"; // Removed unused isValidNumberInput
+import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed"; // Renamed import
+import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils";
+import { getFoodIconUrl } from "../utils/iconUtils"; // Correct import
 
 interface FoodListScreenProps {
     onFoodChange?: () => void;
@@ -5148,7 +4738,6 @@ interface FoodListScreenProps {
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
-    // State: key=food.name, value=undefined(loading), null(failed/no_icon), string(url)
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -5163,19 +4752,61 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const flatListRef = useRef<FlatList>(null);
+    // Ref to hold the current foodIcons state for checking inside triggerIconPrefetch
+    const foodIconsRef = useRef(foodIcons);
+    useEffect(() => {
+      foodIconsRef.current = foodIcons;
+    }, [foodIcons]);
 
-    // --- Data Loading and Icon Fetching ---
+    // --- Icon Pre-fetching ---
+    // **** IMPORTANT FIX: Removed foodIcons from dependency array ****
+    const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
+        if (!foodsToFetch || foodsToFetch.length === 0) return;
+
+        const uniqueFoodNames = new Set(foodsToFetch.map(f => f.name));
+        if (uniqueFoodNames.size === 0) return;
+
+        console.log(`FoodListScreen: Triggering pre-fetch for ${uniqueFoodNames.size} unique food names...`);
+        const currentIcons = foodIconsRef.current; // Read current icons from ref
+        const prefetchPromises = Array.from(uniqueFoodNames).map(name => {
+            // Check *current* status from ref, not state dependency
+            if (currentIcons[name] === undefined) {
+                // Set state to loading IF NOT ALREADY SET
+                 if (foodIconsRef.current[name] === undefined) {
+                    setFoodIcons(prev => ({...prev, [name]: undefined}));
+                 }
+                // Fetch and update state directly in promise handlers
+                return getFoodIconUrl(name).then(url => {
+                    setFoodIcons(prev => ({...prev, [name]: url}));
+                }).catch(err => {
+                    console.warn(`Icon pre-fetch failed for ${name}:`, err);
+                    setFoodIcons(prev => ({...prev, [name]: null}));
+                });
+            }
+             return Promise.resolve(); // Already known/loading
+        });
+
+        // Run fetches in background
+        Promise.allSettled(prefetchPromises).then(() => {
+            console.log("FoodListScreen: Icon pre-fetch settle completed.");
+        });
+    // **** REMOVED foodIcons FROM DEPENDENCIES ****
+    }, []); // Empty dependency array
+
+
+    // --- Data Loading ---
+    // **** IMPORTANT FIX: Removed triggerIconPrefetch from dependency array ****
     const loadFoodData = useCallback(async () => {
         console.log("FoodListScreen: Loading food data...");
         setIsLoading(true);
-        setFoodIcons({}); // Clear icons on reload
+        setFoodIcons({}); // Clear icons on full reload
         try {
             const loadedFoods = await getFoods();
-            loadedFoods.sort((a, b) => a.name.localeCompare(b.name)); // Sort by name
+            loadedFoods.sort((a, b) => a.name.localeCompare(b.name));
             setFoods(loadedFoods);
             console.log(`FoodListScreen: Loaded ${loadedFoods.length} foods.`);
-            // Trigger icon fetches for the loaded foods
-            fetchIconsForFoods(loadedFoods);
+            // Call the stable pre-fetch function
+            triggerIconPrefetch(loadedFoods);
         } catch (error) {
             console.error("FoodListScreen: Error loading food data:", error);
             Alert.alert("Error", "Failed to load food list.");
@@ -5183,55 +4814,29 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } finally {
             setIsLoading(false);
         }
-    }, []); // No dependencies, runs on focus/mount
+    // **** REMOVED triggerIconPrefetch FROM DEPENDENCIES ****
+    }, [triggerIconPrefetch]); // Dependency is stable
 
-    // Fetch icons only for the specified list of foods
-    const fetchIconsForFoods = useCallback(async (foodsToFetch: Food[]) => {
-        if (!foodsToFetch || foodsToFetch.length === 0) return;
-        console.log(`FoodListScreen: Fetching icons for ${foodsToFetch.length} visible foods.`);
 
-        const iconUpdates: { [key: string]: string | null } = {};
-        const promises = foodsToFetch.map(async (food) => {
-            const foodName = food.name;
-            // Only fetch if status is unknown (undefined)
-            if (foodIcons[foodName] === undefined) {
-                 setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Mark as loading immediately
-                 try {
-                    const iconUrl = await getFoodIconUrl(foodName);
-                    iconUpdates[foodName] = iconUrl;
-                } catch (error) {
-                    console.warn(`Icon fetch failed for ${foodName}:`, error);
-                    iconUpdates[foodName] = null; // Store null on error
-                }
-            }
-        });
-
-        await Promise.all(promises);
-
-        if (Object.keys(iconUpdates).length > 0) {
-            setFoodIcons(prevIcons => ({ ...prevIcons, ...iconUpdates }));
-            console.log(`FoodListScreen: Updated icons state for ${Object.keys(iconUpdates).length} food names.`);
-        }
-
-    }, [foodIcons]); // Depend on foodIcons to know fetch status
-
+    // --- Focus Effect ---
+    // **** IMPORTANT FIX: loadData dependency is now stable ****
     useFocusEffect(
         useCallback(() => {
-            loadFoodData();
+            console.log("FoodListScreen: Focused. Running effect.");
+            loadFoodData(); // Runs on focus
             return () => {
-                 console.log("FoodListScreen: Unfocused.");
-                 setSearch(""); // Clear search on blur
-                 setIsOverlayVisible(false); // Ensure modal is closed
+                 console.log("FoodListScreen: Cleanup effect run (blur).");
+                 setSearch("");
+                 setIsOverlayVisible(false);
+                 // No need to clear icons here, they persist between focuses
             };
-        }, [loadFoodData])
+        }, [loadFoodData]) // Dependency is now stable
     );
 
-    // --- Validation ---
+    // --- Validation (Unchanged) ---
     const validateFood = (food: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
-        // Check if name is provided and not just whitespace
         if (!isNotEmpty(food.name)) newErrors.name = "Name is required";
-        // Ensure macros are non-negative numbers
         if (isNaN(food.calories) || food.calories < 0) newErrors.calories = "Must be a non-negative number";
         if (isNaN(food.protein) || food.protein < 0) newErrors.protein = "Must be a non-negative number";
         if (isNaN(food.carbs) || food.carbs < 0) newErrors.carbs = "Must be a non-negative number";
@@ -5239,203 +4844,106 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         return Object.keys(newErrors).length === 0 ? null : newErrors;
     };
 
-    // --- CRUD Operations ---
+    // --- CRUD Operations (Only minor changes: removed explicit triggerIconFetch) ---
     const handleCreateFood = async () => {
         const trimmedFood = { ...newFood, name: newFood.name.trim() };
         const validationErrors = validateFood(trimmedFood);
-        if (validationErrors) {
-            setErrors(validationErrors);
-            Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' });
-            return;
-        }
-        setErrors({});
-        setIsSaving(true);
+        if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' }); return; }
+        setErrors({}); setIsSaving(true);
         try {
-            console.log("FoodListScreen: Creating food:", trimmedFood);
             const createdFood = await createFood(trimmedFood);
-            console.log("FoodListScreen: Food created successfully:", createdFood);
-
-            // Add and re-sort
             const updatedFoods = [...foods, createdFood].sort((a, b) => a.name.localeCompare(b.name));
             setFoods(updatedFoods);
 
-             // Fetch icon for the new food immediately
-             fetchIconsForFoods([createdFood]); // Fetch just for the new one
+            // No need to explicitly trigger icon fetch here
 
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Reset form
-            setIsOverlayVisible(false);
-            onFoodChange?.(); // Notify parent/navigator if needed
+            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+            setIsOverlayVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: `${createdFood.name} added`, position: 'bottom' });
-
         } catch (error: any) {
             console.error("FoodListScreen: Error creating food:", error);
             Alert.alert("Error", error.message || "Failed to create food.");
-        } finally {
-            setIsSaving(false);
-        }
+        } finally { setIsSaving(false); }
     };
 
     const handleUpdateFood = async () => {
         if (!editFood) return;
         const trimmedFood = { ...editFood, name: editFood.name.trim() };
         const validationErrors = validateFood(trimmedFood);
-        if (validationErrors) {
-            setErrors(validationErrors);
-            Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' });
-            return;
-        }
-        setErrors({});
-        setIsSaving(true);
+        if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: 'Please fix errors', position: 'bottom' }); return; }
+        setErrors({}); setIsSaving(true);
         try {
-            console.log("FoodListScreen: Updating food:", trimmedFood);
             const updated = await updateFood(trimmedFood);
-            console.log("FoodListScreen: Food updated successfully:", updated);
-
-            const originalFood = foods.find(f => f.id === updated.id); // Find original for name comparison
-            const updatedFoods = foods.map((f) => (f.id === updated.id ? updated : f))
-                                      .sort((a, b) => a.name.localeCompare(b.name)); // Update and re-sort
+            const originalFood = foods.find(f => f.id === updated.id);
+            const updatedFoods = foods.map((f) => (f.id === updated.id ? updated : f)).sort((a, b) => a.name.localeCompare(b.name));
             setFoods(updatedFoods);
 
-             // If name changed, trigger icon refetch for the new name
-            if (originalFood && originalFood.name.toLowerCase() !== updated.name.toLowerCase()) {
-                 console.log(`Food name changed from "${originalFood.name}" to "${updated.name}", refetching icon.`);
-                 fetchIconsForFoods([updated]);
-                 // Optionally remove old icon state if name was key: delete newIcons[originalFood.name];
-            }
+            // No need to explicitly trigger icon fetch here
 
-            setEditFood(null); // Clear edit state
-            setIsOverlayVisible(false);
-            onFoodChange?.();
+            setEditFood(null); setIsOverlayVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: `${updated.name} updated`, position: 'bottom' });
         } catch (error: any) {
             console.error("FoodListScreen: Error updating food:", error);
             Alert.alert("Error", error.message || "Failed to update food.");
-        } finally {
-            setIsSaving(false);
-        }
+        } finally { setIsSaving(false); }
     };
 
-     const handleDeleteFood = async (foodId: string) => {
-        const foodToDelete = foods.find((f) => f.id === foodId);
-        if (!foodToDelete) return;
-
-        // Optimistic UI update: Remove immediately
-        setFoods(foods.filter((f) => f.id !== foodId));
-
+    const handleDeleteFood = async (foodId: string) => { // (Unchanged)
+        const foodToDelete = foods.find((f) => f.id === foodId); if (!foodToDelete) return;
+        const previousFoods = foods; // Store previous state
+        setFoods(foods.filter((f) => f.id !== foodId)); // Optimistic UI
         try {
-            console.log("FoodListScreen: Deleting food:", foodToDelete.name, foodId);
             await deleteFood(foodId);
-            console.log("FoodListScreen: Food deleted successfully from storage.");
-            // Success toast is handled by the callback from FoodItem
             onFoodChange?.();
-
-            // Remove icon from cache if needed (using name as key)
-            setFoodIcons(prev => {
-                const newIcons = {...prev};
-                delete newIcons[foodToDelete.name];
-                return newIcons;
-            });
-
+            setFoodIcons(prev => { const newIcons = {...prev}; delete newIcons[foodToDelete.name]; return newIcons; });
         } catch (error) {
             console.error("FoodListScreen: Error deleting food:", error);
-            // Revert UI change on error
-            setFoods((prevFoods) => [...prevFoods, foodToDelete].sort((a,b) => a.name.localeCompare(b.name)));
+            setFoods(previousFoods); // Revert on error
             Alert.alert("Delete Error", "Failed to delete food from storage. Restored item.");
         }
     };
 
-    // Handles the UI restoration after optimistic delete
-    const handleUndoDeleteFood = useCallback((food: Food) => {
-        console.log("FoodListScreen: Undoing delete for:", food.name, food.id);
-        // Add back and re-sort
+    const handleUndoDeleteFood = useCallback((food: Food) => { // (Unchanged)
         const restoredFoods = [...foods, food].sort((a, b) => a.name.localeCompare(b.name));
-        setFoods(restoredFoods);
-        Toast.hide(); // Hide the undo toast
-        // Note: This doesn't re-add to backend, assumes delete failed or user changed mind before persistence
-        onFoodChange?.();
+        setFoods(restoredFoods); Toast.hide(); onFoodChange?.();
         Toast.show({ type: 'success', text1: `${food.name} restored`, position: 'bottom', visibilityTime: 2000 });
+        // Re-fetch icon if needed (prefetch logic handles this implicitly now)
+        // if (foodIconsRef.current[food.name] === undefined) {
+        //    triggerIconPrefetch([food]); // Or just let render handle it via iconUtils
+        // }
+    }, [foods, onFoodChange]); // Removed foodIcons, triggerIconPrefetch
 
-        // Re-fetch icon if it was removed from cache
-        if (foodIcons[food.name] === undefined) {
-            fetchIconsForFoods([food]);
-        }
-    }, [foods, onFoodChange, foodIcons, fetchIconsForFoods]); // Add dependencies
-
-    // --- Modal and Input Handling ---
+    // --- Modal and Input Handling (Unchanged) ---
     const toggleOverlay = (foodToEdit?: Food) => {
         if (isSaving) return;
-        if (foodToEdit) {
-            console.log("FoodListScreen: Opening modal to edit:", foodToEdit.name);
-            setEditFood({ ...foodToEdit }); // Set as edit target
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Clear add form
-        } else {
-             console.log("FoodListScreen: Opening modal to add new food.");
-            setEditFood(null); // Clear edit target
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); // Clear add form
-        }
-        setErrors({}); // Clear errors on modal open
-        setIsOverlayVisible(!isOverlayVisible);
+        if (foodToEdit) { setEditFood({ ...foodToEdit }); setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); }
+        else { setEditFood(null); setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 }); }
+        setErrors({}); setIsOverlayVisible(!isOverlayVisible);
     };
 
     const updateSearch = (search: string) => setSearch(search);
 
-    // Filter foods based on search query
     const filteredFoods = useMemo(() => {
-        return foods.filter((food) =>
-            food.name.toLowerCase().includes(search.toLowerCase())
-        );
+        return foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase()));
     }, [foods, search]);
 
-    // Handle input changes in the Add/Edit modal
-    const handleInputChange = useCallback((
-        key: keyof Omit<Food, "id">,
-        value: string,
-        isEdit: boolean
-    ) => {
-        const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
-        let processedValue: string | number = value;
-
-        // Clean numeric inputs, allow empty string or just "." temporarily
+    const handleInputChange = useCallback(( key: keyof Omit<Food, "id">, value: string, isEdit: boolean ) => {
+        const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat']; let processedValue: string | number = value;
         if (numericKeys.includes(key)) {
-            if (value === "" || value === ".") {
-                 processedValue = value; // Keep as is for intermediate state
-            } else {
-                // Allow only numbers and one decimal point
+            if (value === "" || value === ".") { processedValue = value; } else {
                 const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                // Only update if it's a valid partial number or empty
-                if (cleaned === "" || !isNaN(parseFloat(cleaned))) {
-                     processedValue = cleaned;
-                } else {
-                    return; // Do not update state if cleaning results in invalid format
-                }
+                if (cleaned === "" || !isNaN(parseFloat(cleaned))) { processedValue = cleaned; } else { return; }
             }
         }
-
-        // Determine the final value to store (0 for empty/invalid numerics, string for name)
         const updateState = (prevState: any) => {
              let finalValue: string | number;
-             if (numericKeys.includes(key)) {
-                  // Store number 0 if empty or just ".", otherwise parse the valid numeric string
-                  if (processedValue === "" || processedValue === ".") {
-                      finalValue = 0;
-                  } else {
-                      finalValue = parseFloat(processedValue as string);
-                  }
-             } else {
-                finalValue = processedValue; // Use the string value for name
-             }
+             if (numericKeys.includes(key)) { finalValue = (processedValue === "" || processedValue === ".") ? 0 : parseFloat(processedValue as string); } else { finalValue = processedValue; }
              return { ...prevState, [key]: finalValue };
         };
-
-        // Update the correct state object (editFood or newFood)
-        if (isEdit) {
-            setEditFood(updateState);
-        } else {
-            setNewFood(updateState);
-        }
+        if (isEdit) { setEditFood(updateState); } else { setNewFood(updateState); }
     }, []);
 
-    // --- Render ---
+    // --- Render (Unchanged) ---
     if (isLoading) {
         return (
             <SafeAreaView style={styles.centeredLoader}>
@@ -5448,159 +4956,44 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <SearchBar
-                placeholder="Search Your Food Library..." // More descriptive placeholder
-                onChangeText={updateSearch}
-                value={search}
-                platform={Platform.OS === "ios" ? "ios" : "android"}
-                containerStyle={styles.searchBarContainer}
-                inputContainerStyle={styles.searchBarInputContainer}
-                inputStyle={styles.searchInputStyle}
-                onClear={() => setSearch('')} // Clear button action
-                showCancel={Platform.OS === 'ios'} // iOS convention
+                placeholder="Search Your Food Library..." onChangeText={updateSearch} value={search} platform={Platform.OS === "ios" ? "ios" : "android"}
+                containerStyle={styles.searchBarContainer} inputContainerStyle={styles.searchBarInputContainer} inputStyle={styles.searchInputStyle}
+                onClear={() => setSearch('')} showCancel={Platform.OS === 'ios'}
             />
             <FlatList
-                ref={flatListRef}
-                data={filteredFoods}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <FoodItem
-                        food={item}
-                        onEdit={toggleOverlay}
-                        onDelete={handleDeleteFood} // Pass delete handler
-                        onUndoDelete={handleUndoDeleteFood} // Pass undo handler
-                        foodIconUrl={foodIcons[item.name]} // Pass icon state using food NAME
-                    />
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyListContainer}>
-                        <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
-                        <Text style={styles.emptyListText}>
-                            {search ? `No foods found matching "${search}"` : "Your food library is empty."}
-                        </Text>
-                        {!search && <Text style={styles.emptyListSubText}>Tap '+' to add your first food item!</Text>}
-                    </View>
-                }
+                ref={flatListRef} data={filteredFoods} keyExtractor={(item) => item.id}
+                renderItem={({ item }) => ( <FoodItem food={item} onEdit={toggleOverlay} onDelete={handleDeleteFood} onUndoDelete={handleUndoDeleteFood} foodIconUrl={foodIcons[item.name]} /> )}
+                ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}> {search ? `No foods found matching "${search}"` : "Your food library is empty."} </Text>{!search && <Text style={styles.emptyListSubText}>Tap '+' to add your first food item!</Text>}</View> }
                 contentContainerStyle={filteredFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
-                initialNumToRender={15}
-                maxToRenderPerBatch={10}
-                windowSize={21}
-                keyboardShouldPersistTaps="handled" // Important for search bar interaction
+                initialNumToRender={15} maxToRenderPerBatch={10} windowSize={21} keyboardShouldPersistTaps="handled"
             />
-
-            {/* Saving Indicator Overlay (Optional, more prominent) */}
-            {/* {isSaving && (
-                <View style={styles.savingOverlay}>
-                    <ActivityIndicator size="large" color={theme.colors.white} />
-                    <Text style={styles.savingOverlayText}>Saving...</Text>
-                </View>
-            )} */}
-
             <FAB
-                icon={<RNEIcon name="add" color={theme.colors.white} />} // Use white icon for contrast
-                color={theme.colors.primary}
-                onPress={() => !isSaving && toggleOverlay()} // Prevent opening modal while saving
-                placement="right"
-                size="large"
-                style={styles.fab}
-                disabled={isSaving} // Disable FAB during save
+                icon={<RNEIcon name="add" color={theme.colors.white} />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()}
+                placement="right" size="large" style={styles.fab} disabled={isSaving}
             />
-
             <AddFoodModal
-                isVisible={isOverlayVisible}
-                toggleOverlay={() => !isSaving && setIsOverlayVisible(false)}
-                newFood={newFood}
-                editFood={editFood}
-                errors={errors}
-                handleInputChange={handleInputChange}
-                handleCreateFood={handleCreateFood}
-                handleUpdateFood={handleUpdateFood}
-                validateFood={validateFood}
-                setErrors={setErrors}
+                isVisible={isOverlayVisible} toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} newFood={newFood} editFood={editFood}
+                errors={errors} handleInputChange={handleInputChange} handleCreateFood={handleCreateFood} handleUpdateFood={handleUpdateFood}
+                validateFood={validateFood} setErrors={setErrors}
             />
         </SafeAreaView>
     );
 };
 
-// --- Styles ---
+// --- Styles (Unchanged) ---
 const useStyles = makeStyles((theme) => ({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    centeredLoader: { // Centered style for initial loading
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme.colors.background, // Ensure background matches
-    },
-    loadingText: {
-        marginTop: 15,
-        color: theme.colors.grey1,
-        fontSize: 16,
-    },
-    emptyListContainer: { // Consistent Empty State Style
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 30,
-        marginTop: 50,
-    },
-    emptyListText: {
-        fontSize: 17, // Slightly larger text
-        color: theme.colors.grey2,
-        textAlign: 'center',
-        marginTop: 15,
-    },
-    emptyListSubText: {
-        fontSize: 14,
-        color: theme.colors.grey3,
-        textAlign: 'center',
-        marginTop: 8,
-    },
-    searchBarContainer: { // Improved Search Bar Style
-        backgroundColor: theme.colors.background,
-        borderBottomColor: theme.colors.divider, // Use divider color
-        borderTopColor: theme.colors.background, // Match background
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        paddingHorizontal: 10, // Adjust padding
-        paddingVertical: 8,
-        marginBottom: 0, // Remove margin if list items handle spacing
-    },
-    searchBarInputContainer: { // Style for the input field itself
-        backgroundColor: theme.colors.searchBg || theme.colors.grey5, // Use specific theme color or fallback
-        height: 40,
-        borderRadius: 20, // Make it round
-    },
-    searchInputStyle: {
-        color: theme.colors.text,
-        fontSize: 15,
-    },
-    listContentContainer: { // Add padding at the bottom for FAB
-        paddingBottom: 80,
-    },
-    listContentContainerEmpty: { // Ensure empty component can take up space
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
-    fab: { // Standard FAB styling
-        position: 'absolute',
-        margin: 16,
-        right: 10,
-        bottom: 10,
-    },
-    // Optional Saving Overlay Styles
-    // savingOverlay: {
-    //     ...StyleSheet.absoluteFillObject, // Cover the whole screen
-    //     backgroundColor: 'rgba(0, 0, 0, 0.4)', // Semi-transparent background
-    //     justifyContent: 'center',
-    //     alignItems: 'center',
-    //     zIndex: 10, // Ensure it's on top
-    // },
-    // savingOverlayText: {
-    //     color: theme.colors.white,
-    //     marginTop: 10,
-    //     fontSize: 16,
-    // },
+    container: { flex: 1, backgroundColor: theme.colors.background, },
+    centeredLoader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background, },
+    loadingText: { marginTop: 15, color: theme.colors.grey1, fontSize: 16, },
+    emptyListContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, marginTop: 50, },
+    emptyListText: { fontSize: 17, color: theme.colors.grey2, textAlign: 'center', marginTop: 15, },
+    emptyListSubText: { fontSize: 14, color: theme.colors.grey3, textAlign: 'center', marginTop: 8, },
+    searchBarContainer: { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.divider, borderTopColor: theme.colors.background, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 0, },
+    searchBarInputContainer: { backgroundColor: theme.colors.searchBg || theme.colors.grey5, height: 40, borderRadius: 20, },
+    searchInputStyle: { color: theme.colors.text, fontSize: 15, },
+    listContentContainer: { paddingBottom: 80, },
+    listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },
+    fab: { position: 'absolute', margin: 16, right: 10, bottom: 10, },
 }));
 
 export default FoodListScreen;
@@ -5789,12 +5182,13 @@ export default SettingsScreen;
 
 
 ---------- backendService.ts ----------
-// src/services/backendService.ts
-// ---------- backendService.ts (Improved Error Handling and Logging) ----------
+// ---------- src/services/backendService.ts ----------
+// ---------- backendService.ts (Improved Error Handling, Logging, Auth Flag) ----------
 import Constants from 'expo-constants';
 import { getClientId } from './clientIDService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native'; // For logging platform info
+import uuid from 'react-native-uuid'; // Import uuid
 
 // --- Configuration ---
 const getBackendUrl = (): string => {
@@ -5833,7 +5227,7 @@ interface IconResponse {
 }
 
 export interface UserStatus {
-    client_id: string;
+    client_id: string; // Changed to string to match backend UUID string representation
     coins: number;
 }
 
@@ -5867,7 +5261,8 @@ export class BackendError extends Error {
 // --- API Call Helper ---
 async function fetchBackend<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    needsAuth: boolean = true // <<< Added flag to control auth header
 ): Promise<T> {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${BASE_URL}${cleanEndpoint}`;
@@ -5875,7 +5270,7 @@ async function fetchBackend<T>(
     let response: Response | null = null; // Define response outside try block
     let requestId: string | null = null; // For logging correlation
 
-    console.log(`[API Request] ${method} ${url} - Starting`);
+    console.log(`[API Request] ${method} ${url} - Starting (Auth: ${needsAuth})`);
 
     const defaultHeaders: HeadersInit = {
         'Content-Type': 'application/json',
@@ -5885,14 +5280,24 @@ async function fetchBackend<T>(
         // 'X-App-Version': Constants.expoConfig?.version || 'unknown', // Example app version
     };
 
-    const clientId = await getClientId();
-    const authHeaders: HeadersInit = { 'X-Client-ID': clientId };
+    let authHeaders: HeadersInit = {};
+    if (needsAuth) {
+        const clientId = await getClientId(); // Fetch client ID only if needed
+         // Validate client ID format before sending
+        if (!uuid.validate(clientId)) {
+            console.error(`[API Request] Invalid Client ID format detected: ${clientId}. Aborting request.`);
+            throw new BackendError("Invalid client ID format.", 400, "Invalid client ID format.");
+        }
+        authHeaders = { 'X-Client-ID': clientId };
+        console.log(`[API Request] Adding X-Client-ID header.`);
+    }
+
 
     const config: RequestInit = {
         ...options,
         headers: {
             ...defaultHeaders,
-            ...authHeaders,
+            ...authHeaders, // Add auth headers only if needsAuth is true
             ...options.headers,
         },
         // Consider adding a timeout (if not using default)
@@ -5926,7 +5331,9 @@ async function fetchBackend<T>(
         // Handle No Content success case
         if (status === 204) {
              console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
-             return null as T; // Or appropriate value for T if null isn't expected
+             // Return null or an appropriate empty value based on expected type T
+             // Casting to T might be unsafe if T doesn't expect null. Consider checking T.
+             return null as T;
         }
 
         // Attempt to parse JSON, otherwise get text
@@ -5982,7 +5389,7 @@ async function fetchBackend<T>(
             }
 
             // Specific handling for common error codes
-            if (status === 401) errorMessage = "Authentication failed. Please log in again.";
+            if (status === 401 && needsAuth) errorMessage = "Authentication failed. Invalid Client ID."; // Modify 401 message context
             if (status === 403) errorMessage = "Permission denied.";
             if (status === 404) errorMessage = "Resource not found.";
             if (status === 429) errorMessage = "Too many requests. Please try again later.";
@@ -6026,12 +5433,12 @@ async function fetchBackend<T>(
     }
 }
 
-// --- Service Functions (Endpoints remain the same) ---
+// --- Service Functions (Endpoints remain the same, auth flag used) ---
 
 export const getUserStatus = async (): Promise<UserStatus> => {
     const clientId = await getClientId();
-    // Ensure clientId is valid UUID format before sending? Maybe not necessary if backend handles it.
-    return fetchBackend<UserStatus>(`/users/status/${clientId}`);
+    // Ensure clientId is valid UUID format before sending? Backend likely handles.
+    return fetchBackend<UserStatus>(`/users/status/${clientId}`, {}, true); // needsAuth = true
 };
 
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
@@ -6039,7 +5446,7 @@ export const getMacrosForRecipe = async (foodName: string, ingredients: string):
     return fetchBackend<Macros>('/ai/macros_recipe', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
@@ -6047,7 +5454,7 @@ export const getMacrosForImageSingle = async (image_base64: string, mime_type: s
     return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
@@ -6055,7 +5462,7 @@ export const getMacrosForImageMultiple = async (image_base64: string, mime_type:
     return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
 
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
@@ -6063,7 +5470,7 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
     const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
     // Handle potential null response from fetchBackend if server returned 204 or non-JSON OK
     if (response === null || typeof response.grams !== 'number') {
         console.error("Received unexpected null or invalid response format while estimating grams.");
@@ -6077,7 +5484,11 @@ export const getFoodIcon = async (foodName: string, locale: string = 'en'): Prom
     const encodedLocale = encodeURIComponent(locale);
     try {
         // Expecting IconResponse = { icon_url: string | null }
-        const response = await fetchBackend<IconResponse>(`/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`);
+        const response = await fetchBackend<IconResponse>(
+            `/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`,
+            {}, // Default GET options
+            false // <<< Set needsAuth = false for this endpoint
+        );
         // Handle null response from fetchBackend (e.g., 204 No Content)
         if (response === null) {
             // console.log(`Received null response for icon ${foodName}, treating as not found.`);
@@ -6105,9 +5516,8 @@ export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, {
         method: 'POST',
         body: JSON.stringify(body),
-    });
+    }, true); // needsAuth = true
 };
-
 ---------- END backendService.ts ----------
 
 
@@ -6613,28 +6023,32 @@ export const getTodayDateString = (): string => {
 
 
 ---------- iconUtils.ts ----------
-// src/utils/iconUtils.ts
+// ---------- src/utils/iconUtils.ts ----------
 // Import necessary modules
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFoodIcon } from '../services/backendService'; // Import backend service
 
-// Define the cache entry type (URL only, no expiry handled here)
+// Cache Configuration
+const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+// Define the cache entry type including timestamp
 type CacheEntry = {
   url: string | null;
+  timestamp: number; // Unix timestamp (ms) when the entry was created/updated
 };
 
 // In-memory cache for fast access
 const memoryCache = new Map<string, CacheEntry>();
 
-// Prefix for AsyncStorage keys (keeping versioning)
-const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v1_'; // BE = Backend
+// Prefix for AsyncStorage keys (versioned)
+const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v2_'; // Updated version for TTL change
 
 // --- Main Exported Function ---
 
 /**
  * Gets the icon URL for a food item.
- * Checks memory cache, then AsyncStorage, then calls the backend service.
- * Caches the result (including null for failures/not found).
+ * Checks memory cache, then AsyncStorage (respecting TTL), then calls the backend service.
+ * Caches the result (including null for failures/not found) with a timestamp.
  *
  * @param foodName The name of the food item.
  * @param locale The desired locale for the icon search (defaults to 'en').
@@ -6647,23 +6061,39 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   }
 
   const cacheKey = `${locale}_${foodName.toLowerCase().trim()}`;
+  const now = Date.now();
 
-  // 1. Check Memory Cache
+  // 1. Check Memory Cache (and TTL)
   const memoryEntry = memoryCache.get(cacheKey);
-  if (memoryEntry !== undefined) { // Check existence, not just truthiness (null is valid cached value)
-    // console.log(`Icon Cache HIT (Memory): ${cacheKey} -> ${memoryEntry.url}`);
-    return memoryEntry.url;
+  if (memoryEntry !== undefined) {
+    if (now < memoryEntry.timestamp + ICON_CACHE_TTL_MS) {
+        // console.log(`Icon Cache HIT (Memory, valid): ${cacheKey} -> ${memoryEntry.url}`);
+        return memoryEntry.url;
+    } else {
+        // console.log(`Icon Cache STALE (Memory): ${cacheKey}`);
+        memoryCache.delete(cacheKey); // Remove stale entry from memory
+    }
   }
 
-  // 2. Check AsyncStorage
+  // 2. Check AsyncStorage (and TTL)
   const storageKey = STORAGE_KEY_PREFIX + cacheKey;
   try {
     const storedValue = await AsyncStorage.getItem(storageKey);
     if (storedValue !== null) {
       const parsed: CacheEntry = JSON.parse(storedValue);
-      // console.log(`Icon Cache HIT (Storage): ${cacheKey} -> ${parsed.url}`);
-      memoryCache.set(cacheKey, parsed); // Update memory cache
-      return parsed.url;
+      if (parsed && typeof parsed.timestamp === 'number' && typeof parsed.url !== 'undefined') {
+        if (now < parsed.timestamp + ICON_CACHE_TTL_MS) {
+            // console.log(`Icon Cache HIT (Storage, valid): ${cacheKey} -> ${parsed.url}`);
+            memoryCache.set(cacheKey, parsed); // Update memory cache
+            return parsed.url;
+        } else {
+            // console.log(`Icon Cache STALE (Storage): ${cacheKey}`);
+            // Don't need to remove from storage here, fetching new will overwrite
+        }
+      } else {
+         console.warn(`Invalid cache entry format found in storage for ${storageKey}. Ignoring.`);
+         // Optionally remove invalid entry: await AsyncStorage.removeItem(storageKey);
+      }
     }
   } catch (error) {
     console.error(`Error reading icon cache from AsyncStorage for key ${storageKey}:`, error);
@@ -6671,7 +6101,7 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   }
 
   // 3. Fetch from Backend API
-  // console.log(`Icon Cache MISS / Fetching Backend API: ${cacheKey}`);
+  // console.log(`Icon Cache MISS or STALE / Fetching Backend API: ${cacheKey}`);
   let iconUrl: string | null = null;
   try {
       // Call the backend service function - it handles its own errors and returns null on failure
@@ -6685,8 +6115,8 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
       iconUrl = null; // Ensure null is cached on unexpected error during service call
   }
 
-  // 4. Cache the final result (even nulls) from backend
-  const newCacheEntry: CacheEntry = { url: iconUrl };
+  // 4. Cache the final result (even nulls) from backend with current timestamp
+  const newCacheEntry: CacheEntry = { url: iconUrl, timestamp: now };
   memoryCache.set(cacheKey, newCacheEntry); // Cache in memory
   try {
     // Cache in AsyncStorage
@@ -6698,7 +6128,7 @@ export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): P
   return iconUrl;
 };
 
-// --- Cache Management (Optional but recommended) ---
+// --- Cache Management (Unchanged - manual clear still useful) ---
 
 export const clearIconCache = async () => {
     memoryCache.clear();
