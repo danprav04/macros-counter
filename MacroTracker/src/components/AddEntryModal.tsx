@@ -104,6 +104,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [foodIcons, setFoodIcons] = useState<{
     [foodName: string]: string | null | undefined;
   }>({});
+  const currentlyFetchingIcons = useRef<Set<string>>(new Set()); // Track ongoing fetches
 
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
@@ -124,15 +125,16 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   // --- End Quick Add State ---
 
   const screenWidth = Dimensions.get("window").width;
-  const isModalOpening = useRef(false);
 
   // --- Computed State ---
   const isActionDisabled = isAiLoading || quickAddLoading; // General loading state check
 
   const filteredFoods = useMemo(() => {
     if (!search) return [];
+    const searchTerm = search.toLowerCase();
+    // Optimize filtering for performance on large lists
     return foods.filter((food) =>
-      food.name.toLowerCase().includes(search.toLowerCase())
+      food.name.toLowerCase().includes(searchTerm)
     );
   }, [foods, search]);
 
@@ -153,8 +155,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setAutoInput("");
         setIsAiLoading(false);
         setQuickAddLoading(false);
+        setFoodIcons({}); // Clear icons when modal closes fully
+        currentlyFetchingIcons.current.clear(); // Clear fetching tracker
         console.log("AddEntryModal state reset on close.");
-      }, 150);
+      }, 300); // Increased timeout slightly for animations
       return () => clearTimeout(timer);
     }
   }, [isVisible, handleSelectFood, updateSearch, setGrams]);
@@ -162,10 +166,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   // Handle state initialization/reset when modal opens or mode changes
   useEffect(() => {
     if (isVisible) {
-      isModalOpening.current = true;
-      const timer = setTimeout(() => {
-        isModalOpening.current = false;
-      }, 100);
+       // Immediately load recent foods if in normal mode when opening
+       if (modalMode === "normal") {
+           loadRecentFoods().then(setRecentFoods).catch(err => console.error("Failed to load recent foods on open:", err));
+       }
 
       if (modalMode === "normal") {
         if (isEditMode && selectedFood && initialGrams !== undefined) {
@@ -177,7 +181,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           setUnitMode("grams");
           setAutoInput("");
         }
-        loadRecentFoods().then(setRecentFoods);
       } else if (modalMode === "quickAddSelect") {
         handleSelectFood(null);
         updateSearch("");
@@ -185,7 +188,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setUnitMode("grams");
         setAutoInput("");
       }
-      return () => clearTimeout(timer);
     }
   }, [
     isVisible,
@@ -198,55 +200,92 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     setGrams,
   ]);
 
-  // Load icons for visible foods
+
+  // --- Icon Fetching Logic ---
+  const handleRequestIcon = useCallback((foodName: string) => {
+    // Check if icon is already fetched, loading, or failed
+    if (foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) {
+      return; // Don't fetch if already present in state or being fetched
+    }
+
+    // Mark as fetching
+    currentlyFetchingIcons.current.add(foodName);
+    // Optimistically set to undefined in state *if not already set* (signals loading in UI)
+    // This prevents unnecessary state updates if called multiple times quickly
+    if (foodIcons[foodName] === undefined) {
+        setFoodIcons(prev => ({ ...prev, [foodName]: undefined }));
+    }
+
+    // Fetch the icon
+    getFoodIconUrl(foodName)
+      .then(iconUrl => {
+        setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl }));
+      })
+      .catch(error => {
+        console.warn(`Icon fetch failed for ${foodName}:`, error);
+        setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null })); // Mark as failed (null)
+      })
+      .finally(() => {
+        // Remove from fetching tracker regardless of outcome
+        currentlyFetchingIcons.current.delete(foodName);
+      });
+  }, [foodIcons]); // Dependency on foodIcons state to read current status
+
+  // --- Effect to trigger icon fetches for visible items ---
   useEffect(() => {
-    if (!isVisible || modalMode !== "normal") return;
-
-    const loadIcons = async () => {
-      const relevantFoods = search ? filteredFoods : recentFoods;
-      const uniqueFoodsMap = new Map(
-        relevantFoods.map((food) => [food.id ?? food.name, food])
-      );
-
-      for (const food of uniqueFoodsMap.values()) {
-        const foodName = food.name;
-        if (foodIcons[foodName] === undefined) {
-          setFoodIcons((prevIcons) => ({
-            ...prevIcons,
-            [foodName]: undefined,
-          }));
-          getFoodIconUrl(foodName)
-            .then((iconUrl) =>
-              setFoodIcons((prevIcons) => ({
-                ...prevIcons,
-                [foodName]: iconUrl,
-              }))
-            )
-            .catch((error) => {
-              console.warn(`Icon fetch failed for ${foodName}:`, error);
-              setFoodIcons((prevIcons) => ({ ...prevIcons, [foodName]: null }));
-            });
-        }
+      if (!isVisible || modalMode !== "normal") {
+          return; // Only run when visible and in normal mode
       }
-    };
-    loadIcons();
-  }, [isVisible, modalMode, search, filteredFoods, recentFoods, foodIcons]);
+
+      // Determine which items are potentially visible
+      const itemsToCheck: Food[] = [];
+      if (search) {
+          itemsToCheck.push(...filteredFoods);
+      } else {
+          itemsToCheck.push(...recentFoods);
+      }
+
+      // Get unique names that need fetching
+      const namesToFetch = new Set<string>();
+      itemsToCheck.forEach(food => {
+          if (food && food.name && foodIcons[food.name] === undefined && !currentlyFetchingIcons.current.has(food.name)) {
+              namesToFetch.add(food.name);
+          }
+      });
+
+      // Trigger fetches within the effect
+      if (namesToFetch.size > 0) {
+          // console.log(`Effect: Triggering fetch for icons:`, Array.from(namesToFetch));
+          namesToFetch.forEach(name => {
+              handleRequestIcon(name);
+          });
+      }
+  // Rerun when visibility changes, search results change, recent foods load, or the fetch function itself changes (though it should be stable)
+  }, [isVisible, modalMode, search, filteredFoods, recentFoods, handleRequestIcon, foodIcons]); // Add foodIcons here to re-check if needed
+
 
   // --- Utility Functions ---
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
     setRecentFoods((prevRecent) => {
-      if (prevRecent.length > 0 && prevRecent[0].id === food.id)
-        return prevRecent;
+      // Check if the food is already the first item
+      if (prevRecent.length > 0 && prevRecent[0].id === food.id) {
+          return prevRecent; // No change needed
+      }
+      // Filter out the food if it exists elsewhere in the list
       const updated = prevRecent.filter((rf) => rf.id !== food.id);
+      // Add the new food to the beginning
       updated.unshift(food);
+      // Trim the list to the maximum size
       const trimmed = updated.slice(0, MAX_RECENT_FOODS);
+      // Save the updated list
       saveRecentFoods(trimmed).catch((err) =>
         console.error("Failed to save recent foods:", err)
       );
       return trimmed;
     });
-  }, []);
+  }, [MAX_RECENT_FOODS]); // MAX_RECENT_FOODS is constant
+
 
   const servingSizeSuggestions = useMemo(() => {
     if (!selectedFood) return [];
@@ -287,7 +326,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       });
     } catch (error: any) {
       console.error("AI Gram Estimation Error (AddEntryModal):", error);
-      // Error alert is now handled within getGramsFromNaturalLanguage
+      // Error alert is handled within getGramsFromNaturalLanguage
     } finally {
       setIsAiLoading(false);
     }
@@ -308,8 +347,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       return;
     }
     if (isActionDisabled) return;
-    handleAddEntry();
-    if (!isEditMode) addToRecentFoods(selectedFood);
+    handleAddEntry(); // Call parent handler
+    if (!isEditMode && selectedFood) { // Add to recent only if adding new and food is selected
+      addToRecentFoods(selectedFood);
+    }
   }, [
     selectedFood,
     grams,
@@ -319,34 +360,41 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     addToRecentFoods,
   ]);
 
+
   const handleInternalSelectFood = useCallback(
     (item: Food | null) => {
       handleSelectFood(item);
-      updateSearch("");
+      updateSearch(""); // Clear search when an item is explicitly selected
       Keyboard.dismiss();
       if (!isEditMode && item?.id !== selectedFood?.id) {
+        // Reset grams only if selecting a *different* food in *add* mode
         setGrams("");
         setUnitMode("grams");
         setAutoInput("");
       }
     },
-    [handleSelectFood, updateSearch, isEditMode, selectedFood, setGrams]
+    [handleSelectFood, updateSearch, isEditMode, selectedFood, setGrams] // Keep selectedFood dependency to compare IDs
   );
+
 
   // --- Quick Add Functions ---
   const pickImageAndAnalyze = useCallback(
     async (source: "camera" | "gallery") => {
-      if (isEditMode) return;
-      let permissionResult;
-      let pickerResult: ImagePicker.ImagePickerResult;
-      setQuickAddLoading(true);
+      if (isEditMode) return; // Cannot quick add while editing
+       // Reset state specific to quick add process
       setQuickAddItems([]);
       setSelectedQuickAddIndices(new Set());
       setEditingQuickAddItemIndex(null);
-      setModalMode("quickAddSelect");
-      handleSelectFood(null);
+      setModalMode("quickAddSelect"); // Switch mode first
+      setQuickAddLoading(true); // Show loading indicator
+
+      handleSelectFood(null); // Clear any previous selection from normal mode
       updateSearch("");
       setGrams("");
+
+      let permissionResult;
+      let pickerResult: ImagePicker.ImagePickerResult;
+
       try {
         if (source === "camera") {
           permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -366,59 +414,58 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             throw new Error("Permission denied");
           }
           pickerResult = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images, // Corrected usage
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 1,
           });
         }
+
         if (pickerResult.canceled) throw new Error("User cancelled");
+
         if (pickerResult.assets && pickerResult.assets.length > 0) {
           const originalAsset = pickerResult.assets[0];
+          // Use utility functions for compression and base64 conversion
           const compressedResult = await compressImageIfNeeded(originalAsset);
-          const assetForAnalysis = compressedResult
-            ? {
-                ...originalAsset,
-                uri: compressedResult.uri,
-                width: compressedResult.width,
-                height: compressedResult.height,
-                mimeType: "image/jpeg", // Compressor standardizes to JPEG
-              }
-            : originalAsset;
+          const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
           const base64Image = await getBase64FromUri(assetForAnalysis.uri);
           const mimeType = determineMimeType(assetForAnalysis);
-          const results = await getMultipleFoodsFromImage(
-            base64Image,
-            mimeType
-          );
+
+          // Call backend for analysis
+          const results = await getMultipleFoodsFromImage(base64Image, mimeType);
+
           if (results.length === 0) {
-            // Alert is handled by getMultipleFoodsFromImage, just reset modal mode
-            console.log("No foods identified by backend.");
-            setModalMode("normal");
+             // Alert handled by getMultipleFoodsFromImage, just reset modal mode gently
+             console.log("No foods identified by backend.");
+             // Wait a moment before switching back to show QuickAddList's empty message
+             setTimeout(() => {
+                 setModalMode("normal");
+                 setQuickAddLoading(false); // Ensure loading is off if we switch back
+             }, 500);
           } else {
             setQuickAddItems(results);
-            setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            setSelectedQuickAddIndices(new Set(results.map((_, i) => i))); // Select all by default
+            // Keep loading=true until the list is displayed
+            setTimeout(() => setQuickAddLoading(false), 150); // Short delay
           }
-        } else throw new Error("Could not select image.");
+        } else {
+          throw new Error("Could not select image.");
+        }
       } catch (error: any) {
         if (
           error.message !== "User cancelled" &&
-          error.message !== "Permission denied" && // Avoid double alert
+          error.message !== "Permission denied" &&
           !(error instanceof BackendError) // Backend errors show alerts via utils/macros
         ) {
-          Alert.alert(
-            "Error",
-            error.message || "An unexpected error occurred."
-          );
+          Alert.alert("Error", error.message || "An unexpected error occurred.");
         }
-        // Reset to normal mode if any error occurred during process
+        // Reset to normal mode immediately on error
         setModalMode("normal");
         setQuickAddItems([]);
         setSelectedQuickAddIndices(new Set());
-      } finally {
-        // Add slight delay to allow UI to settle before removing loading indicator
-        setTimeout(() => setQuickAddLoading(false), 150);
+        setQuickAddLoading(false); // Turn off loading on error
       }
+      // FINALLY block removed, loading state managed within try/catch now
     },
-    [isEditMode, handleSelectFood, updateSearch, setGrams]
+    [isEditMode, handleSelectFood, updateSearch, setGrams] // Keep dependencies
   );
 
   const handleQuickAddImage = useCallback(async () => {
@@ -533,35 +580,49 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         if (index >= 0 && index < quickAddItems.length) {
           const item = quickAddItems[index];
           // Create a Food object compliant with the app's Food type
-          const quickFood: Food = {
-            id: uuidv4(), // Generate a local UUID for this potentially new food
-            name: item.foodName,
-            calories: Math.round(Number(item.calories_per_100g) || 0),
-            protein: Math.round(Number(item.protein_per_100g) || 0),
-            carbs: Math.round(Number(item.carbs_per_100g) || 0),
-            fat: Math.round(Number(item.fat_per_100g) || 0),
-          };
+          // Try to find matching food in existing library first (case-insensitive)
+          const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
+
+          let foodToAdd: Food;
+          if (existingFood) {
+              foodToAdd = existingFood;
+              console.log(`Quick Add: Found existing food "${existingFood.name}" (ID: ${existingFood.id})`);
+          } else {
+              // Create a new Food object if not found
+              foodToAdd = {
+                  id: uuidv4(), // Generate a local UUID
+                  name: item.foodName, // Use the name from the quick add item
+                  calories: Math.round(Number(item.calories_per_100g) || 0),
+                  protein: Math.round(Number(item.protein_per_100g) || 0),
+                  carbs: Math.round(Number(item.carbs_per_100g) || 0),
+                  fat: Math.round(Number(item.fat_per_100g) || 0),
+              };
+               console.log(`Quick Add: Creating temporary food entry for "${foodToAdd.name}"`);
+               // Note: This food isn't saved to the main library here, only used for the daily entry.
+               // The parent screen (DailyEntryScreen) should handle potentially adding unknown foods if desired.
+          }
+
           const entryGrams = Math.max(
             1, // Ensure grams is at least 1
             Math.round(Number(item.estimatedWeightGrams) || 1)
           );
-          entriesToAdd.push({ food: quickFood, grams: entryGrams });
-        } else
-          console.warn(
-            `Skipping invalid index ${index} during quick add confirm.`
-          );
+          entriesToAdd.push({ food: foodToAdd, grams: entryGrams });
+        } else {
+          console.warn(`Skipping invalid index ${index} during quick add confirm.`);
+        }
       });
-      if (entriesToAdd.length > 0) handleAddMultipleEntries(entriesToAdd);
-      else
-        Alert.alert(
-          "Nothing to Add",
-          "No valid items were selected or prepared."
-        );
+
+      if (entriesToAdd.length > 0) {
+        handleAddMultipleEntries(entriesToAdd); // Pass to parent
+      } else {
+        Alert.alert("Nothing to Add", "No valid items were selected or prepared.");
+      }
     } catch (error) {
       console.error("Error confirming Quick Add:", error);
       Alert.alert("Error", "Could not prepare items to add.");
     }
   }, [
+    foods, // Need access to the main food list
     quickAddItems,
     selectedQuickAddIndices,
     editingQuickAddItemIndex,
@@ -569,6 +630,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     isEditMode,
     isActionDisabled,
   ]);
+
 
   const handleQuickAddGramsChange = useCallback((text: string) => {
     // Allow only numbers (and potentially a single decimal point if needed later)
@@ -593,7 +655,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     modalMode !== "quickAddSelect" ||
     selectedQuickAddIndices.size === 0 ||
     editingQuickAddItemIndex !== null ||
-    isActionDisabled;
+    isActionDisabled ||
+    quickAddLoading; // Disable confirm while loading
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled;
 
   // --- Build list data for the main FlatList ---
@@ -601,15 +664,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const items: ListItemType[] = [];
     if (modalMode === "normal") {
       items.push({ type: "searchBar", key: "searchBar" });
+      // Show recent foods only if search is empty AND recent foods exist
       if (!search && recentFoods.length > 0) {
         items.push({ type: "recentFoods", key: "recentFoods" });
       }
+      // Show search results only if search is active
       if (search) {
         if (filteredFoods.length > 0) {
           filteredFoods.forEach((food) =>
             items.push({
               type: "searchResults",
-              key: `search-${food.id}`,
+              key: `search-${food.id ?? food.name}`, // Use name as fallback key
               data: food,
             })
           );
@@ -617,25 +682,26 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           items.push({ type: "noResults", key: "noResults" });
         }
       }
+      // Show amount input only if a food is selected in normal mode
       if (selectedFood) {
         items.push({ type: "amountInput", key: "amountInput" });
       }
     } else if (modalMode === "quickAddSelect") {
       items.push({ type: "quickAddHeader", key: "quickAddHeader" });
-      // Push the QuickAddList component instead of individual items
+      // Push the QuickAddList component placeholder
       items.push({ type: "quickAddList", key: "quickAddList" });
     }
-    // Add a spacer at the bottom to prevent content being hidden by action buttons
-    items.push({ type: "spacer", key: "bottom-spacer", height: 60 });
+    // Add a spacer at the bottom
+    items.push({ type: "spacer", key: "bottom-spacer", height: 80 }); // Increased spacer height
     return items;
   }, [
     modalMode,
     search,
     recentFoods,
-    filteredFoods,
-    selectedFood,
-    // Quick add state needed for QuickAddList extraData or component update
-    quickAddItems,
+    filteredFoods, // Dependency needed for search results
+    selectedFood, // Dependency needed for amount input and recent selection highlight
+    // Quick add state needed for QuickAddList rendering trigger
+    quickAddItems, // Add dependencies that change when quick add list should update
     editingQuickAddItemIndex,
     selectedQuickAddIndices,
     quickAddLoading,
@@ -673,140 +739,74 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.recentFoodsContainer}
-                keyboardShouldPersistTaps="handled" // Good practice for scrollviews with touchables
+                keyboardShouldPersistTaps="handled"
               >
-                {recentFoods.map((food) => (
-                  <TouchableOpacity
-                    key={`recent-${food.id}`}
-                    style={[
-                      styles.recentFoodItem,
-                      // Apply conditional styles
-                      screenWidth < 350 && styles.smallRecentFoodItem,
-                      selectedFood?.id === food.id &&
-                        styles.selectedRecentFoodItem,
-                      isActionDisabled && styles.disabledOverlay,
-                    ]}
-                    onPress={() =>
-                      !isActionDisabled && handleInternalSelectFood(food)
-                    }
-                    disabled={isActionDisabled}
-                  >
-                    {/* --- Start: Icon/Image/Indicator Rendering (No spaces between elements) --- */
-                    foodIcons[food.name] !== undefined ? (
-                      foodIcons[food.name] ? (
-                        <Image
-                          source={{ uri: foodIcons[food.name] as string }}
-                          style={styles.foodIconSmall}
-                          onError={() =>
-                            setFoodIcons((prev) => ({
-                              ...prev,
-                              [food.name]: null,
-                            }))
-                          }
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.foodIconSmall,
-                            styles.iconPlaceholderSmall,
-                          ]}
-                        >
-                          <Icon
-                            name="fastfood"
-                            type="material"
-                            size={12}
-                            color={theme.colors.grey2}
-                          />
-                        </View>
-                      )
-                    ) : (
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.colors.grey3}
-                        style={styles.foodIconSmall}
-                      />
-                    )}
-                    {/* --- End: Icon Block --- */
-                    /* --- Start: Text Block (Immediately follows Icon Block) --- */}
-                    <Text
-                      style={[
-                        styles.recentFoodText,
-                        screenWidth < 350 && styles.smallRecentFoodText,
-                      ]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {food.name}
-                    </Text>
-                    {/* --- End: Text Block --- */}
-                  </TouchableOpacity>
-                ))}
+                {recentFoods.map((food) => {
+                    const iconStatus = foodIcons[food.name];
+                    // Icon is requested by the useEffect hook, just render based on status
+                    return (
+                      <TouchableOpacity
+                        key={`recent-${food.id ?? food.name}`} // Use name as fallback key
+                        style={[
+                          styles.recentFoodItem,
+                          screenWidth < 350 && styles.smallRecentFoodItem,
+                          selectedFood?.id === food.id && styles.selectedRecentFoodItem,
+                          isActionDisabled && styles.disabledOverlay,
+                        ]}
+                        onPress={() => !isActionDisabled && handleInternalSelectFood(food)}
+                        disabled={isActionDisabled}
+                      >
+                        {/* Icon Rendering */}
+                        {iconStatus === undefined ? (
+                          <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIconSmall} />
+                        ) : iconStatus ? (
+                          <Image source={{ uri: iconStatus }} style={styles.foodIconSmall} resizeMode="contain" />
+                        ) : (
+                          <View style={[styles.foodIconSmall, styles.iconPlaceholderSmall]}>
+                            <Icon name="fastfood" type="material" size={12} color={theme.colors.grey2} />
+                          </View>
+                        )}
+                        {/* Text */}
+                        <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]} numberOfLines={1} ellipsizeMode="tail">
+                          {food.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                })}
               </ScrollView>
             </View>
           );
         case "searchResults": {
           const food = item.data;
           const isSelected = selectedFood?.id === food.id;
+          const iconStatus = foodIcons[food.name];
+          // Icon is requested by the useEffect hook, just render based on status
           return (
             <TouchableOpacity
-              onPress={() =>
-                !isActionDisabled && handleInternalSelectFood(food)
-              }
+              onPress={() => !isActionDisabled && handleInternalSelectFood(food)}
               disabled={isActionDisabled}
               style={[isActionDisabled && styles.disabledOverlay]}
             >
               <ListItem
                 bottomDivider
-                containerStyle={[
-                  styles.listItemContainer,
-                  isSelected && styles.selectedListItem,
-                ]}
+                containerStyle={[styles.listItemContainer, isSelected && styles.selectedListItem]}
               >
-                {/* --- Start: Icon Block (No spaces between elements) --- */
-                foodIcons[food.name] !== undefined ? (
-                  foodIcons[food.name] ? (
-                    <Image
-                      source={{ uri: foodIcons[food.name] as string }}
-                      style={styles.foodIcon}
-                      onError={() =>
-                        setFoodIcons((prev) => ({ ...prev, [food.name]: null }))
-                      }
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <View style={styles.defaultIconContainer}>
-                      <Icon
-                        name="restaurant"
-                        type="material"
-                        size={18}
-                        color={theme.colors.grey3}
-                      />
-                    </View>
-                  )
+                {/* Icon Rendering */}
+                {iconStatus === undefined ? (
+                  <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />
+                ) : iconStatus ? (
+                  <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" />
                 ) : (
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.colors.grey3}
-                    style={styles.foodIcon}
-                  />
-                )/* --- End: Icon Block --- */
-                /* --- Start: Content Block (Immediately follows Icon Block) --- */}
+                  <View style={styles.defaultIconContainer}>
+                    <Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} />
+                  </View>
+                )}
+                {/* Content */}
                 <ListItem.Content>
-                  <ListItem.Title style={styles.listItemTitle}>
-                    {food.name}
-                  </ListItem.Title>
+                  <ListItem.Title style={styles.listItemTitle}>{food.name}</ListItem.Title>
                 </ListItem.Content>
-                {/* --- End: Content Block --- */
-                /* --- Start: Checkmark Block (Immediately follows Content Block) --- */
-                isSelected && (
-                  <Icon
-                    name="checkmark-circle"
-                    type="ionicon"
-                    color={theme.colors.primary}
-                    size={24}
-                  />
-                )/* --- End: Checkmark Block --- */}
+                {/* Checkmark */}
+                {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
               </ListItem>
             </TouchableOpacity>
           );
@@ -821,7 +821,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           );
         case "amountInput":
           if (!selectedFood) {
-            return null;
+            return null; // Should not happen if logic is correct, but safeguard
           }
           return (
             <View style={styles.amountSection}>
@@ -904,6 +904,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     errorStyle={{ color: theme.colors.error }}
                     rightIcon={<Text style={styles.unitText}>g</Text>}
                     containerStyle={{ paddingHorizontal: 0 }}
+                    // Use selectedFood.id and editMode state to force re-render on food change/mode switch
                     key={`grams-input-${selectedFood.id}-${isEditMode}`}
                     disabled={isActionDisabled}
                   />
@@ -921,7 +922,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     containerStyle={styles.autoInputContainer}
                     multiline={false}
                     onSubmitEditing={handleEstimateGrams}
-                    key={`auto-input-${selectedFood.id}`}
+                    key={`auto-input-${selectedFood.id}`} // Key based on food ID
                     disabled={isActionDisabled}
                   />
                   <Button
@@ -939,7 +940,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                         />
                       )
                     }
-                    title={isAiLoading ? "" : ""}
+                    title={isAiLoading ? "" : ""} // No title needed for icon-only button
                   />
                 </View>
               )}
@@ -949,31 +950,25 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           return (
             <View style={styles.quickAddHeader}>
               <Text style={styles.sectionTitle}>
-                {/* Removed extra spaces inside {} */}
                 {editingQuickAddItemIndex !== null
                   ? "Editing Item Details"
                   : "Select Items from Image"}
               </Text>
+              {/* Show Back button only when not editing a specific item */}
               {editingQuickAddItemIndex === null && (
                 <Button
                   type="clear"
                   title="Back"
                   onPress={() => {
                     if (isActionDisabled) return;
-                    setModalMode("normal");
+                    setModalMode("normal"); // Go back to normal mode
+                    // Clear quick add state
                     setQuickAddItems([]);
                     setSelectedQuickAddIndices(new Set());
                     setEditingQuickAddItemIndex(null);
                   }}
                   titleStyle={{ color: theme.colors.primary, fontSize: 14 }}
-                  icon={
-                    <Icon
-                      name="arrow-back"
-                      type="ionicon"
-                      size={18}
-                      color={theme.colors.primary}
-                    />
-                  }
+                  icon={<Icon name="arrow-back" type="ionicon" size={18} color={theme.colors.primary} />}
                   disabled={isActionDisabled}
                 />
               )}
@@ -991,25 +986,35 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               onEditItem={handleEditQuickAddItem}
               onSaveEdit={handleSaveQuickAddItemEdit}
               onCancelEdit={handleCancelQuickAddItemEdit}
-              onNameChange={setEditedFoodName} // Pass setter directly
-              onGramsChange={handleQuickAddGramsChange} // Pass specific handler
+              onNameChange={setEditedFoodName}
+              onGramsChange={handleQuickAddGramsChange}
               isLoading={quickAddLoading} // Pass loading state
-              style={styles.quickAddListStyle} // Add specific styles if needed
+              style={styles.quickAddListStyle}
             />
           );
         case "spacer":
           return <View style={{ height: item.height }} />;
         default:
-          return null;
+          // Add explicit handling for unexpected item types
+          console.warn("AddEntryModal: Encountered unknown list item type:", (item as any)?.type);
+          return null; // Render nothing for unknown types
       }
     },
     [
-      // Include all dependencies used within the callback
+      // Dependencies START - Ensure all used state/props/callbacks are listed
       search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth,
-      selectedFood, foodIcons, setFoodIcons, handleInternalSelectFood, filteredFoods,
+      selectedFood,
+      foodIcons, // Needed to read current icon status
+      // REMOVED handleRequestIcon from here, it's called by useEffect
+      handleInternalSelectFood,
+      filteredFoods,
       unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams,
       autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled,
-      theme, styles, // Styles and theme are used
+      theme.colors.primary, theme.colors.text, theme.colors.white, theme.colors.grey1,
+      theme.colors.grey2, theme.colors.grey3, theme.colors.grey4, theme.colors.grey5,
+      theme.colors.secondary, theme.colors.error, theme.colors.success, theme.colors.warning,
+      theme.colors.searchBg, theme.colors.divider, theme.colors.background, // Include theme colors used
+      styles, // Include styles object
       // Quick Add State/Handlers for QuickAddList props and other parts
       quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices,
       editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem,
@@ -1017,8 +1022,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       // Other general handlers
       handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage,
       handleAddMultipleEntries,
+      // Dependencies END
     ]
   );
+
 
   // --- Render ---
   const combinedOverlayStyle = StyleSheet.flatten([
@@ -1041,20 +1048,22 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         <View style={combinedOverlayStyle}>
           {/* Header */}
           <View style={styles.header}>
+            {/* Close Icon */}
             <TouchableOpacity
               onPress={!isActionDisabled ? toggleOverlay : undefined}
               style={styles.closeIconTouchable}
               disabled={isActionDisabled}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} // Increase touch area
             >
               <Icon
                 name="close"
                 type="material"
                 size={28}
-                color={
-                  isActionDisabled ? theme.colors.grey3 : theme.colors.text
-                }
+                color={isActionDisabled ? theme.colors.grey3 : theme.colors.text}
               />
             </TouchableOpacity>
+
+             {/* Title */}
             <Text
               h4
               h4Style={[
@@ -1067,69 +1076,72 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               {modalMode === "quickAddSelect"
                 ? editingQuickAddItemIndex !== null
                   ? "Edit Item"
+                  : quickAddLoading // Show different title while loading image results
+                  ? "Analyzing..."
                   : "Select Items to Add"
                 : isEditMode
                 ? "Edit Entry"
                 : "Add Entry"}
             </Text>
-            {/* Conditional Action Buttons */}
-            {modalMode === "normal" ? (
+
+             {/* Conditional Action Buttons */}
+             {/* --- Normal Mode Actions --- */}
+            {modalMode === "normal" && (
               <View style={styles.headerActionsNormal}>
+                {/* Quick Add from Image Button (only in Add mode) */}
                 {!isEditMode && (
                   <TouchableOpacity
                     onPress={handleQuickAddImage}
                     disabled={isQuickAddImageButtonDisabled}
                     style={styles.headerIcon}
+                    hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }} // Increase touch area
                   >
-                    {quickAddLoading && modalMode === "normal" ? ( // Show indicator if loading started from normal mode
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.colors.primary}
-                      />
+                    {/* Show loading indicator *here* if quick add initiated from normal mode */}
+                    {quickAddLoading ? ( // CORRECTED: Just check loading state
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
                     ) : (
                       <Icon
                         name="camera-burst"
                         type="material-community"
                         size={26}
-                        color={
-                          isQuickAddImageButtonDisabled
-                            ? theme.colors.grey3
-                            : theme.colors.primary
-                        }
+                        color={ isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary }
                       />
                     )}
                   </TouchableOpacity>
                 )}
+                {/* Add/Update Button */}
                 <Button
                   title={isEditMode ? "Update" : "Add"}
                   onPress={handleAddOrUpdateSingleEntry}
                   disabled={isAddButtonDisabled}
-                  buttonStyle={[
-                    styles.addButton,
-                    isEditMode && styles.updateButton,
-                  ]}
+                  buttonStyle={[styles.addButton, isEditMode && styles.updateButton]}
                   titleStyle={styles.buttonTitle}
-                  // Show loading indicator on Add/Update if AI is processing (related action)
-                  loading={isAiLoading && unitMode === "auto"}
+                  // Show loading indicator if AI is estimating grams (related action)
+                  loading={isAiLoading} // Show loading only for AI grams, not quick add loading
                 />
               </View>
-            ) : editingQuickAddItemIndex === null ? ( // Quick Add Confirm Button
-              <Button
-                title={`Add ${selectedQuickAddIndices.size}`}
-                onPress={handleConfirmQuickAdd}
-                disabled={isQuickAddConfirmDisabled}
-                buttonStyle={[
-                  styles.addButton,
-                  { backgroundColor: theme.colors.success },
-                ]}
-                titleStyle={styles.buttonTitle}
-                // Show loading indicator if quick add backend call is active
-                loading={quickAddLoading}
-              />
-            ) : (
-              // Placeholder for alignment when editing a quick add item (Save/Cancel are inside list)
-              <View style={{ width: 70, marginLeft: 5 }} />
             )}
+
+             {/* --- Quick Add Mode Actions (Confirm Button) --- */}
+             {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && (
+                 <Button
+                    // Dynamic title showing count, or Loading...
+                    title={quickAddLoading ? 'Loading...' : `Add ${selectedQuickAddIndices.size}`}
+                    onPress={handleConfirmQuickAdd}
+                    disabled={isQuickAddConfirmDisabled}
+                    buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]}
+                    titleStyle={styles.buttonTitle}
+                    // Show loading indicator if quick add backend call is active or image is processing
+                    loading={quickAddLoading}
+                 />
+             )}
+
+             {/* --- Quick Add Mode Actions (Placeholder when Editing Item) --- */}
+              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && (
+                 // Placeholder to maintain header balance when Save/Cancel are in the list item
+                 <View style={{ width: 70, marginLeft: 5 }} />
+              )}
+
           </View>
 
           {/* Content Area - FlatList */}
@@ -1137,53 +1149,56 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             data={listData}
             renderItem={renderListItem}
             keyExtractor={(item) => item.key}
-            extraData={{ // Ensure FlatList updates when these states change
-              selectedFood, grams, unitMode, autoInput, isAiLoading, search,
-              foodIcons, modalMode, quickAddItems, selectedQuickAddIndices,
-              editingQuickAddItemIndex, editedFoodName, editedGrams,
-              isActionDisabled, quickAddLoading
+            // Optimize extraData: only include state that *directly* affects list rendering
+            extraData={{
+                selectedFoodId: selectedFood?.id, // Use ID for stability
+                modalMode,
+                foodIcons, // Icons affect rendering
+                // Quick Add specific states affecting QuickAddList or items
+                quickAddLoading,
+                selectedQuickAddIndicesSize: selectedQuickAddIndices.size, // Use size for stability
+                editingQuickAddItemIndex,
             }}
             style={styles.flatListContainer}
             contentContainerStyle={styles.flatListContentContainer}
             keyboardShouldPersistTaps="handled"
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={5}
+            initialNumToRender={10} // Adjust based on typical item height
+            maxToRenderPerBatch={10} // Render more per batch if items are small
+            windowSize={11} // Keep reasonably small window
+            removeClippedSubviews={Platform.OS === 'android'} // Enable on Android for potential perf gain
           />
         </View>
       </KeyboardAvoidingView>
-      {/* Toast needs to be outside Overlay for visibility */}
-      {/* <Toast /> <-- Consider placing Toast outside or ensuring Overlay doesn't block it */}
     </Overlay>
   );
 };
 
-// --- Styles --- (Removed QuickAdd specific item styles as they are now in QuickAddList. Added style for the list container itself)
+// --- Styles --- (Minor adjustments)
 const useStyles = makeStyles((theme) => ({
     overlayContainer: {
-        backgroundColor: "transparent", // Allows underlying content blur/dim
+        backgroundColor: "transparent",
         width: "90%",
-        maxWidth: 500, // Max width for larger screens/tablets
-        padding: 0, // Handled by overlayStyle inside
+        maxWidth: 500,
+        padding: 0,
         borderRadius: 15,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2,
         shadowRadius: 5,
         elevation: 6,
-        overflow: "hidden", // Clip content to rounded corners
+        overflow: "hidden",
         maxHeight: Dimensions.get("window").height * 0.85, // Limit height
     },
     overlayStyle: { // Inner container styling
         width: "100%",
         height: "100%",
-        borderRadius: 15, // Match outer container
+        borderRadius: 15,
         padding: 15, // Standard padding
         paddingBottom: 0, // Allow FlatList to manage bottom space
         backgroundColor: theme.colors.background,
-        flex: 1, // Ensure it takes full space of the overlay container
+        flex: 1,
     },
-    keyboardAvoidingView: { width: "100%", height: "100%" }, // Take full overlay space
+    keyboardAvoidingView: { width: "100%", height: "100%" },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -1191,42 +1206,41 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 15,
         paddingHorizontal: 0, // Padding managed by overlayStyle
     },
-    closeIconTouchable: { padding: 5, zIndex: 1 }, // Ensure touchable, on top
+    closeIconTouchable: { padding: 5 }, // Ensure touchable area
     overlayTitle: {
         color: theme.colors.text,
         fontWeight: "bold",
         fontSize: 20,
         textAlign: "center",
         flex: 1, // Allow title to take available space
-        marginHorizontal: 5, // Space around title
+        marginHorizontal: 5,
     },
     editModeTitle: { color: theme.colors.warning },
     headerActionsNormal: { flexDirection: "row", alignItems: "center" },
-    headerIcon: { padding: 5, marginHorizontal: 5, zIndex: 1 },
+    headerIcon: { padding: 5, marginHorizontal: 5 },
     addButton: {
         borderRadius: 20, // Pill shape
         paddingHorizontal: 15,
         paddingVertical: 8,
         minWidth: 70, // Ensure minimum size
-        marginLeft: 5, // Space from icon/edge
+        marginLeft: 5,
         backgroundColor: theme.colors.primary,
-        zIndex: 1,
     },
-    updateButton: { backgroundColor: theme.colors.warning }, // Specific color for update
+    updateButton: { backgroundColor: theme.colors.warning },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
-    flatListContainer: { flex: 1, width: "100%" }, // Take remaining vertical space
+    flatListContainer: { flex: 1, width: "100%" },
     flatListContentContainer: { paddingBottom: 30 }, // Space at the bottom of list
     searchBarContainer: {
         backgroundColor: "transparent",
         borderBottomColor: "transparent",
         borderTopColor: "transparent",
-        paddingHorizontal: 0, // Use container padding
+        paddingHorizontal: 0,
         marginBottom: 10,
     },
     searchBarInputContainer: {
         borderRadius: 25,
         backgroundColor: theme.colors.searchBg || theme.colors.grey5,
-        height: 40, // Standard height
+        height: 40,
     },
     searchInputStyle: { color: theme.colors.text, fontSize: 15 },
     recentFoodsSection: { marginBottom: 15 },
@@ -1247,38 +1261,38 @@ const useStyles = makeStyles((theme) => ({
         marginRight: 8,
         flexDirection: "row", // Align icon and text
         alignItems: "center",
-        borderWidth: 1.5, // For selection highlight
-        borderColor: "transparent", // Default border
+        borderWidth: 1.5,
+        borderColor: "transparent",
     },
     selectedRecentFoodItem: { borderColor: theme.colors.primary }, // Highlight selected
     smallRecentFoodItem: { paddingHorizontal: 8, paddingVertical: 5 }, // Adjust for smaller screens
-    foodIconSmall: {
-        width: 20, height: 20, marginRight: 6, borderRadius: 10, // Circular small icon
-        resizeMode: "contain", alignItems: "center", justifyContent: "center",
+    // Icon styles shared between recent and search results
+    foodIconSmall: { // For recent foods list
+        width: 20, height: 20, marginRight: 6, borderRadius: 10,
         backgroundColor: theme.colors.grey4, // BG for placeholder/loading
-    },
-    iconPlaceholderSmall: {
-        backgroundColor: theme.colors.grey4,
         alignItems: "center", justifyContent: "center",
+    },
+    iconPlaceholderSmall: { // Styles specific to placeholder view
+        backgroundColor: theme.colors.grey4,
+    },
+    foodIcon: { // For search results list (can be Image or ActivityIndicator View)
+        width: 35, height: 35, marginRight: 12, borderRadius: 17.5,
+        backgroundColor: theme.colors.grey5, // BG for loading/placeholder
+        alignItems: "center", justifyContent: "center",
+    },
+    defaultIconContainer: { // Placeholder icon wrapper in search results
+        width: 35, height: 35, marginRight: 12, borderRadius: 17.5,
+        backgroundColor: theme.colors.grey5, alignItems: "center", justifyContent: "center",
     },
     recentFoodText: { color: theme.colors.text, fontSize: 13, maxWidth: 80 }, // Limit text width
     smallRecentFoodText: { fontSize: 12, maxWidth: 70 },
     listItemContainer: {
-        backgroundColor: "transparent", // Use parent background
+        backgroundColor: "transparent",
         paddingVertical: 8,
         paddingHorizontal: 5,
         borderBottomColor: theme.colors.divider,
     },
     selectedListItem: { backgroundColor: theme.colors.grey5, borderRadius: 8 }, // Selection feedback
-    defaultIconContainer: { // Placeholder icon wrapper
-        width: 35, height: 35, marginRight: 12, borderRadius: 17.5, // Circular
-        backgroundColor: theme.colors.grey5, alignItems: "center", justifyContent: "center",
-    },
-    foodIcon: { // Style for actual Image or loading indicator view
-        width: 35, height: 35, marginRight: 12, borderRadius: 17.5, // Circular
-        resizeMode: "contain", backgroundColor: theme.colors.grey5, // BG for loading/placeholder
-        alignItems: "center", justifyContent: "center",
-    },
     listItemTitle: { color: theme.colors.text, fontSize: 16, fontWeight: "500" },
     noFoodsText: {
         color: theme.colors.grey2, fontStyle: "italic", textAlign: "center",
@@ -1286,7 +1300,7 @@ const useStyles = makeStyles((theme) => ({
     },
     amountSection: {
         marginTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.divider,
-        paddingTop: 15, paddingHorizontal: 0, // Use container padding
+        paddingTop: 15, paddingHorizontal: 0,
     },
     unitSelectorContainer: {
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -1307,9 +1321,9 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: "row", alignItems: "center", marginBottom: 12, paddingHorizontal: 5,
     },
     servingSizeLabel: { color: theme.colors.grey2, fontSize: 13, marginRight: 8 },
-    servingSizeContainer: { flexGrow: 0 }, // Don't let scrollview grow infinitely
+    servingSizeContainer: { flexGrow: 0 },
     servingSizeButton: {
-        backgroundColor: theme.colors.grey4, borderRadius: 15, // Rounded pill
+        backgroundColor: theme.colors.grey4, borderRadius: 15,
         marginRight: 8, paddingHorizontal: 12, paddingVertical: 5,
         justifyContent: "center", alignItems: "center", height: 30,
     },
@@ -1324,10 +1338,10 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.grey2, fontSize: 15, fontWeight: "500", paddingRight: 5,
     },
     autoInputRow: {
-        flexDirection: "row", alignItems: "center", paddingHorizontal: 0, // Use container padding
+        flexDirection: "row", alignItems: "center", paddingHorizontal: 0,
     },
     autoInputContainer: { flex: 1, paddingHorizontal: 0, marginRight: 10 },
-    autoInputField: { height: 40 }, // Consistent height with grams input
+    autoInputField: { height: 40 }, // Consistent height
     aiButton: {
         backgroundColor: theme.colors.secondary, borderRadius: 20, // Circular
         width: 40, height: 40, padding: 0, justifyContent: "center", alignItems: "center",
@@ -1338,12 +1352,8 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 10, paddingHorizontal: 5, borderBottomWidth: 1,
         borderBottomColor: theme.colors.divider, paddingBottom: 8,
     },
-    // Style for the QuickAddList component container within the modal's FlatList
     quickAddListStyle: {
-        // Allow QuickAddList to take available space within the modal's FlatList area
-        // Max height can be implicitly controlled by the Overlay's maxHeight
-        // Add padding/margins here ONLY if QuickAddList itself doesn't have them internally
-        // e.g., paddingHorizontal: 5,
+        // Allow QuickAddList to take available space
     },
     disabledOverlay: { // Simple opacity to indicate disabled state
         opacity: 0.6,
@@ -1351,4 +1361,3 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default AddEntryModal;
-// ---------- END src/components/AddEntryModal.tsx ----------
