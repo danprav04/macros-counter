@@ -1,8 +1,9 @@
-// services/storageService.ts (Modified for Timestamps)
+// src/services/storageService.ts
+// services/storageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
-import { Settings } from '../types/settings';
+import { Settings, LanguageCode } from '../types/settings'; // Import LanguageCode
 import { formatISO, parseISO } from 'date-fns';
 
 
@@ -69,6 +70,7 @@ export const loadSettings = async (): Promise<Settings> => {
     // Apply defaults and ensure structure
     const defaultSettings: Settings = {
       theme: 'system',
+      language: 'system', // Default language
       dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
       settingsHistory: [] // Ensure settingsHistory exists
     };
@@ -81,27 +83,25 @@ export const loadSettings = async (): Promise<Settings> => {
           ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
             ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
         }
-    }
+    };
 
   } catch (error: any) {
     console.error('Error loading settings:', error);
 
-    // *** KEY CHANGE: Handle "Row too big" error ***
     if (error.message.includes('Row too big')) {
       console.warn('Detected oversized settings data. Clearing settings.');
       try {
-        await AsyncStorage.removeItem(SETTINGS_KEY); // Clear the oversized data
+        await AsyncStorage.removeItem(SETTINGS_KEY);
       } catch (clearError) {
         console.error('Error clearing oversized settings:', clearError);
-        // You might want to handle this more gracefully, e.g., by showing an error to the user.
       }
     }
 
-    // Return defaults if loading fails (or after clearing)
     return {
       theme: 'system',
+      language: 'system', // Default language on error
       dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: [] // Ensure settingsHistory exists in default
+      settingsHistory: []
     };
   }
 };
@@ -115,23 +115,21 @@ export const clearAllData = async (): Promise<void> => {
   }
 };
 
-// Function to save recent foods
 export const saveRecentFoods = async (foods: Food[]) => {
     try {
         await AsyncStorage.setItem(RECENT_FOODS, JSON.stringify(foods));
     } catch (error) {
         console.error('Error saving recent foods:', error);
-        throw error; // Important: Re-throw the error so calling code knows it failed
+        throw error;
     }
 };
 
-// Function to load recent foods
 export const loadRecentFoods = async (): Promise<Food[]> => {
     try {
         const foods = await AsyncStorage.getItem(RECENT_FOODS);
         return foods ? JSON.parse(foods) : [];
     } catch (error) {
         console.error('Error loading recent foods:', error);
-        return []; // Return empty array on error, don't throw
+        return [];
     }
 };

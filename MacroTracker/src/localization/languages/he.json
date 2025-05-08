@@ -1,0 +1,299 @@
+{
+    "app": {
+      "initializing": "מאתחל...",
+      "name": "מעקב מאקרו"
+    },
+    "settingsScreen": {
+      "title": "הגדרות",
+      "account": {
+        "title": "חשבון"
+      },
+      "general": {
+        "title": "כללי"
+      },
+      "dailyGoals": {
+        "title": "יעדים יומיים"
+      },
+      "cacheManagement": {
+        "title": "ניהול מטמון"
+      },
+      "statistics": {
+        "title": "סטטיסטיקה"
+      },
+      "dataManagement": {
+        "title": "ניהול נתונים"
+      },
+      "language": {
+        "title": "שפה",
+        "system": "ברירת מחדל של המערכת",
+        "english": "אנגלית",
+        "russian": "רוסית",
+        "hebrew": "עברית",
+        "restartMessage": "השפה שונתה. הפעל מחדש את האפליקציה להשפעה מלאה."
+      }
+    },
+    "accountSettings": {
+      "coinBalance": "מאזן מטבעות",
+      "addTestCoins": "הוסף 10 מטבעות (בדיקה)",
+      "testButtonWarning": "הערה: כפתור \"הוסף מטבעות\" מיועד לבדיקה/פיתוח בלבד ויש להסירו או לאבטחו בגרסאות ייצור.",
+      "notApplicable": "לא זמין",
+      "errorLoadCoins": "לא ניתן היה לטעון את מאזן המטבעות",
+      "errorAddCoins": "נכשל בהוספת מטבעות",
+      "coinsAdded": "מטבעות נוספו!"
+    },
+    "themeSwitch": {
+      "darkMode": "מצב כהה"
+    },
+    "dailyGoalsInput": {
+      "caloriesGoal": "יעד קלוריות",
+      "proteinGoal": "יעד חלבון",
+      "carbsGoal": "יעד פחמימות",
+      "fatGoal": "יעד שומן"
+    },
+    "dataManagement": {
+      "exportData": "ייצוא נתונים",
+      "importData": "ייבוא נתונים",
+      "clearAllData": "נקה את כל הנתונים",
+      "exportError": "שגיאת שיתוף",
+      "exportErrorNoSharing": "שיתוף אינו זמין בפלטפורמה שלך.",
+      "exportFailed": "הייצוא נכשל",
+      "exportFailedMessage": "אירעה שגיאה בעת ייצוא נתונים.",
+      "importCancelled": "הייבוא בוטל על ידי המשתמש.",
+      "importInvalidFileType": "סוג קובץ לא חוקי",
+      "importInvalidFileTypeMessage": "אנא בחר קובץ '.json' חוקי.",
+      "importFileTooLarge": "הקובץ גדול מדי",
+      "importFileTooLargeMessage": "הקובץ שנבחר גדול מדי (מקסימום 10MB).",
+      "importFailed": "הייבוא נכשל",
+      "importFailedInvalidStructure": "לקובץ המיובא יש מבנה לא חוקי או שחסרים בו נתונים נדרשים (dailyEntries, foods, settings).",
+      "importFailedParseError": "הקובץ המיובא אינו JSON חוקי או שתוכנו פגום.",
+      "importFailedAccessError": "לא ניתן היה לגשת לקובץ שנבחר.",
+      "importFailedPermissionError": "נדרשות הרשאות אחסון לייבוא קבצים.",
+      "importFailedUnknownError": "אירעה שגיאה לא ידועה במהלך הייבוא.",
+      "importSuccessful": "הייבוא הושלם בהצלחה",
+      "importSuccessfulMessage": "הנתונים יובאו ונשמרו בהצלחה.",
+      "clearDataSuccess": "הנתונים נוקו",
+      "clearDataSuccessMessage": "כל נתוני היישום נוקו בהצלחה.",
+      "clearDataFailed": "ניקוי הנתונים נכשל",
+      "clearDataFailedMessage": "ניקוי הנתונים נכשל.",
+      "confirmClearTitle": "אשר ניקוי כל הנתונים",
+      "confirmClearMessage": "פעולה זו אינה הפיכה ותמחק את כל הרשומות, המאכלים וההגדרות.\n\nהזן \"CLEAR DATA\" כדי להמשיך.",
+      "confirmClearInputPlaceholder": "הזן \"CLEAR DATA\"",
+      "clearConfirmationFailed": "האישור נכשל",
+      "clearConfirmationFailedMessage": "הוזן טקסט אישור שגוי. הנתונים לא נוקו.",
+      "dataReloaded": "הנתונים נטענו מחדש."
+    },
+    "confirmationModal": {
+      "confirm": "אשר",
+      "cancel": "ביטול",
+      "defaultTitle": "אשר פעולה",
+      "defaultMessage": "האם אתה בטוח שברצונך לבצע פעולה זו?",
+      "enterTextPlaceholder": "הזן טקסט אישור"
+    },
+    "dailyEntryScreen": {
+      "tabTitle": "יומן יומי",
+      "todaysEntries": "רשומות להיום",
+      "saving": "שומר...",
+      "loadingEntries": "טוען רשומות...",
+      "noEntries": "אין רשומות מתועדות ליום זה.",
+      "noEntriesHint": "הקש '+' כדי להוסיף את הארוחה הראשונה שלך.",
+      "entryAdded": "רשומה נוספה",
+      "entryUpdated": "רשומה עודכנה",
+      "itemRemoved": "{itemName} הוסר",
+      "undo": "הקש כאן לביטול",
+      "entryRestored": "הרשומה שוחזרה!",
+      "itemsAdded": "{count} פריט(ים) נוספו",
+      "toDateFormat": "לתאריך {date}",
+      "errorLoad": "שגיאת טעינה",
+      "errorLoadMessage": "טעינת הנתונים הדרושים נכשלה.",
+      "errorSave": "שגיאת שמירה",
+      "errorSaveMessage": "לא ניתן לשמור שינויים. אנא נסה שוב.",
+      "errorInvalidDate": "תאריך לא חוקי",
+      "errorInvalidDateMessage": "התאריך שנבחר אינו חוקי.",
+      "errorEditEntry": "שגיאת עריכה",
+      "errorEditEntryMessage": "שגיאה בהכנת רשומה לעריכה.",
+      "errorAddMultiple": "שגיאה בהוספה מרובה",
+      "errorAddMultipleMessage": "נכשל בהוספת מספר פריטים.",
+      "invalidEntryData": "נתוני רשומה לא חוקיים",
+      "edit": "ערוך",
+      "delete": "מחק"
+    },
+    "foodListScreen": {
+      "tabTitle": "מאכלים",
+      "searchPlaceholder": "חפש בספריית המאכלים שלך...",
+      "loadingFoods": "טוען מאכלים...",
+      "emptyLibrary": "ספריית המאכלים שלך ריקה.",
+      "emptyLibraryHint": "הקש '+' כדי להוסיף את פריט המזון הראשון שלך!",
+      "noResults": "לא נמצאו מאכלים התואמים ל-\"{searchTerm}\"",
+      "errorLoad": "שגיאה",
+      "errorLoadMessage": "טעינת רשימת המאכלים נכשלה.",
+      "foodAdded": "{foodName} נוסף",
+      "foodUpdated": "{foodName} עודכן",
+      "foodDeleted": "{foodName} נמחק",
+      "foodRestored": "{foodName} שוחזר",
+      "errorCreate": "שגיאה",
+      "errorCreateMessage": "יצירת המאכל נכשלה.",
+      "errorUpdate": "שגיאה",
+      "errorUpdateMessage": "עדכון המאכל נכשל.",
+      "errorDelete": "שגיאת מחיקה",
+      "errorDeleteMessage": "מחיקת המאכל מהאחסון נכשלה. הפריט שוחזר.",
+      "fixErrors": "אנא תקן שגיאות",
+      "edit": "ערוך",
+      "delete": "מחק"
+    },
+    "addEntryModal": {
+      "titleAdd": "הוסף רשומה",
+      "titleEdit": "ערוך רשומה",
+      "titleQuickAddSelect": "בחר פריטים מהתמונה",
+      "titleQuickAddEdit": "ערוך פריט",
+      "titleQuickAddAnalyzing": "מנתח...",
+      "searchPlaceholder": "חפש מאכלים...",
+      "recent": "אחרונים",
+      "noResults": "לא נמצאו מאכלים התואמים ל-\"{searchTerm}\".",
+      "noQuickAddResults": "לא נמצאו פריטי מזון בתמונה.",
+      "amount": "כמות",
+      "grams": "גרם",
+      "autoAi": "אוטומטי (AI)",
+      "quickAddServing": "הוספה מהירה:",
+      "gramsPlaceholder": "הזן גרמים (למשל, 150)",
+      "gramsPlaceholderEdit": "עדכן גרמים",
+      "gramsError": "הזן מספר חוקי",
+      "autoPlaceholder": "תאר כמות (למשל, 1 כוס מבושל)",
+      "buttonAdd": "הוסף",
+      "buttonUpdate": "עדכן",
+      "buttonBack": "חזור",
+      "buttonAddSelected": "הוסף {count}",
+      "buttonLoading": "טוען...",
+      "quickAddHeader": "בחר פריטים מהתמונה",
+      "quickAddHeaderEdit": "עריכת פרטי פריט",
+      "alertInputMissing": "קלט חסר",
+      "alertInputMissingMessage": "אנא בחר מאכל והזן תיאור כמות.",
+      "alertGramsEstimated": "גרמים הוערכו",
+      "alertGramsEstimatedMessage": "הוערכו {grams} גרם עבור {foodName}",
+      "alertFoodNotSelected": "מאכל לא נבחר",
+      "alertFoodNotSelectedMessage": "אנא בחר פריט מזון.",
+      "alertInvalidAmount": "כמות לא חוקית",
+      "alertInvalidAmountMessage": "אנא הזן מספר חיובי חוקי עבור גרמים.",
+      "alertQuickAddPermission": "נדרשת הרשאה",
+      "alertQuickAddCameraPermission": "נדרשת גישה למצלמה.",
+      "alertQuickAddGalleryPermission": "נדרשת גישה לגלריה.",
+      "alertQuickAddUserCancelled": "בוטל על ידי המשתמש",
+      "alertQuickAddCouldNotSelect": "לא ניתן לבחור תמונה.",
+      "alertQuickAddError": "שגיאה",
+      "alertQuickAddErrorMessage": "אירעה שגיאה בלתי צפויה.",
+      "alertQuickAddFinishEditing": "סיים עריכה",
+      "alertQuickAddFinishEditingSaveOrCancel": "אנא שמור או בטל את העריכה הנוכחית תחילה.",
+      "alertQuickAddFromImageTitle": "הוספה מהירה מתמונה",
+      "alertQuickAddFromImageMessage": "זהה מספר מאכלים מתמונה.",
+      "alertQuickAddInvalidName": "שם לא חוקי",
+      "alertQuickAddInvalidNameMessage": "שם המאכל אינו יכול להיות ריק.",
+      "alertQuickAddInvalidGrams": "גרמים לא חוקיים",
+      "alertQuickAddInvalidGramsMessage": "אנא הזן מספר חיובי חוקי.",
+      "alertQuickAddNoItemsSelected": "לא נבחרו פריטים",
+      "alertQuickAddNoItemsSelectedMessage": "בחר פריטים להוספה.",
+      "alertQuickAddNothingToAdd": "אין מה להוסיף",
+      "alertQuickAddNothingToAddMessage": "לא נבחרו או הוכנו פריטים חוקיים.",
+      "alertQuickAddErrorPreparing": "שגיאה",
+      "alertQuickAddErrorPreparingMessage": "לא ניתן היה להכין פריטים להוספה.",
+      "camera": "מצלמה",
+      "gallery": "גלריה",
+      "cancel": "ביטול"
+    },
+    "addFoodModal": {
+      "titleAdd": "הוסף מאכל חדש",
+      "titleEdit": "ערוך מאכל",
+      "buttonAdd": "הוסף",
+      "buttonUpdate": "עדכן",
+      "getFromImage": "קבל מתמונה",
+      "ingredientsOptional": "רכיבים (אופציונלי)",
+      "ingredientsPlaceholder": "למשל\n100ג חזה עוף\n50ג אורז\n1 כף שמן זית",
+      "backToManual": "חזרה להזנה ידנית",
+      "aiCalculateRecipe": "חשב עם AI (מתכון/טקסט)",
+      "aiGetFromIngredients": "קבל מאקרואים מרכיבים",
+      "aiGetFromNameOnly": "קבל מאקרואים משם בלבד",
+      "barcodeComingSoon": "הזנת ברקוד (בקרוב)",
+      "alertInputNeeded": "נדרש קלט",
+      "alertInputNeededMessage": "אנא הזן שם מאכל או רכיבים לניתוח.",
+      "macrosEstimatedText": "מאקרואים הוערכו מטקסט.",
+      "foodIdentified": "מאכל זוהה!",
+      "foodIdentifiedMessage": "זוהה כ-{foodName}. מאקרואים הוערכו.",
+      "errorGetImage": "קבל תמונה",
+      "errorGetImageMessage": "בחר מקור לתמונת המאכל:",
+      "errorCamera": "שגיאת מצלמה",
+      "errorGallery": "שגיאת גלריה",
+      "errorPermission": "נדרשת הרשאה",
+      "errorCameraPermission": "נדרשת גישה למצלמה."
+    },
+    "foodFormFields": {
+      "foodName": "שם המאכל",
+      "calories": "קלוריות (ל-100 גרם)",
+      "protein": "חלבון (ל-100 גרם)",
+      "carbs": "פחמימות (ל-100 גרם)",
+      "fat": "שומן (ל-100 גרם)",
+      "errorNameRequired": "שם הוא שדה חובה",
+      "errorNonNegative": "חייב להיות מספר אי-שלילי"
+    },
+    "quickAddList": {
+      "foodNamePlaceholder": "שם המאכל",
+      "gramsPlaceholder": "גרמים",
+      "errorInvalidGrams": "לא חוקי",
+      "analyzing": "מנתח...",
+      "emptyMessage": "לא נמצאו מאכלים הניתנים לזיהוי בתמונה.",
+      "emptyHint": "נסה תמונה אחרת או הוסף ידנית."
+    },
+    "dailyProgress": {
+      "calories": "קלוריות",
+      "protein": "חלבון",
+      "carbs": "פחמימות",
+      "fat": "שומן"
+    },
+    "dateNavigator": {
+      "invalidDate": "תאריך לא חוקי"
+    },
+    "settings": {
+      "refreshIcons": "רענן סמלי מאכל",
+      "iconsCacheCleared": "מטמון הסמלים נוקה",
+      "iconsCacheClearedMessage": "הסמלים יתרעננו.",
+      "errorClearCache": "ניקוי המטמון נכשל",
+      "errorClearCacheMessage": "שגיאה לא ידועה."
+    },
+    "utils": {
+      "macros": {
+        "alertAiErrorRecipe": "שגיאת AI (מתכון)",
+        "alertAnalysisFailedSingle": "ניתוח נכשל (פריט יחיד)",
+        "alertQuickAddFailedMulti": "הוספה מהירה נכשלה (מספר פריטים)",
+        "alertImageReadError": "שגיאת קריאת תמונה",
+        "alertImageReadErrorMessage": "קריאת קובץ התמונה נכשלה.",
+        "errorGetMacrosRecipe": "קבלת מאקרואים למתכון נכשלה: {error}",
+        "errorImageAnalysis": "ניתוח התמונה נכשל: {error}",
+        "errorCouldNotAnalyze": "לא ניתן היה לנתח את התמונה: {error}",
+        "errorInvalidResponseMultiple": "פורמט תגובה לא חוקי מהשרת עבור מספר פריטים."
+      },
+      "units": {
+        "alertAiEstimationFailed": "הערכת AI נכשלה",
+        "errorCouldNotEstimateGrams": "לא ניתן היה להעריך גרמים: {error}"
+      },
+      "image": {
+        "alertCompressionError": "שגיאת דחיסה",
+        "alertCompressionErrorMessage": "לא ניתן היה לעבד את התמונה לדחיסה.",
+        "errorFailedToRead": "קריאת קובץ התמונה נכשלה: {error}"
+      }
+    },
+    "backendService": {
+      "errorInvalidClientId": "פורמט מזהה לקוח לא חוקי.",
+      "errorRequestFailedParse": "בקשה לשרת נכשלה (סטטוס {status}), פענוח התגובה נכשל.",
+      "errorRequestFailedDetailFormat": "שגיאת שרת (סטטוס {status}), פורמט פרטים לא צפוי.",
+      "errorRequestFailedWithServerMsg": "בקשה לשרת נכשלה (סטטוס {status}). תגובת השרת: {response}",
+      "errorAuthFailed": "האימות נכשל. מזהה לקוח לא חוקי.",
+      "errorPermissionDenied": "הגישה נדחתה.",
+      "errorNotFound": "המשאב לא נמצא.",
+      "errorTooManyRequests": "יותר מדי בקשות. אנא נסה שוב מאוחר יותר.",
+      "errorInsufficientCoins": "אין מספיק מטבעות לפעולה זו.",
+      "errorNetwork": "התקשורת עם השרת נכשלה.",
+      "errorNetworkTimeout": "זמן הבקשה פג. אנא נסה שוב.",
+      "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
+      "errorNetworkDetails": " פרטים: {error}",
+      "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
+      "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב פורמט תגובה לא צפוי.",
+      "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
+    }
+  }

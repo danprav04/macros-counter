@@ -1,8 +1,9 @@
+// tsconfig.json
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "esModuleInterop": true
-
+    "esModuleInterop": true,
+    "module": "commonjs"
   }
 }

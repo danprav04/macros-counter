@@ -1,5 +1,5 @@
 // App.tsx
-// App.tsx (Initialize Client ID)
+// App.tsx
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
 import React, { useState, useEffect } from "react";
@@ -12,25 +12,30 @@ import {
   AppState,
   AppStateStatus,
   Platform,
+  I18nManager, // Import I18nManager
+  Alert, // For restart prompt
+  DevSettings // For dev reload
 } from "react-native";
+import * as Localization from 'expo-localization';
 import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
 } from "@react-navigation/native";
 import { Colors } from "@rneui/base";
-import { Settings } from "./src/types/settings";
-import { LogBox, View, Text } from "react-native"; //Import view for debug
-import { StatusBar } from "expo-status-bar"; // changed import
-import { getClientId } from "./src/services/clientIDService"; // Import client ID service
+import { Settings, LanguageCode } from "./src/types/settings";
+import { LogBox, View, Text } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { getClientId } from "./src/services/clientIDService";
+import i18n, { setLocale, t } from './src/localization/i18n'; // Import i18n setup
 
 LogBox.ignoreLogs(["Function components cannot be given refs"]);
 
 declare module "@rneui/themed" {
   export interface Colors {
     text: string;
-    card: string; // Added for better card styling
-    successLight: string; // Lighter success color
+    card: string;
+    successLight: string;
   }
 }
 
@@ -57,115 +62,23 @@ const lightTheme: MyTheme = {
     warning: "#ffc107",
     disabled: "#6c757d",
     divider: "#ced4da",
-    platform: {
-      ios: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      android: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      web: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      default: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-    },
-    grey0: "#f8f9fa",
-    grey1: "#e9ecef",
-    grey2: "#dee2e6",
-    grey3: "#ced4da",
-    greyOutline: "#adb5bd",
-    searchBg: "#ffffff",
+    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
+    grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da",
+    greyOutline: "#adb5bd", searchBg: "#ffffff",
   },
 };
 
 const darkTheme: MyTheme = {
   mode: "dark",
   colors: {
-    primary: "#2e86de",
-    secondary: "#adb5bd",
-    background: "#121212",
-    grey5: "#2c2c2c",
-    white: "#ffffff",
-    grey4: "#343a40",
-    success: "#28a745",
-    successLight: "#1f5139",
-    black: "#000000",
-    text: "#f8f9fa",
-    card: "#1e1e1e",
-    error: "#dc3545",
-    warning: "#ffc107",
-    disabled: "#6c757d",
-    divider: "#343a40",
-    platform: {
-      ios: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      android: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      web: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-      default: {
-        primary: "",
-        secondary: "",
-        grey: "",
-        searchBg: "",
-        success: "",
-        error: "",
-        warning: "",
-      },
-    },
-    grey0: "#212529",
-    grey1: "#2c2c2c",
-    grey2: "#343a40",
-    grey3: "#495057",
-    greyOutline: "#6c757d",
-    searchBg: "#1e1e1e",
+    primary: "#2e86de", secondary: "#adb5bd", background: "#121212",
+    grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40",
+    success: "#28a745", successLight: "#1f5139", black: "#000000",
+    text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545",
+    warning: "#ffc107", disabled: "#6c757d", divider: "#343a40",
+    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
+    grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40",
+    grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e",
   },
 };
 
@@ -173,49 +86,52 @@ const App = () => {
   const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">(
     "system"
   );
+  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>('system');
   const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
   const colorScheme = useColorScheme();
   const [appState, setAppState] = useState(AppState.currentState);
-  const [themeCheck, setThemeCheck] = useState(0);
-  const [isClientIdReady, setIsClientIdReady] = useState(false); // Track client ID readiness
+  const [isClientIdReady, setIsClientIdReady] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // New state for overall initialization
 
-  // Initialize Client ID and Load initial settings
+  // Initialize Client ID, Load initial settings, and set up i18n
   useEffect(() => {
     const initializeApp = async () => {
       try {
-          // Ensure Client ID is ready before loading other data
-          await getClientId(); // This generates/retrieves and caches the ID
-          setIsClientIdReady(true);
-          console.log('Client ID is ready.');
+        await getClientId();
+        setIsClientIdReady(true);
+        console.log('Client ID is ready.');
 
-          // Load settings after client ID is confirmed
-          const settings = await loadSettings();
-          setThemeMode(settings.theme);
-          setLoadedSettings(settings);
-          console.log('Settings loaded.');
+        const settings = await loadSettings();
+        setThemeMode(settings.theme);
+        setCurrentLanguage(settings.language);
+
+        if (settings.language === 'system') {
+          const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
+          setLocale(deviceLocale);
+        } else {
+          setLocale(settings.language);
+        }
+        setLoadedSettings(settings);
+        console.log('Settings loaded and locale set:', i18n.locale);
+        setIsInitialized(true); // Mark initialization as complete
       } catch (error) {
-            console.error("Initialization Error:", error);
-            // Handle error, maybe show an error screen
+        console.error("Initialization Error:", error);
+        setIsInitialized(true); // Still mark as initialized to show app, even with error
       }
     };
     initializeApp();
-  }, []); // Run only once on mount
+  }, []);
 
   // AppState Listener
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       setAppState(nextAppState);
     };
-
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange
-    );
-
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
     return () => {
       subscription.remove();
     };
-  }, []); // No appState dependency needed here
+  }, []);
 
   const updateTheme = (newThemeMode: "light" | "dark" | "system") => {
     const isDark =
@@ -235,8 +151,57 @@ const App = () => {
       await saveSettings(updatedSettings);
       setLoadedSettings(updatedSettings);
     }
-    setThemeCheck((t) => t + 1);
   };
+
+  const handleLocaleChange = async (newLocale: LanguageCode) => {
+    const oldLocale = currentLanguage === 'system'
+        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
+        : currentLanguage;
+    
+    setCurrentLanguage(newLocale);
+    if (newLocale === 'system') {
+        const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
+        setLocale(deviceLocale);
+    } else {
+        setLocale(newLocale);
+    }
+
+    if (loadedSettings) {
+        const updatedSettings: Settings = { ...loadedSettings, language: newLocale };
+        await saveSettings(updatedSettings);
+        setLoadedSettings(updatedSettings);
+    }
+
+    const newEffectiveLocale = newLocale === 'system'
+        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
+        : newLocale;
+
+    // Prompt for restart if RTL/LTR direction changes
+    const oldIsRTL = oldLocale === 'he';
+    const newIsRTL = newEffectiveLocale === 'he';
+
+    if (oldIsRTL !== newIsRTL) {
+        Alert.alert(
+            "Restart Required", // This title itself should ideally be translated, but for a restart prompt it might be acceptable.
+            t('settingsScreen.language.restartMessage'),
+            [
+                {
+                    text: "Later", // also translatable
+                    style: "cancel"
+                },
+                {
+                    text: "Restart Now", // also translatable
+                    onPress: () => {
+                        // In a real build, you'd use Updates.reloadAsync()
+                        // For development in Expo Go, this reloads the JS bundle
+                        DevSettings.reload();
+                    }
+                }
+            ]
+        );
+    }
+  };
+
 
   const currentTheme = updateTheme(themeMode);
 
@@ -245,24 +210,18 @@ const App = () => {
       ...DarkTheme,
       colors: {
         ...DarkTheme.colors,
-        primary: currentTheme.colors.primary,
-        background: currentTheme.colors.background,
-        card: currentTheme.colors.card,
-        text: currentTheme.colors.text,
-        border: currentTheme.colors.divider,
-        notification: currentTheme.colors.successLight,
+        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
+        card: currentTheme.colors.card, text: currentTheme.colors.text,
+        border: currentTheme.colors.divider, notification: currentTheme.colors.successLight,
       },
     },
     light: {
       ...DefaultTheme,
       colors: {
         ...DefaultTheme.colors,
-        primary: currentTheme.colors.primary,
-        background: currentTheme.colors.background,
-        card: currentTheme.colors.card,
-        text: currentTheme.colors.text,
-        border: currentTheme.colors.divider,
-        notification: currentTheme.colors.success,
+        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
+        card: currentTheme.colors.card, text: currentTheme.colors.text,
+        border: currentTheme.colors.divider, notification: currentTheme.colors.success,
       },
     },
   };
@@ -270,14 +229,12 @@ const App = () => {
   const statusBarTheme = themeMode === "system" ? colorScheme : themeMode;
   const backgroundColor = currentTheme.colors.background;
 
-  // Show loading or placeholder until client ID is ready
-  if (!isClientIdReady) {
-      return (
-          <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: backgroundColor }}>
-              <Text style={{ color: currentTheme.colors.text }}>Initializing...</Text>
-              {/* Optionally add an ActivityIndicator */}
-          </SafeAreaView>
-      );
+  if (!isInitialized) { // Check overall initialization
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: backgroundColor }}>
+        <Text style={{ color: currentTheme.colors.text }}>{t('app.initializing')}</Text>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -295,7 +252,7 @@ const App = () => {
               : navigationTheme.light
           }
         >
-          <AppNavigator onThemeChange={handleThemeChange} />
+          <AppNavigator onThemeChange={handleThemeChange} onLocaleChange={handleLocaleChange} />
         </NavigationContainer>
         <Toast />
       </SafeAreaView>

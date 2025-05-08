@@ -1,11 +1,14 @@
+// src/components/DateNavigator.tsx
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Button, Text, Icon as RNEIcon, useTheme, makeStyles } from '@rneui/themed';
 import { parseISO, isValid } from 'date-fns';
-import { formatDateReadable } from '../utils/dateUtils'; // Ensure correct path
+import { formatDateReadableAsync } from '../utils/dateUtils'; // Import async version
+import { t } from '../localization/i18n';
+import i18n from '../localization/i18n';
 
 interface DateNavigatorProps {
-    selectedDate: string; // ISO String 'YYYY-MM-DD'
+    selectedDate: string;
     onPreviousDay: () => void;
     onNextDay: () => void;
     onShowDatePicker: () => void;
@@ -23,9 +26,21 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const [displayDate, setDisplayDate] = React.useState(t('dateNavigator.invalidDate'));
 
-    const parsedDate = parseISO(selectedDate);
-    const displayDate = isValid(parsedDate) ? formatDateReadable(parsedDate) : 'Invalid Date';
+    React.useEffect(() => {
+        const updateDisplayDate = async () => {
+            const parsedDate = parseISO(selectedDate);
+            if (isValid(parsedDate)) {
+                const formatted = await formatDateReadableAsync(parsedDate);
+                setDisplayDate(formatted);
+            } else {
+                setDisplayDate(t('dateNavigator.invalidDate'));
+            }
+        };
+        updateDisplayDate();
+    }, [selectedDate, i18n.locale]); // Re-run when selectedDate or locale changes
+
     const isDisabled = isSaving || isLoadingData;
 
     return (
@@ -63,9 +78,6 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 10,
         paddingHorizontal: 10,
         backgroundColor: theme.colors.background,
-        // Optional: add subtle shadow or border if needed
-        // borderBottomWidth: StyleSheet.hairlineWidth,
-        // borderBottomColor: theme.colors.divider,
     },
     navButton: {
         paddingHorizontal: 8,
@@ -78,11 +90,10 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 5,
     },
     disabledButton: {
-        // backgroundColor: 'transparent', // Keep background transparent
-        opacity: 0.5, // Reduce opacity for visual feedback
+        opacity: 0.5,
     },
     disabledText: {
-        color: theme.colors.grey3, // Use a grey color for disabled text
+        color: theme.colors.grey3,
     },
 }));
 

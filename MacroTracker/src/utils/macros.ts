@@ -1,15 +1,17 @@
 // src/utils/macros.ts
+// src/utils/macros.ts
 import * as FileSystem from 'expo-file-system';
 import {
     getMacrosForRecipe,
     getMacrosForImageSingle,
     getMacrosForImageMultiple,
-    BackendError // Re-export for components if needed
+    BackendError
 } from '../services/backendService';
 import { Alert } from 'react-native';
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { ImagePickerAsset } from 'expo-image-picker';
-import { getBase64FromUri } from './imageUtils'; // Use shared utility
+import { getBase64FromUri } from './imageUtils'; // Corrected import path check
+import { t } from '../localization/i18n';
 
 // --- Helper function to determine MIME type ---
 export function determineMimeType(asset: {
@@ -56,9 +58,8 @@ export async function getMacrosFromText(
         console.error(`Util: Error getting macros for recipe "${foodName}":`, error);
         const message = error instanceof BackendError
             ? error.message
-            : `Failed to get macros for recipe: ${error instanceof Error ? error.message : String(error)}`;
-        // Display error, but let the caller handle further actions (like stopping loading states)
-        Alert.alert("AI Error (Recipe)", message);
+            : t('utils.macros.errorGetMacrosRecipe', { error: error instanceof Error ? error.message : String(error) });
+        Alert.alert(t('utils.macros.alertAiErrorRecipe'), message);
         throw error; // Re-throw to allow caller to handle
     }
 }
@@ -70,7 +71,7 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         // Use shared utility for base64 conversion
         base64File = await getBase64FromUri(asset.uri);
     } catch (err) {
-        Alert.alert("Image Read Error", err instanceof Error ? err.message : "Failed to read image file.");
+        Alert.alert(t('utils.macros.alertImageReadError'), err instanceof Error ? err.message : t('utils.macros.alertImageReadErrorMessage'));
         throw err; // Re-throw error for caller to handle
     }
 
@@ -85,8 +86,8 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         console.error(`Util: Error getting single food macros for image ${asset.uri}:`, error);
         const message = error instanceof BackendError
             ? error.message
-            : `Image analysis failed: ${error instanceof Error ? error.message : String(error)}`;
-        Alert.alert("Analysis Failed (Single Item)", message);
+            : t('utils.macros.errorImageAnalysis', { error: error instanceof Error ? error.message : String(error) });
+        Alert.alert(t('utils.macros.alertAnalysisFailedSingle'), message);
         throw error; // Re-throw error
     }
 }
@@ -98,21 +99,19 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
     try {
         const results = await getMacrosForImageMultiple(base64Image, mimeType);
         console.log(`Util: Received ${results.length} estimated items from backend.`);
-        // Optional: Basic validation of results structure here if needed
         if (!Array.isArray(results)) {
             console.error("Util: Backend returned non-array for multiple food items:", results);
-            throw new Error("Invalid response format from server for multiple items.");
+            throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
         }
         return results;
     } catch (error) {
         console.error(`Util: Error getting multiple food macros from image:`, error);
          const message = error instanceof BackendError
             ? error.message
-            : `Could not analyze image: ${error instanceof Error ? error.message : String(error)}`;
-        Alert.alert("Quick Add Failed (Multi-Item)", message);
+            : t('utils.macros.errorCouldNotAnalyze', { error: error instanceof Error ? error.message : String(error) });
+        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
         throw error; // Re-throw error
     }
 }
 
-// Re-export types and potentially BackendError if components need it directly
 export { BackendError, EstimatedFoodItem, Macros, MacrosWithFoodName };

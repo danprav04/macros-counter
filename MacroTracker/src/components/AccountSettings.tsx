@@ -1,6 +1,8 @@
+// src/components/AccountSettings.tsx
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Text, makeStyles, Button, Icon, ListItem, useTheme } from '@rneui/themed';
+import { t } from '../localization/i18n';
 
 interface AccountSettingsProps {
     userCoins: number | null;
@@ -23,18 +25,18 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             <ListItem bottomDivider containerStyle={styles.listItem}>
                 <Icon name="database" type="material-community" color={theme.colors.warning} />
                 <ListItem.Content>
-                    <ListItem.Title style={styles.listItemTitle}>Coin Balance</ListItem.Title>
+                    <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.coinBalance')}</ListItem.Title>
                 </ListItem.Content>
                 {isLoadingCoins ? (
                     <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : (
-                    <Text style={styles.coinValue}>{userCoins !== null ? userCoins : 'N/A'}</Text>
+                    <Text style={styles.coinValue}>{userCoins !== null ? userCoins : t('accountSettings.notApplicable')}</Text>
                 )}
             </ListItem>
 
             {/* REMOVE OR PROTECT THIS BUTTON IN PRODUCTION */}
             <Button
-                title="Add 10 Coins (Test)"
+                title={t('accountSettings.addTestCoins')}
                 onPress={onAddTestCoins}
                 buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
                 icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
@@ -42,7 +44,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 disabled={isAddingCoins || isLoadingCoins}
             />
             <Text style={styles.testButtonWarning}>
-                Note: The "Add Coins" button is for testing/development only and should be removed or secured for production releases.
+                {t('accountSettings.testButtonWarning')}
             </Text>
         </View>
     );
@@ -56,6 +58,7 @@ const useStyles = makeStyles((theme) => ({
     listItemTitle: {
         color: theme.colors.text,
         fontWeight: '500',
+        textAlign: 'left',
     },
     coinValue: {
         color: theme.colors.primary,

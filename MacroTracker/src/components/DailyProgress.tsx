@@ -1,7 +1,9 @@
+// src/components/DailyProgress.tsx
 // components/DailyProgress.tsx
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from '@rneui/themed';
+import { Text, useTheme, makeStyles } from '@rneui/themed'; // Import makeStyles
+import { t } from '../localization/i18n';
 
 interface DailyProgressProps {
   calories: number;
@@ -24,18 +26,20 @@ const DailyProgress: React.FC<DailyProgressProps> = ({
   goals,
 }) => {
   const { theme } = useTheme();
+  const styles = useStyles(); // Use styles
 
   const calculateProgress = (current: number, goal?: number) => {
-    if (!goal || goal <= 0) return 0; // Avoid division by zero and handle undefined goals
-    return Math.min(current / goal, 1); // Cap at 100%
+    if (!goal || goal <= 0) return 0;
+    return Math.min(current / goal, 1);
   };
 
-  const renderProgressBar = (label: string, current: number, goal: number | undefined, color: string) => {
+  const renderProgressBar = (labelKey: 'calories' | 'protein' | 'carbs' | 'fat', current: number, goal: number | undefined, color: string) => {
       const progress = calculateProgress(current, goal);
+      const labelText = t(`dailyProgress.${labelKey}`);
       return (
-          <View style={styles.macroContainer} key={label}>
+          <View style={styles.macroContainer} key={labelKey}>
               <View style={styles.labelContainer}>
-                    <Text style={[styles.macroLabel, {color: theme.colors.text}]}>{label}:</Text>
+                    <Text style={[styles.macroLabel, {color: theme.colors.text}]}>{labelText}:</Text>
                     <Text style={[styles.macroValue, {color: theme.colors.text}]}>
                         {`${Math.round(current)} / ${goal || 0}`}
                     </Text>
@@ -47,23 +51,22 @@ const DailyProgress: React.FC<DailyProgressProps> = ({
       )
   }
 
-
   return (
     <View style={styles.container}>
-        {renderProgressBar('Calories', calories, goals.calories, theme.colors.primary)}
-        {renderProgressBar('Protein', protein, goals.protein, 'green')}
-        {renderProgressBar('Carbs', carbs, goals.carbs, 'orange')}
-        {renderProgressBar('Fat', fat, goals.fat, 'blue')}
+        {renderProgressBar('calories', calories, goals.calories, theme.colors.primary)}
+        {renderProgressBar('protein', protein, goals.protein, theme.colors.success)}
+        {renderProgressBar('carbs', carbs, goals.carbs, theme.colors.warning)}
+        {renderProgressBar('fat', fat, goals.fat, theme.colors.error)}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+// Update useStyles for text alignment
+const useStyles = makeStyles((theme) => ({
   container: {
     marginBottom: 20,
     padding: 10,
-    borderRadius: 8, // Rounded corners for the container
-    //backgroundColor: '#f0f0f0', // Light background for contrast Removed for theme consistency
+    borderRadius: 8,
   },
   macroContainer: {
     marginBottom: 10,
@@ -75,10 +78,13 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontWeight: 'bold',
+    textAlign: 'left',
   },
-  macroValue: {},
+  macroValue: {
+    textAlign: 'right',
+  },
   progressBarContainer: {
-      backgroundColor: '#e0e0e0', //Light grey for track
+      backgroundColor: theme.colors.grey5,
       borderRadius: 5,
       height: 10
   },
@@ -86,6 +92,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
-});
+}));
 
 export default DailyProgress;
