@@ -1,5 +1,4 @@
 // src/screens/SettingsScreen.tsx
-// src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
@@ -10,8 +9,8 @@ import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
-import { Settings, Statistics, MacroType, MacroData, LanguageCode } from "../types/settings";
-import { parseISO, isValid } from "date-fns";
+import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
+import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect } from "@react-navigation/native";
 import { clearIconCache } from "../utils/iconUtils";
@@ -23,7 +22,7 @@ import i18n from '../localization/i18n';
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // Kept for consistency, though not directly used here
+  onDataOperation: () => void;
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
@@ -37,63 +36,163 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [statistics, setStatistics] = useState<Statistics>({
     calories: [], protein: [], carbs: [], fat: [],
   });
-  const [chartUpdateKey, setChartUpdateKey] = useState(0); // Used to force re-render of chart
+  const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true); // For initial load
 
   const { theme } = useTheme();
   const styles = useStyles();
 
-  const getStatisticsData = useCallback(( dailyEntries: DailyEntry[], macro: MacroType, currentGoals: { [key in MacroType]: number } ): MacroData[][] => {
-    const intakeData: MacroData[] = []; const goalData: MacroData[] = [];
+  const getStatisticsData = useCallback((
+    dailyEntries: DailyEntry[],
+    macro: MacroType,
+    currentGoals: { [key in MacroType]: number }
+  ): MacroData[][] => {
+    const intakeDataMap = new Map<number, number>(); // timestamp -> value
+    const goalDataMap = new Map<number, number>();   // timestamp -> value (for calories)
+
+    // Populate maps from entries and goals
     dailyEntries.forEach((entry) => {
-       try {
-            const entryDate = parseISO(entry.date); if (!isValid(entryDate)) { console.warn(`Invalid date: ${entry.date}`); return; }
-            const entryTimestamp = entryDate.getTime(); let intakeValue = 0;
-            if (entry.items && Array.isArray(entry.items)) intakeValue = entry.items.reduce((total, item) => { if (item.food && typeof item.food[macro] === 'number' && typeof item.grams === 'number' && item.grams > 0) return total + (item.food[macro] / 100) * item.grams; return total; }, 0);
-            const goalValue = currentGoals[macro] ?? 0; intakeData.push({ x: entryTimestamp, y: Math.round(intakeValue) });
-            if (macro === "calories") goalData.push({ x: entryTimestamp, y: Math.round(goalValue) });
-        } catch (parseError) { console.error(`Error processing entry ${entry.date}:`, parseError); }
+      try {
+        const entryDate = parseISO(entry.date);
+        if (!isValid(entryDate)) {
+          console.warn(`Invalid date in getStatisticsData: ${entry.date}`);
+          return;
+        }
+        const entryTimestamp = startOfDay(entryDate).getTime(); // Use start of day for consistency
+
+        let intakeValue = 0;
+        if (entry.items && Array.isArray(entry.items)) {
+          intakeValue = entry.items.reduce((total, item) => {
+            if (item.food && typeof item.food[macro] === 'number' && typeof item.grams === 'number' && item.grams > 0) {
+              return total + (item.food[macro] / 100) * item.grams;
+            }
+            return total;
+          }, 0);
+        }
+        intakeDataMap.set(entryTimestamp, (intakeDataMap.get(entryTimestamp) || 0) + Math.round(intakeValue));
+
+        if (macro === "calories") {
+          const goalValue = currentGoals[macro] ?? 0;
+          // For goals, we typically want one goal point per day that has an intake point.
+          // If goals can change over time and are stored historically, that logic would be here.
+          // For now, use the current goal for all days with intake.
+           if (intakeDataMap.has(entryTimestamp)) { // Only add goal if there's intake for that day
+             goalDataMap.set(entryTimestamp, Math.round(goalValue));
+           }
+        }
+      } catch (parseError) {
+        console.error(`Error processing entry ${entry.date} for statistics:`, parseError);
+      }
     });
-    intakeData.sort((a, b) => a.x - b.x); if (macro === "calories") { goalData.sort((a, b) => a.x - b.x); return [intakeData, goalData]; } else return [intakeData];
+
+    // Convert maps to sorted arrays of MacroData
+    const sortedTimestamps = Array.from(new Set([...intakeDataMap.keys(), ...goalDataMap.keys()])).sort((a,b) => a - b);
+    
+    const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({
+        x: ts,
+        y: intakeDataMap.get(ts) || 0 // Default to 0 if no intake for a timestamp (e.g. only goal exists)
+    }));
+
+    if (macro === "calories") {
+        const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({
+            x: ts,
+            y: goalDataMap.get(ts) || currentGoals[macro] || 0 // Use current goal if specific timestamp goal not found
+        }));
+        return [finalIntakeData, finalGoalData];
+    }
+    return [finalIntakeData];
   }, []);
 
+
   const updateStatistics = useCallback(async (currentGoals: { [key in MacroType]: number }) => {
-    console.log("SettingsScreen: Updating statistics...");
+    console.log("SettingsScreen: Updating statistics with goals:", currentGoals);
     try {
-        const loadedEntries = await loadDailyEntries(); const updatedStats: Statistics = {
-            calories: getStatisticsData(loadedEntries, "calories", currentGoals), protein: getStatisticsData(loadedEntries, "protein", currentGoals),
-            carbs: getStatisticsData(loadedEntries, "carbs", currentGoals), fat: getStatisticsData(loadedEntries, "fat", currentGoals), };
-        setStatistics(updatedStats); setChartUpdateKey((prevKey) => prevKey + 1); console.log("SettingsScreen: Statistics updated.");
-    } catch (error) { console.error("SettingsScreen: Failed to update statistics:", error); }
+        const loadedEntries = await loadDailyEntries();
+        const updatedStats: Statistics = {
+            calories: [], protein: [], carbs: [], fat: [] // Initialize
+        };
+        (macroKeysSetting as readonly MacroType[]).forEach(macro => {
+            updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
+        });
+        setStatistics(updatedStats);
+        setChartUpdateKey((prevKey) => prevKey + 1);
+        console.log("SettingsScreen: Statistics updated.");
+    } catch (error) {
+        console.error("SettingsScreen: Failed to update statistics:", error);
+    }
   }, [getStatisticsData]);
 
   const fetchUserStatus = useCallback(async () => {
     setIsLoadingCoins(true);
     try { const status = await getUserStatus(); setUserCoins(status.coins); }
-    catch (error) { setUserCoins(null); Toast.show({ type: 'error', text1: t('accountSettings.errorLoadCoins'), text2: error instanceof BackendError ? error.message : 'Check connection.', position: 'bottom', }); }
+    catch (error) {
+      setUserCoins(null);
+      Toast.show({ type: 'error', text1: t('accountSettings.errorLoadCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom', });
+    }
     finally { setIsLoadingCoins(false); }
   }, []);
 
   useFocusEffect( useCallback(() => {
       let isActive = true;
-      const loadAndProcessData = async () => { try { const loadedSettings = await loadSettings(); if (!isActive) return; setSettings(loadedSettings); await fetchUserStatus(); updateStatistics(loadedSettings.dailyGoals); } catch (error) { if (isActive) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); } } };
-      loadAndProcessData(); return () => { isActive = false; };
+      setIsDataLoading(true);
+      const loadAndProcessData = async () => {
+        try {
+          const loadedSettings = await loadSettings();
+          if (!isActive) return;
+          setSettings(loadedSettings);
+          await fetchUserStatus();
+          await updateStatistics(loadedSettings.dailyGoals); // Ensure this await completes
+        } catch (error) {
+          if (isActive) {
+            Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
+          }
+        } finally {
+          if (isActive) setIsDataLoading(false);
+        }
+      };
+      loadAndProcessData();
+      return () => { isActive = false; };
     }, [updateStatistics, fetchUserStatus])
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
-    const numericValue = parseFloat(value) || 0; let latestSettings: Settings | null = null;
-    setSettings((prevSettings) => { const updatedGoals = { ...prevSettings.dailyGoals, [goalType]: numericValue }; const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals }; latestSettings = updatedSettings;
-      (async () => { if (!latestSettings) return; try { await saveSettings(latestSettings); updateStatistics(latestSettings.dailyGoals); } catch (error) { Alert.alert(t('dailyEntryScreen.errorSave')); } })();
-      return updatedSettings; });
+    const numericValue = parseFloat(value); // Allow empty or NaN to reset to 0 or handle validation
+    const validatedValue = isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
+
+    setSettings((prevSettings) => {
+      const updatedGoals = { ...prevSettings.dailyGoals, [goalType]: validatedValue };
+      const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals };
+      
+      saveSettings(updatedSettings)
+        .then(() => {
+          updateStatistics(updatedSettings.dailyGoals);
+        })
+        .catch((error) => {
+          Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage'));
+          // Optionally revert settings state if save fails, though this can be complex
+        });
+      return updatedSettings;
+    });
   }, [updateStatistics]);
 
+
   const handleDataOperation = useCallback(async () => {
-    try { const reloadedSettings = await loadSettings(); setSettings(reloadedSettings); updateStatistics(reloadedSettings.dailyGoals); fetchUserStatus(); onThemeChange(reloadedSettings.theme); onLocaleChange(reloadedSettings.language); Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'}); }
-    catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad')); }
+    setIsDataLoading(true);
+    try {
+      const reloadedSettings = await loadSettings();
+      setSettings(reloadedSettings);
+      await updateStatistics(reloadedSettings.dailyGoals);
+      await fetchUserStatus();
+      onThemeChange(reloadedSettings.theme); // Propagate theme change
+      onLocaleChange(reloadedSettings.language); // Propagate locale change
+      Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
+    }
+    catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
+    finally { setIsDataLoading(false); }
   }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus]);
 
    const handleClearIconCache = useCallback(async () => {
@@ -106,19 +205,26 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     const handleAddTestCoins = useCallback(async () => {
         setIsAddingCoins(true);
         try { const amount = 10; const updatedStatus = await addCoinsToUser(amount); setUserCoins(updatedStatus.coins); Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); }
-        catch (error) { Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: error instanceof BackendError ? error.message : 'Try again.', position: 'bottom' }); }
+        catch (error) { Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom' }); }
         finally { setIsAddingCoins(false); }
     }, []);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
-    // Update local state immediately for Picker responsiveness
     setSettings(prev => ({...prev, language: newLanguage}));
-    // Propagate to App.tsx to handle actual locale change and save
     onLocaleChange(newLanguage);
   };
 
+  if (isDataLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>{t('app.initializing')}</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
         <AccountSettings
              userCoins={userCoins}
@@ -130,7 +236,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
         <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
-        {/* Language Picker */}
         <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
             <ListItem.Content>
                 <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
@@ -140,8 +245,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
              <Picker
                 selectedValue={settings.language}
                 onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
-                style={Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.grey5 } : {}} // Android specific style
-                itemStyle={Platform.OS === 'ios' ? { color: theme.colors.text, textAlign: 'left' as 'left' } : {textAlign: 'left' as 'left'}} // iOS specific style, ensure textAlign is valid
+                style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
+                itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
                 dropdownIconColor={theme.colors.text}
             >
                 <Picker.Item label={t('settingsScreen.language.system')} value="system" />
@@ -166,8 +271,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
         <View style={styles.chartContainer}>
-            {/* Ensure StatisticsChart has a key that changes when locale might affect its content */}
-            <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}`} />
+            <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
         </View>
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
@@ -180,26 +284,51 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.background, },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: theme.colors.text,
+    fontSize: 16,
+  },
   scrollContentContainer: { padding: 15, paddingBottom: 40, },
   sectionTitle: {
     color: theme.colors.text, marginTop: 25, marginBottom: 15, paddingLeft: 5,
     borderLeftWidth: 3, borderLeftColor: theme.colors.primary,
-    textAlign: I18nManager.isRTL ? 'right' : 'left', // Support RTL
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+    fontSize: 20, fontWeight: 'bold',
   },
   listItemTitle: {
     color: theme.colors.text,
-    textAlign: I18nManager.isRTL ? 'right' : 'left', // Support RTL
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+    fontWeight: '500',
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
-  chartContainer: { minHeight: 300, height: 'auto', marginBottom: 20, },
-  pickerContainerAndroid: {
-    backgroundColor: theme.colors.grey5,
+  chartContainer: {
+    // minHeight calculated dynamically by StatisticsChart
+    // Ensure this container allows chart to expand
+    marginBottom: 20,
+  },
+  pickerContainerAndroid: { // For Android, wrap Picker in a View for styling
+    backgroundColor: theme.colors.background, // Match overall background
     borderRadius: 8,
-    marginBottom: 10,
     borderWidth: 1,
-    borderColor: theme.colors.grey3,
+    borderColor: theme.colors.divider,
+    marginBottom: 10,
+    marginTop: -5, // Adjust if ListItem adds too much space
+  },
+  pickerStyle: { // Common styles for Picker
+    width: '100%',
+    height: Platform.OS === 'ios' ? 120 : 50, // iOS needs more height for wheel
+  },
+  pickerItemStyle: { // For iOS item text style
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
 }));
 
