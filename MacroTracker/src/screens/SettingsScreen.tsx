@@ -1,9 +1,9 @@
 // src/screens/SettingsScreen.tsx
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
-import { Picker } from '@react-native-picker/picker'; // Import Picker
+import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
 import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
@@ -18,12 +18,12 @@ import { clearIconCache } from "../utils/iconUtils";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
-import i18n from '../localization/i18n'; // For direct locale access if needed
+import i18n from '../localization/i18n';
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void;
+  onDataOperation: () => void; // Kept for consistency, though not directly used here
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
@@ -37,7 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [statistics, setStatistics] = useState<Statistics>({
     calories: [], protein: [], carbs: [], fat: [],
   });
-  const [chartUpdateKey, setChartUpdateKey] = useState(0);
+  const [chartUpdateKey, setChartUpdateKey] = useState(0); // Used to force re-render of chart
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
@@ -111,8 +111,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }, []);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
-    setSettings(prev => ({...prev, language: newLanguage})); // Optimistically update local state
-    onLocaleChange(newLanguage); // Propagate to App.tsx
+    // Update local state immediately for Picker responsiveness
+    setSettings(prev => ({...prev, language: newLanguage}));
+    // Propagate to App.tsx to handle actual locale change and save
+    onLocaleChange(newLanguage);
   };
 
   return (
@@ -128,17 +130,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
         <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
+        {/* Language Picker */}
         <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
             <ListItem.Content>
-                <ListItem.Title style={{ color: theme.colors.text }}>{t('settingsScreen.language.title')}</ListItem.Title>
+                <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
             </ListItem.Content>
         </ListItem>
         <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
-            <Picker
+             <Picker
                 selectedValue={settings.language}
-                onValueChange={(itemValue: string) => handleLanguageChange(itemValue as LanguageCode)}
-                style={Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}}
-                itemStyle={Platform.OS === 'ios' ? { color: theme.colors.text } : {}}
+                onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
+                style={Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.grey5 } : {}} // Android specific style
+                itemStyle={Platform.OS === 'ios' ? { color: theme.colors.text, textAlign: 'left' as 'left' } : {textAlign: 'left' as 'left'}} // iOS specific style, ensure textAlign is valid
                 dropdownIconColor={theme.colors.text}
             >
                 <Picker.Item label={t('settingsScreen.language.system')} value="system" />
@@ -163,7 +166,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
         <View style={styles.chartContainer}>
-            <StatisticsChart statistics={statistics} key={chartUpdateKey} />
+            {/* Ensure StatisticsChart has a key that changes when locale might affect its content */}
+            <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}`} />
         </View>
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
@@ -179,14 +183,19 @@ const useStyles = makeStyles((theme) => ({
   scrollContentContainer: { padding: 15, paddingBottom: 40, },
   sectionTitle: {
     color: theme.colors.text, marginTop: 25, marginBottom: 15, paddingLeft: 5,
-    borderLeftWidth: 3, borderLeftColor: theme.colors.primary, textAlign: 'left', // Ensure left alignment for RTL
+    borderLeftWidth: 3, borderLeftColor: theme.colors.primary,
+    textAlign: I18nManager.isRTL ? 'right' : 'left', // Support RTL
+  },
+  listItemTitle: {
+    color: theme.colors.text,
+    textAlign: I18nManager.isRTL ? 'right' : 'left', // Support RTL
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
   chartContainer: { minHeight: 300, height: 'auto', marginBottom: 20, },
   pickerContainerAndroid: {
-    backgroundColor: theme.colors.grey5, // A slightly different background for Android picker container
+    backgroundColor: theme.colors.grey5,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,

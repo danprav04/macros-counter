@@ -5,6 +5,9 @@ import en from './languages/en.json';
 import ru from './languages/ru.json';
 import he from './languages/he.json';
 import { Platform, I18nManager } from 'react-native';
+// Import specific date-fns locales statically
+import { enUS, ru as ruLocale, he as heLocale } from 'date-fns/locale';
+
 
 const translations = {
   en,
@@ -14,41 +17,44 @@ const translations = {
 
 const i18n = new I18n(translations);
 
-// Set initial locale
 export const setLocale = (locale: string) => {
-  const languageTag = locale.split('-')[0]; // 'en', 'ru', 'he'
+  const languageTag = locale.split('-')[0];
   i18n.locale = languageTag;
-  i18n.defaultLocale = 'en'; // Fallback language
+  i18n.defaultLocale = 'en';
 
-  // Handle RTL layout for Hebrew
   const isRTL = languageTag === 'he';
-  if (I18nManager.isRTL !== isRTL) {
+  // Only force RTL if it's different from the current manager state
+  // This check is crucial to avoid unnecessary reloads or issues in Expo Go.
+  if (Platform.OS !== 'web' && I18nManager.isRTL !== isRTL) {
     I18nManager.forceRTL(isRTL);
-    // For standalone apps, you might need to prompt user to restart or use Updates.reloadAsync()
-    // For Expo Go, changes might not reflect immediately without a manual reload of the app.
-    console.log(`RTL forced to: ${isRTL} for locale: ${languageTag}. App restart may be needed for full effect.`);
+    // Forcing RTL often requires an app reload to take full effect,
+    // especially for layout changes.
+    // In a standalone app, you'd use Updates.reloadAsync().
+    // In Expo Go, this change might not be immediate without a manual reload.
+    console.log(`RTL forced to: ${isRTL} for locale: ${languageTag}. App restart/reload may be needed for full layout update.`);
+  } else if (Platform.OS === 'web') {
+      // For web, you might need to manipulate the document direction
+      document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
   }
 };
 
-// Get device's locale
 const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
-setLocale(deviceLocale); // Initialize with device locale
+setLocale(deviceLocale);
 
 export const t = (scope: keyof typeof en, options?: any) => {
   return i18n.t(scope, { ...options, locale: i18n.locale });
 };
 
-// Function to get date-fns locale
-export const getDateFnLocale = async () => {
+export const getDateFnLocale = async () => { // Keep async for potential future dynamic loads if needed
   const currentLocale = i18n.locale.split('-')[0];
   switch (currentLocale) {
     case 'ru':
-      return (await import('date-fns/locale/ru')).ru;
+      return ruLocale;
     case 'he':
-      return (await import('date-fns/locale/he')).he;
+      return heLocale;
     case 'en':
     default:
-      return (await import('date-fns/locale/en-US')).enUS;
+      return enUS;
   }
 };
 
