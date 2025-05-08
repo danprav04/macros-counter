@@ -1,3 +1,4 @@
+// src/navigation/AppNavigator.tsx
 // navigation/AppNavigator.tsx
 import React, { useState, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -5,19 +6,22 @@ import { Icon, useTheme } from '@rneui/themed';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { LanguageCode } from '../types/settings'; // Import LanguageCode
+import i18n, { t } from '../localization/i18n';
 
 const Tab = createBottomTabNavigator();
 
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onLocaleChange: (locale: LanguageCode) => void; // Add onLocaleChange
 }
 
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
+const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChange }) => {
   const { theme } = useTheme();
   const [foodListRefresh, setFoodListRefresh] = useState(false);
 
   const handleFoodChange = useCallback(() => {
-    setFoodListRefresh(prev => !prev); // Toggle the state to trigger refresh
+    setFoodListRefresh(prev => !prev);
   }, []);
 
   return (
@@ -25,43 +29,38 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange }) => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string = '';
-          let type: string = '';
+          let type: string = 'ionicon'; // Default type
 
-          if (route.name === 'Daily Entry') {
+          if (route.name === t('dailyEntryScreen.tabTitle')) {
             iconName = focused ? 'calendar' : 'calendar-outline';
-            type = 'ionicon';
-          } else if (route.name === 'Foods') {
+          } else if (route.name === t('foodListScreen.tabTitle')) {
             iconName = focused ? 'fast-food' : 'fast-food-outline';
-            type = 'ionicon'; // Consistent icon set
-          } else if (route.name === 'Settings') {
+          } else if (route.name === t('settingsScreen.title')) {
             iconName = focused ? 'settings' : 'settings-outline';
-            type = 'ionicon';
           }
-
           return <Icon name={iconName} type={type} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.secondary, // Use secondary color
+        tabBarInactiveTintColor: theme.colors.secondary,
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.divider, // Add a subtle border
+          borderTopColor: theme.colors.divider,
         },
         tabBarLabelStyle: {
-          fontWeight: 'bold', // Make labels more prominent
+          fontWeight: 'bold',
         }
       })}
     >
-      <Tab.Screen name="Daily Entry">
-        {() => <DailyEntryScreen key={foodListRefresh ? 'refresh' : 'normal'} />}
+      <Tab.Screen name={t('dailyEntryScreen.tabTitle')}>
+        {() => <DailyEntryScreen key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen name="Foods">
-        {() => <FoodListScreen onFoodChange={handleFoodChange} />}
+      <Tab.Screen name={t('foodListScreen.tabTitle')}>
+        {() => <FoodListScreen onFoodChange={handleFoodChange} key={i18n.locale} />}
       </Tab.Screen>
-      <Tab.Screen name="Settings">
-        {() => <SettingsScreen onThemeChange={onThemeChange} onDataOperation={function (): void {
-          throw new Error('Function not implemented.');
-        } } />}
+      <Tab.Screen name={t('settingsScreen.title')}>
+        {/* Pass onLocaleChange to SettingsScreen */}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={() => console.log("Data operation in AppNav")} key={i18n.locale} />}
       </Tab.Screen>
     </Tab.Navigator>
   );

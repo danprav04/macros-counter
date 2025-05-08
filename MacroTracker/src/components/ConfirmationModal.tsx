@@ -1,7 +1,9 @@
+// src/components/ConfirmationModal.tsx
 // components/ConfirmationModal.tsx
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Overlay, Button, Input, Text, useTheme } from '@rneui/themed';
+import { t } from '../localization/i18n';
 
 interface ConfirmationModalProps {
   isVisible: boolean;
@@ -9,8 +11,9 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   confirmationText: string;
   setConfirmationText: (text: string) => void;
-  title?: string; // Optional title
-  message?: string;  //Optional message
+  title?: string;
+  message?: string;
+  inputPlaceholder?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -19,38 +22,44 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   confirmationText,
   setConfirmationText,
-  title = "Confirm Action", //default title
-  message = "Are you sure you want to perform this action?"
+  title,
+  message,
+  inputPlaceholder
 }) => {
   const { theme } = useTheme();
+
+  const modalTitle = title || t('confirmationModal.defaultTitle');
+  const modalMessage = message || t('confirmationModal.defaultMessage');
+  const modalPlaceholder = inputPlaceholder || t('confirmationModal.enterTextPlaceholder');
+
 
   return (
     <Overlay
       isVisible={isVisible}
       onBackdropPress={onCancel}
       overlayStyle={styles.overlay}
-      backdropStyle={styles.backdrop} // Add the backdropStyle
+      backdropStyle={styles.backdrop}
     >
       <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
-        <Text style={[styles.message, {color: theme.colors.text}]}>{message}</Text>
+        <Text style={[styles.title, {color: theme.colors.text}]}>{modalTitle}</Text>
+        <Text style={[styles.message, {color: theme.colors.text}]}>{modalMessage}</Text>
         <Input
-          placeholder="Enter confirmation text"
-          placeholderTextColor={theme.colors.text}
+          placeholder={modalPlaceholder}
+          placeholderTextColor={theme.colors.grey3} // Adjusted for better visibility
           value={confirmationText}
           onChangeText={setConfirmationText}
           containerStyle={styles.inputContainer}
-          inputStyle={{ color: theme.colors.text }}
+          inputStyle={{ color: theme.colors.text, textAlign: 'left' }}
           inputContainerStyle={{borderBottomColor: theme.colors.text}}
         />
         <View style={styles.buttonContainer}>
-          <Button title="Cancel" onPress={onCancel} type="outline" buttonStyle={styles.button} />
+          <Button title={t('confirmationModal.cancel')} onPress={onCancel} type="outline" buttonStyle={styles.button} />
           <Button
-            title="Confirm"
+            title={t('confirmationModal.confirm')}
             onPress={onConfirm}
             color="error"
             buttonStyle={styles.button}
-            disabled={confirmationText === ""}  //Disable when empty
+            disabled={confirmationText === ""}
           />
         </View>
       </View>
@@ -61,7 +70,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 const styles = StyleSheet.create({
     overlay: {
         borderRadius: 10,
-        width: '80%', // Responsive width
+        width: '80%',
         padding: 6,
         backgroundColor: 'rgba(200, 200, 200, 0.5)'
     },
@@ -73,7 +82,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
-    textAlign: 'center', //center align
+    textAlign: 'center',
   },
   message: {
     marginBottom: 15,
@@ -90,8 +99,8 @@ const styles = StyleSheet.create({
     width: 100,
     padding: 10,
   },
-  backdrop: {  // Add styles for the backdrop
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black
+  backdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
 

@@ -1,13 +1,14 @@
+// src/components/FoodFormFields.tsx
 import React from 'react';
-import { Input, makeStyles, useTheme } from '@rneui/themed';
+import { Input, makeStyles, useTheme, Text } from '@rneui/themed'; // Add Text
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Food } from '../types/food';
+import { t } from '../localization/i18n';
 
-// Define the shape of the values prop (can be partial for newFood)
 type FoodFormValues = Partial<Omit<Food, 'id'>>;
 
 interface FoodFormFieldsProps {
-    values: FoodFormValues; // Use partial type
+    values: FoodFormValues;
     errors: { [key: string]: string };
     onInputChange: (key: keyof Omit<Food, 'id'>, value: string, isEdit: boolean) => void;
     isEditing: boolean;
@@ -24,64 +25,82 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
 
-    // Helper to get string value, handling initial undefined/0 for newFood
     const getValue = (key: keyof Omit<Food, 'id'>): string => {
          const val = values[key];
          if (typeof val === 'number') {
-              // Show empty string for 0 when NOT editing (initial state)
               if (val === 0 && !isEditing) return "";
               return String(val);
          }
-         return String(val ?? ""); // Default to empty string for name if null/undefined
+         return String(val ?? "");
+    };
+
+    const getErrorText = (fieldKey: keyof Omit<Food, 'id'>) => {
+        const errorKey = errors[fieldKey];
+        if (!errorKey) return "";
+        // Assuming error keys in en.json map to field names + specific error type
+        // e.g., foodFormFields.errorNameRequired, foodFormFields.errorNonNegative
+        // This might need adjustment based on how specific your error keys are.
+        if (fieldKey === 'name' && errorKey === 'Name is required') return t('foodFormFields.errorNameRequired');
+        if (['calories', 'protein', 'carbs', 'fat'].includes(fieldKey) && errorKey === 'Must be a non-negative number') {
+            return t('foodFormFields.errorNonNegative');
+        }
+        return errorKey; // Fallback to the raw error key if no specific translation found
     };
 
     return (
         <>
-            {/* Food Name Input */}
             <Input
-                label="Food Name" labelStyle={styles.inputLabel}
+                label={<Text style={styles.labelStyle}>{t('foodFormFields.foodName')}</Text>}
                 value={getValue("name")}
                 onChangeText={(text) => onInputChange("name", text, isEditing)}
-                errorMessage={errors.name}
+                errorMessage={getErrorText("name")}
+                errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
                 leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey1} />}
                 disabled={disabled}
                 autoCapitalize="words"
             />
-            {/* Macro Inputs */}
             <Input
-                label="Calories (per 100g)" labelStyle={styles.inputLabel}
+                label={<Text style={styles.labelStyle}>{t('foodFormFields.calories')}</Text>}
                 keyboardType="numeric" value={getValue("calories")}
                 onChangeText={(text) => onInputChange("calories", text, isEditing)}
-                errorMessage={errors.calories} inputContainerStyle={styles.inputContainerStyle}
+                errorMessage={getErrorText("calories")}
+                errorStyle={styles.errorStyle}
+                inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
                 leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey1} />}
                 disabled={disabled}
             />
             <Input
-                label="Protein (per 100g)" labelStyle={styles.inputLabel}
+                label={<Text style={styles.labelStyle}>{t('foodFormFields.protein')}</Text>}
                 keyboardType="numeric" value={getValue("protein")}
                 onChangeText={(text) => onInputChange("protein", text, isEditing)}
-                errorMessage={errors.protein} inputContainerStyle={styles.inputContainerStyle}
+                errorMessage={getErrorText("protein")}
+                errorStyle={styles.errorStyle}
+                inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
                 leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey1} />}
                 disabled={disabled}
             />
             <Input
-                label="Carbs (per 100g)" labelStyle={styles.inputLabel}
+                label={<Text style={styles.labelStyle}>{t('foodFormFields.carbs')}</Text>}
                 keyboardType="numeric" value={getValue("carbs")}
                 onChangeText={(text) => onInputChange("carbs", text, isEditing)}
-                errorMessage={errors.carbs} inputContainerStyle={styles.inputContainerStyle}
+                errorMessage={getErrorText("carbs")}
+                errorStyle={styles.errorStyle}
+                inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
                 leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey1} />}
                 disabled={disabled}
             />
             <Input
-                label="Fat (per 100g)" labelStyle={styles.inputLabel}
+                label={<Text style={styles.labelStyle}>{t('foodFormFields.fat')}</Text>}
                 keyboardType="numeric" value={getValue("fat")}
                 onChangeText={(text) => onInputChange("fat", text, isEditing)}
-                errorMessage={errors.fat} inputContainerStyle={styles.inputContainerStyle}
+                errorMessage={getErrorText("fat")}
+                errorStyle={styles.errorStyle}
+                inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
                 leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey1} />}
                 disabled={disabled}
@@ -90,11 +109,11 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
     );
 };
 
-// Reusing styles from AddFoodModal for consistency
 const useStyles = makeStyles((theme) => ({
-    inputLabel: { color: theme.colors.text, fontWeight: '500', marginBottom: 2, fontSize: 14 },
+    labelStyle: { color: theme.colors.text, fontWeight: '500', marginBottom: 2, fontSize: 14, textAlign: 'left' },
     inputContainerStyle: { borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, marginBottom: 5, paddingBottom: 2, },
-    inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, },
+    inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, textAlign: 'left' },
+    errorStyle: { color: theme.colors.error, textAlign: 'left' }
 }));
 
 export default FoodFormFields;

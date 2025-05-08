@@ -1,22 +1,31 @@
-// components/StatisticsChart.tsx (Modified)
+// src/components/StatisticsChart.tsx
+// components/StatisticsChart.tsx
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
-import { Statistics, MacroType, macros } from "../types/settings"; // Import types
+import { Statistics, MacroType, macros } from "../types/settings";
 import { useTheme } from "@rneui/themed";
-
+import { t } from '../localization/i18n';
 
 interface StatisticsChartProps {
   statistics: Statistics;
 }
 
 const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
-
   const { theme } = useTheme();
+
+  const getChartTitle = (macro: MacroType) => {
+    switch(macro) {
+        case 'calories': return t('dailyProgress.calories');
+        case 'protein': return t('dailyProgress.protein');
+        case 'carbs': return t('dailyProgress.carbs');
+        case 'fat': return t('dailyProgress.fat');
+        default: return macro.charAt(0).toUpperCase() + macro.slice(1);
+    }
+  };
 
   const generateChartHTML = () => {
     const chartData = macros.reduce((acc, macro) => {
-      // Prepare data for each macro, including goal if applicable
       acc[macro] = statistics[macro].map((series) =>
         series.map((item) => [item.x / 1000, item.y])
       );
@@ -24,20 +33,15 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
     }, {} as { [key in MacroType]: number[][][] });
 
     const textColor = theme.colors.text;
-    const gridColor = theme.colors.grey5; // Lighter grid
-    const axisColor = theme.colors.grey3; // Slightly darker axis
-    const fontFamily = "Helvetica, Arial, sans-serif";
+    const gridColor = theme.colors.grey5;
+    const axisColor = theme.colors.grey3;
+    const fontFamily = Platform.OS === 'ios' ? "System" : "sans-serif"; // Basic font stack
 
-    // Define color palette for the lines, using theme colors if possible
     const lineColors = {
-      calories: theme.colors.primary,
-      protein: theme.colors.success,
-      carbs: theme.colors.warning,
-      fat: theme.colors.error,
+      calories: theme.colors.primary, protein: theme.colors.success,
+      carbs: theme.colors.warning, fat: theme.colors.error,
     };
 
-
-    // Re-enabled caching, but *only* cache the HTML itself, not the data.  The data is now dynamic.
     return `
         <!DOCTYPE html>
         <html>
@@ -52,156 +56,36 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
             <script src="https://unpkg.com/uplot@1.6.27/dist/uPlot.iife.min.js"></script>
         </head>
         <body>
-            ${macros
-      .map((macro) => {
-        const isCalories = macro === "calories";
-        const seriesCount = isCalories ? 2 : 1; // Two series for calories (intake, goal)
+            ${macros.map((macro) => {
+                const isCalories = macro === "calories";
+                const seriesCount = isCalories ? 2 : 1;
+                const chartTitle = getChartTitle(macro); // Get translated title
 
-        const seriesConfig = isCalories
-          ? `[
-                      {},
-                      {
-                        stroke: "${lineColors[macro] || theme.colors.primary}",
-                        width: 2,
-                        label: "Intake",
-                        points: { show: false }
-                      },
-                      {
-                        stroke: "red",
-                        width: 1,
-                        dash: [5, 5],
-                        label: "Goal",
-                        points: { show: false }
-                      }
-                    ]`
-          : `[
-                      {},
-                      {
-                        stroke: "${lineColors[macro] || theme.colors.primary}",
-                        width: 2,
-                        label: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                        points: { show: false }
-                      }
-                    ]`;
+                const seriesConfig = isCalories
+                  ? `[ {}, { stroke: "${lineColors[macro] || theme.colors.primary}", width: 2, label: "Intake", points: { show: false } }, { stroke: "red", width: 1, dash: [5, 5], label: "Goal", points: { show: false } } ]`
+                  : `[ {}, { stroke: "${lineColors[macro] || theme.colors.primary}", width: 2, label: "${chartTitle}", points: { show: false } } ]`;
+                const uPlotData = seriesCount === 2
+                    ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
+                    : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
 
-
-        const uPlotData =
-          seriesCount === 2
-            ? `[data[0].map(d => d[0]), data[0].map(d => d[1]), data[1].map(d => d[1])]`
-            : `[data[0].map(d => d[0]), data[0].map(d => d[1])]`;
-
-
-
-        return `
+                return `
                 <div id="${macro}-chart" class="chart-container"></div>
                 <script>
                     const data = ${JSON.stringify(chartData[macro])};
                     const opts = {
-                        title: "${macro.charAt(0).toUpperCase() + macro.slice(1)}",
-                        width: window.innerWidth * 0.95,
-                        height: 250,
-                        scales: {
-                            x: { time: true },
-                            y: { },
-                        },
-                        axes: [
-                            {
-                                stroke: "${textColor}",
-                                font: "14px ${fontFamily}",
-                            grid: {
-                                    stroke: "${gridColor}",
-                                    width: 1
-                                },
-                                ticks: {
-                                    stroke: "${gridColor}",
-                                    width: 1
-                                }
-                            },
-                            {
-                                stroke: "${textColor}",
-                                font: "14px ${fontFamily}",
-                                grid: {
-                                    stroke: "${gridColor}",
-                                    width: 1
-                                },
-                                ticks: {
-                                    stroke: "${gridColor}",
-                                    width: 1
-                                }
-                            }
-                        ],
+                        title: "${chartTitle}", width: window.innerWidth * 0.95, height: 250,
+                        scales: { x: { time: true }, y: { }, },
+                        axes: [ { stroke: "${textColor}", font: "14px ${fontFamily}", grid: { stroke: "${gridColor}", width: 1 }, ticks: { stroke: "${gridColor}", width: 1 } }, { stroke: "${textColor}", font: "14px ${fontFamily}", grid: { stroke: "${gridColor}", width: 1 }, ticks: { stroke: "${gridColor}", width: 1 } } ],
                         series: ${seriesConfig},
-                        cursor: {
-                            drag: { setScale: false },
-                            points: {
-                                size: 6,
-                                fill: (self, i) => self.series[i]._stroke,
-                                stroke: (self, i) => self.series[i]._stroke,
-                            }
-                        },
-                        ${isCalories ? `
-                        hooks: {
-                            draw: [
-                                (u) => {
-                                   const ctx = u.ctx;
-                                    u.series.forEach((series, seriesIdx) => {
-                                      if (seriesIdx === 1) {
-                                        const intakeData = data[0];
-                                        const goalData = data[1];
-
-                                        ctx.beginPath();
-                                        ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
-
-                                        for (let i = 0; i < intakeData.length; i++) {
-                                          const intakeY = intakeData[i][1];
-                                          const goalY = goalData[i][1];
-                                          const x = u.valToPos(intakeData[i][0], "x", true);
-                                          
-                                           // Check if intake exceeds the goal
-                                            if(intakeY > goalY){
-                                                const intakeYPos = u.valToPos(intakeY, 'y', true);
-                                                const goalYPos = u.valToPos(goalY, 'y', true);
-                                               
-                                                //if this is the first point or last point, move to x, other wise line to x
-                                                if(i === 0){
-                                                   ctx.moveTo(x, intakeYPos);
-                                                }else{
-                                                  ctx.lineTo(x, intakeYPos);
-                                                }
-                                            }
-                                        }
-                                        //go back along the goal data
-                                         for (let i = intakeData.length-1; i >= 0; i--) {
-                                            const intakeY = intakeData[i][1];
-                                            const goalY = goalData[i][1];
-                                             const x = u.valToPos(intakeData[i][0], "x", true);
-                                               // Check if intake exceeds the goal
-                                            if(intakeY > goalY){
-                                                 const goalYPos = u.valToPos(goalY, 'y', true);
-                                                ctx.lineTo(x, goalYPos);
-                                            }
-                                         }
-
-                                        ctx.closePath();
-                                        ctx.fill();
-                                        }
-
-                                    });
-
-                                }
-                            ]
-                        }
-                        ` : ''}
+                        cursor: { drag: { setScale: false }, points: { size: 6, fill: (self, i) => self.series[i]._stroke, stroke: (self, i) => self.series[i]._stroke, } },
+                        ${isCalories ? `hooks: { draw: [ (u) => { const ctx = u.ctx; u.series.forEach((series, seriesIdx) => { if (seriesIdx === 1) { const intakeData = data[0]; const goalData = data[1]; ctx.beginPath(); ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; for (let i = 0; i < intakeData.length; i++) { const intakeY = intakeData[i][1]; const goalY = goalData[i][1]; const x = u.valToPos(intakeData[i][0], "x", true); if(intakeY > goalY){ const intakeYPos = u.valToPos(intakeY, 'y', true); if(i === 0){ ctx.moveTo(x, intakeYPos); }else{ ctx.lineTo(x, intakeYPos); } } } for (let i = intakeData.length-1; i >= 0; i--) { const intakeY = intakeData[i][1]; const goalY = goalData[i][1]; const x = u.valToPos(intakeData[i][0], "x", true); if(intakeY > goalY){ const goalYPos = u.valToPos(goalY, 'y', true); ctx.lineTo(x, goalYPos); } } ctx.closePath(); ctx.fill(); } }); } ] }` : ''}
                     };
                     new uPlot(opts, ${uPlotData}, document.getElementById('${macro}-chart'));
                 </script>
-            `;
-      })
-      .join("")}
+            `;}).join("")}
         </body>
         </html>
         `;
-
   };
 
   return (
@@ -218,14 +102,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
 };
 
 const styles = StyleSheet.create({
-  webViewContainer: {
-    height: 'auto',
-    width: "100%",
-    marginTop: 10,
-  },
-  webView: {
-    height: 340, // Explicit height, adjust as needed.
-  },
+  webViewContainer: { height: 'auto', width: "100%", marginTop: 10, },
+  webView: { height: 340, },
 });
 
 export default StatisticsChart;
