@@ -11,11 +11,17 @@ import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native"; // Added useRoute, RouteProp
 import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
+
+// Define a basic root stack param list if you don't have one elsewhere
+type RootStackParamList = {
+  [key: string]: { openAddFoodModal?: boolean } | undefined;
+};
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
@@ -33,6 +39,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const flatListRef = useRef<FlatList>(null);
     const foodIconsRef = useRef(foodIcons);
     useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
+
+    const route = useRoute<RouteProp<RootStackParamList, string>>();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
@@ -57,7 +67,24 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } finally { setIsLoading(false); }
     }, [triggerIconPrefetch]);
 
-    useFocusEffect( useCallback(() => { loadFoodData(); return () => { setSearch(""); setIsOverlayVisible(false); }; }, [loadFoodData]) );
+    useFocusEffect(
+      useCallback(() => {
+        loadFoodData();
+    
+        const params = route.params;
+        if (params?.openAddFoodModal && !isOverlayVisible) {
+          toggleOverlay(); // This opens the AddFoodModal for adding a new food
+          navigation.setParams({ openAddFoodModal: undefined }); // Clear the param
+        }
+    
+        return () => {
+          setSearch("");
+          // Commenting out setIsOverlayVisible(false) here as it might prematurely close
+          // an intentionally opened modal if the screen loses focus temporarily.
+          // The modal should be closed by its own mechanisms (e.g., backdrop press, close button).
+        };
+      }, [loadFoodData, route.params, navigation, isOverlayVisible]) // Added dependencies
+    );
 
     const validateFood = (food: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};

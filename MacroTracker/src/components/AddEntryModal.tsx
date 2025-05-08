@@ -65,6 +65,7 @@ interface AddEntryModalProps {
   search: string;
   isEditMode: boolean;
   initialGrams?: string;
+  onAddNewFoodRequest: () => void; // New prop
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -96,6 +97,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   search,
   isEditMode,
   initialGrams,
+  onAddNewFoodRequest, // Destructure new prop
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -378,7 +380,27 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" /> : <View style={styles.defaultIconContainer}><Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} /></View> }
                 <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{food.name}</ListItem.Title></ListItem.Content>
                 {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}</ListItem></TouchableOpacity> ); }
-        case "noResults": return ( <Text style={styles.noFoodsText}>{modalMode === "quickAddSelect" ? t('addEntryModal.noQuickAddResults') : t('addEntryModal.noResults', {searchTerm: search})}</Text> );
+        case "noResults": 
+          return (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noFoodsText}>
+                {modalMode === "quickAddSelect"
+                  ? t('addEntryModal.noQuickAddResults')
+                  : t('addEntryModal.noResults', { searchTerm: search })}
+              </Text>
+              {modalMode === "normal" && search && (
+                <Button
+                  title={t('addEntryModal.addNewFoodButton')}
+                  onPress={onAddNewFoodRequest} // Use the new prop
+                  type="outline"
+                  buttonStyle={styles.addNewFoodButton}
+                  titleStyle={styles.addNewFoodButtonTitle}
+                  icon={<Icon name="add-circle-outline" type="ionicon" size={20} color={theme.colors.primary} />}
+                  disabled={isActionDisabled}
+                />
+              )}
+            </View>
+          );
         case "amountInput": if (!selectedFood) return null;
           return ( <View style={styles.amountSection}><View style={styles.unitSelectorContainer}><Text style={styles.inputLabel}>{t('addEntryModal.amount')}</Text>
                 <ButtonGroup buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]} selectedIndex={unitMode === "grams" ? 0 : 1} onPress={(index) => !isActionDisabled && setUnitMode(index === 0 ? "grams" : "auto")} containerStyle={styles.buttonGroupContainer} selectedButtonStyle={{ backgroundColor: theme.colors.primary, }} textStyle={styles.buttonGroupText} selectedTextStyle={{ color: theme.colors.white }} disabled={isEditMode ? [1] : isActionDisabled ? [0, 1] : []} disabledStyle={styles.disabledButtonGroup} disabledTextStyle={{ color: theme.colors.grey3 }} />
@@ -401,7 +423,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "spacer": return <View style={{ height: item.height }} />;
         default: console.warn("AddEntryModal: Encountered unknown list item type:", (item as any)?.type); return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, ]
+    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest ] // Added onAddNewFoodRequest
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -426,7 +448,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search /* Ensure search triggers re-render for noResults */ }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -488,6 +510,20 @@ const useStyles = makeStyles((theme) => ({
     quickAddHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, paddingBottom: 8, },
     quickAddListStyle: {},
     disabledOverlay: { opacity: 0.6, },
+    noResultsContainer: { // New style
+      alignItems: 'center',
+      paddingVertical: 10,
+    },
+    addNewFoodButton: { // New style
+      marginTop: 15,
+      borderColor: theme.colors.primary,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+    },
+    addNewFoodButtonTitle: { // New style
+        color: theme.colors.primary,
+        fontWeight: '600',
+    },
 }));
 
 export default AddEntryModal;

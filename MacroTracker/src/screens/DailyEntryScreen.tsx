@@ -16,14 +16,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddEntryModal from "../components/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native"; // Added useNavigation
 import { getFoodIconUrl } from "../utils/iconUtils";
 import DateNavigator from "../components/DateNavigator";
 import DailyEntryListItem from "../components/DailyEntryListItem";
 import { t } from '../localization/i18n';
 import i18n from '../localization/i18n'; // For locale checking
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For typing navigation
 
 interface DailyGoals { calories: number; protein: number; carbs: number; fat: number; }
+
+// Define a basic root stack param list if you don't have one elsewhere
+// This helps in typing navigation.navigate
+type RootStackParamList = {
+  [key: string]: undefined | object; // Allows any route name with optional params
+};
+
 
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
@@ -45,6 +53,9 @@ const DailyEntryScreen: React.FC = () => {
   const styles = useStyles();
   const foodIconsRef = useRef(foodIcons);
   useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
+  
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); // Typed navigation
+
 
   useEffect(() => {
     const updateDateForToast = async () => {
@@ -186,6 +197,18 @@ const DailyEntryScreen: React.FC = () => {
       if (itemToEdit && reversedIndex !== null) { setSelectedFood(itemToEdit.food); setGrams(String(itemToEdit.grams)); setEditIndex(reversedIndex); }
       setIsOverlayVisible((current) => !current);
     }, [isSaving] );
+
+  const handleAddNewFoodRequest = useCallback(() => {
+    if (isSaving) return;
+    setIsOverlayVisible(false); // Close current modal
+    // Ensure selectedFood, grams, editIndex are reset for AddEntryModal if it were to reopen (though it's closing)
+    setSelectedFood(null);
+    setGrams("");
+    setEditIndex(null);
+    setSearch("");
+    navigation.navigate(t('foodListScreen.tabTitle'), { openAddFoodModal: true });
+  }, [isSaving, navigation]);
+
   const handleEditEntryViaModal = ( item: DailyEntryItem, reversedIndex: number ) => toggleOverlay(item, reversedIndex);
   const handleDateChange = useCallback( (event: DateTimePickerEvent, selectedDateValue?: Date) => {
       const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
@@ -238,7 +261,7 @@ const DailyEntryScreen: React.FC = () => {
         <FlatList data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`} renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} /> )} ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}>{t('dailyEntryScreen.noEntries')}</Text><Text style={styles.emptyListSubText}>{t('dailyEntryScreen.noEntriesHint')}</Text></View> } initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled" />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
-      <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} />
+      <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} />
     </SafeAreaView>
   );
 };

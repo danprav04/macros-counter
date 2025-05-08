@@ -196,7 +196,8 @@
       "alertQuickAddErrorPreparingMessage": "לא ניתן היה להכין פריטים להוספה.",
       "camera": "מצלמה",
       "gallery": "גלריה",
-      "cancel": "ביטול"
+      "cancel": "ביטול",
+      "addNewFoodButton": "הוסף מאכל חדש"
     },
     "addFoodModal": {
       "titleAdd": "הוסף מאכל חדש",

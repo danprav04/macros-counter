@@ -196,7 +196,8 @@
       "alertQuickAddErrorPreparingMessage": "Не удалось подготовить элементы для добавления.",
       "camera": "Камера",
       "gallery": "Галерея",
-      "cancel": "Отмена"
+      "cancel": "Отмена",
+      "addNewFoodButton": "Добавить новый продукт"
     },
     "addFoodModal": {
       "titleAdd": "Добавить новый продукт",

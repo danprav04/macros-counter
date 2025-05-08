@@ -196,7 +196,8 @@
       "alertQuickAddErrorPreparingMessage": "Could not prepare items to add.",
       "camera": "Camera",
       "gallery": "Gallery",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "addNewFoodButton": "Add New Food"
     },
     "addFoodModal": {
       "titleAdd": "Add New Food",
