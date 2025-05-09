@@ -109,9 +109,9 @@ yarn-error.*
 ---------- app.json ----------
 {
   "expo": {
-    "name": "MacroTracker",
-    "slug": "MacroTracker",
-    "version": "1.0.0",
+    "name": "MacrosVisionAI",
+    "slug": "MacrosVisionAI",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -178,7 +178,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL": "https://macros-counter.mooo.com"
+         "BACKEND_URL": "https://macros-vision-ai.xyz"
       }
     }
   }
@@ -371,15 +371,15 @@ const App = () => {
 
     if (oldIsRTL !== newIsRTL) {
         Alert.alert(
-            "Restart Required", // This title itself should ideally be translated, but for a restart prompt it might be acceptable.
+            t('confirmationModal.restartRequiredTitle'),
             t('settingsScreen.language.restartMessage'),
             [
                 {
-                    text: "Later", // also translatable
+                    text: t('app.alertButtons.later'),
                     style: "cancel"
                 },
                 {
-                    text: "Restart Now", // also translatable
+                    text: t('app.alertButtons.restartNow'),
                     onPress: () => {
                         // In a real build, you'd use Updates.reloadAsync()
                         // For development in Expo Go, this reloads the JS bundle
@@ -450,6 +450,7 @@ const App = () => {
 };
 
 export default App;
+
 ---------- END App.tsx ----------
 
 
@@ -3128,7 +3129,11 @@ export default i18n;
 {
   "app": {
     "initializing": "Initializing...",
-    "name": "MacroTracker"
+    "name": "MacroTracker",
+    "alertButtons": {
+      "later": "Later",
+      "restartNow": "Restart Now"
+    }
   },
   "settingsScreen": {
     "title": "Settings",
@@ -3217,7 +3222,8 @@ export default i18n;
     "cancel": "Cancel",
     "defaultTitle": "Confirm Action",
     "defaultMessage": "Are you sure you want to perform this action?",
-    "enterTextPlaceholder": "Enter confirmation text"
+    "enterTextPlaceholder": "Enter confirmation text",
+    "restartRequiredTitle": "Restart Required"
   },
   "dailyEntryScreen": {
     "tabTitle": "Daily Entry",
@@ -3500,7 +3506,11 @@ export default i18n;
 {
   "app": {
     "initializing": "מאתחל...",
-    "name": "מעקב מאקרו"
+    "name": "MacroTracker",
+    "alertButtons": {
+      "later": "אחר כך",
+      "restartNow": "הפעל מחדש כעת"
+    }
   },
   "settingsScreen": {
     "title": "הגדרות",
@@ -3589,7 +3599,8 @@ export default i18n;
     "cancel": "ביטול",
     "defaultTitle": "אשר פעולה",
     "defaultMessage": "האם אתה בטוח שברצונך לבצע פעולה זו?",
-    "enterTextPlaceholder": "הזן טקסט אישור"
+    "enterTextPlaceholder": "הזן טקסט אישור",
+    "restartRequiredTitle": "נדרשת הפעלה מחדש"
   },
   "dailyEntryScreen": {
     "tabTitle": "יומן יומי",
@@ -3645,7 +3656,7 @@ export default i18n;
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",
     "titleEdit": "ערוך רשומה",
-    "titleQuickAddSelect": "בחר פריטים מהתמונה",
+    "titleQuickAddSelect": "בחר פריטים להוספה",
     "titleQuickAddEdit": "ערוך פריט",
     "titleQuickAddAnalyzing": "מנתח...",
     "searchPlaceholder": "חפש מאכלים...",
@@ -3805,50 +3816,64 @@ export default i18n;
     "noData": "אין נתונים זמינים להצגת תרשים עבור %{chartTitle}."
   },
   "questionnaireScreen": {
-    "title": "הערכת יעדים אישיים",
+    "title": "הערכת היעדים שלך",
     "ageLabel": "גיל (שנים)",
     "agePlaceholder": "לדוגמה, 30",
     "sexLabel": "מין",
-    "sex.select": "בחר מין...",
-    "sex.male": "זכר",
-    "sex.female": "נקבה",
+    "sex": {
+      "select": "בחר מין...",
+      "male": "זכר",
+      "female": "נקבה"
+    },
     "heightLabel": "גובה",
     "heightPlaceholder": "לדוגמה, 175",
     "weightLabel": "משקל",
     "weightPlaceholder": "לדוגמה, 70",
     "activityLevelLabel": "רמת פעילות",
-    "activityLevel.select": "בחר רמת פעילות...",
-    "activityLevel.sedentary": "יושבני (מעט או ללא פעילות גופנית)",
-    "activityLevel.light": "קל (פעילות 1-3 ימים בשבוע)",
-    "activityLevel.moderate": "בינוני (פעילות 3-5 ימים בשבוע)",
-    "activityLevel.active": "פעיל (פעילות 6-7 ימים בשבוע)",
-    "activityLevel.veryActive": "פעיל מאוד (פעילות מאומצת או עבודה פיזית)",
+    "activityLevel": {
+      "select": "בחר רמת פעילות...",
+      "sedentary": "יושבני (מעט או ללא פעילות גופנית)",
+      "light": "קל (פעילות 1-3 ימים בשבוע)",
+      "moderate": "בינוני (פעילות 3-5 ימים בשבוע)",
+      "active": "פעיל (פעילות 6-7 ימים בשבוע)",
+      "veryActive": "פעיל מאוד (פעילות מאומצת או עבודה פיזית)"
+    },
     "primaryGoalLabel": "מטרה עיקרית",
-    "primaryGoal.select": "בחר מטרה עיקרית...",
-    "primaryGoal.loseWeight": "ירידה במשקל",
-    "primaryGoal.maintainWeight": "שמירה על המשקל",
-    "primaryGoal.gainMuscle": "עלייה במסת שריר",
+    "primaryGoal": {
+      "select": "בחר מטרה עיקרית...",
+      "loseWeight": "ירידה במשקל",
+      "maintainWeight": "שמירה על המשקל",
+      "gainMuscle": "עלייה במסת שריר"
+    },
     "goalIntensityLabel": "עצימות המטרה",
-    "goalIntensity.select": "בחר עצימות...",
-    "goalIntensity.mild": "מתונה",
-    "goalIntensity.moderate": "בינונית",
-    "goalIntensity.aggressive": "אגרסיבית",
+    "goalIntensity": {
+      "select": "בחר עצימות...",
+      "mild": "מתונה",
+      "moderate": "בינונית",
+      "aggressive": "אגרסיבית"
+    },
     "calculateButton": "חשב ושמור יעדים",
-    "validation.invalidAge": "הזן גיל תקין (1-120).",
-    "validation.selectSex": "אנא בחר את מינך.",
-    "validation.invalidHeight": "הזן גובה תקין (50-250 ס\"מ).",
-    "validation.invalidWeight": "הזן משקל תקין (20-300 ק\"ג).",
-    "validation.selectActivityLevel": "אנא בחר את רמת הפעילות שלך.",
-    "validation.selectPrimaryGoal": "אנא בחר את המטרה העיקרית שלך.",
-    "validation.selectGoalIntensity": "אנא בחר את עצימות המטרה שלך.",
-    "validation.fixErrors": "אנא תקן את השגיאות למעלה.",
-    "error.calculationFailedTitle": "שגיאת חישוב",
-    "error.calculationFailedMessage": "לא ניתן היה לחשב את היעדים. אנא בדוק את הקלט שלך.",
-    "error.genericSaveTitle": "שגיאת שמירה",
-    "error.genericSaveMessage": "לא ניתן היה לשמור את היעדים המוערכים. אנא נסה שוב.",
-    "toast.goalsCalculated": "היעדים חושבו ונשמרו!",
-    "toast.minCaloriesAdjustedTitle": "הקלוריות עודכנו",
-    "toast.minCaloriesAdjustedMessage": "יעד הקלוריות שלך עודכן למינימום של %{calories} קק\"ל."
+    "validation": {
+      "invalidAge": "הזן גיל תקין (1-120).",
+      "selectSex": "אנא בחר את מינך.",
+      "invalidHeight": "הזן גובה תקין (50-250 ס\"מ).",
+      "invalidWeight": "הזן משקל תקין (20-300 ק\"ג).",
+      "selectActivityLevel": "אנא בחר את רמת הפעילות שלך.",
+      "selectPrimaryGoal": "אנא בחר את המטרה העיקרית שלך.",
+      "selectGoalIntensity": "אנא בחר את עצימות המטרה שלך.",
+      "fixErrors": "אנא תקן את השגיאות למעלה."
+    },
+    "error": {
+      "calculationFailedTitle": "שגיאת חישוב",
+      "calculationFailedMessage": "לא ניתן היה לחשב את היעדים. אנא בדוק את הקלט שלך.",
+      "genericSaveTitle": "שגיאת שמירה",
+      "genericSaveMessage": "לא ניתן היה לשמור את היעדים המוערכים. אנא נסה שוב."
+    },
+    "toast": {
+      "goalsCalculated": "היעדים חושבו ונשמרו!",
+      "minCaloriesAdjustedTitle": "הקלוריות עודכנו",
+      "minCaloriesAdjustedMessage": "יעד הקלוריות שלך עודכן למינימום של %{calories} קק\"ל."
+    }
   }
 }
 ---------- END he.json ----------
@@ -3858,7 +3883,11 @@ export default i18n;
 {
   "app": {
     "initializing": "Инициализация...",
-    "name": "Трекер Макро"
+    "name": "MacroTracker",
+    "alertButtons": {
+      "later": "Позже",
+      "restartNow": "Перезапустить сейчас"
+    }
   },
   "settingsScreen": {
     "title": "Настройки",
@@ -3947,7 +3976,8 @@ export default i18n;
     "cancel": "Отмена",
     "defaultTitle": "Подтвердите действие",
     "defaultMessage": "Вы уверены, что хотите выполнить это действие?",
-    "enterTextPlaceholder": "Введите текст подтверждения"
+    "enterTextPlaceholder": "Введите текст подтверждения",
+    "restartRequiredTitle": "Требуется перезапуск"
   },
   "dailyEntryScreen": {
     "tabTitle": "Дневник",
@@ -4003,7 +4033,7 @@ export default i18n;
   "addEntryModal": {
     "titleAdd": "Добавить запись",
     "titleEdit": "Изменить запись",
-    "titleQuickAddSelect": "Выберите элементы с изображения",
+    "titleQuickAddSelect": "Выберите элементы для добавления",
     "titleQuickAddEdit": "Изменить элемент",
     "titleQuickAddAnalyzing": "Анализ...",
     "searchPlaceholder": "Поиск продуктов...",
@@ -4163,7 +4193,7 @@ export default i18n;
     "noData": "Нет данных для отображения графика для %{chartTitle}."
   },
   "questionnaireScreen": {
-    "title": "Рассчитать ваши цели",
+    "title": "Оценка ваших целей",
     "ageLabel": "Возраст (лет)",
     "agePlaceholder": "например, 30",
     "sexLabel": "Пол",

@@ -1,7 +1,7 @@
 {
   "app": {
     "initializing": "מאתחל...",
-    "name": "MacroTracker",
+    "name": "MacrosVisionAI",
     "alertButtons": {
       "later": "אחר כך",
       "restartNow": "הפעל מחדש כעת"

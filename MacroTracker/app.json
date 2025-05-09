@@ -21,7 +21,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.macrotracker",
+      "bundleIdentifier": "com.macrosvisionai.app",
       "infoPlist": {
         "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.macrotracker",
+      "package": "com.macrosvisionai.app",
       "userInterfaceStyle": "automatic",
       "statusBar": {
         "backgroundColor": "#00000000",
