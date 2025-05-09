@@ -182,15 +182,15 @@ const App = () => {
 
     if (oldIsRTL !== newIsRTL) {
         Alert.alert(
-            "Restart Required", // This title itself should ideally be translated, but for a restart prompt it might be acceptable.
+            t('confirmationModal.restartRequiredTitle'),
             t('settingsScreen.language.restartMessage'),
             [
                 {
-                    text: "Later", // also translatable
+                    text: t('app.alertButtons.later'),
                     style: "cancel"
                 },
                 {
-                    text: "Restart Now", // also translatable
+                    text: t('app.alertButtons.restartNow'),
                     onPress: () => {
                         // In a real build, you'd use Updates.reloadAsync()
                         // For development in Expo Go, this reloads the JS bundle

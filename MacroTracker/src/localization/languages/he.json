@@ -1,7 +1,11 @@
 {
   "app": {
     "initializing": "מאתחל...",
-    "name": "מעקב מאקרו"
+    "name": "מעקב מאקרו",
+    "alertButtons": {
+      "later": "אחר כך",
+      "restartNow": "הפעל מחדש כעת"
+    }
   },
   "settingsScreen": {
     "title": "הגדרות",
@@ -90,7 +94,8 @@
     "cancel": "ביטול",
     "defaultTitle": "אשר פעולה",
     "defaultMessage": "האם אתה בטוח שברצונך לבצע פעולה זו?",
-    "enterTextPlaceholder": "הזן טקסט אישור"
+    "enterTextPlaceholder": "הזן טקסט אישור",
+    "restartRequiredTitle": "נדרשת הפעלה מחדש"
   },
   "dailyEntryScreen": {
     "tabTitle": "יומן יומי",

@@ -1,7 +1,11 @@
 {
   "app": {
     "initializing": "Initializing...",
-    "name": "MacroTracker"
+    "name": "MacroTracker",
+    "alertButtons": {
+      "later": "Later",
+      "restartNow": "Restart Now"
+    }
   },
   "settingsScreen": {
     "title": "Settings",
@@ -90,7 +94,8 @@
     "cancel": "Cancel",
     "defaultTitle": "Confirm Action",
     "defaultMessage": "Are you sure you want to perform this action?",
-    "enterTextPlaceholder": "Enter confirmation text"
+    "enterTextPlaceholder": "Enter confirmation text",
+    "restartRequiredTitle": "Restart Required"
   },
   "dailyEntryScreen": {
     "tabTitle": "Daily Entry",

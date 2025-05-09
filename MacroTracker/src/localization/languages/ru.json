@@ -1,7 +1,11 @@
 {
   "app": {
     "initializing": "Инициализация...",
-    "name": "Трекер Макро"
+    "name": "Трекер Макро",
+    "alertButtons": {
+      "later": "Позже",
+      "restartNow": "Перезапустить сейчас"
+    }
   },
   "settingsScreen": {
     "title": "Настройки",
@@ -90,7 +94,8 @@
     "cancel": "Отмена",
     "defaultTitle": "Подтвердите действие",
     "defaultMessage": "Вы уверены, что хотите выполнить это действие?",
-    "enterTextPlaceholder": "Введите текст подтверждения"
+    "enterTextPlaceholder": "Введите текст подтверждения",
+    "restartRequiredTitle": "Требуется перезапуск"
   },
   "dailyEntryScreen": {
     "tabTitle": "Дневник",
