@@ -1729,6 +1729,11 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     const handleEditPress = () => { if (!isSaving) onEdit(item, reversedIndex); };
     const handleDeletePress = () => { if (!isSaving) onRemove(reversedIndex); };
 
+    const calculatedCalories = Math.round((item.food.calories / 100) * item.grams);
+    const calculatedProtein = Math.round((item.food.protein / 100) * item.grams);
+    const calculatedCarbs = Math.round((item.food.carbs / 100) * item.grams);
+    const calculatedFat = Math.round((item.food.fat / 100) * item.grams);
+
     return (
         <ListItem.Swipeable
             bottomDivider
@@ -1760,7 +1765,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                     {item.food.name}
                 </ListItem.Title>
                 <ListItem.Subtitle style={styles.listItemSubtitle}>
-                    {`${item.grams}g • ${Math.round((item.food.calories / 100) * item.grams)} kcal`}
+                    {`${item.grams}g • Cal: ${calculatedCalories} P: ${calculatedProtein} C: ${calculatedCarbs} F: ${calculatedFat}`}
                 </ListItem.Subtitle>
             </ListItem.Content>
             <ListItem.Chevron color={theme.colors.grey3} />
