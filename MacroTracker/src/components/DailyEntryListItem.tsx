@@ -1,9 +1,11 @@
 // src/components/DailyEntryListItem.tsx
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { View, Image, ActivityIndicator, StyleSheet } from 'react-native';
-import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles } from '@rneui/themed';
+import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles, Text } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
+import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
+import { Settings } from '../types/settings';
 
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
@@ -13,6 +15,7 @@ interface DailyEntryListItemProps {
     onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
     isSaving: boolean;
+    dailyGoals: Settings['dailyGoals']; // Added dailyGoals prop
 }
 
 const DailyEntryListItem = memo<DailyEntryListItemProps>(({
@@ -23,6 +26,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     onEdit,
     onRemove,
     isSaving,
+    dailyGoals, // Destructure dailyGoals
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -30,6 +34,11 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
 
     const iconStatus = item?.food?.name ? foodIcons[item.food.name] : undefined;
     const isLoadingIcon = iconStatus === undefined;
+
+    const gradeResult: FoodGradeResult | null = useMemo(() => {
+        if (!item || !item.food || !dailyGoals) return null;
+        return calculateDailyEntryGrade(item.food, item.grams, dailyGoals);
+    }, [item, dailyGoals]);
 
     const handleImageError = useCallback(() => {
         console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
@@ -113,9 +122,16 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
         >
             {renderListItemIcon()}
             <ListItem.Content>
-                <ListItem.Title style={styles.listItemTitle}>
-                    {item.food.name}
-                </ListItem.Title>
+                <View style={styles.titleContainer}>
+                    {gradeResult && (
+                        <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                            {gradeResult.letter}
+                        </Text>
+                    )}
+                    <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                        {item.food.name}
+                    </ListItem.Title>
+                </View>
                 <ListItem.Subtitle style={styles.listItemSubtitle}>
                     {`${item.grams}g • Cal: ${calculatedCalories} P: ${calculatedProtein} C: ${calculatedCarbs} F: ${calculatedFat}`}
                 </ListItem.Subtitle>
@@ -130,7 +146,20 @@ const useStyles = makeStyles((theme) => ({
     foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
-    listItemTitle: { color: theme.colors.text, fontWeight: "600", fontSize: 16, marginBottom: 3, textAlign: 'left', },
+    titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
+    gradePill: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: theme.colors.white,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginRight: 8,
+        minWidth: 20,
+        textAlign: 'center',
+        overflow: 'hidden',
+    },
+    listItemTitle: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },

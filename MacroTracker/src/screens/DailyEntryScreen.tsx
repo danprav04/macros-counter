@@ -23,6 +23,7 @@ import DailyEntryListItem from "../components/DailyEntryListItem";
 import { t } from '../localization/i18n';
 import i18n from '../localization/i18n'; // For locale checking
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For typing navigation
+import { Settings as AppSettings } from "../types/settings"; // Renamed to avoid conflict
 
 interface DailyGoals { calories: number; protein: number; carbs: number; fat: number; }
 
@@ -41,7 +42,7 @@ const DailyEntryScreen: React.FC = () => {
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
+  const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 }); // Use AppSettings['dailyGoals']
   const [search, setSearch] = useState("");
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined; }>({});
@@ -258,7 +259,7 @@ const DailyEntryScreen: React.FC = () => {
       <Text style={styles.sectionTitle}>{t('dailyEntryScreen.todaysEntries')}</Text>
       {isLoadingData ? ( <View style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('dailyEntryScreen.loadingEntries')}</Text></View>
       ) : (
-        <FlatList data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`} renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} /> )} ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}>{t('dailyEntryScreen.noEntries')}</Text><Text style={styles.emptyListSubText}>{t('dailyEntryScreen.noEntriesHint')}</Text></View> } initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled" />
+        <FlatList data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`} renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} dailyGoals={dailyGoals} /> )} ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}>{t('dailyEntryScreen.noEntries')}</Text><Text style={styles.emptyListSubText}>{t('dailyEntryScreen.noEntriesHint')}</Text></View> } initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled" />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
       <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} />

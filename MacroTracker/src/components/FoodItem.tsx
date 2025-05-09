@@ -1,11 +1,12 @@
 // src/components/FoodItem.tsx
 // src/components/FoodItem.tsx
-import React, { forwardRef, useState, useCallback, memo } from "react";
+import React, { forwardRef, useState, useCallback, memo, useMemo } from "react";
 import { StyleSheet, View, Image, ActivityIndicator } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
 import { t } from '../localization/i18n';
+import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
 
 interface FoodItemProps {
   food: Food;
@@ -20,6 +21,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
     const { theme } = useTheme();
     const styles = useStyles();
     const [iconLoadError, setIconLoadError] = useState(false);
+
+    const gradeResult: FoodGradeResult | null = useMemo(() => {
+        return calculateBaseFoodGrade(food);
+    }, [food]);
 
     const handleUndo = useCallback(() => {
          onUndoDelete(food);
@@ -40,10 +45,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
     const handleImageError = useCallback(() => {
         setIconLoadError(true);
-    }, [food.name, foodIconUrl]);
+    }, []); // Removed dependencies food.name, foodIconUrl as they don't change per instance for this error
 
     React.useEffect(() => {
-        setIconLoadError(false);
+        setIconLoadError(false); // Reset error state if iconUrl changes (e.g. food data updated)
     }, [foodIconUrl]);
 
     const renderIcon = () => {
@@ -71,9 +76,16 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
       >
         {renderIcon()}
         <ListItem.Content>
-          <ListItem.Title style={styles.title}>
-            {food.name}
-          </ListItem.Title>
+          <View style={styles.titleContainer}>
+            {gradeResult && (
+                <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                    {gradeResult.letter}
+                </Text>
+            )}
+            <ListItem.Title style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+                {food.name}
+            </ListItem.Title>
+          </View>
           <ListItem.Subtitle style={styles.subtitle}>
             {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
           </ListItem.Subtitle>
@@ -86,7 +98,20 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
 const useStyles = makeStyles((theme) => ({
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
-    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, marginBottom: 3, textAlign: 'left', },
+    titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
+    gradePill: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: theme.colors.white, // Assuming white text on colored background is desired
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginRight: 8,
+        minWidth: 20, // Ensure some width for single letter
+        textAlign: 'center',
+        overflow: 'hidden', // For rounded corners on Android
+    },
+    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', }, // flexShrink to allow pill to take space
     subtitle: { color: theme.colors.secondary, fontSize: 13, marginTop: 2, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
