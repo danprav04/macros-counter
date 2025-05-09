@@ -1,37 +1,38 @@
 // src/utils/gradingUtils.ts
 import { Food } from '../types/food';
-import { Settings } from '../types/settings'; // For DailyGoals type
+import { Settings } from '../types/settings';
 
 export type GradeLetter = 'A' | 'B' | 'C' | 'D' | 'F';
 
 export interface FoodGradeResult {
     letter: GradeLetter;
     color: string;
-    score: number;
+    score: number; // Underlying score for potential adjustments
 }
 
-// Static color mapping for grades
 export const gradeColors: Record<GradeLetter, string> = {
     A: '#4CAF50', // Green
     B: '#8BC34A', // Light Green
-    C: '#FFC107', // Amber/Yellow (using theme.warning as reference)
+    C: '#FFC107', // Amber/Yellow
     D: '#FF9800', // Orange
     F: '#F44336', // Red
 };
 
 const mapScoreToGradeDetails = (score: number): FoodGradeResult => {
     let letter: GradeLetter;
-    if (score >= 90) letter = 'A';
-    else if (score >= 80) letter = 'B';
-    else if (score >= 70) letter = 'C';
-    else if (score >= 60) letter = 'D';
+    const clampedScore = Math.max(0, Math.min(100, Math.round(score))); // Ensure score is 0-100
+
+    if (clampedScore >= 85) letter = 'A';
+    else if (clampedScore >= 70) letter = 'B';
+    else if (clampedScore >= 55) letter = 'C';
+    else if (clampedScore >= 40) letter = 'D';
     else letter = 'F';
-    return { letter, color: gradeColors[letter], score };
+    return { letter, color: gradeColors[letter], score: clampedScore };
 };
 
 /**
- * Calculates a base grade for a food item (per 100g).
- * @param food The food item (must contain calories, protein, carbs, fat per 100g).
+ * Calculates a base grade for a food item (per 100g) based on refined heuristics.
+ * @param food The food item (calories, protein, carbs, fat per 100g).
  * @returns FoodGradeResult or null if grading is not possible.
  */
 export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
@@ -40,48 +41,73 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
     }
 
     const { calories, protein, carbs, fat } = food;
+    let score = 70; // Start with a baseline score (e.g., C grade)
 
-    // Max scores for components
-    const maxCalScore = 40;
-    const maxProteinScore = 30;
-    const maxFatScoreContribution = 15; // Fat score is neutral up to a point, then penalizes
-    const maxCarbScoreContribution = 15; // Carb score is neutral up to a point, then penalizes
+    // --- 1. Calorie Density (per 100g) ---
+    if (calories < 100) score += 15; // Low density
+    else if (calories < 200) score += 7;
+    else if (calories > 350) score -= (calories - 350) * 0.08; // Penalize high density
+    if (calories > 500) score -= 15; // Further penalty for very high density
 
-    // Calories Score (lower is better)
-    // Optimal around 0-100 kcal. Max score at 0-50kcal, drops to 0 score at 450kcal.
-    let calScore = Math.max(0, maxCalScore * (1 - (Math.max(0, calories - 50)) / 400));
+    // --- 2. Protein Content (per 100g) ---
+    if (protein > 20) score += 20; // Excellent protein
+    else if (protein > 10) score += 10; // Good protein
+    else if (protein < 5 && calories > 150) score -= 10; // Low protein for moderate/high cal food
+
+    // --- 3. Fat Content & Type (Heuristic for "quality" based on balance) ---
+    const caloriesFromFat = fat * 9;
+    const percentageCaloriesFromFat = (calories > 0) ? (caloriesFromFat / calories) * 100 : 0;
+
+    if (fat > 25) { // High total fat
+        score -= (fat - 25) * 0.5;
+        if (protein < fat * 0.5 && protein < 10) { // High fat, low protein suggests less ideal source
+            score -= 10;
+        }
+    } else if (fat < 5 && percentageCaloriesFromFat < 20 && protein > 10) { // Low fat, potentially good if protein is present
+        score += 5;
+    }
+    if (percentageCaloriesFromFat > 50) score -= 15; // More than 50% cals from fat is heavily penalized
+    if (percentageCaloriesFromFat > 35 && percentageCaloriesFromFat <= 50) score -= 7;
 
 
-    // Protein Score (higher is better, up to a point)
-    // Max score at 20g protein or more.
-    let proteinScore = Math.min(maxProteinScore, (protein / 20) * maxProteinScore);
+    // --- 4. Carbohydrate Content & Type (Heuristic) ---
+    const caloriesFromCarbs = carbs * 4;
+    const percentageCaloriesFromCarbs = (calories > 0) ? (caloriesFromCarbs / calories) * 100 : 0;
 
-    // Fat Score (penalize high fat)
-    // Ideal fat up to 10g/100g. Penalty increases beyond that.
-    // Full contribution up to 5g, then decreases. 0 contribution at 25g. Negative beyond.
-    let fatScore = maxFatScoreContribution;
-    if (fat > 5) { // Start reducing score if fat > 5g
-      fatScore = Math.max(-maxFatScoreContribution, maxFatScoreContribution * (1 - (fat - 5) / 20));
+    if (carbs > 40) { // High total carbs
+        score -= (carbs - 40) * 0.3;
+        if (protein < carbs * 0.1 && protein < 7) { // High carb, very low protein suggests refined carbs
+            score -= 10;
+        }
+    }
+    if (percentageCaloriesFromCarbs > 60) score -= 15; // More than 60% cals from carbs
+    if (percentageCaloriesFromCarbs > 50 && percentageCaloriesFromCarbs <= 60) score -=7;
+
+    // --- 5. Macronutrient Balance (Percentage of Calories) ---
+    const caloriesFromProtein = protein * 4;
+    const percentageCaloriesFromProtein = (calories > 0) ? (caloriesFromProtein / calories) * 100 : 0;
+
+    // Ideal ranges (approx): Protein 20-30%, Fat 20-30%, Carbs 40-50%
+    // Bonus for being within a generally healthy profile
+    let balanceBonus = 0;
+    if (percentageCaloriesFromProtein >= 15 && percentageCaloriesFromProtein <= 35) balanceBonus += 4;
+    if (percentageCaloriesFromFat >= 15 && percentageCaloriesFromFat <= 35) balanceBonus += 4;
+    if (percentageCaloriesFromCarbs >= 35 && percentageCaloriesFromCarbs <= 55) balanceBonus += 4;
+    if (balanceBonus >=10) score += 10; // Max 10 points for good balance
+    else if (balanceBonus >=8) score +=5;
+
+    // Penalty for extreme imbalance if not already heavily penalized
+    if (protein < 5 && fat > 20 && carbs > 30 && calories > 200) { // Low protein, high fat & carbs
+        score -= 15;
     }
 
-
-    // Carb Score (penalize very high carbs, assuming simple/less nutrient-dense)
-    // Full contribution up to 20g, then decreases. 0 contribution at 70g. Negative beyond.
-    let carbScore = maxCarbScoreContribution;
-    if (carbs > 20) { // Start reducing score if carbs > 20g
-      carbScore = Math.max(-maxCarbScoreContribution, maxCarbScoreContribution * (1 - (carbs - 20) / 50));
-    }
-
-    let totalScore = calScore + proteinScore + fatScore + carbScore;
-    totalScore = Math.max(0, Math.min(100, totalScore)); // Clamp score between 0 and 100
-
-    return mapScoreToGradeDetails(totalScore);
+    return mapScoreToGradeDetails(score);
 };
 
 /**
  * Calculates a grade for a specific daily entry, considering portion size and daily goals.
  * @param food The food item.
- *   @param consumedGrams The amount of the food consumed in grams.
+ * @param consumedGrams The amount of the food consumed in grams.
  * @param dailyGoals The user's daily macronutrient goals.
  * @returns FoodGradeResult or null if grading is not possible.
  */
@@ -90,17 +116,18 @@ export const calculateDailyEntryGrade = (
     consumedGrams: number,
     dailyGoals: Settings['dailyGoals']
 ): FoodGradeResult | null => {
-    const baseGrade = calculateBaseFoodGrade(food);
-    if (!baseGrade) return null;
-    if (consumedGrams <= 0) return baseGrade; // No consumption, return base grade or null if preferred
+    const baseGradeResult = calculateBaseFoodGrade(food);
+    if (!baseGradeResult) return null;
+    if (consumedGrams <= 0) return baseGradeResult;
 
-    // Ensure dailyGoals are valid numbers, default to high value if 0 to avoid division by zero in percentage calcs if goal is to minimize
-    // For percentage calculations, a 0 goal means any amount is "infinite %", so handle carefully.
+    let currentScore = baseGradeResult.score;
+
+    // Ensure dailyGoals are valid numbers, default to avoid division by zero or nonsensical percentages
     const safeGoals = {
-        calories: dailyGoals.calories > 0 ? dailyGoals.calories : 2000, // Default if 0
-        protein: dailyGoals.protein > 0 ? dailyGoals.protein : 100,     // Default if 0
-        carbs: dailyGoals.carbs > 0 ? dailyGoals.carbs : 200,         // Default if 0
-        fat: dailyGoals.fat > 0 ? dailyGoals.fat : 70,               // Default if 0
+        calories: Math.max(1, dailyGoals.calories || 2000), // Minimum 1 to avoid /0
+        protein: Math.max(1, dailyGoals.protein || 100),
+        carbs: Math.max(1, dailyGoals.carbs || 200),
+        fat: Math.max(1, dailyGoals.fat || 70),
     };
 
     const factor = consumedGrams / 100;
@@ -109,57 +136,45 @@ export const calculateDailyEntryGrade = (
     const consumedCarbs = food.carbs * factor;
     const consumedFat = food.fat * factor;
 
-    let adjustment = 0;
+    // --- Adjustments based on portion size relative to daily goals ---
 
-    // --- Penalties based on % of daily goal from this single item ---
-    // If a goal is actually set to 0 by user (meaning "avoid"), any consumption should be penalized.
-    
-    // Fat Impact
-    const fatPercentOfGoal = (consumedFat / safeGoals.fat) * 100;
-    if (dailyGoals.fat === 0 && consumedFat > 1) { // User wants to avoid fat
-        adjustment -= 20; // Strong penalty
-    } else if (fatPercentOfGoal > 35) { // Consumed a large chunk of daily fat allowance
-        adjustment -= (fatPercentOfGoal - 35) * 0.25;
-    }
-    // Additional penalty if the food itself is very high fat and a large portion is eaten
-    if (food.fat > 25 && consumedGrams > 100) { // food.fat is per 100g
-        adjustment -= 5 * (consumedGrams / 100);
-    }
+    // Penalty for consuming a large percentage of daily calorie allowance in one go
+    const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
+    if (caloriePortionPercentage > 50) currentScore -= 20; // >50% of daily cals in one item
+    else if (caloriePortionPercentage > 35) currentScore -= 10; // >35%
 
-    // Carb Impact
-    const carbsPercentOfGoal = (consumedCarbs / safeGoals.carbs) * 100;
-    if (dailyGoals.carbs === 0 && consumedCarbs > 5) { // User wants to avoid carbs
-        adjustment -= 15; // Strong penalty
-    } else if (carbsPercentOfGoal > 45) { // Consumed a large chunk of daily carb allowance
-        adjustment -= (carbsPercentOfGoal - 45) * 0.2;
-    }
-    if (food.carbs > 50 && consumedGrams > 150) {
-         adjustment -= 5 * (consumedGrams / 150);
-    }
-    
-    // Calorie Impact (Penalize very large calorie portions from a single item)
-    const caloriesPercentOfGoal = (consumedCalories / safeGoals.calories) * 100;
-    if (caloriesPercentOfGoal > 40) { // More than 40% of daily calories in one item
-        adjustment -= (caloriesPercentOfGoal - 40) * 0.2;
+    // Penalty for consuming a large percentage of daily fat allowance
+    const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
+    if (fatPortionPercentage > 60) currentScore -= 15; // >60% of daily fat
+    else if (fatPortionPercentage > 40) currentScore -= 7;
+
+    // Penalty for consuming a large percentage of daily carb allowance
+    const carbPortionPercentage = (consumedCarbs / safeGoals.carbs) * 100;
+    if (carbPortionPercentage > 60) currentScore -= 10; // >60% of daily carbs
+    else if (carbPortionPercentage > 45) currentScore -= 5;
+
+    // Bonus for significant protein contribution if calories are reasonable
+    const proteinPortionPercentage = (consumedProtein / safeGoals.protein) * 100;
+    if (proteinPortionPercentage > 25 && caloriePortionPercentage < 30) {
+        currentScore += 10; // Good protein hit without too many cals
+    } else if (proteinPortionPercentage > 15 && caloriePortionPercentage < 20) {
+        currentScore += 5;
     }
 
-    // --- Bonuses ---
-    // Protein Bonus: Meeting a good portion of protein goal efficiently
-    const proteinPercentOfGoal = (consumedProtein / safeGoals.protein) * 100;
-    if (proteinPercentOfGoal > 25 && caloriesPercentOfGoal < 30) {
-        adjustment += 7; // Good protein contribution without excessive calories
+    // Mitigation for small portions of "F" grade foods
+    if (baseGradeResult.letter === 'F' && caloriePortionPercentage < 10) {
+        currentScore += 15; // Small "treat" is less impactful
+    } else if (baseGradeResult.letter === 'D' && caloriePortionPercentage < 7) {
+        currentScore += 7;
     }
 
-    // General "small portion of an F-grade food" mitigation
-    if (baseGrade.letter === 'F' && consumedGrams < 50) {
-        adjustment += 10; // Small portion of a "bad" food is less bad
-    }
-    // General "large portion of an A-grade food" slight reduction if macros are still high
-    if (baseGrade.letter === 'A' && (caloriesPercentOfGoal > 30 || fatPercentOfGoal > 30 || carbsPercentOfGoal > 30)) {
-        adjustment -= 5;
+    // Slight penalty if a large portion of an "A" grade food makes macros significantly off for the day
+    if (baseGradeResult.letter === 'A' &&
+        (caloriePortionPercentage > 30 || fatPortionPercentage > 30 || carbPortionPercentage > 30) &&
+        consumedGrams > 200 // and it's a large portion
+    ) {
+        currentScore -= 7;
     }
 
-
-    const finalScore = Math.max(0, Math.min(100, baseGrade.score + adjustment));
-    return mapScoreToGradeDetails(finalScore);
+    return mapScoreToGradeDetails(currentScore);
 };
