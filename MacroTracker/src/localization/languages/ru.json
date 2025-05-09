@@ -14,6 +14,9 @@
     "dailyGoals": {
       "title": "Дневные цели"
     },
+    "goals": {
+      "estimateButton": "Рассчитать цели"
+    },
     "cacheManagement": {
       "title": "Управление кэшем"
     },
@@ -301,5 +304,65 @@
     "intake": "Потребление",
     "goal": "Цель",
     "noData": "Нет данных для отображения графика для %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "Рассчитать ваши цели",
+    "ageLabel": "Возраст (лет)",
+    "agePlaceholder": "например, 30",
+    "sexLabel": "Пол",
+    "sex": {
+      "select": "Выберите пол...",
+      "male": "Мужской",
+      "female": "Женский"
+    },
+    "heightLabel": "Рост",
+    "heightPlaceholder": "например, 175",
+    "weightLabel": "Вес",
+    "weightPlaceholder": "например, 70",
+    "activityLevelLabel": "Уровень активности",
+    "activityLevel": {
+      "select": "Выберите уровень активности...",
+      "sedentary": "Сидячий (мало или нет упражнений)",
+      "light": "Легкий (упражнения 1-3 раза/нед)",
+      "moderate": "Умеренный (упражнения 3-5 раз/нед)",
+      "active": "Активный (упражнения 6-7 раз/нед)",
+      "veryActive": "Очень активный (тяжелые упражнения или физическая работа)"
+    },
+    "primaryGoalLabel": "Основная цель",
+    "primaryGoal": {
+      "select": "Выберите основную цель...",
+      "loseWeight": "Сбросить вес",
+      "maintainWeight": "Поддерживать вес",
+      "gainMuscle": "Набрать мышечную массу"
+    },
+    "goalIntensityLabel": "Интенсивность цели",
+    "goalIntensity": {
+      "select": "Выберите интенсивность...",
+      "mild": "Легкая",
+      "moderate": "Умеренная",
+      "aggressive": "Агрессивная"
+    },
+    "calculateButton": "Рассчитать и сохранить цели",
+    "validation": {
+      "invalidAge": "Введите действительный возраст (1-120).",
+      "selectSex": "Пожалуйста, выберите ваш пол.",
+      "invalidHeight": "Введите действительный рост (50-250 см).",
+      "invalidWeight": "Введите действительный вес (20-300 кг).",
+      "selectActivityLevel": "Пожалуйста, выберите ваш уровень активности.",
+      "selectPrimaryGoal": "Пожалуйста, выберите вашу основную цель.",
+      "selectGoalIntensity": "Пожалуйста, выберите интенсивность цели.",
+      "fixErrors": "Пожалуйста, исправьте ошибки выше."
+    },
+    "error": {
+      "calculationFailedTitle": "Ошибка расчета",
+      "calculationFailedMessage": "Не удалось рассчитать цели. Пожалуйста, проверьте введенные данные.",
+      "genericSaveTitle": "Ошибка сохранения",
+      "genericSaveMessage": "Не удалось сохранить рассчитанные цели. Пожалуйста, попробуйте еще раз."
+    },
+    "toast": {
+      "goalsCalculated": "Цели рассчитаны и сохранены!",
+      "minCaloriesAdjustedTitle": "Калории скорректированы",
+      "minCaloriesAdjustedMessage": "Ваша цель по калориям была скорректирована до минимума в %{calories} ккал."
+    }
   }
 }

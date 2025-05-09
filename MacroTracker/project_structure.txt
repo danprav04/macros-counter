@@ -41,6 +41,7 @@ src/
   screens/
     DailyEntryScreen.tsx
     FoodListScreen.tsx
+    QuestionnaireScreen.tsx
     SettingsScreen.tsx
   services/
     backendService.ts
@@ -52,9 +53,11 @@ src/
     food.ts
     macros.ts
     openRouterTypes.ts
+    questionnaire.ts
     settings.ts
   utils/
     dateUtils.ts
+    gradingUtils.ts
     iconUtils.ts
     imageUtils.ts
     macros.ts
@@ -1647,11 +1650,13 @@ export default ConfirmationModal;
 
 ---------- DailyEntryListItem.tsx ----------
 // src/components/DailyEntryListItem.tsx
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { View, Image, ActivityIndicator, StyleSheet } from 'react-native';
-import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles } from '@rneui/themed';
+import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles, Text } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
+import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
+import { Settings } from '../types/settings';
 
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
@@ -1661,6 +1666,7 @@ interface DailyEntryListItemProps {
     onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
     isSaving: boolean;
+    dailyGoals: Settings['dailyGoals']; // Added dailyGoals prop
 }
 
 const DailyEntryListItem = memo<DailyEntryListItemProps>(({
@@ -1671,6 +1677,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     onEdit,
     onRemove,
     isSaving,
+    dailyGoals, // Destructure dailyGoals
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -1678,6 +1685,11 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
 
     const iconStatus = item?.food?.name ? foodIcons[item.food.name] : undefined;
     const isLoadingIcon = iconStatus === undefined;
+
+    const gradeResult: FoodGradeResult | null = useMemo(() => {
+        if (!item || !item.food || !dailyGoals) return null;
+        return calculateDailyEntryGrade(item.food, item.grams, dailyGoals);
+    }, [item, dailyGoals]);
 
     const handleImageError = useCallback(() => {
         console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
@@ -1761,9 +1773,16 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
         >
             {renderListItemIcon()}
             <ListItem.Content>
-                <ListItem.Title style={styles.listItemTitle}>
-                    {item.food.name}
-                </ListItem.Title>
+                <View style={styles.titleContainer}>
+                    {gradeResult && (
+                        <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                            {gradeResult.letter}
+                        </Text>
+                    )}
+                    <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                        {item.food.name}
+                    </ListItem.Title>
+                </View>
                 <ListItem.Subtitle style={styles.listItemSubtitle}>
                     {`${item.grams}g • Cal: ${calculatedCalories} P: ${calculatedProtein} C: ${calculatedCarbs} F: ${calculatedFat}`}
                 </ListItem.Subtitle>
@@ -1778,7 +1797,20 @@ const useStyles = makeStyles((theme) => ({
     foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
-    listItemTitle: { color: theme.colors.text, fontWeight: "600", fontSize: 16, marginBottom: 3, textAlign: 'left', },
+    titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
+    gradePill: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: theme.colors.white,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginRight: 8,
+        minWidth: 20,
+        textAlign: 'center',
+        overflow: 'hidden',
+    },
+    listItemTitle: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
@@ -2335,12 +2367,13 @@ export default FoodFormFields;
 ---------- FoodItem.tsx ----------
 // src/components/FoodItem.tsx
 // src/components/FoodItem.tsx
-import React, { forwardRef, useState, useCallback, memo } from "react";
+import React, { forwardRef, useState, useCallback, memo, useMemo } from "react";
 import { StyleSheet, View, Image, ActivityIndicator } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
 import { t } from '../localization/i18n';
+import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
 
 interface FoodItemProps {
   food: Food;
@@ -2355,6 +2388,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
     const { theme } = useTheme();
     const styles = useStyles();
     const [iconLoadError, setIconLoadError] = useState(false);
+
+    const gradeResult: FoodGradeResult | null = useMemo(() => {
+        return calculateBaseFoodGrade(food);
+    }, [food]);
 
     const handleUndo = useCallback(() => {
          onUndoDelete(food);
@@ -2375,10 +2412,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
     const handleImageError = useCallback(() => {
         setIconLoadError(true);
-    }, [food.name, foodIconUrl]);
+    }, []); // Removed dependencies food.name, foodIconUrl as they don't change per instance for this error
 
     React.useEffect(() => {
-        setIconLoadError(false);
+        setIconLoadError(false); // Reset error state if iconUrl changes (e.g. food data updated)
     }, [foodIconUrl]);
 
     const renderIcon = () => {
@@ -2406,9 +2443,16 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
       >
         {renderIcon()}
         <ListItem.Content>
-          <ListItem.Title style={styles.title}>
-            {food.name}
-          </ListItem.Title>
+          <View style={styles.titleContainer}>
+            {gradeResult && (
+                <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                    {gradeResult.letter}
+                </Text>
+            )}
+            <ListItem.Title style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+                {food.name}
+            </ListItem.Title>
+          </View>
           <ListItem.Subtitle style={styles.subtitle}>
             {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
           </ListItem.Subtitle>
@@ -2421,7 +2465,20 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
 const useStyles = makeStyles((theme) => ({
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
-    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, marginBottom: 3, textAlign: 'left', },
+    titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
+    gradePill: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: theme.colors.white, // Assuming white text on colored background is desired
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginRight: 8,
+        minWidth: 20, // Ensure some width for single letter
+        textAlign: 'center',
+        overflow: 'hidden', // For rounded corners on Android
+    },
+    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', }, // flexShrink to allow pill to take space
     subtitle: { color: theme.colors.secondary, fontSize: 13, marginTop: 2, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
@@ -3084,6 +3141,9 @@ export default i18n;
     "dailyGoals": {
       "title": "Daily Goals"
     },
+    "goals": {
+      "estimateButton": "Estimate Goals"
+    },
     "cacheManagement": {
       "title": "Cache Management"
     },
@@ -3371,6 +3431,66 @@ export default i18n;
     "intake": "Intake",
     "goal": "Goal",
     "noData": "No data available to display chart for %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "Estimate Your Goals",
+    "ageLabel": "Age (years)",
+    "agePlaceholder": "e.g., 30",
+    "sexLabel": "Sex",
+    "sex": {
+      "select": "Select Sex...",
+      "male": "Male",
+      "female": "Female"
+    },
+    "heightLabel": "Height",
+    "heightPlaceholder": "e.g., 175",
+    "weightLabel": "Weight",
+    "weightPlaceholder": "e.g., 70",
+    "activityLevelLabel": "Activity Level",
+    "activityLevel": {
+      "select": "Select Activity Level...",
+      "sedentary": "Sedentary (little or no exercise)",
+      "light": "Light (exercise 1-3 days/week)",
+      "moderate": "Moderate (exercise 3-5 days/week)",
+      "active": "Active (exercise 6-7 days/week)",
+      "veryActive": "Very Active (hard exercise or physical job)"
+    },
+    "primaryGoalLabel": "Primary Goal",
+    "primaryGoal": {
+      "select": "Select Primary Goal...",
+      "loseWeight": "Lose Weight",
+      "maintainWeight": "Maintain Weight",
+      "gainMuscle": "Gain Muscle"
+    },
+    "goalIntensityLabel": "Goal Intensity",
+    "goalIntensity": {
+      "select": "Select Intensity...",
+      "mild": "Mild",
+      "moderate": "Moderate",
+      "aggressive": "Aggressive"
+    },
+    "calculateButton": "Calculate & Save Goals",
+    "validation": {
+      "invalidAge": "Enter a valid age (1-120).",
+      "selectSex": "Please select your sex.",
+      "invalidHeight": "Enter a valid height (50-250 cm).",
+      "invalidWeight": "Enter a valid weight (20-300 kg).",
+      "selectActivityLevel": "Please select your activity level.",
+      "selectPrimaryGoal": "Please select your primary goal.",
+      "selectGoalIntensity": "Please select your goal intensity.",
+      "fixErrors": "Please fix the errors above."
+    },
+    "error": {
+      "calculationFailedTitle": "Calculation Error",
+      "calculationFailedMessage": "Could not calculate goals. Please check your inputs.",
+      "genericSaveTitle": "Save Error",
+      "genericSaveMessage": "Could not save the estimated goals. Please try again."
+    },
+    "toast": {
+      "goalsCalculated": "Goals calculated and saved!",
+      "minCaloriesAdjustedTitle": "Calories Adjusted",
+      "minCaloriesAdjustedMessage": "Your calorie goal was adjusted to a minimum of %{calories} kcal."
+    }
   }
 }
 ---------- END en.json ----------
@@ -3392,6 +3512,9 @@ export default i18n;
     },
     "dailyGoals": {
       "title": "יעדים יומיים"
+    },
+    "goals": {
+      "estimateButton": "הערכת יעדים"
     },
     "cacheManagement": {
       "title": "ניהול מטמון"
@@ -3680,6 +3803,52 @@ export default i18n;
     "intake": "צריכה",
     "goal": "יעד",
     "noData": "אין נתונים זמינים להצגת תרשים עבור %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "הערכת יעדים אישיים",
+    "ageLabel": "גיל (שנים)",
+    "agePlaceholder": "לדוגמה, 30",
+    "sexLabel": "מין",
+    "sex.select": "בחר מין...",
+    "sex.male": "זכר",
+    "sex.female": "נקבה",
+    "heightLabel": "גובה",
+    "heightPlaceholder": "לדוגמה, 175",
+    "weightLabel": "משקל",
+    "weightPlaceholder": "לדוגמה, 70",
+    "activityLevelLabel": "רמת פעילות",
+    "activityLevel.select": "בחר רמת פעילות...",
+    "activityLevel.sedentary": "יושבני (מעט או ללא פעילות גופנית)",
+    "activityLevel.light": "קל (פעילות 1-3 ימים בשבוע)",
+    "activityLevel.moderate": "בינוני (פעילות 3-5 ימים בשבוע)",
+    "activityLevel.active": "פעיל (פעילות 6-7 ימים בשבוע)",
+    "activityLevel.veryActive": "פעיל מאוד (פעילות מאומצת או עבודה פיזית)",
+    "primaryGoalLabel": "מטרה עיקרית",
+    "primaryGoal.select": "בחר מטרה עיקרית...",
+    "primaryGoal.loseWeight": "ירידה במשקל",
+    "primaryGoal.maintainWeight": "שמירה על המשקל",
+    "primaryGoal.gainMuscle": "עלייה במסת שריר",
+    "goalIntensityLabel": "עצימות המטרה",
+    "goalIntensity.select": "בחר עצימות...",
+    "goalIntensity.mild": "מתונה",
+    "goalIntensity.moderate": "בינונית",
+    "goalIntensity.aggressive": "אגרסיבית",
+    "calculateButton": "חשב ושמור יעדים",
+    "validation.invalidAge": "הזן גיל תקין (1-120).",
+    "validation.selectSex": "אנא בחר את מינך.",
+    "validation.invalidHeight": "הזן גובה תקין (50-250 ס\"מ).",
+    "validation.invalidWeight": "הזן משקל תקין (20-300 ק\"ג).",
+    "validation.selectActivityLevel": "אנא בחר את רמת הפעילות שלך.",
+    "validation.selectPrimaryGoal": "אנא בחר את המטרה העיקרית שלך.",
+    "validation.selectGoalIntensity": "אנא בחר את עצימות המטרה שלך.",
+    "validation.fixErrors": "אנא תקן את השגיאות למעלה.",
+    "error.calculationFailedTitle": "שגיאת חישוב",
+    "error.calculationFailedMessage": "לא ניתן היה לחשב את היעדים. אנא בדוק את הקלט שלך.",
+    "error.genericSaveTitle": "שגיאת שמירה",
+    "error.genericSaveMessage": "לא ניתן היה לשמור את היעדים המוערכים. אנא נסה שוב.",
+    "toast.goalsCalculated": "היעדים חושבו ונשמרו!",
+    "toast.minCaloriesAdjustedTitle": "הקלוריות עודכנו",
+    "toast.minCaloriesAdjustedMessage": "יעד הקלוריות שלך עודכן למינימום של %{calories} קק\"ל."
   }
 }
 ---------- END he.json ----------
@@ -3701,6 +3870,9 @@ export default i18n;
     },
     "dailyGoals": {
       "title": "Дневные цели"
+    },
+    "goals": {
+      "estimateButton": "Рассчитать цели"
     },
     "cacheManagement": {
       "title": "Управление кэшем"
@@ -3989,6 +4161,66 @@ export default i18n;
     "intake": "Потребление",
     "goal": "Цель",
     "noData": "Нет данных для отображения графика для %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "Рассчитать ваши цели",
+    "ageLabel": "Возраст (лет)",
+    "agePlaceholder": "например, 30",
+    "sexLabel": "Пол",
+    "sex": {
+      "select": "Выберите пол...",
+      "male": "Мужской",
+      "female": "Женский"
+    },
+    "heightLabel": "Рост",
+    "heightPlaceholder": "например, 175",
+    "weightLabel": "Вес",
+    "weightPlaceholder": "например, 70",
+    "activityLevelLabel": "Уровень активности",
+    "activityLevel": {
+      "select": "Выберите уровень активности...",
+      "sedentary": "Сидячий (мало или нет упражнений)",
+      "light": "Легкий (упражнения 1-3 раза/нед)",
+      "moderate": "Умеренный (упражнения 3-5 раз/нед)",
+      "active": "Активный (упражнения 6-7 раз/нед)",
+      "veryActive": "Очень активный (тяжелые упражнения или физическая работа)"
+    },
+    "primaryGoalLabel": "Основная цель",
+    "primaryGoal": {
+      "select": "Выберите основную цель...",
+      "loseWeight": "Сбросить вес",
+      "maintainWeight": "Поддерживать вес",
+      "gainMuscle": "Набрать мышечную массу"
+    },
+    "goalIntensityLabel": "Интенсивность цели",
+    "goalIntensity": {
+      "select": "Выберите интенсивность...",
+      "mild": "Легкая",
+      "moderate": "Умеренная",
+      "aggressive": "Агрессивная"
+    },
+    "calculateButton": "Рассчитать и сохранить цели",
+    "validation": {
+      "invalidAge": "Введите действительный возраст (1-120).",
+      "selectSex": "Пожалуйста, выберите ваш пол.",
+      "invalidHeight": "Введите действительный рост (50-250 см).",
+      "invalidWeight": "Введите действительный вес (20-300 кг).",
+      "selectActivityLevel": "Пожалуйста, выберите ваш уровень активности.",
+      "selectPrimaryGoal": "Пожалуйста, выберите вашу основную цель.",
+      "selectGoalIntensity": "Пожалуйста, выберите интенсивность цели.",
+      "fixErrors": "Пожалуйста, исправьте ошибки выше."
+    },
+    "error": {
+      "calculationFailedTitle": "Ошибка расчета",
+      "calculationFailedMessage": "Не удалось рассчитать цели. Пожалуйста, проверьте введенные данные.",
+      "genericSaveTitle": "Ошибка сохранения",
+      "genericSaveMessage": "Не удалось сохранить рассчитанные цели. Пожалуйста, попробуйте еще раз."
+    },
+    "toast": {
+      "goalsCalculated": "Цели рассчитаны и сохранены!",
+      "minCaloriesAdjustedTitle": "Калории скорректированы",
+      "minCaloriesAdjustedMessage": "Ваша цель по калориям была скорректирована до минимума в %{calories} ккал."
+    }
   }
 }
 ---------- END ru.json ----------
@@ -3998,20 +4230,48 @@ export default i18n;
 // src/navigation/AppNavigator.tsx
 // navigation/AppNavigator.tsx
 import React, { useState, useCallback } from 'react';
+import { Platform, I18nManager } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Icon, useTheme } from '@rneui/themed';
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import { LanguageCode } from '../types/settings'; // Import LanguageCode
+import QuestionnaireScreen from '../screens/QuestionnaireScreen'; // Import new screen
+import { LanguageCode } from '../types/settings';
 import i18n, { t } from '../localization/i18n';
 
 const Tab = createBottomTabNavigator();
+const SettingsStack = createNativeStackNavigator();
 
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void; // Add onLocaleChange
+  onLocaleChange: (locale: LanguageCode) => void;
 }
+
+// Settings Stack Navigator
+function SettingsStackNavigator({ onThemeChange, onLocaleChange }: AppNavigatorProps) {
+  const { theme } = useTheme();
+  return (
+    <SettingsStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.colors.background },
+        headerTitleStyle: { color: theme.colors.text },
+        headerTintColor: theme.colors.primary,
+        // Corrected headerTitleAlign for iOS
+        headerTitleAlign: Platform.OS === 'ios' ? 'center' : 'center',
+      }}
+    >
+      <SettingsStack.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
+        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={() => console.log("Data operation in AppNav")} />}
+      </SettingsStack.Screen>
+      <SettingsStack.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
+        {() => <QuestionnaireScreen />}
+      </SettingsStack.Screen>
+    </SettingsStack.Navigator>
+  );
+}
+
 
 const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChange }) => {
   const { theme } = useTheme();
@@ -4032,14 +4292,14 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChan
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === t('foodListScreen.tabTitle')) {
             iconName = focused ? 'fast-food' : 'fast-food-outline';
-          } else if (route.name === t('settingsScreen.title')) {
+          } else if (route.name === "SettingsStack") { // Changed to check for Stack name
             iconName = focused ? 'settings' : 'settings-outline';
           }
           return <Icon name={iconName} type={type} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.secondary,
-        headerShown: false,
+        headerShown: false, // Header is managed by StackNavigator for Settings
         tabBarStyle: {
           backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.divider,
@@ -4055,9 +4315,11 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChan
       <Tab.Screen name={t('foodListScreen.tabTitle')}>
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={i18n.locale} />}
       </Tab.Screen>
-      <Tab.Screen name={t('settingsScreen.title')}>
-        {/* Pass onLocaleChange to SettingsScreen */}
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={() => console.log("Data operation in AppNav")} key={i18n.locale} />}
+      <Tab.Screen
+        name="SettingsStack" // Name of the route for the stack
+        options={{ title: t('settingsScreen.title') }} // Label for the tab
+      >
+        {() => <SettingsStackNavigator onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -4093,6 +4355,7 @@ import DailyEntryListItem from "../components/DailyEntryListItem";
 import { t } from '../localization/i18n';
 import i18n from '../localization/i18n'; // For locale checking
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For typing navigation
+import { Settings as AppSettings } from "../types/settings"; // Renamed to avoid conflict
 
 interface DailyGoals { calories: number; protein: number; carbs: number; fat: number; }
 
@@ -4111,7 +4374,7 @@ const DailyEntryScreen: React.FC = () => {
   const [grams, setGrams] = useState("");
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
+  const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 }); // Use AppSettings['dailyGoals']
   const [search, setSearch] = useState("");
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined; }>({});
@@ -4328,7 +4591,7 @@ const DailyEntryScreen: React.FC = () => {
       <Text style={styles.sectionTitle}>{t('dailyEntryScreen.todaysEntries')}</Text>
       {isLoadingData ? ( <View style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('dailyEntryScreen.loadingEntries')}</Text></View>
       ) : (
-        <FlatList data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`} renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} /> )} ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}>{t('dailyEntryScreen.noEntries')}</Text><Text style={styles.emptyListSubText}>{t('dailyEntryScreen.noEntriesHint')}</Text></View> } initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled" />
+        <FlatList data={currentEntryItems} keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${ item?.grams ?? index }`} renderItem={({ item, index }) => ( <DailyEntryListItem item={item} reversedIndex={index} foodIcons={foodIcons} setFoodIcons={setFoodIcons} onEdit={handleEditEntryViaModal} onRemove={handleRemoveEntry} isSaving={isSaving} dailyGoals={dailyGoals} /> )} ListEmptyComponent={ <View style={styles.emptyListContainer}><RNEIcon name="reader-outline" type="ionicon" size={50} color={theme.colors.grey3} /><Text style={styles.emptyListText}>{t('dailyEntryScreen.noEntries')}</Text><Text style={styles.emptyListSubText}>{t('dailyEntryScreen.noEntriesHint')}</Text></View> } initialNumToRender={10} maxToRenderPerBatch={5} windowSize={11} contentContainerStyle={styles.listContentContainer} keyboardShouldPersistTaps="handled" />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
       <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} />
@@ -4563,6 +4826,364 @@ export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
 
 
+---------- QuestionnaireScreen.tsx ----------
+// src/screens/QuestionnaireScreen.tsx
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform } from 'react-native';
+import { Input, Button, Text, useTheme, makeStyles, CheckBox } from '@rneui/themed';
+import { Picker } from '@react-native-picker/picker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { QuestionnaireFormData, Sex, ActivityLevel, PrimaryGoal, GoalIntensity, CalculatedGoals } from '../types/questionnaire';
+import { MacroType, Settings } from '../types/settings';
+import { loadSettings, saveSettings } from '../services/storageService';
+import i18n, { t } from '../localization/i18n';
+import Toast from 'react-native-toast-message';
+
+type SettingsStackParamList = {
+  SettingsScreen: undefined;
+  QuestionnaireScreen: undefined;
+};
+
+type QuestionnaireNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'QuestionnaireScreen'>;
+
+const QuestionnaireScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const styles = useStyles();
+  const navigation = useNavigation<QuestionnaireNavigationProp>();
+
+  const [formData, setFormData] = useState<QuestionnaireFormData>({
+    age: '',
+    sex: '',
+    height: '',
+    weight: '',
+    activityLevel: '',
+    primaryGoal: '',
+    goalIntensity: GoalIntensity.MODERATE, // Default intensity
+  });
+
+  const [errors, setErrors] = useState<Partial<Record<keyof QuestionnaireFormData, string>>>({});
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const activityLevelOptions = useMemo(() => [
+    { label: t('questionnaireScreen.activityLevel.select'), value: '' },
+    { label: t('questionnaireScreen.activityLevel.sedentary'), value: ActivityLevel.SEDENTARY },
+    { label: t('questionnaireScreen.activityLevel.light'), value: ActivityLevel.LIGHT },
+    { label: t('questionnaireScreen.activityLevel.moderate'), value: ActivityLevel.MODERATE },
+    { label: t('questionnaireScreen.activityLevel.active'), value: ActivityLevel.ACTIVE },
+    { label: t('questionnaireScreen.activityLevel.veryActive'), value: ActivityLevel.VERY_ACTIVE },
+  ], [i18n.locale]);
+
+  const sexOptions = useMemo(() => [
+    { label: t('questionnaireScreen.sex.select'), value: '' },
+    { label: t('questionnaireScreen.sex.male'), value: Sex.MALE },
+    { label: t('questionnaireScreen.sex.female'), value: Sex.FEMALE },
+  ], [i18n.locale]);
+
+  const primaryGoalOptions = useMemo(() => [
+    { label: t('questionnaireScreen.primaryGoal.select'), value: '' },
+    { label: t('questionnaireScreen.primaryGoal.loseWeight'), value: PrimaryGoal.LOSE_WEIGHT },
+    { label: t('questionnaireScreen.primaryGoal.maintainWeight'), value: PrimaryGoal.MAINTAIN_WEIGHT },
+    { label: t('questionnaireScreen.primaryGoal.gainMuscle'), value: PrimaryGoal.GAIN_MUSCLE },
+  ], [i18n.locale]);
+
+  const goalIntensityOptions = useMemo(() => [
+    { label: t('questionnaireScreen.goalIntensity.mild'), value: GoalIntensity.MILD },
+    { label: t('questionnaireScreen.goalIntensity.moderate'), value: GoalIntensity.MODERATE },
+    { label: t('questionnaireScreen.goalIntensity.aggressive'), value: GoalIntensity.AGGRESSIVE },
+  ], [i18n.locale]);
+
+
+  const handleInputChange = (field: keyof QuestionnaireFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<keyof QuestionnaireFormData, string>> = {};
+    const ageNum = parseFloat(formData.age);
+    const heightNum = parseFloat(formData.height);
+    const weightNum = parseFloat(formData.weight);
+
+    if (!formData.age.trim() || isNaN(ageNum) || ageNum <= 0 || ageNum > 120) {
+      newErrors.age = t('questionnaireScreen.validation.invalidAge');
+    }
+    if (formData.sex === '') {
+      newErrors.sex = t('questionnaireScreen.validation.selectSex');
+    }
+    if (!formData.height.trim() || isNaN(heightNum) || heightNum <= 50 || heightNum > 250) {
+      newErrors.height = t('questionnaireScreen.validation.invalidHeight');
+    }
+    if (!formData.weight.trim() || isNaN(weightNum) || weightNum <= 20 || weightNum > 300) {
+      newErrors.weight = t('questionnaireScreen.validation.invalidWeight');
+    }
+    if (formData.activityLevel === '') {
+      newErrors.activityLevel = t('questionnaireScreen.validation.selectActivityLevel');
+    }
+    if (formData.primaryGoal === '') {
+      newErrors.primaryGoal = t('questionnaireScreen.validation.selectPrimaryGoal');
+    }
+    if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && !formData.goalIntensity) {
+        newErrors.goalIntensity = t('questionnaireScreen.validation.selectGoalIntensity');
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const calculateGoals = (): CalculatedGoals | null => {
+    const age = parseFloat(formData.age);
+    const height = parseFloat(formData.height);
+    const weight = parseFloat(formData.weight);
+
+    // BMR (Mifflin-St Jeor)
+    let bmr: number;
+    if (formData.sex === Sex.MALE) {
+      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    } else {
+      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    }
+
+    // TDEE
+    let activityMultiplier = 1.2;
+    switch (formData.activityLevel) {
+      case ActivityLevel.SEDENTARY: activityMultiplier = 1.2; break;
+      case ActivityLevel.LIGHT: activityMultiplier = 1.375; break;
+      case ActivityLevel.MODERATE: activityMultiplier = 1.55; break;
+      case ActivityLevel.ACTIVE: activityMultiplier = 1.725; break;
+      case ActivityLevel.VERY_ACTIVE: activityMultiplier = 1.9; break;
+    }
+    const tdee = bmr * activityMultiplier;
+
+    // Calorie Goal
+    let calorieAdjustment = 0;
+    if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT) {
+      switch (formData.goalIntensity) {
+        case GoalIntensity.MILD: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -300 : 250); break;
+        case GoalIntensity.MODERATE: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -500 : 400); break;
+        case GoalIntensity.AGGRESSIVE: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -700 : 600); break;
+      }
+    }
+    let calorieGoal = tdee + calorieAdjustment;
+
+    // Ensure calorie goal is not below minimums
+    const minCalories = formData.sex === Sex.FEMALE ? 1200 : 1500;
+    if (calorieGoal < minCalories) {
+        calorieGoal = minCalories;
+        Toast.show({ type: 'info', text1: t('questionnaireScreen.toast.minCaloriesAdjustedTitle'), text2: t('questionnaireScreen.toast.minCaloriesAdjustedMessage', { calories: minCalories }), position: 'bottom' });
+    }
+    if (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT && calorieGoal >= tdee) {
+        calorieGoal = tdee - 100; // Ensure at least a small deficit
+    }
+    if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE && calorieGoal <= tdee) {
+        calorieGoal = tdee + 100; // Ensure at least a small surplus
+    }
+
+
+    // Macros
+    let proteinPerKg = 1.8;
+    if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE) proteinPerKg = 2.0;
+    if (age > 65) proteinPerKg = Math.max(1.2, proteinPerKg - 0.4); // Adjust for older adults
+
+    const proteinGrams = proteinPerKg * weight;
+    const proteinCalories = proteinGrams * 4;
+
+    const fatPercentage = 0.25; // 25% of calories from fat
+    const fatCalories = calorieGoal * fatPercentage;
+    const fatGrams = fatCalories / 9;
+
+    const carbCalories = calorieGoal - proteinCalories - fatCalories;
+    const carbGrams = carbCalories / 4;
+
+    return {
+      calories: Math.round(calorieGoal),
+      protein: Math.round(proteinGrams),
+      carbs: Math.round(carbGrams),
+      fat: Math.round(fatGrams),
+    };
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      Toast.show({ type: 'error', text1: t('questionnaireScreen.validation.fixErrors'), position: 'bottom' });
+      return;
+    }
+    setIsCalculating(true);
+    try {
+      const calculated = calculateGoals();
+      if (calculated) {
+        const currentSettings = await loadSettings();
+        const updatedSettings: Settings = {
+          ...currentSettings,
+          dailyGoals: calculated,
+        };
+        await saveSettings(updatedSettings);
+        Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });
+        navigation.goBack();
+      } else {
+        Alert.alert(t('questionnaireScreen.error.calculationFailedTitle'), t('questionnaireScreen.error.calculationFailedMessage'));
+      }
+    } catch (error) {
+      console.error("Error saving estimated goals:", error);
+      Alert.alert(t('questionnaireScreen.error.genericSaveTitle'), t('questionnaireScreen.error.genericSaveMessage'));
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const renderPicker = (
+    label: string,
+    selectedValue: string | number,
+    onValueChange: (itemValue: any, itemIndex: number) => void,
+    items: { label: string, value: string | number }[],
+    error?: string
+  ) => (
+    <View style={styles.inputContainer}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.pickerWrapper, error ? styles.errorBorder : {}]}>
+        <Picker
+          selectedValue={selectedValue}
+          onValueChange={onValueChange}
+          style={[styles.picker, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
+          itemStyle={[styles.pickerItem, Platform.OS === 'ios' ? {color: theme.colors.text} : {}]}
+          dropdownIconColor={theme.colors.text}
+        >
+          {items.map(item => <Picker.Item key={item.value.toString()} label={item.label} value={item.value} />)}
+        </Picker>
+      </View>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+    </View>
+  );
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
+      <Text h4 style={styles.title}>{t('questionnaireScreen.title')}</Text>
+
+      <Input
+        label={t('questionnaireScreen.ageLabel')}
+        placeholder={t('questionnaireScreen.agePlaceholder')}
+        keyboardType="numeric"
+        value={formData.age}
+        onChangeText={val => handleInputChange('age', val)}
+        errorMessage={errors.age}
+        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
+        labelStyle={styles.label}
+        errorStyle={styles.errorText}
+        containerStyle={styles.inputContainer}
+      />
+
+      {renderPicker(t('questionnaireScreen.sexLabel'), formData.sex, (val) => handleInputChange('sex', val), sexOptions, errors.sex)}
+
+      <Input
+        label={t('questionnaireScreen.heightLabel')}
+        placeholder={t('questionnaireScreen.heightPlaceholder')}
+        keyboardType="numeric"
+        value={formData.height}
+        onChangeText={val => handleInputChange('height', val)}
+        errorMessage={errors.height}
+        rightIcon={<Text style={styles.unitText}>cm</Text>}
+        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
+        labelStyle={styles.label}
+        errorStyle={styles.errorText}
+        containerStyle={styles.inputContainer}
+      />
+
+      <Input
+        label={t('questionnaireScreen.weightLabel')}
+        placeholder={t('questionnaireScreen.weightPlaceholder')}
+        keyboardType="numeric"
+        value={formData.weight}
+        onChangeText={val => handleInputChange('weight', val)}
+        errorMessage={errors.weight}
+        rightIcon={<Text style={styles.unitText}>kg</Text>}
+        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
+        labelStyle={styles.label}
+        errorStyle={styles.errorText}
+        containerStyle={styles.inputContainer}
+      />
+
+      {renderPicker(t('questionnaireScreen.activityLevelLabel'), formData.activityLevel, (val) => handleInputChange('activityLevel', val), activityLevelOptions, errors.activityLevel)}
+      {renderPicker(t('questionnaireScreen.primaryGoalLabel'), formData.primaryGoal, (val) => handleInputChange('primaryGoal', val), primaryGoalOptions, errors.primaryGoal)}
+
+      {formData.primaryGoal && formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && (
+        renderPicker(t('questionnaireScreen.goalIntensityLabel'), formData.goalIntensity || '', (val) => handleInputChange('goalIntensity', val), goalIntensityOptions, errors.goalIntensity)
+      )}
+
+      <Button
+        title={t('questionnaireScreen.calculateButton')}
+        onPress={handleSubmit}
+        buttonStyle={styles.button}
+        loading={isCalculating}
+        disabled={isCalculating}
+      />
+    </ScrollView>
+  );
+};
+
+const useStyles = makeStyles((theme) => ({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  scrollContentContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  title: {
+    marginBottom: 20,
+    textAlign: 'center',
+    color: theme.colors.text,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    color: theme.colors.grey1,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    fontSize: 16,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  unitText: {
+    color: theme.colors.grey2,
+    fontSize: 16,
+  },
+  pickerWrapper: {
+    borderColor: theme.colors.grey3,
+    borderWidth: 1,
+    borderRadius: 5,
+    backgroundColor: theme.colors.background, // Ensure picker background matches
+  },
+  picker: {
+    height: Platform.OS === 'ios' ? 120 : 50,
+    width: '100%',
+  },
+  pickerItem: {
+     // For iOS, text color is set here. Android uses picker's color prop.
+     textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  errorText: {
+    color: theme.colors.error,
+    marginTop: 3,
+    fontSize: 12,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  errorBorder: {
+    borderColor: theme.colors.error,
+  },
+  button: {
+    marginTop: 20,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+  },
+}));
+
+export default QuestionnaireScreen;
+---------- END QuestionnaireScreen.tsx ----------
+
+
 ---------- SettingsScreen.tsx ----------
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
@@ -4578,7 +5199,8 @@ import { loadSettings, saveSettings, loadDailyEntries } from "../services/storag
 import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
 import { clearIconCache } from "../utils/iconUtils";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
@@ -4590,6 +5212,15 @@ interface SettingsScreenProps {
   onLocaleChange: (locale: LanguageCode) => void;
   onDataOperation: () => void;
 }
+
+// Define param list for Settings Stack
+type SettingsStackParamList = {
+  SettingsHome: undefined; // Current screen (SettingsScreen)
+  Questionnaire: undefined; // The new QuestionnaireScreen
+};
+
+type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
+
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
   const [settings, setSettings] = useState<Settings>({
@@ -4611,6 +5242,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const { theme } = useTheme();
   const styles = useStyles();
+  const navigation = useNavigation<SettingsNavigationProp>(); // Typed navigation
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -4620,7 +5252,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     const intakeDataMap = new Map<number, number>(); // timestamp -> value
     const goalDataMap = new Map<number, number>();   // timestamp -> value (for calories)
 
-    // Populate maps from entries and goals
     dailyEntries.forEach((entry) => {
       try {
         const entryDate = parseISO(entry.date);
@@ -4628,7 +5259,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           console.warn(`Invalid date in getStatisticsData: ${entry.date}`);
           return;
         }
-        const entryTimestamp = startOfDay(entryDate).getTime(); // Use start of day for consistency
+        const entryTimestamp = startOfDay(entryDate).getTime();
 
         let intakeValue = 0;
         if (entry.items && Array.isArray(entry.items)) {
@@ -4643,10 +5274,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         if (macro === "calories") {
           const goalValue = currentGoals[macro] ?? 0;
-          // For goals, we typically want one goal point per day that has an intake point.
-          // If goals can change over time and are stored historically, that logic would be here.
-          // For now, use the current goal for all days with intake.
-           if (intakeDataMap.has(entryTimestamp)) { // Only add goal if there's intake for that day
+           if (intakeDataMap.has(entryTimestamp)) {
              goalDataMap.set(entryTimestamp, Math.round(goalValue));
            }
         }
@@ -4655,18 +5283,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       }
     });
 
-    // Convert maps to sorted arrays of MacroData
     const sortedTimestamps = Array.from(new Set([...intakeDataMap.keys(), ...goalDataMap.keys()])).sort((a,b) => a - b);
     
     const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({
         x: ts,
-        y: intakeDataMap.get(ts) || 0 // Default to 0 if no intake for a timestamp (e.g. only goal exists)
+        y: intakeDataMap.get(ts) || 0
     }));
 
     if (macro === "calories") {
         const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({
             x: ts,
-            y: goalDataMap.get(ts) || currentGoals[macro] || 0 // Use current goal if specific timestamp goal not found
+            y: goalDataMap.get(ts) || currentGoals[macro] || 0
         }));
         return [finalIntakeData, finalGoalData];
     }
@@ -4679,7 +5306,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     try {
         const loadedEntries = await loadDailyEntries();
         const updatedStats: Statistics = {
-            calories: [], protein: [], carbs: [], fat: [] // Initialize
+            calories: [], protein: [], carbs: [], fat: []
         };
         (macroKeysSetting as readonly MacroType[]).forEach(macro => {
             updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
@@ -4710,8 +5337,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           const loadedSettings = await loadSettings();
           if (!isActive) return;
           setSettings(loadedSettings);
+          // Update title based on loaded settings (language might have changed)
+          navigation.setOptions({ title: t('settingsScreen.title') });
           await fetchUserStatus();
-          await updateStatistics(loadedSettings.dailyGoals); // Ensure this await completes
+          await updateStatistics(loadedSettings.dailyGoals);
         } catch (error) {
           if (isActive) {
             Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
@@ -4722,11 +5351,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus])
+    }, [updateStatistics, fetchUserStatus, navigation]) // Added navigation to dependency array
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
-    const numericValue = parseFloat(value); // Allow empty or NaN to reset to 0 or handle validation
+    const numericValue = parseFloat(value);
     const validatedValue = isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
 
     setSettings((prevSettings) => {
@@ -4739,7 +5368,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         })
         .catch((error) => {
           Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage'));
-          // Optionally revert settings state if save fails, though this can be complex
         });
       return updatedSettings;
     });
@@ -4753,8 +5381,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme); // Propagate theme change
-      onLocaleChange(reloadedSettings.language); // Propagate locale change
+      onThemeChange(reloadedSettings.theme);
+      onLocaleChange(reloadedSettings.language);
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
@@ -4778,6 +5406,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage);
+  };
+
+  const handleNavigateToQuestionnaire = () => {
+    navigation.navigate('Questionnaire');
   };
 
   if (isDataLoading) {
@@ -4822,8 +5454,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             </Picker>
         </View>
 
-
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dailyGoals.title')}</Text>
+        <View style={styles.sectionHeaderWithButton}>
+            <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
+            <Button
+                title={t('settingsScreen.goals.estimateButton')}
+                type="outline"
+                onPress={handleNavigateToQuestionnaire}
+                buttonStyle={styles.estimateButton}
+                titleStyle={styles.estimateButtonTitle}
+                icon={<Icon name="calculator-variant" type="material-community" color={theme.colors.primary} size={18} />}
+            />
+        </View>
         <View style={styles.inputGroup}>
             <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
         </View>
@@ -4868,6 +5509,33 @@ const useStyles = makeStyles((theme) => ({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontSize: 20, fontWeight: 'bold',
   },
+  sectionHeaderWithButton: {
+    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 25,
+    marginBottom: 10, // Reduced bottom margin as inputs follow directly
+  },
+  sectionTitleInline: {
+    marginTop: 0, // Reset margin for inline title
+    marginBottom: 0, // Reset margin
+    borderLeftWidth: 0, // Remove border for inline version or style differently
+    paddingLeft: 0,
+    flexShrink: 1,
+  },
+  estimateButton: {
+    borderColor: theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  estimateButtonTitle: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: I18nManager.isRTL ? 0 : 5,
+    marginRight: I18nManager.isRTL ? 5 : 0,
+  },
   listItemTitle: {
     color: theme.colors.text,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
@@ -4877,23 +5545,21 @@ const useStyles = makeStyles((theme) => ({
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
   chartContainer: {
-    // minHeight calculated dynamically by StatisticsChart
-    // Ensure this container allows chart to expand
     marginBottom: 20,
   },
-  pickerContainerAndroid: { // For Android, wrap Picker in a View for styling
-    backgroundColor: theme.colors.background, // Match overall background
+  pickerContainerAndroid: {
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     marginBottom: 10,
-    marginTop: -5, // Adjust if ListItem adds too much space
+    marginTop: -5,
   },
-  pickerStyle: { // Common styles for Picker
+  pickerStyle: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 120 : 50, // iOS needs more height for wheel
+    height: Platform.OS === 'ios' ? 120 : 50,
   },
-  pickerItemStyle: { // For iOS item text style
+  pickerItemStyle: {
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
 }));
@@ -5501,6 +6167,52 @@ export interface OpenRouterChatCompletionResponse {
 ---------- END openRouterTypes.ts ----------
 
 
+---------- questionnaire.ts ----------
+// src/types/questionnaire.ts
+export enum Sex {
+    MALE = 'male',
+    FEMALE = 'female',
+  }
+  
+  export enum ActivityLevel {
+    SEDENTARY = 'sedentary',
+    LIGHT = 'light',
+    MODERATE = 'moderate',
+    ACTIVE = 'active',
+    VERY_ACTIVE = 'very_active',
+  }
+  
+  export enum PrimaryGoal {
+    LOSE_WEIGHT = 'lose_weight',
+    MAINTAIN_WEIGHT = 'maintain_weight',
+    GAIN_MUSCLE = 'gain_muscle',
+  }
+  
+  export enum GoalIntensity {
+    MILD = 'mild',
+    MODERATE = 'moderate',
+    AGGRESSIVE = 'aggressive',
+  }
+  
+  export interface QuestionnaireFormData {
+    age: string;
+    sex: Sex | ''; // Allow empty initial state for Picker
+    height: string; // cm
+    weight: string; // kg
+    activityLevel: ActivityLevel | ''; // Allow empty initial state
+    primaryGoal: PrimaryGoal | ''; // Allow empty initial state
+    goalIntensity?: GoalIntensity;
+  }
+  
+  export interface CalculatedGoals {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }
+---------- END questionnaire.ts ----------
+
+
 ---------- settings.ts ----------
 // src/types/settings.ts
 // types/settings.ts
@@ -5599,6 +6311,190 @@ export const getTodayDateString = (): string => {
   return formatISO(new Date(), { representation: 'date' });
 };
 ---------- END dateUtils.ts ----------
+
+
+---------- gradingUtils.ts ----------
+// src/utils/gradingUtils.ts
+import { Food } from '../types/food';
+import { Settings } from '../types/settings';
+
+export type GradeLetter = 'A' | 'B' | 'C' | 'D' | 'F';
+
+export interface FoodGradeResult {
+    letter: GradeLetter;
+    color: string;
+    score: number; // Underlying score for potential adjustments
+}
+
+export const gradeColors: Record<GradeLetter, string> = {
+    A: '#4CAF50', // Green
+    B: '#8BC34A', // Light Green
+    C: '#FFC107', // Amber/Yellow
+    D: '#FF9800', // Orange
+    F: '#F44336', // Red
+};
+
+const mapScoreToGradeDetails = (score: number): FoodGradeResult => {
+    let letter: GradeLetter;
+    const clampedScore = Math.max(0, Math.min(100, Math.round(score))); // Ensure score is 0-100
+
+    if (clampedScore >= 85) letter = 'A';
+    else if (clampedScore >= 70) letter = 'B';
+    else if (clampedScore >= 55) letter = 'C';
+    else if (clampedScore >= 40) letter = 'D';
+    else letter = 'F';
+    return { letter, color: gradeColors[letter], score: clampedScore };
+};
+
+/**
+ * Calculates a base grade for a food item (per 100g) based on refined heuristics.
+ * @param food The food item (calories, protein, carbs, fat per 100g).
+ * @returns FoodGradeResult or null if grading is not possible.
+ */
+export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
+    if (!food || typeof food.calories !== 'number' || typeof food.protein !== 'number' || typeof food.carbs !== 'number' || typeof food.fat !== 'number') {
+        return null;
+    }
+
+    const { calories, protein, carbs, fat } = food;
+    let score = 70; // Start with a baseline score (e.g., C grade)
+
+    // --- 1. Calorie Density (per 100g) ---
+    if (calories < 100) score += 15; // Low density
+    else if (calories < 200) score += 7;
+    else if (calories > 350) score -= (calories - 350) * 0.08; // Penalize high density
+    if (calories > 500) score -= 15; // Further penalty for very high density
+
+    // --- 2. Protein Content (per 100g) ---
+    if (protein > 20) score += 20; // Excellent protein
+    else if (protein > 10) score += 10; // Good protein
+    else if (protein < 5 && calories > 150) score -= 10; // Low protein for moderate/high cal food
+
+    // --- 3. Fat Content & Type (Heuristic for "quality" based on balance) ---
+    const caloriesFromFat = fat * 9;
+    const percentageCaloriesFromFat = (calories > 0) ? (caloriesFromFat / calories) * 100 : 0;
+
+    if (fat > 25) { // High total fat
+        score -= (fat - 25) * 0.5;
+        if (protein < fat * 0.5 && protein < 10) { // High fat, low protein suggests less ideal source
+            score -= 10;
+        }
+    } else if (fat < 5 && percentageCaloriesFromFat < 20 && protein > 10) { // Low fat, potentially good if protein is present
+        score += 5;
+    }
+    if (percentageCaloriesFromFat > 50) score -= 15; // More than 50% cals from fat is heavily penalized
+    if (percentageCaloriesFromFat > 35 && percentageCaloriesFromFat <= 50) score -= 7;
+
+
+    // --- 4. Carbohydrate Content & Type (Heuristic) ---
+    const caloriesFromCarbs = carbs * 4;
+    const percentageCaloriesFromCarbs = (calories > 0) ? (caloriesFromCarbs / calories) * 100 : 0;
+
+    if (carbs > 40) { // High total carbs
+        score -= (carbs - 40) * 0.3;
+        if (protein < carbs * 0.1 && protein < 7) { // High carb, very low protein suggests refined carbs
+            score -= 10;
+        }
+    }
+    if (percentageCaloriesFromCarbs > 60) score -= 15; // More than 60% cals from carbs
+    if (percentageCaloriesFromCarbs > 50 && percentageCaloriesFromCarbs <= 60) score -=7;
+
+    // --- 5. Macronutrient Balance (Percentage of Calories) ---
+    const caloriesFromProtein = protein * 4;
+    const percentageCaloriesFromProtein = (calories > 0) ? (caloriesFromProtein / calories) * 100 : 0;
+
+    // Ideal ranges (approx): Protein 20-30%, Fat 20-30%, Carbs 40-50%
+    // Bonus for being within a generally healthy profile
+    let balanceBonus = 0;
+    if (percentageCaloriesFromProtein >= 15 && percentageCaloriesFromProtein <= 35) balanceBonus += 4;
+    if (percentageCaloriesFromFat >= 15 && percentageCaloriesFromFat <= 35) balanceBonus += 4;
+    if (percentageCaloriesFromCarbs >= 35 && percentageCaloriesFromCarbs <= 55) balanceBonus += 4;
+    if (balanceBonus >=10) score += 10; // Max 10 points for good balance
+    else if (balanceBonus >=8) score +=5;
+
+    // Penalty for extreme imbalance if not already heavily penalized
+    if (protein < 5 && fat > 20 && carbs > 30 && calories > 200) { // Low protein, high fat & carbs
+        score -= 15;
+    }
+
+    return mapScoreToGradeDetails(score);
+};
+
+/**
+ * Calculates a grade for a specific daily entry, considering portion size and daily goals.
+ * @param food The food item.
+ * @param consumedGrams The amount of the food consumed in grams.
+ * @param dailyGoals The user's daily macronutrient goals.
+ * @returns FoodGradeResult or null if grading is not possible.
+ */
+export const calculateDailyEntryGrade = (
+    food: Food,
+    consumedGrams: number,
+    dailyGoals: Settings['dailyGoals']
+): FoodGradeResult | null => {
+    const baseGradeResult = calculateBaseFoodGrade(food);
+    if (!baseGradeResult) return null;
+    if (consumedGrams <= 0) return baseGradeResult;
+
+    let currentScore = baseGradeResult.score;
+
+    // Ensure dailyGoals are valid numbers, default to avoid division by zero or nonsensical percentages
+    const safeGoals = {
+        calories: Math.max(1, dailyGoals.calories || 2000), // Minimum 1 to avoid /0
+        protein: Math.max(1, dailyGoals.protein || 100),
+        carbs: Math.max(1, dailyGoals.carbs || 200),
+        fat: Math.max(1, dailyGoals.fat || 70),
+    };
+
+    const factor = consumedGrams / 100;
+    const consumedCalories = food.calories * factor;
+    const consumedProtein = food.protein * factor;
+    const consumedCarbs = food.carbs * factor;
+    const consumedFat = food.fat * factor;
+
+    // --- Adjustments based on portion size relative to daily goals ---
+
+    // Penalty for consuming a large percentage of daily calorie allowance in one go
+    const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
+    if (caloriePortionPercentage > 50) currentScore -= 20; // >50% of daily cals in one item
+    else if (caloriePortionPercentage > 35) currentScore -= 10; // >35%
+
+    // Penalty for consuming a large percentage of daily fat allowance
+    const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
+    if (fatPortionPercentage > 60) currentScore -= 15; // >60% of daily fat
+    else if (fatPortionPercentage > 40) currentScore -= 7;
+
+    // Penalty for consuming a large percentage of daily carb allowance
+    const carbPortionPercentage = (consumedCarbs / safeGoals.carbs) * 100;
+    if (carbPortionPercentage > 60) currentScore -= 10; // >60% of daily carbs
+    else if (carbPortionPercentage > 45) currentScore -= 5;
+
+    // Bonus for significant protein contribution if calories are reasonable
+    const proteinPortionPercentage = (consumedProtein / safeGoals.protein) * 100;
+    if (proteinPortionPercentage > 25 && caloriePortionPercentage < 30) {
+        currentScore += 10; // Good protein hit without too many cals
+    } else if (proteinPortionPercentage > 15 && caloriePortionPercentage < 20) {
+        currentScore += 5;
+    }
+
+    // Mitigation for small portions of "F" grade foods
+    if (baseGradeResult.letter === 'F' && caloriePortionPercentage < 10) {
+        currentScore += 15; // Small "treat" is less impactful
+    } else if (baseGradeResult.letter === 'D' && caloriePortionPercentage < 7) {
+        currentScore += 7;
+    }
+
+    // Slight penalty if a large portion of an "A" grade food makes macros significantly off for the day
+    if (baseGradeResult.letter === 'A' &&
+        (caloriePortionPercentage > 30 || fatPortionPercentage > 30 || carbPortionPercentage > 30) &&
+        consumedGrams > 200 // and it's a large portion
+    ) {
+        currentScore -= 7;
+    }
+
+    return mapScoreToGradeDetails(currentScore);
+};
+---------- END gradingUtils.ts ----------
 
 
 ---------- iconUtils.ts ----------

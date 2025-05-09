@@ -14,6 +14,9 @@
     "dailyGoals": {
       "title": "Daily Goals"
     },
+    "goals": {
+      "estimateButton": "Estimate Goals"
+    },
     "cacheManagement": {
       "title": "Cache Management"
     },
@@ -301,5 +304,65 @@
     "intake": "Intake",
     "goal": "Goal",
     "noData": "No data available to display chart for %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "Estimate Your Goals",
+    "ageLabel": "Age (years)",
+    "agePlaceholder": "e.g., 30",
+    "sexLabel": "Sex",
+    "sex": {
+      "select": "Select Sex...",
+      "male": "Male",
+      "female": "Female"
+    },
+    "heightLabel": "Height",
+    "heightPlaceholder": "e.g., 175",
+    "weightLabel": "Weight",
+    "weightPlaceholder": "e.g., 70",
+    "activityLevelLabel": "Activity Level",
+    "activityLevel": {
+      "select": "Select Activity Level...",
+      "sedentary": "Sedentary (little or no exercise)",
+      "light": "Light (exercise 1-3 days/week)",
+      "moderate": "Moderate (exercise 3-5 days/week)",
+      "active": "Active (exercise 6-7 days/week)",
+      "veryActive": "Very Active (hard exercise or physical job)"
+    },
+    "primaryGoalLabel": "Primary Goal",
+    "primaryGoal": {
+      "select": "Select Primary Goal...",
+      "loseWeight": "Lose Weight",
+      "maintainWeight": "Maintain Weight",
+      "gainMuscle": "Gain Muscle"
+    },
+    "goalIntensityLabel": "Goal Intensity",
+    "goalIntensity": {
+      "select": "Select Intensity...",
+      "mild": "Mild",
+      "moderate": "Moderate",
+      "aggressive": "Aggressive"
+    },
+    "calculateButton": "Calculate & Save Goals",
+    "validation": {
+      "invalidAge": "Enter a valid age (1-120).",
+      "selectSex": "Please select your sex.",
+      "invalidHeight": "Enter a valid height (50-250 cm).",
+      "invalidWeight": "Enter a valid weight (20-300 kg).",
+      "selectActivityLevel": "Please select your activity level.",
+      "selectPrimaryGoal": "Please select your primary goal.",
+      "selectGoalIntensity": "Please select your goal intensity.",
+      "fixErrors": "Please fix the errors above."
+    },
+    "error": {
+      "calculationFailedTitle": "Calculation Error",
+      "calculationFailedMessage": "Could not calculate goals. Please check your inputs.",
+      "genericSaveTitle": "Save Error",
+      "genericSaveMessage": "Could not save the estimated goals. Please try again."
+    },
+    "toast": {
+      "goalsCalculated": "Goals calculated and saved!",
+      "minCaloriesAdjustedTitle": "Calories Adjusted",
+      "minCaloriesAdjustedMessage": "Your calorie goal was adjusted to a minimum of %{calories} kcal."
+    }
   }
 }

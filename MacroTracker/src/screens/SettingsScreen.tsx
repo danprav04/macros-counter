@@ -12,7 +12,8 @@ import { loadSettings, saveSettings, loadDailyEntries } from "../services/storag
 import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
 import { clearIconCache } from "../utils/iconUtils";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
@@ -24,6 +25,15 @@ interface SettingsScreenProps {
   onLocaleChange: (locale: LanguageCode) => void;
   onDataOperation: () => void;
 }
+
+// Define param list for Settings Stack
+type SettingsStackParamList = {
+  SettingsHome: undefined; // Current screen (SettingsScreen)
+  Questionnaire: undefined; // The new QuestionnaireScreen
+};
+
+type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
+
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
   const [settings, setSettings] = useState<Settings>({
@@ -45,6 +55,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const { theme } = useTheme();
   const styles = useStyles();
+  const navigation = useNavigation<SettingsNavigationProp>(); // Typed navigation
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -54,7 +65,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     const intakeDataMap = new Map<number, number>(); // timestamp -> value
     const goalDataMap = new Map<number, number>();   // timestamp -> value (for calories)
 
-    // Populate maps from entries and goals
     dailyEntries.forEach((entry) => {
       try {
         const entryDate = parseISO(entry.date);
@@ -62,7 +72,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           console.warn(`Invalid date in getStatisticsData: ${entry.date}`);
           return;
         }
-        const entryTimestamp = startOfDay(entryDate).getTime(); // Use start of day for consistency
+        const entryTimestamp = startOfDay(entryDate).getTime();
 
         let intakeValue = 0;
         if (entry.items && Array.isArray(entry.items)) {
@@ -77,10 +87,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         if (macro === "calories") {
           const goalValue = currentGoals[macro] ?? 0;
-          // For goals, we typically want one goal point per day that has an intake point.
-          // If goals can change over time and are stored historically, that logic would be here.
-          // For now, use the current goal for all days with intake.
-           if (intakeDataMap.has(entryTimestamp)) { // Only add goal if there's intake for that day
+           if (intakeDataMap.has(entryTimestamp)) {
              goalDataMap.set(entryTimestamp, Math.round(goalValue));
            }
         }
@@ -89,18 +96,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       }
     });
 
-    // Convert maps to sorted arrays of MacroData
     const sortedTimestamps = Array.from(new Set([...intakeDataMap.keys(), ...goalDataMap.keys()])).sort((a,b) => a - b);
     
     const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({
         x: ts,
-        y: intakeDataMap.get(ts) || 0 // Default to 0 if no intake for a timestamp (e.g. only goal exists)
+        y: intakeDataMap.get(ts) || 0
     }));
 
     if (macro === "calories") {
         const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({
             x: ts,
-            y: goalDataMap.get(ts) || currentGoals[macro] || 0 // Use current goal if specific timestamp goal not found
+            y: goalDataMap.get(ts) || currentGoals[macro] || 0
         }));
         return [finalIntakeData, finalGoalData];
     }
@@ -113,7 +119,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     try {
         const loadedEntries = await loadDailyEntries();
         const updatedStats: Statistics = {
-            calories: [], protein: [], carbs: [], fat: [] // Initialize
+            calories: [], protein: [], carbs: [], fat: []
         };
         (macroKeysSetting as readonly MacroType[]).forEach(macro => {
             updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
@@ -144,8 +150,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           const loadedSettings = await loadSettings();
           if (!isActive) return;
           setSettings(loadedSettings);
+          // Update title based on loaded settings (language might have changed)
+          navigation.setOptions({ title: t('settingsScreen.title') });
           await fetchUserStatus();
-          await updateStatistics(loadedSettings.dailyGoals); // Ensure this await completes
+          await updateStatistics(loadedSettings.dailyGoals);
         } catch (error) {
           if (isActive) {
             Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
@@ -156,11 +164,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus])
+    }, [updateStatistics, fetchUserStatus, navigation]) // Added navigation to dependency array
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
-    const numericValue = parseFloat(value); // Allow empty or NaN to reset to 0 or handle validation
+    const numericValue = parseFloat(value);
     const validatedValue = isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
 
     setSettings((prevSettings) => {
@@ -173,7 +181,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         })
         .catch((error) => {
           Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage'));
-          // Optionally revert settings state if save fails, though this can be complex
         });
       return updatedSettings;
     });
@@ -187,8 +194,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme); // Propagate theme change
-      onLocaleChange(reloadedSettings.language); // Propagate locale change
+      onThemeChange(reloadedSettings.theme);
+      onLocaleChange(reloadedSettings.language);
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
@@ -212,6 +219,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage);
+  };
+
+  const handleNavigateToQuestionnaire = () => {
+    navigation.navigate('Questionnaire');
   };
 
   if (isDataLoading) {
@@ -256,8 +267,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             </Picker>
         </View>
 
-
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dailyGoals.title')}</Text>
+        <View style={styles.sectionHeaderWithButton}>
+            <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
+            <Button
+                title={t('settingsScreen.goals.estimateButton')}
+                type="outline"
+                onPress={handleNavigateToQuestionnaire}
+                buttonStyle={styles.estimateButton}
+                titleStyle={styles.estimateButtonTitle}
+                icon={<Icon name="calculator-variant" type="material-community" color={theme.colors.primary} size={18} />}
+            />
+        </View>
         <View style={styles.inputGroup}>
             <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
         </View>
@@ -302,6 +322,33 @@ const useStyles = makeStyles((theme) => ({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontSize: 20, fontWeight: 'bold',
   },
+  sectionHeaderWithButton: {
+    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 25,
+    marginBottom: 10, // Reduced bottom margin as inputs follow directly
+  },
+  sectionTitleInline: {
+    marginTop: 0, // Reset margin for inline title
+    marginBottom: 0, // Reset margin
+    borderLeftWidth: 0, // Remove border for inline version or style differently
+    paddingLeft: 0,
+    flexShrink: 1,
+  },
+  estimateButton: {
+    borderColor: theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  estimateButtonTitle: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: I18nManager.isRTL ? 0 : 5,
+    marginRight: I18nManager.isRTL ? 5 : 0,
+  },
   listItemTitle: {
     color: theme.colors.text,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
@@ -311,23 +358,21 @@ const useStyles = makeStyles((theme) => ({
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
   chartContainer: {
-    // minHeight calculated dynamically by StatisticsChart
-    // Ensure this container allows chart to expand
     marginBottom: 20,
   },
-  pickerContainerAndroid: { // For Android, wrap Picker in a View for styling
-    backgroundColor: theme.colors.background, // Match overall background
+  pickerContainerAndroid: {
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     marginBottom: 10,
-    marginTop: -5, // Adjust if ListItem adds too much space
+    marginTop: -5,
   },
-  pickerStyle: { // Common styles for Picker
+  pickerStyle: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 120 : 50, // iOS needs more height for wheel
+    height: Platform.OS === 'ios' ? 120 : 50,
   },
-  pickerItemStyle: { // For iOS item text style
+  pickerItemStyle: {
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
 }));

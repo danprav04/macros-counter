@@ -14,6 +14,9 @@
     "dailyGoals": {
       "title": "יעדים יומיים"
     },
+    "goals": {
+      "estimateButton": "הערכת יעדים"
+    },
     "cacheManagement": {
       "title": "ניהול מטמון"
     },
@@ -301,5 +304,51 @@
     "intake": "צריכה",
     "goal": "יעד",
     "noData": "אין נתונים זמינים להצגת תרשים עבור %{chartTitle}."
+  },
+  "questionnaireScreen": {
+    "title": "הערכת יעדים אישיים",
+    "ageLabel": "גיל (שנים)",
+    "agePlaceholder": "לדוגמה, 30",
+    "sexLabel": "מין",
+    "sex.select": "בחר מין...",
+    "sex.male": "זכר",
+    "sex.female": "נקבה",
+    "heightLabel": "גובה",
+    "heightPlaceholder": "לדוגמה, 175",
+    "weightLabel": "משקל",
+    "weightPlaceholder": "לדוגמה, 70",
+    "activityLevelLabel": "רמת פעילות",
+    "activityLevel.select": "בחר רמת פעילות...",
+    "activityLevel.sedentary": "יושבני (מעט או ללא פעילות גופנית)",
+    "activityLevel.light": "קל (פעילות 1-3 ימים בשבוע)",
+    "activityLevel.moderate": "בינוני (פעילות 3-5 ימים בשבוע)",
+    "activityLevel.active": "פעיל (פעילות 6-7 ימים בשבוע)",
+    "activityLevel.veryActive": "פעיל מאוד (פעילות מאומצת או עבודה פיזית)",
+    "primaryGoalLabel": "מטרה עיקרית",
+    "primaryGoal.select": "בחר מטרה עיקרית...",
+    "primaryGoal.loseWeight": "ירידה במשקל",
+    "primaryGoal.maintainWeight": "שמירה על המשקל",
+    "primaryGoal.gainMuscle": "עלייה במסת שריר",
+    "goalIntensityLabel": "עצימות המטרה",
+    "goalIntensity.select": "בחר עצימות...",
+    "goalIntensity.mild": "מתונה",
+    "goalIntensity.moderate": "בינונית",
+    "goalIntensity.aggressive": "אגרסיבית",
+    "calculateButton": "חשב ושמור יעדים",
+    "validation.invalidAge": "הזן גיל תקין (1-120).",
+    "validation.selectSex": "אנא בחר את מינך.",
+    "validation.invalidHeight": "הזן גובה תקין (50-250 ס\"מ).",
+    "validation.invalidWeight": "הזן משקל תקין (20-300 ק\"ג).",
+    "validation.selectActivityLevel": "אנא בחר את רמת הפעילות שלך.",
+    "validation.selectPrimaryGoal": "אנא בחר את המטרה העיקרית שלך.",
+    "validation.selectGoalIntensity": "אנא בחר את עצימות המטרה שלך.",
+    "validation.fixErrors": "אנא תקן את השגיאות למעלה.",
+    "error.calculationFailedTitle": "שגיאת חישוב",
+    "error.calculationFailedMessage": "לא ניתן היה לחשב את היעדים. אנא בדוק את הקלט שלך.",
+    "error.genericSaveTitle": "שגיאת שמירה",
+    "error.genericSaveMessage": "לא ניתן היה לשמור את היעדים המוערכים. אנא נסה שוב.",
+    "toast.goalsCalculated": "היעדים חושבו ונשמרו!",
+    "toast.minCaloriesAdjustedTitle": "הקלוריות עודכנו",
+    "toast.minCaloriesAdjustedMessage": "יעד הקלוריות שלך עודכן למינימום של %{calories} קק\"ל."
   }
 }
