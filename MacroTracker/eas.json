@@ -13,7 +13,7 @@
         "buildType": "apk"
       },
       "env": {
-        "BACKEND_URL": "https://macros-counter.mooo.com"
+        "BACKEND_URL": "https://macros-vision-ai.xyz"
       }
     },
     "production": {
