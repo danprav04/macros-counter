@@ -1,7 +1,7 @@
 {
   "app": {
     "initializing": "Инициализация...",
-    "name": "Трекер Макро",
+    "name": "MacroTracker",
     "alertButtons": {
       "later": "Позже",
       "restartNow": "Перезапустить сейчас"
@@ -151,7 +151,7 @@
   "addEntryModal": {
     "titleAdd": "Добавить запись",
     "titleEdit": "Изменить запись",
-    "titleQuickAddSelect": "Выберите элементы с изображения",
+    "titleQuickAddSelect": "Выберите элементы для добавления",
     "titleQuickAddEdit": "Изменить элемент",
     "titleQuickAddAnalyzing": "Анализ...",
     "searchPlaceholder": "Поиск продуктов...",
@@ -311,7 +311,7 @@
     "noData": "Нет данных для отображения графика для %{chartTitle}."
   },
   "questionnaireScreen": {
-    "title": "Рассчитать ваши цели",
+    "title": "Оценка ваших целей",
     "ageLabel": "Возраст (лет)",
     "agePlaceholder": "например, 30",
     "sexLabel": "Пол",
