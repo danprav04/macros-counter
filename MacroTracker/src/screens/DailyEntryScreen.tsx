@@ -133,8 +133,9 @@ const DailyEntryScreen: React.FC = () => {
     if (isSaving) return;
     if (!selectedFood || !selectedFood.id) { Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage')); return; }
     const trimmedGrams = grams.trim();
-    if (!isValidNumberInput(trimmedGrams) || parseFloat(trimmedGrams) <= 0) { Alert.alert( t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage') ); return; }
-    const numericGrams = parseFloat(trimmedGrams); const entryItem: DailyEntryItem = { food: selectedFood, grams: numericGrams };
+    const numericGrams = parseFloat(trimmedGrams);
+    if (!isValidNumberInput(trimmedGrams) || numericGrams <= 0) { Alert.alert( t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage') ); return; }
+    const entryItem: DailyEntryItem = { food: selectedFood, grams: numericGrams };
     const isEditMode = editIndex !== null; const existingEntryIndex = dailyEntries.findIndex( (entry) => entry.date === selectedDate );
     let updatedEntries: DailyEntry[];
     if (existingEntryIndex > -1) {
@@ -324,8 +325,8 @@ const DailyEntryScreen: React.FC = () => {
             <DailyEntryListItem 
               item={item} 
               reversedIndex={index} 
-              foodIcons={foodIcons} // Pass the whole foodIcons object
-              setFoodIcons={setFoodIcons} // Should not be needed if fetchAndSetIcon is used correctly above
+              foodIcons={foodIcons} 
+              setFoodIcons={setFoodIcons} 
               onEdit={handleEditEntryViaModal} 
               onRemove={handleRemoveEntry} 
               isSaving={isSaving} 
@@ -337,11 +338,28 @@ const DailyEntryScreen: React.FC = () => {
           windowSize={11} 
           contentContainerStyle={styles.listContentContainer} 
           keyboardShouldPersistTaps="handled"
-          extraData={foodIcons} // Ensure FlatList re-renders items if foodIcons changes
+          extraData={foodIcons} 
         />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
-      <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary} />
+      <AddEntryModal 
+        isVisible={isOverlayVisible} 
+        toggleOverlay={toggleOverlay} 
+        selectedFood={selectedFood} 
+        grams={grams} 
+        setGrams={setGrams} 
+        foods={foods} 
+        handleAddEntry={handleSingleEntryAction} 
+        handleAddMultipleEntries={handleAddMultipleEntries} 
+        handleSelectFood={handleSelectFood} 
+        search={search} 
+        updateSearch={updateSearch} 
+        isEditMode={editIndex !== null} 
+        initialGrams={editIndex !== null ? grams : undefined} 
+        onAddNewFoodRequest={handleAddNewFoodRequest} 
+        onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary} 
+        dailyGoals={dailyGoals} // Pass dailyGoals
+      />
     </SafeAreaView>
   );
 };

@@ -49,6 +49,8 @@ import { compressImageIfNeeded, getBase64FromUri } from "../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "./QuickAddList";
 import { t } from '../localization/i18n';
+import { calculateDailyEntryGrade, FoodGradeResult } from "../utils/gradingUtils";
+import { Settings } from '../types/settings';
 
 interface AddEntryModalProps {
   isVisible: boolean;
@@ -66,6 +68,7 @@ interface AddEntryModalProps {
   initialGrams?: string;
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
+  dailyGoals: Settings['dailyGoals']; // Added dailyGoals prop
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -99,6 +102,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   initialGrams,
   onAddNewFoodRequest,
   onCommitFoodToLibrary,
+  dailyGoals, // Destructure dailyGoals
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -135,6 +139,15 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       food.name.toLowerCase().includes(searchTerm)
     );
   }, [foods, search]);
+
+  const numericGrams = useMemo(() => parseFloat(grams), [grams]);
+
+  const foodGradeResult = useMemo((): FoodGradeResult | null => {
+      if (selectedFood && isValidNumberInput(grams) && numericGrams > 0 && dailyGoals) {
+          return calculateDailyEntryGrade(selectedFood, numericGrams, dailyGoals);
+      }
+      return null;
+  }, [selectedFood, grams, numericGrams, dailyGoals]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -240,11 +253,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
     Keyboard.dismiss();
     if (!selectedFood) { Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage')); return; }
-    const numericGrams = parseFloat(grams);
     if (!isValidNumberInput(grams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage')); return; }
     if (isActionDisabled) return; handleAddEntry();
     if (!isEditMode && selectedFood) addToRecentFoods(selectedFood);
-  }, [ selectedFood, grams, isActionDisabled, isEditMode, handleAddEntry, addToRecentFoods ]);
+  }, [ selectedFood, grams, numericGrams, isActionDisabled, isEditMode, handleAddEntry, addToRecentFoods ]);
 
   const handleInternalSelectFood = useCallback( (item: Food | null) => {
       handleSelectFood(item); updateSearch(""); Keyboard.dismiss();
@@ -318,8 +330,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleSaveQuickAddItemEdit = useCallback(() => {
     if (editingQuickAddItemIndex === null || isActionDisabled) return;
     const trimmedName = editedFoodName.trim(); if (!trimmedName) { Alert.alert(t('addEntryModal.alertQuickAddInvalidName'), t('addEntryModal.alertQuickAddInvalidNameMessage')); return; }
-    const numericGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
-    const roundedGrams = Math.round(numericGrams);
+    const numericEditedGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericEditedGrams <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
+    const roundedGrams = Math.round(numericEditedGrams);
     setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
     if (trimmedName) { handleRequestIcon(trimmedName); } // Request icon for potentially new name
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
@@ -406,7 +418,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [foods, onCommitFoodToLibrary, handleRequestIcon]);
 
 
-  const isAddButtonDisabled = modalMode !== "normal" || !selectedFood || !isValidNumberInput(grams) || parseFloat(grams) <= 0 || isActionDisabled;
+  const isAddButtonDisabled = modalMode !== "normal" || !selectedFood || !isValidNumberInput(grams) || numericGrams <= 0 || isActionDisabled;
   const isAiButtonDisabled = modalMode !== "normal" || !selectedFood || !autoInput.trim() || isActionDisabled;
   const isQuickAddConfirmDisabled = isEditMode || modalMode !== "quickAddSelect" || selectedQuickAddIndices.size === 0 || editingQuickAddItemIndex !== null || isActionDisabled || quickAddLoading;
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled;
@@ -468,7 +480,15 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             </View>
           );
         case "amountInput": if (!selectedFood) return null;
-          return ( <View style={styles.amountSection}><View style={styles.unitSelectorContainer}><Text style={styles.inputLabel}>{t('addEntryModal.amount')}</Text>
+          return ( <View style={styles.amountSection}><View style={styles.unitSelectorContainer}>
+                <View style={styles.amountLabelContainer}>
+                    <Text style={styles.inputLabel}>{t('addEntryModal.amount')}</Text>
+                    {foodGradeResult && (
+                        <Text style={[styles.gradePill, { backgroundColor: foodGradeResult.color }]}>
+                            {foodGradeResult.letter}
+                        </Text>
+                    )}
+                </View>
                 <ButtonGroup buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]} selectedIndex={unitMode === "grams" ? 0 : 1} onPress={(index) => !isActionDisabled && setUnitMode(index === 0 ? "grams" : "auto")} containerStyle={styles.buttonGroupContainer} selectedButtonStyle={{ backgroundColor: theme.colors.primary, }} textStyle={styles.buttonGroupText} selectedTextStyle={{ color: theme.colors.white }} disabled={isEditMode ? [1] : isActionDisabled ? [0, 1] : []} disabledStyle={styles.disabledButtonGroup} disabledTextStyle={{ color: theme.colors.grey3 }} />
               </View>
               {unitMode === "grams" && ( <>
@@ -489,7 +509,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "spacer": return <View style={{ height: item.height }} />;
         default: return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary, foods ] // Added foods to dependencies
+    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, foodGradeResult, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary, foods ] // Added foods, foodGradeResult
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -514,7 +534,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search, foodsLength: foods.length }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, foodGradeResult, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search, foodsLength: foods.length }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -557,7 +577,23 @@ const useStyles = makeStyles((theme) => ({
     noFoodsText: { color: theme.colors.grey2, fontStyle: "italic", textAlign: "center", marginTop: 20, marginBottom: 10, paddingHorizontal: 10, },
     amountSection: { marginTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.divider, paddingTop: 15, paddingHorizontal: 0, },
     unitSelectorContainer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15, paddingHorizontal: 5, },
-    inputLabel: { fontWeight: "600", color: theme.colors.grey1, fontSize: 14, marginRight: 10, textTransform: "uppercase", textAlign: 'left' },
+    amountLabelContainer: { // New style
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    gradePill: { // New style
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: theme.colors.white,
+        paddingHorizontal: 5,
+        paddingVertical: 1.5,
+        borderRadius: 7,
+        marginLeft: 8,
+        minWidth: 18,
+        textAlign: 'center',
+        overflow: 'hidden',
+    },
+    inputLabel: { fontWeight: "600", color: theme.colors.grey1, fontSize: 14, marginRight: 0, textTransform: "uppercase", textAlign: 'left' },
     buttonGroupContainer: { flex: 0.7, maxWidth: 220, height: 35, borderRadius: 8, borderColor: theme.colors.primary, borderWidth: 1, backgroundColor: theme.colors.background, },
     buttonGroupText: { fontSize: 14, color: theme.colors.text },
     disabledButtonGroup: { backgroundColor: theme.colors.grey5 },
