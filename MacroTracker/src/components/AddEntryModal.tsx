@@ -65,7 +65,7 @@ interface AddEntryModalProps {
   search: string;
   isEditMode: boolean;
   initialGrams?: string;
-  onAddNewFoodRequest: () => void; // New prop
+  onAddNewFoodRequest: () => void;
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -97,7 +97,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   search,
   isEditMode,
   initialGrams,
-  onAddNewFoodRequest, // Destructure new prop
+  onAddNewFoodRequest,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -149,7 +149,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setAutoInput("");
         setIsAiLoading(false);
         setQuickAddLoading(false);
-        setFoodIcons({});
+        setFoodIcons({}); // Clear icons on close
         currentlyFetchingIcons.current.clear();
       }, 300);
       return () => clearTimeout(timer);
@@ -159,7 +159,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   useEffect(() => {
     if (isVisible) {
        if (modalMode === "normal") {
-           loadRecentFoods().then(setRecentFoods).catch(err => console.error("Failed to load recent foods on open:", err));
+           loadRecentFoods().then(setRecentFoods).catch(err => {}); // Error handled internally
        }
       if (modalMode === "normal") {
         if (isEditMode && selectedFood && initialGrams !== undefined) {
@@ -175,26 +175,34 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [ isVisible, modalMode, isEditMode, selectedFood, initialGrams, handleSelectFood, updateSearch, setGrams ]);
 
   const handleRequestIcon = useCallback((foodName: string) => {
-    if (foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
+    if (!foodName || foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
     currentlyFetchingIcons.current.add(foodName);
-    if (foodIcons[foodName] === undefined) setFoodIcons(prev => ({ ...prev, [foodName]: undefined }));
+    setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Show loading
     getFoodIconUrl(foodName)
       .then(iconUrl => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl })))
-      .catch(error => { console.warn(`Icon fetch failed for ${foodName}:`, error); setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null })); })
+      .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) // Cache null on error
       .finally(() => currentlyFetchingIcons.current.delete(foodName));
-  }, [foodIcons]);
+  }, [foodIcons]); // foodIcons dependency helps re-create if state is stale, but guard protects actual fetch
 
   useEffect(() => {
-      if (!isVisible || modalMode !== "normal") return;
-      const itemsToCheck: Food[] = search ? filteredFoods : recentFoods;
+      if (!isVisible) return;
+      let itemsToCheck: (Food | EstimatedFoodItem)[] = [];
+      if (modalMode === "normal") {
+          itemsToCheck = search ? filteredFoods : recentFoods;
+      } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
+          itemsToCheck = quickAddItems;
+      }
+
       const namesToFetch = new Set<string>();
-      itemsToCheck.forEach(food => {
-          if (food?.name && foodIcons[food.name] === undefined && !currentlyFetchingIcons.current.has(food.name)) {
-              namesToFetch.add(food.name);
+      itemsToCheck.forEach(item => {
+          const name = (item as Food).name || (item as EstimatedFoodItem).foodName;
+          if (name && foodIcons[name] === undefined && !currentlyFetchingIcons.current.has(name)) {
+              namesToFetch.add(name);
           }
       });
       if (namesToFetch.size > 0) namesToFetch.forEach(name => handleRequestIcon(name));
-  }, [isVisible, modalMode, search, filteredFoods, recentFoods, handleRequestIcon, foodIcons]);
+  }, [isVisible, modalMode, search, filteredFoods, recentFoods, quickAddItems, handleRequestIcon, foodIcons]);
+
 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
@@ -203,7 +211,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       const updated = prevRecent.filter((rf) => rf.id !== food.id);
       updated.unshift(food);
       const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch((err) => console.error("Failed to save recent foods:", err));
+      saveRecentFoods(trimmed).catch(() => {}); // Error handled internally
       return trimmed;
     });
   }, [MAX_RECENT_FOODS]);
@@ -224,7 +232,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       const roundedGrams = String(Math.round(estimatedGrams)); setGrams(roundedGrams);
       setUnitMode("grams"); setAutoInput("");
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: selectedFood.name}), position: "bottom", });
-    } catch (error: any) { console.error("AI Gram Estimation Error (AddEntryModal):", error); }
+    } catch (error: any) { /* Error handled by getGramsFromNaturalLanguage */ }
     finally { setIsAiLoading(false); }
   }, [selectedFood, autoInput, isAiLoading, setGrams]);
 
@@ -268,7 +276,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           const mimeType = determineMimeType(assetForAnalysis);
           const results = await getMultipleFoodsFromImage(base64Image, mimeType);
           if (results.length === 0) { setTimeout(() => { setModalMode("normal"); setQuickAddLoading(false); }, 500); }
-          else { setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i))); setTimeout(() => setQuickAddLoading(false), 150); }
+          else {
+            setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            results.forEach(qaItem => { if (qaItem.foodName) { handleRequestIcon(qaItem.foodName); } }); // Request icons
+            setTimeout(() => setQuickAddLoading(false), 150);
+          }
         } else { throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect')); }
       } catch (error: any) {
         if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
@@ -276,7 +288,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
         setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setQuickAddLoading(false);
       }
-    }, [isEditMode, handleSelectFood, updateSearch, setGrams]
+    }, [isEditMode, handleSelectFood, updateSearch, setGrams, handleRequestIcon]
   );
 
   const handleQuickAddImage = useCallback(async () => {
@@ -308,8 +320,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const numericGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
     const roundedGrams = Math.round(numericGrams);
     setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
+    if (trimmedName) { handleRequestIcon(trimmedName); } // Request icon for potentially new name
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
-  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled]);
+  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, handleRequestIcon]);
 
   const handleCancelQuickAddItemEdit = useCallback(() => {
     if (isActionDisabled) return; setEditingQuickAddItemIndex(null);
@@ -333,7 +346,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       });
       if (entriesToAdd.length > 0) handleAddMultipleEntries(entriesToAdd);
       else Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage'));
-    } catch (error) { console.error("Error confirming Quick Add:", error); Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
+    } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
   }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, handleAddMultipleEntries, isEditMode, isActionDisabled ]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => {
@@ -380,7 +393,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" /> : <View style={styles.defaultIconContainer}><Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} /></View> }
                 <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{food.name}</ListItem.Title></ListItem.Content>
                 {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}</ListItem></TouchableOpacity> ); }
-        case "noResults": 
+        case "noResults":
           return (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noFoodsText}>
@@ -391,7 +404,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               {modalMode === "normal" && search && (
                 <Button
                   title={t('addEntryModal.addNewFoodButton')}
-                  onPress={onAddNewFoodRequest} // Use the new prop
+                  onPress={onAddNewFoodRequest}
                   type="outline"
                   buttonStyle={styles.addNewFoodButton}
                   titleStyle={styles.addNewFoodButtonTitle}
@@ -419,11 +432,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "quickAddHeader": return ( <View style={styles.quickAddHeader}><Text style={styles.sectionTitle}>{editingQuickAddItemIndex !== null ? t('addEntryModal.quickAddHeaderEdit') : t('addEntryModal.quickAddHeader')}</Text>
               {editingQuickAddItemIndex === null && ( <Button type="clear" title={t('addEntryModal.buttonBack')} onPress={() => { if (isActionDisabled) return; setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null); }} titleStyle={{ color: theme.colors.primary, fontSize: 14 }} icon={<Icon name="arrow-back" type="ionicon" size={18} color={theme.colors.primary} />} disabled={isActionDisabled} /> )}
             </View> );
-        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} style={styles.quickAddListStyle} /> );
+        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} /> );
         case "spacer": return <View style={{ height: item.height }} />;
-        default: console.warn("AddEntryModal: Encountered unknown list item type:", (item as any)?.type); return null;
+        default: return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest ] // Added onAddNewFoodRequest
+    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest ]
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -448,7 +461,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search /* Ensure search triggers re-render for noResults */ }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -510,17 +523,17 @@ const useStyles = makeStyles((theme) => ({
     quickAddHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, paddingBottom: 8, },
     quickAddListStyle: {},
     disabledOverlay: { opacity: 0.6, },
-    noResultsContainer: { // New style
+    noResultsContainer: {
       alignItems: 'center',
       paddingVertical: 10,
     },
-    addNewFoodButton: { // New style
+    addNewFoodButton: {
       marginTop: 15,
       borderColor: theme.colors.primary,
       paddingHorizontal: 20,
       borderRadius: 20,
     },
-    addNewFoodButtonTitle: { // New style
+    addNewFoodButtonTitle: {
         color: theme.colors.primary,
         fontWeight: '600',
     },
