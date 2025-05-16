@@ -110,7 +110,7 @@ yarn-error.*
 {
   "expo": {
     "name": "MacrosVisionAI",
-    "slug": "MacrosVisionAI",
+    "slug": "MacroTracker",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -130,7 +130,7 @@ yarn-error.*
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.macrotracker",
+      "bundleIdentifier": "com.macrosvisionai.app",
       "infoPlist": {
         "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
@@ -142,7 +142,7 @@ yarn-error.*
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.macrotracker",
+      "package": "com.macrosvisionai.app",
       "userInterfaceStyle": "automatic",
       "statusBar": {
         "backgroundColor": "#00000000",
@@ -490,7 +490,7 @@ export default App;
         "buildType": "apk"
       },
       "env": {
-        "BACKEND_URL": "https://macros-counter.mooo.com"
+        "BACKEND_URL": "https://macros-vision-ai.xyz"
       }
     },
     "production": {
@@ -501,7 +501,6 @@ export default App;
     "production": {}
   }
 }
-
 ---------- END eas.json ----------
 
 
@@ -520,7 +519,7 @@ registerRootComponent(App);
 
 ---------- package.json ----------
 {
-  "name": "macrotracker",
+  "name": "macrosvisionai",
   "license": "0BSD",
   "version": "1.0.0",
   "main": "index.ts",
@@ -3129,7 +3128,7 @@ export default i18n;
 {
   "app": {
     "initializing": "Initializing...",
-    "name": "MacroTracker",
+    "name": "MacrosVisionAI",
     "alertButtons": {
       "later": "Later",
       "restartNow": "Restart Now"
@@ -3506,7 +3505,7 @@ export default i18n;
 {
   "app": {
     "initializing": "מאתחל...",
-    "name": "MacroTracker",
+    "name": "MacrosVisionAI",
     "alertButtons": {
       "later": "אחר כך",
       "restartNow": "הפעל מחדש כעת"
@@ -3883,7 +3882,7 @@ export default i18n;
 {
   "app": {
     "initializing": "Инициализация...",
-    "name": "MacroTracker",
+    "name": "MacrosVisionAI",
     "alertButtons": {
       "later": "Позже",
       "restartNow": "Перезапустить сейчас"
