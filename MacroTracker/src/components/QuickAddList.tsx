@@ -1,3 +1,4 @@
+// src/components/QuickAddList.tsx
 import React from 'react';
 import {
     View,
@@ -11,8 +12,9 @@ import {
     makeStyles,
 } from '@rneui/themed';
 import { EstimatedFoodItem } from '../types/macros';
+import { Food } from '../types/food'; // Import Food type
 import { t } from '../localization/i18n';
-import QuickAddItem from './Entry/QuickAddItem'; // Import the new component
+import QuickAddItem from './Entry/QuickAddItem';
 
 interface QuickAddListProps {
     items: EstimatedFoodItem[];
@@ -30,6 +32,7 @@ interface QuickAddListProps {
     isLoading?: boolean;
     foodIcons: { [foodName: string]: string | null | undefined };
     onSaveItemToLibrary: (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => Promise<void>;
+    foods: Food[]; // Add foods prop
 }
 
 const QuickAddList: React.FC<QuickAddListProps> = ({
@@ -48,6 +51,7 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
     isLoading,
     foodIcons,
     onSaveItemToLibrary,
+    foods, // Destructure foods
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -75,6 +79,7 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                 onNameChange={onNameChange}
                 onGramsChange={onGramsChange}
                 onSaveToLibrary={onSaveItemToLibrary}
+                foods={foods} // Pass foods to QuickAddItem
             />
         );
     };
@@ -103,15 +108,13 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                 ) : null
             }
             style={[styles.listDefaults, style]}
-            // Pass all props that affect item rendering to extraData
-            extraData={{ selectedIndices, editingIndex, foodIcons, isLoading, editedName, editedGrams }}
+            extraData={{ selectedIndices, editingIndex, foodIcons, isLoading, editedName, editedGrams, foodsLength: foods.length }}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={items.length === 0 && !isLoading ? styles.listContentContainerEmpty : {paddingBottom: 10}}
         />
     );
 };
 
-// Styles that are specific to the list container itself, not the items.
 const useStyles = makeStyles((theme) => ({
     listDefaults: {},
     listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },

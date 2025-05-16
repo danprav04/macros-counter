@@ -31,7 +31,7 @@ interface QuickAddItemProps {
   isSelected: boolean;
   isEditingThisItem: boolean;
   isAnyItemEditing: boolean;
-  isLoading?: boolean; // General loading state for the list
+  isLoading?: boolean;
   foodIcons: { [foodName: string]: string | null | undefined };
   editedName: string;
   editedGrams: string;
@@ -45,6 +45,7 @@ interface QuickAddItemProps {
     item: EstimatedFoodItem,
     setSavingState: (isSaving: boolean) => void
   ) => Promise<void>;
+  foods: Food[]; // Add foods prop
 }
 
 const QuickAddItem: React.FC<QuickAddItemProps> = ({
@@ -64,6 +65,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   onNameChange,
   onGramsChange,
   onSaveToLibrary,
+  foods, // Destructure foods
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -96,6 +98,10 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
     () => calculateBaseFoodGrade(tempFoodForGrading),
     [tempFoodForGrading]
   );
+
+  const isInLibrary = useMemo(() => {
+    return foods.some(food => food.name.toLowerCase() === item.foodName.toLowerCase());
+  }, [foods, item.foodName]);
 
   const handleSaveToLibraryPress = async () => {
     if (isSavingToLibrary || isAnyItemEditing || isLoading) return;
@@ -273,11 +279,11 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
               ) : (
                 <TouchableOpacity
                   onPress={handleSaveToLibraryPress}
-                  disabled={!canPerformActions}
+                  disabled={!canPerformActions} // Button is not disabled if already in library, allowing overwrite flow
                   style={styles.actionIconPadding}
                 >
                   <Icon
-                    name="bookmark-plus-outline"
+                    name={isInLibrary ? "bookmark" : "bookmark-plus-outline"}
                     type="material-community"
                     size={22}
                     color={
@@ -405,7 +411,7 @@ const useStyles = makeStyles((theme) => ({
   },
   actionIconPadding: {
     paddingVertical: 8,
-    paddingHorizontal: 6, // Slightly reduced horizontal padding
+    paddingHorizontal: 6,
   },
   quickAddEditView: {
     flex: 1,

@@ -1,3 +1,4 @@
+// src/components/AddEntryModal.tsx
 import React, {
   useEffect,
   useState,
@@ -90,7 +91,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   setGrams,
   handleAddEntry,
   handleAddMultipleEntries,
-  foods,
+  foods, // This is the main food library list
   handleSelectFood,
   updateSearch,
   search,
@@ -182,7 +183,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       .then(iconUrl => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl })))
       .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) // Cache null on error
       .finally(() => currentlyFetchingIcons.current.delete(foodName));
-  }, [foodIcons]); // foodIcons dependency helps re-create if state is stale, but guard protects actual fetch
+  }, [foodIcons]);
 
   useEffect(() => {
       if (!isVisible) return;
@@ -440,10 +441,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                         {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIconSmall} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIconSmall} resizeMode="contain" /> : <View style={[styles.foodIconSmall, styles.iconPlaceholderSmall]}><Icon name="fastfood" type="material" size={12} color={theme.colors.grey2} /></View> }
                         <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]} numberOfLines={1} ellipsizeMode="tail">{food.name}</Text>
                       </TouchableOpacity> ); })}</ScrollView></View> );
-        case "searchResults": { const food = item.data; const isSelected = selectedFood?.id === food.id; const iconStatus = foodIcons[food.name];
-          return ( <TouchableOpacity onPress={() => !isActionDisabled && handleInternalSelectFood(food)} disabled={isActionDisabled} style={[isActionDisabled && styles.disabledOverlay]}><ListItem bottomDivider containerStyle={[styles.listItemContainer, isSelected && styles.selectedListItem]}>
+        case "searchResults": { const foodItem = item.data; const isSelected = selectedFood?.id === foodItem.id; const iconStatus = foodIcons[foodItem.name]; // Renamed food to foodItem to avoid conflict
+          return ( <TouchableOpacity onPress={() => !isActionDisabled && handleInternalSelectFood(foodItem)} disabled={isActionDisabled} style={[isActionDisabled && styles.disabledOverlay]}><ListItem bottomDivider containerStyle={[styles.listItemContainer, isSelected && styles.selectedListItem]}>
                 {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" /> : <View style={styles.defaultIconContainer}><Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} /></View> }
-                <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{food.name}</ListItem.Title></ListItem.Content>
+                <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{foodItem.name}</ListItem.Title></ListItem.Content>
                 {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}</ListItem></TouchableOpacity> ); }
         case "noResults":
           return (
@@ -484,11 +485,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "quickAddHeader": return ( <View style={styles.quickAddHeader}><Text style={styles.sectionTitle}>{editingQuickAddItemIndex !== null ? t('addEntryModal.quickAddHeaderEdit') : t('addEntryModal.quickAddHeader')}</Text>
               {editingQuickAddItemIndex === null && ( <Button type="clear" title={t('addEntryModal.buttonBack')} onPress={() => { if (isActionDisabled) return; setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null); }} titleStyle={{ color: theme.colors.primary, fontSize: 14 }} icon={<Icon name="arrow-back" type="ionicon" size={18} color={theme.colors.primary} />} disabled={isActionDisabled} /> )}
             </View> );
-        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} /> );
+        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} /> ); // Pass foods here
         case "spacer": return <View style={{ height: item.height }} />;
         default: return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary ]
+    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary, foods ] // Added foods to dependencies
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -513,7 +514,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search, foodsLength: foods.length }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
