@@ -205,7 +205,13 @@
     "camera": "מצלמה",
     "gallery": "גלריה",
     "cancel": "ביטול",
-    "addNewFoodButton": "הוסף מאכל חדש"
+    "addNewFoodButton": "הוסף מאכל חדש",
+    "alertOverwriteFoodTitle": "מאכל קיים",
+    "alertOverwriteFoodMessage": "מאכל בשם \"%{foodName}\" כבר קיים. האם להחליף עם הנתונים החדשים?",
+    "overwrite": "החלף",
+    "toastFoodSavedToLibrary": "\"%{foodName}\" נשמר לספרייה.",
+    "toastFoodUpdatedInLibrary": "\"%{foodName}\" עודכן בספרייה.",
+    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה."
   },
   "addFoodModal": {
     "titleAdd": "הוסף מאכל חדש",

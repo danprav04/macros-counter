@@ -22,6 +22,7 @@ src/
     DataManagementButtons.tsx
     DateNavigator.tsx
     Entry/
+      QuickAddItem.tsx
     Food/
     FoodFormFields.tsx
     FoodItem.tsx
@@ -820,7 +821,7 @@ interface AddEntryModalProps {
   search: string;
   isEditMode: boolean;
   initialGrams?: string;
-  onAddNewFoodRequest: () => void; // New prop
+  onAddNewFoodRequest: () => void;
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -852,7 +853,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   search,
   isEditMode,
   initialGrams,
-  onAddNewFoodRequest, // Destructure new prop
+  onAddNewFoodRequest,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -904,7 +905,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setAutoInput("");
         setIsAiLoading(false);
         setQuickAddLoading(false);
-        setFoodIcons({});
+        setFoodIcons({}); // Clear icons on close
         currentlyFetchingIcons.current.clear();
       }, 300);
       return () => clearTimeout(timer);
@@ -914,7 +915,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   useEffect(() => {
     if (isVisible) {
        if (modalMode === "normal") {
-           loadRecentFoods().then(setRecentFoods).catch(err => console.error("Failed to load recent foods on open:", err));
+           loadRecentFoods().then(setRecentFoods).catch(err => {}); // Error handled internally
        }
       if (modalMode === "normal") {
         if (isEditMode && selectedFood && initialGrams !== undefined) {
@@ -930,26 +931,34 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [ isVisible, modalMode, isEditMode, selectedFood, initialGrams, handleSelectFood, updateSearch, setGrams ]);
 
   const handleRequestIcon = useCallback((foodName: string) => {
-    if (foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
+    if (!foodName || foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
     currentlyFetchingIcons.current.add(foodName);
-    if (foodIcons[foodName] === undefined) setFoodIcons(prev => ({ ...prev, [foodName]: undefined }));
+    setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Show loading
     getFoodIconUrl(foodName)
       .then(iconUrl => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl })))
-      .catch(error => { console.warn(`Icon fetch failed for ${foodName}:`, error); setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null })); })
+      .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) // Cache null on error
       .finally(() => currentlyFetchingIcons.current.delete(foodName));
-  }, [foodIcons]);
+  }, [foodIcons]); // foodIcons dependency helps re-create if state is stale, but guard protects actual fetch
 
   useEffect(() => {
-      if (!isVisible || modalMode !== "normal") return;
-      const itemsToCheck: Food[] = search ? filteredFoods : recentFoods;
+      if (!isVisible) return;
+      let itemsToCheck: (Food | EstimatedFoodItem)[] = [];
+      if (modalMode === "normal") {
+          itemsToCheck = search ? filteredFoods : recentFoods;
+      } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
+          itemsToCheck = quickAddItems;
+      }
+
       const namesToFetch = new Set<string>();
-      itemsToCheck.forEach(food => {
-          if (food?.name && foodIcons[food.name] === undefined && !currentlyFetchingIcons.current.has(food.name)) {
-              namesToFetch.add(food.name);
+      itemsToCheck.forEach(item => {
+          const name = (item as Food).name || (item as EstimatedFoodItem).foodName;
+          if (name && foodIcons[name] === undefined && !currentlyFetchingIcons.current.has(name)) {
+              namesToFetch.add(name);
           }
       });
       if (namesToFetch.size > 0) namesToFetch.forEach(name => handleRequestIcon(name));
-  }, [isVisible, modalMode, search, filteredFoods, recentFoods, handleRequestIcon, foodIcons]);
+  }, [isVisible, modalMode, search, filteredFoods, recentFoods, quickAddItems, handleRequestIcon, foodIcons]);
+
 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
@@ -958,7 +967,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       const updated = prevRecent.filter((rf) => rf.id !== food.id);
       updated.unshift(food);
       const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch((err) => console.error("Failed to save recent foods:", err));
+      saveRecentFoods(trimmed).catch(() => {}); // Error handled internally
       return trimmed;
     });
   }, [MAX_RECENT_FOODS]);
@@ -979,7 +988,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       const roundedGrams = String(Math.round(estimatedGrams)); setGrams(roundedGrams);
       setUnitMode("grams"); setAutoInput("");
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: selectedFood.name}), position: "bottom", });
-    } catch (error: any) { console.error("AI Gram Estimation Error (AddEntryModal):", error); }
+    } catch (error: any) { /* Error handled by getGramsFromNaturalLanguage */ }
     finally { setIsAiLoading(false); }
   }, [selectedFood, autoInput, isAiLoading, setGrams]);
 
@@ -1023,7 +1032,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           const mimeType = determineMimeType(assetForAnalysis);
           const results = await getMultipleFoodsFromImage(base64Image, mimeType);
           if (results.length === 0) { setTimeout(() => { setModalMode("normal"); setQuickAddLoading(false); }, 500); }
-          else { setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i))); setTimeout(() => setQuickAddLoading(false), 150); }
+          else {
+            setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            results.forEach(qaItem => { if (qaItem.foodName) { handleRequestIcon(qaItem.foodName); } }); // Request icons
+            setTimeout(() => setQuickAddLoading(false), 150);
+          }
         } else { throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect')); }
       } catch (error: any) {
         if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
@@ -1031,7 +1044,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
         setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setQuickAddLoading(false);
       }
-    }, [isEditMode, handleSelectFood, updateSearch, setGrams]
+    }, [isEditMode, handleSelectFood, updateSearch, setGrams, handleRequestIcon]
   );
 
   const handleQuickAddImage = useCallback(async () => {
@@ -1063,8 +1076,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const numericGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
     const roundedGrams = Math.round(numericGrams);
     setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
+    if (trimmedName) { handleRequestIcon(trimmedName); } // Request icon for potentially new name
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
-  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled]);
+  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, handleRequestIcon]);
 
   const handleCancelQuickAddItemEdit = useCallback(() => {
     if (isActionDisabled) return; setEditingQuickAddItemIndex(null);
@@ -1088,7 +1102,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       });
       if (entriesToAdd.length > 0) handleAddMultipleEntries(entriesToAdd);
       else Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage'));
-    } catch (error) { console.error("Error confirming Quick Add:", error); Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
+    } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
   }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, handleAddMultipleEntries, isEditMode, isActionDisabled ]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => {
@@ -1135,7 +1149,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" /> : <View style={styles.defaultIconContainer}><Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} /></View> }
                 <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{food.name}</ListItem.Title></ListItem.Content>
                 {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}</ListItem></TouchableOpacity> ); }
-        case "noResults": 
+        case "noResults":
           return (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noFoodsText}>
@@ -1146,7 +1160,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               {modalMode === "normal" && search && (
                 <Button
                   title={t('addEntryModal.addNewFoodButton')}
-                  onPress={onAddNewFoodRequest} // Use the new prop
+                  onPress={onAddNewFoodRequest}
                   type="outline"
                   buttonStyle={styles.addNewFoodButton}
                   titleStyle={styles.addNewFoodButtonTitle}
@@ -1174,11 +1188,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "quickAddHeader": return ( <View style={styles.quickAddHeader}><Text style={styles.sectionTitle}>{editingQuickAddItemIndex !== null ? t('addEntryModal.quickAddHeaderEdit') : t('addEntryModal.quickAddHeader')}</Text>
               {editingQuickAddItemIndex === null && ( <Button type="clear" title={t('addEntryModal.buttonBack')} onPress={() => { if (isActionDisabled) return; setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null); }} titleStyle={{ color: theme.colors.primary, fontSize: 14 }} icon={<Icon name="arrow-back" type="ionicon" size={18} color={theme.colors.primary} />} disabled={isActionDisabled} /> )}
             </View> );
-        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} style={styles.quickAddListStyle} /> );
+        case "quickAddList": return ( <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} /> );
         case "spacer": return <View style={{ height: item.height }} />;
-        default: console.warn("AddEntryModal: Encountered unknown list item type:", (item as any)?.type); return null;
+        default: return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest ] // Added onAddNewFoodRequest
+    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleAddOrUpdateSingleEntry, handleConfirmQuickAdd, handleQuickAddImage, handleAddMultipleEntries, onAddNewFoodRequest ]
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -1203,7 +1217,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search /* Ensure search triggers re-render for noResults */ }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -1265,17 +1279,17 @@ const useStyles = makeStyles((theme) => ({
     quickAddHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, paddingBottom: 8, },
     quickAddListStyle: {},
     disabledOverlay: { opacity: 0.6, },
-    noResultsContainer: { // New style
+    noResultsContainer: {
       alignItems: 'center',
       paddingVertical: 10,
     },
-    addNewFoodButton: { // New style
+    addNewFoodButton: {
       marginTop: 15,
       borderColor: theme.colors.primary,
       paddingHorizontal: 20,
       borderRadius: 20,
     },
-    addNewFoodButtonTitle: { // New style
+    addNewFoodButtonTitle: {
         color: theme.colors.primary,
         fontWeight: '600',
     },
@@ -2241,6 +2255,335 @@ export default DateNavigator;
 ---------- END DateNavigator.tsx ----------
 
 
+---------- QuickAddItem.tsx ----------
+// src/components/Entry/QuickAddItem.tsx
+import React, { useMemo } from 'react';
+import { View, TouchableOpacity, Pressable, ActivityIndicator, Image } from 'react-native';
+import { ListItem, CheckBox, Input, Icon, Text, useTheme, makeStyles } from '@rneui/themed';
+import { EstimatedFoodItem } from '../../types/macros';
+import { Food } from '../../types/food';
+import { isValidNumberInput } from '../../utils/validationUtils';
+import { t } from '../../localization/i18n';
+import { calculateBaseFoodGrade, FoodGradeResult } from '../../utils/gradingUtils';
+
+interface QuickAddItemProps {
+    item: EstimatedFoodItem;
+    index: number;
+    isSelected: boolean;
+    isEditingThisItem: boolean;
+    isAnyItemEditing: boolean;
+    isLoading?: boolean;
+    foodIcons: { [foodName: string]: string | null | undefined };
+    editedName: string;
+    editedGrams: string;
+    onToggleItem: (index: number) => void;
+    onEditItem: (index: number) => void;
+    onSaveEdit: () => void;
+    onCancelEdit: () => void;
+    onNameChange: (name: string) => void;
+    onGramsChange: (grams: string) => void;
+}
+
+const QuickAddItem: React.FC<QuickAddItemProps> = ({
+    item,
+    index,
+    isSelected,
+    isEditingThisItem,
+    isAnyItemEditing,
+    isLoading,
+    foodIcons,
+    editedName,
+    editedGrams,
+    onToggleItem,
+    onEditItem,
+    onSaveEdit,
+    onCancelEdit,
+    onNameChange,
+    onGramsChange,
+}) => {
+    const { theme } = useTheme();
+    const styles = useStyles();
+
+    const estimatedCalories = Math.round((item.calories_per_100g / 100) * item.estimatedWeightGrams);
+
+    const tempFoodForGrading: Food = useMemo(() => ({
+        id: `temp-qa-${index}-${item.foodName}`, // More unique temporary ID
+        name: item.foodName,
+        calories: item.calories_per_100g,
+        protein: item.protein_per_100g,
+        carbs: item.carbs_per_100g,
+        fat: item.fat_per_100g,
+    }), [item.foodName, item.calories_per_100g, item.protein_per_100g, item.carbs_per_100g, item.fat_per_100g, index]);
+
+    const gradeResult: FoodGradeResult | null = useMemo(() => calculateBaseFoodGrade(tempFoodForGrading), [tempFoodForGrading]);
+
+    const renderFoodIcon = (foodName: string) => {
+        const iconStatus = foodIcons[foodName];
+        if (iconStatus === undefined) {
+            return (
+                <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
+                    <ActivityIndicator size="small" color={theme.colors.grey3} />
+                </View>
+            );
+        } else if (iconStatus) {
+            return <Image source={{ uri: iconStatus }} style={styles.foodIconImage} resizeMode="contain" />;
+        } else {
+            return (
+                <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
+                    <Icon name="image-off-outline" type="material-community" size={18} color={theme.colors.grey3} />
+                </View>
+            );
+        }
+    };
+
+    return (
+        <Pressable
+            onPress={() => !isEditingThisItem && onToggleItem(index)}
+            disabled={(isAnyItemEditing && !isEditingThisItem) || isLoading}
+        >
+            <ListItem
+                bottomDivider
+                containerStyle={[
+                    styles.quickAddItemContainer,
+                    isEditingThisItem && styles.quickAddItemEditing,
+                    isSelected && !isEditingThisItem && styles.quickAddItemSelected,
+                    (isAnyItemEditing && !isEditingThisItem && styles.disabledItem),
+                    isLoading && styles.disabledItem,
+                ]}
+            >
+                {isEditingThisItem ? (
+                    <View style={styles.quickAddEditView}>
+                        <View style={styles.editIconAndNameRow}>
+                            {renderFoodIcon(item.foodName)}
+                            {gradeResult && (
+                                <Text style={[styles.gradePill, { backgroundColor: gradeResult.color, marginLeft: 0, marginRight: 8 }]}>
+                                    {gradeResult.letter}
+                                </Text>
+                            )}
+                            <Input
+                                value={editedName}
+                                onChangeText={onNameChange}
+                                placeholder={t('quickAddList.foodNamePlaceholder')}
+                                inputContainerStyle={styles.quickEditInputContainer}
+                                inputStyle={styles.quickEditInput}
+                                containerStyle={styles.quickEditNameContainer}
+                                autoFocus
+                                selectTextOnFocus
+                            />
+                        </View>
+                        <View style={styles.quickEditGramsRow}>
+                            <Input
+                                value={editedGrams}
+                                onChangeText={onGramsChange}
+                                placeholder={t('quickAddList.gramsPlaceholder')}
+                                keyboardType="numeric"
+                                inputContainerStyle={styles.quickEditInputContainer}
+                                inputStyle={styles.quickEditInput}
+                                containerStyle={styles.quickEditGramsContainer}
+                                rightIcon={<Text style={styles.quickEditUnitText}>g</Text>}
+                                errorMessage={!isValidNumberInput(editedGrams) && editedGrams !== "" ? t('quickAddList.errorInvalidGrams') : ""}
+                                errorStyle={styles.inputError}
+                            />
+                            <TouchableOpacity onPress={onSaveEdit} style={styles.quickEditActionButton}>
+                                <Icon name="checkmark-circle" type="ionicon" color={theme.colors.success} size={28} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={onCancelEdit} style={styles.quickEditActionButton}>
+                                <Icon name="close-circle" type="ionicon" color={theme.colors.error} size={28} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <>
+                        <CheckBox
+                            checked={isSelected}
+                            onPress={() => onToggleItem(index)}
+                            containerStyle={styles.quickAddCheckbox}
+                            checkedColor={theme.colors.primary}
+                            disabled={isAnyItemEditing || isLoading}
+                            size={22}
+                        />
+                        {renderFoodIcon(item.foodName)}
+                        <ListItem.Content>
+                            <View style={styles.titleAndGradeContainer}>
+                                {gradeResult && (
+                                    <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                                        {gradeResult.letter}
+                                    </Text>
+                                )}
+                                <ListItem.Title style={styles.quickAddItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                                    {item.foodName}
+                                </ListItem.Title>
+                            </View>
+                            <ListItem.Subtitle style={styles.quickAddItemSubtitle}>
+                                {`Est: ${Math.round(item.estimatedWeightGrams)}g • ~${estimatedCalories} kcal`}
+                            </ListItem.Subtitle>
+                        </ListItem.Content>
+                        {!isAnyItemEditing && !isLoading && (
+                            <TouchableOpacity onPress={() => onEditItem(index)} style={styles.quickEditIconButton}>
+                                <Icon name="pencil-outline" type="ionicon" size={22} color={theme.colors.grey1} />
+                            </TouchableOpacity>
+                        )}
+                    </>
+                )}
+            </ListItem>
+        </Pressable>
+    );
+};
+
+// Styles are identical to the ones in QuickAddList.tsx, so they are copied here.
+// In a larger project, you might centralize these styles or use a theming solution more extensively.
+const useStyles = makeStyles((theme) => ({
+    quickAddItemContainer: {
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        backgroundColor: theme.colors.background,
+        borderBottomColor: theme.colors.divider,
+        flexDirection: "row",
+        alignItems: "center",
+        minHeight: 65,
+    },
+    quickAddItemSelected: {
+        backgroundColor: theme.colors.successLight,
+        borderLeftWidth: 4,
+        borderLeftColor: theme.colors.success,
+    },
+    quickAddItemEditing: {
+        backgroundColor: theme.colors.background,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        borderWidth: 1.5,
+        borderColor: theme.colors.primary,
+        borderRadius: 8,
+        marginVertical: 6,
+        marginHorizontal: 2,
+        shadowColor: theme.colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2.5,
+        elevation: 4,
+    },
+    disabledItem: {
+        opacity: 0.6,
+    },
+    quickAddCheckbox: {
+        padding: 0,
+        margin: 0,
+        marginRight: 10,
+        marginLeft: 0,
+        backgroundColor: "transparent",
+        borderWidth: 0,
+    },
+    foodIconContainer: {
+        width: 38,
+        height: 38,
+        marginRight: 10,
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    foodIconImage: {
+        width: 38,
+        height: 38,
+        marginRight: 10,
+        borderRadius: 6,
+    },
+    iconPlaceholder: {
+        backgroundColor: theme.colors.grey5,
+    },
+    titleAndGradeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+    gradePill: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: theme.colors.white,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 6,
+        marginRight: 6,
+        minWidth: 18,
+        textAlign: 'center',
+        overflow: 'hidden',
+    },
+    quickAddItemTitle: {
+        fontWeight: "600",
+        color: theme.colors.text,
+        fontSize: 15,
+        textAlign: 'left',
+        flexShrink: 1,
+    },
+    quickAddItemSubtitle: {
+        color: theme.colors.secondary,
+        fontSize: 12.5,
+        textAlign: 'left',
+    },
+    quickEditIconButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        marginLeft: 8,
+    },
+    quickAddEditView: {
+        flex: 1,
+    },
+    editIconAndNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    quickEditInputContainer: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.primary,
+        height: 38,
+        paddingHorizontal: 0,
+    },
+    quickEditInput: {
+        fontSize: 15,
+        color: theme.colors.text,
+        paddingVertical: 0,
+        textAlign: 'left',
+    },
+    quickEditNameContainer: {
+        flex: 1,
+        paddingHorizontal: 0,
+    },
+    quickEditGramsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 5,
+    },
+    quickEditGramsContainer: {
+        flex: 1,
+        paddingHorizontal: 0,
+        marginRight: 10,
+    },
+    quickEditUnitText: {
+        color: theme.colors.grey2,
+        fontSize: 14,
+        fontWeight: "500",
+        paddingRight: 5
+    },
+    quickEditActionButton: {
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+    },
+    inputError: {
+        color: theme.colors.error,
+        fontSize: 11,
+        marginVertical: 0,
+        marginLeft: 2,
+        height: 14,
+        textAlign: 'left'
+    },
+    // Add any other styles that were in QuickAddList.tsx and are specific to the item
+}));
+
+export default QuickAddItem;
+---------- END QuickAddItem.tsx ----------
+
+
 ---------- FoodFormFields.tsx ----------
 // src/components/FoodFormFields.tsx
 import React from 'react';
@@ -2494,29 +2837,22 @@ export default FoodItem;
 
 ---------- QuickAddList.tsx ----------
 // src/components/QuickAddList.tsx
-// src/components/QuickAddList.tsx
+// ---------- src/components/QuickAddList.tsx ----------
 import React from 'react';
 import {
     View,
     FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    Pressable,
-    Dimensions,
     ActivityIndicator,
 } from 'react-native';
 import {
-    ListItem,
-    CheckBox,
-    Input,
     Icon,
     Text,
     useTheme,
     makeStyles,
 } from '@rneui/themed';
 import { EstimatedFoodItem } from '../types/macros';
-import { isValidNumberInput } from '../utils/validationUtils';
 import { t } from '../localization/i18n';
+import QuickAddItem from './Entry/QuickAddItem'; // Import the new component
 
 interface QuickAddListProps {
     items: EstimatedFoodItem[];
@@ -2532,6 +2868,7 @@ interface QuickAddListProps {
     onGramsChange: (grams: string) => void;
     style?: object;
     isLoading?: boolean;
+    foodIcons: { [foodName: string]: string | null | undefined };
 }
 
 const QuickAddList: React.FC<QuickAddListProps> = ({
@@ -2548,6 +2885,7 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
     onGramsChange,
     style,
     isLoading,
+    foodIcons,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -2556,87 +2894,29 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
         const isSelected = selectedIndices.has(index);
         const isEditingThisItem = editingIndex === index;
         const isAnyItemEditing = editingIndex !== null;
-        const estimatedCalories = Math.round(
-            (item.calories_per_100g / 100) * item.estimatedWeightGrams
-        );
 
         return (
-            <Pressable
-                onPress={() => !isEditingThisItem && onToggleItem(index)}
-                disabled={(isAnyItemEditing && !isEditingThisItem)}
-            >
-                <ListItem
-                    bottomDivider
-                    containerStyle={[
-                        styles.quickAddItemContainer,
-                        isEditingThisItem && styles.quickAddItemEditing,
-                        isSelected && styles.quickAddItemSelected,
-                        isAnyItemEditing && !isEditingThisItem && { opacity: 0.6 },
-                    ]}
-                >
-                    {isEditingThisItem ? (
-                        <View style={styles.quickAddEditView}>
-                            <Input
-                                value={editedName}
-                                onChangeText={onNameChange}
-                                placeholder={t('quickAddList.foodNamePlaceholder')}
-                                inputContainerStyle={styles.quickEditInputContainer}
-                                inputStyle={styles.quickEditInput}
-                                containerStyle={styles.quickEditNameContainer}
-                                autoFocus
-                                selectTextOnFocus
-                            />
-                            <View style={styles.quickEditGramsRow}>
-                                <Input
-                                    value={editedGrams}
-                                    onChangeText={onGramsChange}
-                                    placeholder={t('quickAddList.gramsPlaceholder')}
-                                    keyboardType="numeric"
-                                    inputContainerStyle={styles.quickEditInputContainer}
-                                    inputStyle={styles.quickEditInput}
-                                    containerStyle={styles.quickEditGramsContainer}
-                                    rightIcon={<Text style={styles.quickEditUnitText}>g</Text>}
-                                    errorMessage={ !isValidNumberInput(editedGrams) && editedGrams !== "" ? t('quickAddList.errorInvalidGrams') : "" }
-                                    errorStyle={styles.inputError}
-                                />
-                                <TouchableOpacity onPress={onSaveEdit} style={styles.quickEditButton}>
-                                    <Icon name="checkmark" type="ionicon" color={theme.colors.success} size={26} />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={onCancelEdit} style={styles.quickEditButton}>
-                                    <Icon name="close-circle-outline" type="ionicon" color={theme.colors.error} size={26} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <>
-                            <CheckBox
-                                checked={isSelected}
-                                onPress={() => onToggleItem(index)}
-                                containerStyle={styles.quickAddCheckbox}
-                                checkedColor={theme.colors.primary}
-                                disabled={isAnyItemEditing}
-                            />
-                            <ListItem.Content>
-                                <ListItem.Title style={styles.quickAddItemTitle}>
-                                    <Text>{item.foodName}</Text>
-                                </ListItem.Title>
-                                <ListItem.Subtitle style={styles.quickAddItemSubtitle}>
-                                    <Text>{`Est: ${Math.round(item.estimatedWeightGrams)}g • ~${estimatedCalories} kcal`}</Text>
-                                </ListItem.Subtitle>
-                            </ListItem.Content>
-                            {!isAnyItemEditing && (
-                                <TouchableOpacity onPress={() => onEditItem(index)} style={styles.quickEditIconButton}>
-                                    <Icon name="pencil" type="material-community" size={20} color={theme.colors.grey1} />
-                                </TouchableOpacity>
-                            )}
-                        </>
-                    )}
-                </ListItem>
-            </Pressable>
+            <QuickAddItem
+                item={item}
+                index={index}
+                isSelected={isSelected}
+                isEditingThisItem={isEditingThisItem}
+                isAnyItemEditing={isAnyItemEditing}
+                isLoading={isLoading}
+                foodIcons={foodIcons}
+                editedName={isEditingThisItem ? editedName : ''}
+                editedGrams={isEditingThisItem ? editedGrams : ''}
+                onToggleItem={onToggleItem}
+                onEditItem={onEditItem}
+                onSaveEdit={onSaveEdit}
+                onCancelEdit={onCancelEdit}
+                onNameChange={onNameChange}
+                onGramsChange={onGramsChange}
+            />
         );
     };
 
-    if (isLoading) {
+    if (isLoading && items.length === 0) {
          return (
              <View style={styles.centeredContent}>
                  <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -2648,47 +2928,63 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
     return (
         <FlatList
             data={items}
-            keyExtractor={(item, index) => `quickadd-${index}-${item.foodName}`}
+            keyExtractor={(item, index) => `quickadd-${index}-${item.foodName}-${item.estimatedWeightGrams}`}
             renderItem={renderItem}
             ListEmptyComponent={
-                <View style={styles.emptyListContainer}>
-                    <Icon name="image-off-outline" type="material-community" size={40} color={theme.colors.grey3} />
-                    <Text style={styles.emptyListText}>{t('quickAddList.emptyMessage')}</Text>
-                    <Text style={styles.emptyListSubText}>{t('quickAddList.emptyHint')}</Text>
-                </View>
+                !isLoading ? (
+                    <View style={styles.emptyListContainer}>
+                        <Icon name="image-search-outline" type="material-community" size={48} color={theme.colors.grey3} />
+                        <Text style={styles.emptyListText}>{t('quickAddList.emptyMessage')}</Text>
+                        <Text style={styles.emptyListSubText}>{t('quickAddList.emptyHint')}</Text>
+                    </View>
+                ) : null
             }
             style={[styles.listDefaults, style]}
-            extraData={{ selectedIndices, editingIndex }}
+            // Pass all props that affect item rendering to extraData
+            extraData={{ selectedIndices, editingIndex, foodIcons, isLoading, editedName, editedGrams }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={items.length === 0 ? styles.listContentContainerEmpty : {}}
+            contentContainerStyle={items.length === 0 && !isLoading ? styles.listContentContainerEmpty : {paddingBottom: 10}}
         />
     );
 };
 
+// Styles that are specific to the list container itself, not the items.
 const useStyles = makeStyles((theme) => ({
     listDefaults: {},
     listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },
-    quickAddItemContainer: { paddingVertical: 6, paddingHorizontal: 5, backgroundColor: theme.colors.background, borderBottomColor: theme.colors.divider, flexDirection: "row", alignItems: "center", minHeight: 60, },
-    quickAddItemSelected: { backgroundColor: theme.colors.successLight || '#d4edda' },
-    quickAddItemEditing: { backgroundColor: theme.colors.grey5, paddingVertical: 8, },
-    quickAddCheckbox: { padding: 0, margin: 0, marginRight: 10, backgroundColor: "transparent", borderWidth: 0, },
-    quickAddItemTitle: { fontWeight: "bold", color: theme.colors.text, fontSize: 16, textAlign: 'left' },
-    quickAddItemSubtitle: { color: theme.colors.grey1, fontSize: 13, marginTop: 2, textAlign: 'left' },
-    quickEditIconButton: { padding: 8, marginLeft: 8, },
-    quickAddEditView: { flex: 1, paddingLeft: 10, },
-    quickEditInputContainer: { borderBottomWidth: 1, borderBottomColor: theme.colors.primary, height: 35, paddingHorizontal: 0, },
-    quickEditInput: { fontSize: 15, color: theme.colors.text, paddingVertical: 0, textAlign: 'left' },
-    quickEditNameContainer: { paddingHorizontal: 0, marginBottom: 5, },
-    quickEditGramsRow: { flexDirection: "row", alignItems: "center", },
-    quickEditGramsContainer: { flex: 1, paddingHorizontal: 0, },
-    quickEditUnitText: { color: theme.colors.grey2, fontSize: 14, fontWeight: "500", paddingRight: 5 },
-    quickEditButton: { paddingLeft: 10, paddingVertical: 5, },
-    emptyListContainer: { alignItems: "center", paddingVertical: 30, paddingHorizontal: 15, },
-    emptyListText: { color: theme.colors.grey2, fontSize: 16, textAlign: "center", marginTop: 10 },
-    emptyListSubText: { fontSize: 14, color: theme.colors.grey3, textAlign: "center", marginTop: 5, },
-    inputError: { color: theme.colors.error, fontSize: 10, marginVertical: 0, height: 12, textAlign: 'left' },
-    centeredContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: 150, },
-    loadingText: { marginTop: 10, color: theme.colors.text, fontSize: 16, fontWeight: "500", },
+    emptyListContainer: {
+        alignItems: "center",
+        justifyContent: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+        flexGrow: 1,
+    },
+    emptyListText: {
+        color: theme.colors.grey2,
+        fontSize: 16,
+        textAlign: "center",
+        marginTop: 15,
+        fontWeight: '500',
+    },
+    emptyListSubText: {
+        fontSize: 14,
+        color: theme.colors.grey3,
+        textAlign: "center",
+        marginTop: 8,
+    },
+    centeredContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        minHeight: 200,
+    },
+    loadingText: {
+        marginTop: 12,
+        color: theme.colors.text,
+        fontSize: 16,
+        fontWeight: "500",
+    },
 }));
 
 export default QuickAddList;

@@ -205,7 +205,13 @@
     "camera": "Камера",
     "gallery": "Галерея",
     "cancel": "Отмена",
-    "addNewFoodButton": "Добавить новый продукт"
+    "addNewFoodButton": "Добавить новый продукт",
+    "alertOverwriteFoodTitle": "Продукт существует",
+    "alertOverwriteFoodMessage": "Продукт с названием \"%{foodName}\" уже существует. Перезаписать новыми данными?",
+    "overwrite": "Перезаписать",
+    "toastFoodSavedToLibrary": "\"%{foodName}\" сохранено в библиотеку.",
+    "toastFoodUpdatedInLibrary": "\"%{foodName}\" обновлено в библиотеке.",
+    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку."
   },
   "addFoodModal": {
     "titleAdd": "Добавить новый продукт",

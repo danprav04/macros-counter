@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nManager } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
-import { getFoods } from "../services/foodService";
+import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService"; // Added createFood, updateFoodService
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 import { isValidNumberInput } from "../utils/validationUtils";
@@ -235,6 +235,39 @@ const DailyEntryScreen: React.FC = () => {
     navigation.navigate(t('foodListScreen.tabTitle'), { openAddFoodModal: true });
   }, [isSaving, navigation]);
 
+
+  const handleCommitFoodItemToMainLibrary = useCallback(async (
+    foodData: Omit<Food, 'id'> | Food,
+    isUpdate: boolean
+  ): Promise<Food | null> => {
+    if (isSaving) return null;
+    setIsSaving(true);
+    try {
+        let committedFood: Food;
+        if (isUpdate) {
+            committedFood = await updateFoodService(foodData as Food);
+            setFoods(prevFoods =>
+                prevFoods.map(f => (f.id === committedFood.id ? committedFood : f)).sort((a, b) => a.name.localeCompare(b.name))
+            );
+        } else {
+            committedFood = await createFood(foodData as Omit<Food, 'id'>);
+            setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
+        }
+        fetchAndSetIcon(committedFood.name);
+        return committedFood;
+    } catch (error) {
+        console.error("Error committing food to library:", error);
+        Alert.alert(
+            t('foodListScreen.errorLoad'), // Generic error title
+            error instanceof Error ? error.message : t(isUpdate ? 'foodListScreen.errorUpdateMessage' : 'foodListScreen.errorCreateMessage')
+        );
+        return null;
+    } finally {
+        setIsSaving(false);
+    }
+  }, [isSaving, fetchAndSetIcon]);
+
+
   const handleEditEntryViaModal = ( item: DailyEntryItem, reversedIndex: number ) => toggleOverlay(item, reversedIndex);
   const handleDateChange = useCallback( (event: DateTimePickerEvent, selectedDateValue?: Date) => {
       const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
@@ -308,7 +341,7 @@ const DailyEntryScreen: React.FC = () => {
         />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
-      <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} />
+      <AddEntryModal isVisible={isOverlayVisible} toggleOverlay={toggleOverlay} selectedFood={selectedFood} grams={grams} setGrams={setGrams} foods={foods} handleAddEntry={handleSingleEntryAction} handleAddMultipleEntries={handleAddMultipleEntries} handleSelectFood={handleSelectFood} search={search} updateSearch={updateSearch} isEditMode={editIndex !== null} initialGrams={editIndex !== null ? grams : undefined} onAddNewFoodRequest={handleAddNewFoodRequest} onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary} />
     </SafeAreaView>
   );
 };

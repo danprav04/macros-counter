@@ -205,7 +205,13 @@
     "camera": "Camera",
     "gallery": "Gallery",
     "cancel": "Cancel",
-    "addNewFoodButton": "Add New Food"
+    "addNewFoodButton": "Add New Food",
+    "alertOverwriteFoodTitle": "Food Exists",
+    "alertOverwriteFoodMessage": "A food named \"%{foodName}\" already exists. Overwrite with new macros?",
+    "overwrite": "Overwrite",
+    "toastFoodSavedToLibrary": "\"%{foodName}\" saved to library.",
+    "toastFoodUpdatedInLibrary": "\"%{foodName}\" updated in library.",
+    "toastErrorSavingToLibrary": "Error saving food to library."
   },
   "addFoodModal": {
     "titleAdd": "Add New Food",

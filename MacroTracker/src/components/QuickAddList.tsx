@@ -1,5 +1,3 @@
-// src/components/QuickAddList.tsx
-// ---------- src/components/QuickAddList.tsx ----------
 import React from 'react';
 import {
     View,
@@ -31,6 +29,7 @@ interface QuickAddListProps {
     style?: object;
     isLoading?: boolean;
     foodIcons: { [foodName: string]: string | null | undefined };
+    onSaveItemToLibrary: (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => Promise<void>;
 }
 
 const QuickAddList: React.FC<QuickAddListProps> = ({
@@ -48,6 +47,7 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
     style,
     isLoading,
     foodIcons,
+    onSaveItemToLibrary,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -74,6 +74,7 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                 onCancelEdit={onCancelEdit}
                 onNameChange={onNameChange}
                 onGramsChange={onGramsChange}
+                onSaveToLibrary={onSaveItemToLibrary}
             />
         );
     };
