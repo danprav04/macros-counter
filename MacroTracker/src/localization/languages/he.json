@@ -157,6 +157,7 @@
     "searchPlaceholder": "חפש מאכלים...",
     "recent": "אחרונים",
     "noResults": "לא נמצאו מאכלים התואמים ל-\"%{searchTerm}\".",
+    "emptyLibraryMessage": "ספריית המאכלים שלך ריקה. לחץ למטה להוספת המאכל הראשון שלך!",
     "noQuickAddResults": "לא נמצאו פריטי מזון בתמונה.",
     "amount": "כמות",
     "grams": "גרם",

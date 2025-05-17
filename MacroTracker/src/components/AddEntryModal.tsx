@@ -78,15 +78,17 @@ interface AddEntryModalProps {
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
+const MAX_RECENT_FOODS = 5;
+const MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL = 3; // If fewer recents than this, show all other foods
 
 type UnitMode = "grams" | "auto";
 type ModalMode = "normal" | "quickAddSelect";
 
 type ListItemType =
   | { type: "searchBar"; key: string }
-  | { type: "recentFoods"; key: string }
   | { type: "searchResults"; key: string; data: Food }
   | { type: "noResults"; key: string }
+  | { type: "emptyLibraryPrompt"; key: string }
   | { type: "amountInput"; key: string }
   | { type: "quickAddHeader"; key: string }
   | { type: "quickAddList"; key: string }
@@ -113,7 +115,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const { theme } = useTheme();
   const styles = useStyles();
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
-  const MAX_RECENT_FOODS = 5;
   const [foodIcons, setFoodIcons] = useState<{
     [foodName: string]: string | null | undefined;
   }>({});
@@ -140,13 +141,60 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const screenWidth = Dimensions.get("window").width;
   const isActionDisabled = isAiLoading || quickAddLoading;
 
-  const filteredFoods = useMemo(() => {
+  const filteredFoodsForSearch = useMemo(() => {
     if (!search) return [];
     const searchTerm = search.toLowerCase();
     return foods.filter((food) =>
       food.name.toLowerCase().includes(searchTerm)
     );
   }, [foods, search]);
+  
+  const listData = useMemo((): ListItemType[] => {
+    const items: ListItemType[] = [];
+    if (modalMode === "normal") {
+      items.push({ type: "searchBar", key: "searchBar" });
+
+      if (!search) {
+        let combinedList: Food[] = [...recentFoods];
+        const recentFoodIds = new Set(recentFoods.map(f => f.id));
+
+        if (recentFoods.length < MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL && foods.length > 0) {
+            const otherFoodsFromLibrary = foods
+                .filter(food => !recentFoodIds.has(food.id))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            combinedList = [...combinedList, ...otherFoodsFromLibrary];
+        }
+        
+        if (combinedList.length > 0) {
+             combinedList.forEach((food) => items.push({
+                type: "searchResults", 
+                key: `food-${food.id ?? food.name}-${Math.random()}`, // Add random to key for potential duplicates if IDs are not unique across lists (should not happen)
+                data: food,
+            }));
+        } else {
+            items.push({ type: "emptyLibraryPrompt", key: "emptyLibraryPrompt" });
+        }
+
+      } else { // Search is active
+        if (filteredFoodsForSearch.length > 0) {
+            filteredFoodsForSearch.forEach((food) => items.push({
+                type: "searchResults",
+                key: `search-${food.id ?? food.name}`,
+                data: food,
+            }));
+        } else {
+            items.push({ type: "noResults", key: "noResults" });
+        }
+      }
+      if (selectedFood) items.push({ type: "amountInput", key: "amountInput" });
+    } else if (modalMode === "quickAddSelect") {
+      items.push({ type: "quickAddHeader", key: "quickAddHeader" });
+      items.push({ type: "quickAddList", key: "quickAddList" });
+    }
+    items.push({ type: "spacer", key: "bottom-spacer", height: 80 });
+    return items;
+  }, [ modalMode, search, recentFoods, foods, filteredFoodsForSearch, selectedFood, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, quickAddLoading ]);
+
 
   const numericGrams = useMemo(() => parseFloat(grams), [grams]);
 
@@ -216,11 +264,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       if (!isVisible) return;
       let itemsToCheck: (Food | EstimatedFoodItem)[] = [];
       if (modalMode === "normal") {
-          itemsToCheck = search ? filteredFoods : recentFoods;
+          // For normal mode, icons are fetched based on `listData` which now combines recent and library foods when search is empty
+          const currentListData = listData;
+          currentListData.forEach(listItem => {
+              if (listItem.type === "searchResults" && listItem.data) {
+                  itemsToCheck.push(listItem.data);
+              }
+          });
       } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
           itemsToCheck = quickAddItems;
       }
-
+  
       const namesToFetch = new Set<string>();
       itemsToCheck.forEach(item => {
           const name = (item as Food).name || (item as EstimatedFoodItem).foodName;
@@ -229,7 +283,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           }
       });
       if (namesToFetch.size > 0) namesToFetch.forEach(name => handleRequestIcon(name));
-  }, [isVisible, modalMode, search, filteredFoods, recentFoods, quickAddItems, handleRequestIcon, foodIcons]);
+  }, [isVisible, modalMode, listData, quickAddItems, handleRequestIcon, foodIcons]); // listData dependency ensures icons are fetched for newly visible combined list
 
 
   const addToRecentFoods = useCallback(async (food: Food) => {
@@ -261,7 +315,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     ];
 
     defaultSuggestions.forEach(sugg => {
-        // Add default suggestion only if it's not the same as lastUsed (to avoid duplicates in value)
         if (!lastUsed || String(lastUsed) !== sugg.value) {
             suggestions.push(sugg);
         }
@@ -291,14 +344,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (!isValidNumberInput(grams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage')); return; }
     if (isActionDisabled) return; 
     
-    handleAddEntry(); // This will trigger the save in DailyEntryScreen
+    handleAddEntry(); 
 
     if (!isEditMode) {
         addToRecentFoods(selectedFood);
         const updatedPortions = { ...lastUsedPortions, [selectedFood.id]: numericGrams };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
-    } else if (isEditMode && selectedFood.id) { // Also update last used portion on edit
+    } else if (isEditMode && selectedFood.id) { 
         const updatedPortions = { ...lastUsedPortions, [selectedFood.id]: numericGrams };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
@@ -416,7 +469,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           let foodToAdd: Food = existingFood ? existingFood : { id: uuidv4(), name: item.foodName, calories: Math.round(Number(item.calories_per_100g) || 0), protein: Math.round(Number(item.protein_per_100g) || 0), carbs: Math.round(Number(item.carbs_per_100g) || 0), fat: Math.round(Number(item.fat_per_100g) || 0), };
           const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1));
           entriesToAdd.push({ food: foodToAdd, grams: entryGrams });
-          if (foodToAdd.id) { // Save last used portion for this food
+          if (foodToAdd.id) { 
             newPortionsToSave[foodToAdd.id] = entryGrams;
           }
         }
@@ -493,48 +546,21 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const isQuickAddConfirmDisabled = isEditMode || modalMode !== "quickAddSelect" || selectedQuickAddIndices.size === 0 || editingQuickAddItemIndex !== null || isActionDisabled || quickAddLoading;
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled;
 
-  const listData = useMemo((): ListItemType[] => {
-    const items: ListItemType[] = [];
-    if (modalMode === "normal") {
-      items.push({ type: "searchBar", key: "searchBar" });
-      if (!search && recentFoods.length > 0) items.push({ type: "recentFoods", key: "recentFoods" });
-      if (search) {
-        if (filteredFoods.length > 0) filteredFoods.forEach((food) => items.push({ type: "searchResults", key: `search-${food.id ?? food.name}`, data: food, }));
-        else items.push({ type: "noResults", key: "noResults" });
-      }
-      if (selectedFood) items.push({ type: "amountInput", key: "amountInput" });
-    } else if (modalMode === "quickAddSelect") {
-      items.push({ type: "quickAddHeader", key: "quickAddHeader" });
-      items.push({ type: "quickAddList", key: "quickAddList" });
-    }
-    items.push({ type: "spacer", key: "bottom-spacer", height: 80 });
-    return items;
-  }, [ modalMode, search, recentFoods, filteredFoods, selectedFood, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, quickAddLoading ]);
 
   const renderListItem = useCallback(
     ({ item }: { item: ListItemType }): React.ReactElement | null => {
       switch (item.type) {
         case "searchBar": return ( <SearchBar placeholder={t('addEntryModal.searchPlaceholder')} onChangeText={updateSearch} value={search} platform={Platform.OS === "ios" ? "ios" : "android"} containerStyle={styles.searchBarContainer} inputContainerStyle={styles.searchBarInputContainer} inputStyle={styles.searchInputStyle} onCancel={() => updateSearch("")} showCancel={Platform.OS === "ios"} onClear={() => updateSearch("")} disabled={isActionDisabled || modalMode !== "normal"} /> );
-        case "recentFoods":
-          if (!recentFoods || recentFoods.length === 0) return null;
-          return ( <View style={styles.recentFoodsSection}><Text style={styles.sectionTitle}>{t('addEntryModal.recent')}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentFoodsContainer} keyboardShouldPersistTaps="handled">
-                {recentFoods.map((food) => { const iconStatus = foodIcons[food.name];
-                    return ( <TouchableOpacity key={`recent-${food.id ?? food.name}`} style={[ styles.recentFoodItem, screenWidth < 350 && styles.smallRecentFoodItem, selectedFood?.id === food.id && styles.selectedRecentFoodItem, isActionDisabled && styles.disabledOverlay, ]} onPress={() => !isActionDisabled && handleInternalSelectFood(food)} disabled={isActionDisabled} >
-                        {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIconSmall} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIconSmall} resizeMode="contain" /> : <View style={[styles.foodIconSmall, styles.iconPlaceholderSmall]}><Icon name="fastfood" type="material" size={12} color={theme.colors.grey2} /></View> }
-                        <Text style={[styles.recentFoodText, screenWidth < 350 && styles.smallRecentFoodText]} numberOfLines={1} ellipsizeMode="tail">{food.name}</Text>
-                      </TouchableOpacity> ); })}</ScrollView></View> );
         case "searchResults": { const foodItem = item.data; const isSelected = selectedFood?.id === foodItem.id; const iconStatus = foodIcons[foodItem.name]; 
           return ( <TouchableOpacity onPress={() => !isActionDisabled && handleInternalSelectFood(foodItem)} disabled={isActionDisabled} style={[isActionDisabled && styles.disabledOverlay]}><ListItem bottomDivider containerStyle={[styles.listItemContainer, isSelected && styles.selectedListItem]}>
                 {iconStatus === undefined ? <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} /> : iconStatus ? <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" /> : <View style={styles.defaultIconContainer}><Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} /></View> }
                 <ListItem.Content><ListItem.Title style={styles.listItemTitle}>{foodItem.name}</ListItem.Title></ListItem.Content>
                 {isSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}</ListItem></TouchableOpacity> ); }
-        case "noResults":
+        case "noResults": // Displayed when search is active and yields no results
           return (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noFoodsText}>
-                {modalMode === "quickAddSelect"
-                  ? t('addEntryModal.noQuickAddResults')
-                  : t('addEntryModal.noResults', { searchTerm: search })}
+                {t('addEntryModal.noResults', { searchTerm: search })}
               </Text>
               {modalMode === "normal" && search && (
                 <Button
@@ -549,6 +575,23 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
               )}
             </View>
           );
+        case "emptyLibraryPrompt": // Displayed when search is empty and no foods (recent or library) are available
+             return (
+               <View style={styles.noResultsContainer}>
+                 <Text style={styles.noFoodsText}>
+                   {t('addEntryModal.emptyLibraryMessage')}
+                 </Text>
+                 <Button
+                   title={t('addEntryModal.addNewFoodButton')}
+                   onPress={onAddNewFoodRequest}
+                   type="outline"
+                   buttonStyle={styles.addNewFoodButton}
+                   titleStyle={styles.addNewFoodButtonTitle}
+                   icon={<Icon name="add-circle-outline" type="ionicon" size={20} color={theme.colors.primary} />}
+                   disabled={isActionDisabled}
+                 />
+               </View>
+             );
         case "amountInput": if (!selectedFood) return null;
           return ( <View style={styles.amountSection}><View style={styles.unitSelectorContainer}>
                 <View style={styles.amountLabelContainer}>
@@ -579,7 +622,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         case "spacer": return <View style={{ height: item.height }} />;
         default: return null;
       }
-    }, [ search, updateSearch, isActionDisabled, modalMode, recentFoods, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, filteredFoods, foodGradeResult, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleConfirmQuickAdd, handleQuickAddImage, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary, foods ]
+    }, [ search, updateSearch, isActionDisabled, modalMode, screenWidth, selectedFood, foodIcons, handleInternalSelectFood, foodGradeResult, unitMode, setUnitMode, isEditMode, servingSizeSuggestions, setGrams, grams, autoInput, setAutoInput, handleEstimateGrams, isAiLoading, isAiButtonDisabled, theme, styles, quickAddLoading, quickAddItems, editingQuickAddItemIndex, selectedQuickAddIndices, editedFoodName, editedGrams, handleToggleQuickAddItem, handleEditQuickAddItem, handleSaveQuickAddItemEdit, handleCancelQuickAddItemEdit, handleQuickAddGramsChange, handleConfirmQuickAdd, handleQuickAddImage, onAddNewFoodRequest, handleSaveQuickAddItemToLibrary, foods, filteredFoodsForSearch ] // Added filteredFoodsForSearch
   );
 
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
@@ -604,7 +647,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex === null && ( <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', {count: selectedQuickAddIndices.size})} onPress={handleConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[ styles.addButton, { backgroundColor: theme.colors.success } ]} titleStyle={styles.buttonTitle} loading={quickAddLoading} /> )}
              {modalMode === "quickAddSelect" && editingQuickAddItemIndex !== null && ( <View style={{ width: 70, marginLeft: 5 }} /> )}
           </View>
-          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ selectedFoodId: selectedFood?.id, modalMode, foodIcons, foodGradeResult, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search, foodsLength: foods.length, servingSizeSuggestions }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
+          <FlatList data={listData} renderItem={renderListItem} keyExtractor={(item) => item.key} extraData={{ listDataVersion: listData.length, selectedFoodId: selectedFood?.id, modalMode, foodIcons, foodGradeResult, quickAddLoading, selectedQuickAddIndicesSize: selectedQuickAddIndices.size, editingQuickAddItemIndex, search, foodsLength: foods.length, servingSizeSuggestions }} style={styles.flatListContainer} contentContainerStyle={styles.flatListContentContainer} keyboardShouldPersistTaps="handled" initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11} removeClippedSubviews={Platform.OS === 'android'} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -629,18 +672,10 @@ const useStyles = makeStyles((theme) => ({
     searchBarContainer: { backgroundColor: "transparent", borderBottomColor: "transparent", borderTopColor: "transparent", paddingHorizontal: 0, marginBottom: 10, },
     searchBarInputContainer: { borderRadius: 25, backgroundColor: theme.colors.searchBg || theme.colors.grey5, height: 40, },
     searchInputStyle: { color: theme.colors.text, fontSize: 15, textAlign: 'left' },
-    recentFoodsSection: { marginBottom: 15 },
+    // Recent Foods section styling is removed as it's no longer a separate horizontal list
     sectionTitle: { fontWeight: "600", marginBottom: 8, color: theme.colors.text, fontSize: 14, marginLeft: 5, textTransform: "uppercase", textAlign: 'left' },
-    recentFoodsContainer: { paddingHorizontal: 5, paddingVertical: 2 },
-    recentFoodItem: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: theme.colors.grey5, marginRight: 8, flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "transparent", },
-    selectedRecentFoodItem: { borderColor: theme.colors.primary },
-    smallRecentFoodItem: { paddingHorizontal: 8, paddingVertical: 5 },
-    foodIconSmall: { width: 20, height: 20, marginRight: 6, borderRadius: 10, backgroundColor: theme.colors.grey4, alignItems: "center", justifyContent: "center", },
-    iconPlaceholderSmall: { backgroundColor: theme.colors.grey4, },
     foodIcon: { width: 35, height: 35, marginRight: 12, borderRadius: 17.5, backgroundColor: theme.colors.grey5, alignItems: "center", justifyContent: "center", },
     defaultIconContainer: { width: 35, height: 35, marginRight: 12, borderRadius: 17.5, backgroundColor: theme.colors.grey5, alignItems: "center", justifyContent: "center", },
-    recentFoodText: { color: theme.colors.text, fontSize: 13, maxWidth: 80, textAlign: 'left' },
-    smallRecentFoodText: { fontSize: 12, maxWidth: 70 },
     listItemContainer: { backgroundColor: "transparent", paddingVertical: 8, paddingHorizontal: 5, borderBottomColor: theme.colors.divider, },
     selectedListItem: { backgroundColor: theme.colors.grey5, borderRadius: 8 },
     listItemTitle: { color: theme.colors.text, fontSize: 16, fontWeight: "500", textAlign: 'left' },

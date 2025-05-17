@@ -157,6 +157,7 @@
     "searchPlaceholder": "Search Foods...",
     "recent": "Recent",
     "noResults": "No foods found matching \"%{searchTerm}\".",
+    "emptyLibraryMessage": "Your food library is empty. Tap below to add your first food item!",
     "noQuickAddResults": "No food items found in the image.",
     "amount": "Amount",
     "grams": "Grams",
