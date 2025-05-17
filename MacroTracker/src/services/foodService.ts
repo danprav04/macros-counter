@@ -1,3 +1,4 @@
+// src/services/foodService.ts
 // services/foodService.ts
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
@@ -9,18 +10,18 @@ export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
     id: uuidv4(),
     ...foodData,
   };
-  const foods = await loadFoods();
-  foods.push(newFood);
-  await saveFoods(foods);
+  const { items: currentFoods } = await loadFoods(); // Load all foods to append
+  currentFoods.push(newFood);
+  await saveFoods(currentFoods);
   return newFood;
 };
 
-export const getFoods = async (): Promise<Food[]> => {
-  return loadFoods();
+export const getFoods = async (offset: number = 0, limit?: number): Promise<{ items: Food[], total: number }> => {
+  return loadFoods(offset, limit);
 };
 
 export const updateFood = async (updatedFood: Food): Promise<Food> => {
-  const foods = await loadFoods();
+  const { items: foods, total } = await loadFoods(); // Load all foods to find and update
   const index = foods.findIndex((f) => f.id === updatedFood.id);
   if (index === -1) {
     throw new Error('Food not found'); // Throw an error if not found
@@ -31,7 +32,7 @@ export const updateFood = async (updatedFood: Food): Promise<Food> => {
 };
 
 export const deleteFood = async (foodId: string): Promise<void> => {
-  const foods = await loadFoods();
+  const { items: foods } = await loadFoods(); // Load all to filter
   const filteredFoods = foods.filter((f) => f.id !== foodId);
   await saveFoods(filteredFoods);
 };

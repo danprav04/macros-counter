@@ -97,12 +97,22 @@ const DailyEntryScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [loadedFoods, loadedEntries, loadedSettings] = await Promise.all([ getFoods(), loadDailyEntries(), loadSettings(), ]);
+      // Call getFoods() without limit to get all foods for the AddEntryModal
+      const [foodsResult, loadedEntries, loadedSettings] = await Promise.all([
+        getFoods(), // Fetches { items: Food[], total: number }
+        loadDailyEntries(),
+        loadSettings(),
+      ]);
+
+      const loadedFoodsArray = foodsResult.items; // Extract the array of foods
+
       setDailyGoals(loadedSettings?.dailyGoals ?? { calories: 2000, protein: 150, carbs: 200, fat: 70 });
-      loadedFoods.sort((a, b) => a.name.localeCompare(b.name)); setFoods(loadedFoods);
-      setDailyEntries(loadedEntries); 
+      loadedFoodsArray.sort((a, b) => a.name.localeCompare(b.name));
+      setFoods(loadedFoodsArray);
+      setDailyEntries(loadedEntries);
       triggerIconPrefetch(loadedEntries, selectedDate);
     } catch (error) {
+      console.error("Error in DailyEntryScreen loadData:", error); // Log the actual error
       Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
       setFoods([]); setDailyEntries([]); setDailyGoals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
     } finally { setIsLoadingData(false); }

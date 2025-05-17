@@ -41,13 +41,21 @@ export const saveFoods = async (foods: Food[]): Promise<void> => {
   }
 };
 
-export const loadFoods = async (): Promise<Food[]> => {
+export const loadFoods = async (offset: number = 0, limit?: number): Promise<{ items: Food[], total: number }> => {
   try {
     const foodsJson = await AsyncStorage.getItem(FOODS_KEY);
-    return foodsJson ? JSON.parse(foodsJson) : [];
+    const allFoods: Food[] = foodsJson ? JSON.parse(foodsJson) : [];
+    const total = allFoods.length;
+
+    if (limit === undefined) {
+      return { items: allFoods, total };
+    }
+    
+    const paginatedFoods = allFoods.slice(offset, offset + limit);
+    return { items: paginatedFoods, total };
   } catch (error) {
     console.error('Error loading foods:', error);
-    return []; // Return an empty array on error
+    return { items: [], total: 0 }; // Return an empty array and 0 total on error
   }
 };
 
