@@ -1,5 +1,4 @@
 // src/screens/FoodListScreen.tsx
-// ---------- src/screens/FoodListScreen.tsx ----------
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager } from "react-native";
 import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
@@ -14,15 +13,18 @@ import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native"; 
 import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'; // For Tab Navigation
+import { MainTabParamList } from "../navigation/AppNavigator"; // Import MainTabParamList
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-type RootStackParamList = {
-  [key: string]: { openAddFoodModal?: boolean } | undefined;
-};
-
 const PAGE_SIZE = 20;
+
+// Define navigation prop type for this screen within the MainTabParamList
+type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
+// Define route prop type for this screen
+type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
+
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
@@ -30,15 +32,15 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     
     const [offset, setOffset] = useState(0);
     const [totalFoods, setTotalFoods] = useState(0);
-    const [isLoading, setIsLoading] = useState(true); // For initial load
-    const [isLoadingMore, setIsLoadingMore] = useState(false); // For subsequent loads
+    const [isLoading, setIsLoading] = useState(true); 
+    const [isLoadingMore, setIsLoadingMore] = useState(false); 
 
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isSaving, setIsSaving] = useState(false); // For CUD operations in modal
+    const [isSaving, setIsSaving] = useState(false); 
 
     const { theme } = useTheme();
     const styles = useStyles();
@@ -46,8 +48,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const foodIconsRef = useRef(foodIcons);
     useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
-    const route = useRoute<RouteProp<RootStackParamList, string>>();
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const route = useRoute<FoodListScreenRouteProp>();
+    const navigation = useNavigation<FoodListScreenNavigationProp>();
 
     const hasMoreData = useMemo(() => foods.length < totalFoods, [foods.length, totalFoods]);
 
@@ -57,8 +59,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         
         foodsToFetch.forEach(food => {
             if (foodIconsRef.current[food.name] === undefined) {
-                // Immediately mark as loading if not already initiated
-                if (foodIcons[food.name] === undefined) { // Check against current state to avoid race conditions
+                if (foodIcons[food.name] === undefined) { 
                      setFoodIcons(prev => ({...prev, [food.name]: undefined}));
                 }
                 getFoodIconUrl(food.name)
@@ -66,7 +67,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     .catch(err => setFoodIcons(prev => ({...prev, [food.name]: null})));
             }
         });
-    }, [foodIcons]); // foodIcons dependency is important here for the conditional setFoodIcons
+    }, [foodIcons]); 
 
     const fetchFoodsData = useCallback(async (isRefresh: boolean = false) => {
         if (!isRefresh && (isLoadingMore || !hasMoreData)) return;
@@ -74,7 +75,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         const currentOffset = isRefresh ? 0 : offset;
         if (isRefresh) {
             setIsLoading(true);
-            setFoodIcons({}); // Clear icons on full refresh
+            setFoodIcons({}); 
         } else {
             setIsLoadingMore(true);
         }
@@ -91,7 +92,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             triggerIconPrefetch(newItems);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            if (isRefresh) setFoods([]); // Clear foods on error during refresh
+            if (isRefresh) setFoods([]); 
         } finally {
             if (isRefresh) setIsLoading(false);
             else setIsLoadingMore(false);
@@ -100,7 +101,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     useFocusEffect(
       useCallback(() => {
-        fetchFoodsData(true); // Initial load / refresh on focus
+        fetchFoodsData(true); 
     
         const params = route.params;
         if (params?.openAddFoodModal && !isOverlayVisible) {
@@ -113,6 +114,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
       }, [route.params, navigation, isOverlayVisible]) 
     );
+
+    const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
+        navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
+    }, [navigation]);
 
     const validateFood = (food: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
@@ -130,10 +135,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
         setErrors({}); setIsSaving(true);
         try {
-            await createFood(trimmedFood); // createFood modifies storage directly
+            await createFood(trimmedFood); 
             setIsOverlayVisible(false); 
-            onFoodChange?.(); // Signal change
-            fetchFoodsData(true); // Refresh list from start
+            onFoodChange?.(); 
+            fetchFoodsData(true); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: trimmedFood.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -147,10 +152,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
         setErrors({}); setIsSaving(true);
         try {
-            await updateFood(trimmedFood); // updateFood modifies storage directly
+            await updateFood(trimmedFood); 
             setIsOverlayVisible(false); 
-            onFoodChange?.(); // Signal change
-            fetchFoodsData(true); // Refresh list
+            onFoodChange?.(); 
+            fetchFoodsData(true); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: trimmedFood.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -159,43 +164,20 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const handleDeleteFood = async (foodId: string) => {
         const foodToDelete = foods.find((f) => f.id === foodId); if (!foodToDelete) return;
-        // Optimistically remove from UI for now, will be confirmed by refresh
-        // setFoods(foods.filter((f) => f.id !== foodId)); 
         try {
             await deleteFood(foodId); 
             onFoodChange?.();
             setFoodIcons(prev => { const newIcons = {...prev}; delete newIcons[foodToDelete.name]; return newIcons; });
-            fetchFoodsData(true); // Refresh list
-            // Toast for delete will be handled by FoodItem component for undo functionality
+            fetchFoodsData(true); 
         } catch (error) {
-            // fetchFoodsData(true); // Re-fetch to revert optimistic update if needed (though refresh above does it)
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
-        // Since deleteFood (and its CUD counterparts) now trigger a full refresh,
-        // "undo" effectively means re-adding the food if it was truly deleted from backend/storage.
-        // For local storage, it's more about ensuring the item is not in the "deleted" state.
-        // Given current setup, delete is permanent. The Toast in FoodItem is for UI feedback.
-        // If true undo (re-creating the item) is needed:
-        // await createFood(food); // This would create a new ID. Better to restore original if possible.
-        // For now, the refresh after delete ensures the list is accurate.
-        // This function can be simplified if the "undo" is primarily a UI gesture before a final sync.
-        // However, with `fetchFoodsData(true)` after delete, this specific undo becomes less meaningful
-        // for reversing the *actual* data deletion.
-        // Let's assume the Toast's undo in FoodItem is for immediate UI reversal before actual deletion logic.
-        // For a robust undo with backend/async storage, it would involve a "soft delete" then "undelete" flow.
-        // For current local storage, it's more complex. The refresh ensures list accuracy.
-        // The original `handleUndoDeleteFood` was:
-        // const restoredFoods = [...foods, food].sort((a, b) => a.name.localeCompare(b.name));
-        // setFoods(restoredFoods); Toast.hide(); onFoodChange?.();
-        // Toast.show({ type: 'success', text1: t('foodListScreen.foodRestored', { foodName: food.name }), position: 'bottom', visibilityTime: 2000 });
-        // This is problematic with pagination. We should re-fetch.
         Toast.hide();
-        fetchFoodsData(true); // Re-fetch to ensure state is correct, though this won't "undo" a permanent delete.
+        fetchFoodsData(true); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-
     }, [fetchFoodsData]);
 
 
@@ -239,11 +221,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     };
     
     const handleLoadMore = () => {
-        if (search.trim()) return; // Don't load more if searching (filters current list)
+        if (search.trim()) return; 
         fetchFoodsData(false);
     };
 
-    if (isLoading && foods.length === 0) { // Show full screen loader only on initial absolute empty load
+    if (isLoading && foods.length === 0) { 
         return ( <SafeAreaView style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('foodListScreen.loadingFoods')}</Text></SafeAreaView> );
     }
 
@@ -254,9 +236,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 ref={flatListRef} 
                 data={filteredFoods} 
                 keyExtractor={(item) => item.id} 
-                renderItem={({ item }) => ( <FoodItem food={item} onEdit={toggleOverlay} onDelete={handleDeleteFood} onUndoDelete={handleUndoDeleteFood} foodIconUrl={foodIcons[item.name]} /> )} 
+                renderItem={({ item }) => ( 
+                    <FoodItem 
+                        food={item} 
+                        onEdit={toggleOverlay} 
+                        onDelete={handleDeleteFood} 
+                        onUndoDelete={handleUndoDeleteFood} 
+                        onQuickAdd={handleQuickAdd} // Pass the new handler
+                        foodIconUrl={foodIcons[item.name]} 
+                    /> 
+                )} 
                 ListEmptyComponent={ 
-                    !isLoading ? ( // Don't show "empty" if initial load is happening
+                    !isLoading ? ( 
                         <View style={styles.emptyListContainer}>
                             <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
                             <Text style={styles.emptyListText}> 
@@ -271,7 +262,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled" 
-                extraData={{ foodIcons, isLoadingMore }} // Add isLoadingMore to extraData
+                extraData={{ foodIcons, isLoadingMore }} 
             />
             <FAB icon={<RNEIcon name="add" color={theme.colors.white} />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoading || isLoadingMore} />
             <AddFoodModal isVisible={isOverlayVisible} toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} newFood={newFood} editFood={editFood} errors={errors} handleInputChange={handleInputChange} handleCreateFood={handleCreateFood} handleUpdateFood={handleUpdateFood} validateFood={validateFood} setErrors={setErrors} />

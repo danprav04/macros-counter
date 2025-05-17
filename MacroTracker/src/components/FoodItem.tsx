@@ -1,7 +1,6 @@
 // src/components/FoodItem.tsx
-// src/components/FoodItem.tsx
 import React, { forwardRef, useState, useCallback, memo, useMemo } from "react";
-import { StyleSheet, View, Image, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
@@ -13,11 +12,12 @@ interface FoodItemProps {
   onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
   onUndoDelete: (food: Food) => void;
+  onQuickAdd: (food: Food) => void; // New prop for quick add
   foodIconUrl: string | null | undefined;
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onUndoDelete, foodIconUrl }, ref) => {
+  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, foodIconUrl }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const [iconLoadError, setIconLoadError] = useState(false);
@@ -35,7 +35,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
        Toast.show({
             type: 'info',
             text1: t('foodListScreen.foodDeleted', { foodName: food.name }),
-            text2: t('dailyEntryScreen.undo'), // Re-use "Tap here to undo"
+            text2: t('dailyEntryScreen.undo'), 
             position: 'bottom',
             visibilityTime: 4000,
             onPress: handleUndo,
@@ -45,10 +45,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
     const handleImageError = useCallback(() => {
         setIconLoadError(true);
-    }, []); // Removed dependencies food.name, foodIconUrl as they don't change per instance for this error
+    }, []); 
 
     React.useEffect(() => {
-        setIconLoadError(false); // Reset error state if iconUrl changes (e.g. food data updated)
+        setIconLoadError(false); 
     }, [foodIconUrl]);
 
     const renderIcon = () => {
@@ -90,6 +90,9 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
             {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
           </ListItem.Subtitle>
         </ListItem.Content>
+        <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.quickAddButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+            <RNEIcon name="add-circle-outline" type="ionicon" color={theme.colors.primary} size={26} />
+        </TouchableOpacity>
         <ListItem.Chevron color={theme.colors.grey3} />
       </ListItem.Swipeable>
     );
@@ -102,23 +105,28 @@ const useStyles = makeStyles((theme) => ({
     gradePill: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: theme.colors.white, // Assuming white text on colored background is desired
+        color: theme.colors.white, 
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 8,
         marginRight: 8,
-        minWidth: 20, // Ensure some width for single letter
+        minWidth: 20, 
         textAlign: 'center',
-        overflow: 'hidden', // For rounded corners on Android
+        overflow: 'hidden', 
     },
-    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', }, // flexShrink to allow pill to take space
+    title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', }, 
     subtitle: { color: theme.colors.secondary, fontSize: 13, marginTop: 2, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
-   foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
-   foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
-   iconPlaceholder: { backgroundColor: theme.colors.grey5, }
+    foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
+    foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
+    iconPlaceholder: { backgroundColor: theme.colors.grey5, },
+    quickAddButton: {
+        paddingHorizontal: 8, // Add some padding around the icon
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 }));
 
 export default FoodItem;
