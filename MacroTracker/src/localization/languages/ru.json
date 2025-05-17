@@ -162,6 +162,7 @@
     "grams": "Граммы",
     "autoAi": "Авто (ИИ)",
     "quickAddServing": "Быстрое добавление:",
+    "lastUsedServing": "Пред.: %{grams}г",
     "gramsPlaceholder": "Введите граммы (например, 150)",
     "gramsPlaceholderEdit": "Обновить граммы",
     "gramsError": "Введите действительное число",

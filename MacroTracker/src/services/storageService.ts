@@ -10,8 +10,10 @@ import { formatISO, parseISO } from 'date-fns';
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
-const RECENT_FOODS = 'recentFoods';
+const RECENT_FOODS_KEY = 'recentFoods';
+const LAST_USED_PORTIONS_KEY = 'lastUsedPortions'; // New key
 
+export type LastUsedPortions = { [foodId: string]: number }; // Type for last used portions
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -116,7 +118,16 @@ export const loadSettings = async (): Promise<Settings> => {
 
 export const clearAllData = async (): Promise<void> => {
   try {
+    // Keep clientID, clear everything else
+    const clientIdKey = '@MacroTracker:clientId';
+    const clientId = await AsyncStorage.getItem(clientIdKey);
+    
     await AsyncStorage.clear();
+    
+    if (clientId) {
+        await AsyncStorage.setItem(clientIdKey, clientId);
+    }
+    console.log('Application data cleared (excluding Client ID).');
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;
@@ -125,7 +136,7 @@ export const clearAllData = async (): Promise<void> => {
 
 export const saveRecentFoods = async (foods: Food[]) => {
     try {
-        await AsyncStorage.setItem(RECENT_FOODS, JSON.stringify(foods));
+        await AsyncStorage.setItem(RECENT_FOODS_KEY, JSON.stringify(foods));
     } catch (error) {
         console.error('Error saving recent foods:', error);
         throw error;
@@ -134,10 +145,29 @@ export const saveRecentFoods = async (foods: Food[]) => {
 
 export const loadRecentFoods = async (): Promise<Food[]> => {
     try {
-        const foods = await AsyncStorage.getItem(RECENT_FOODS);
-        return foods ? JSON.parse(foods) : [];
+        const foodsJson = await AsyncStorage.getItem(RECENT_FOODS_KEY);
+        return foodsJson ? JSON.parse(foodsJson) : [];
     } catch (error) {
         console.error('Error loading recent foods:', error);
         return [];
+    }
+};
+
+export const saveLastUsedPortions = async (portions: LastUsedPortions): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(LAST_USED_PORTIONS_KEY, JSON.stringify(portions));
+    } catch (error) {
+        console.error('Error saving last used portions:', error);
+        throw error;
+    }
+};
+
+export const loadLastUsedPortions = async (): Promise<LastUsedPortions> => {
+    try {
+        const portionsJson = await AsyncStorage.getItem(LAST_USED_PORTIONS_KEY);
+        return portionsJson ? JSON.parse(portionsJson) : {};
+    } catch (error) {
+        console.error('Error loading last used portions:', error);
+        return {};
     }
 };

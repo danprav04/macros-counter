@@ -162,6 +162,7 @@
     "grams": "Grams",
     "autoAi": "Auto (AI)",
     "quickAddServing": "Quick Add:",
+    "lastUsedServing": "Last: %{grams}g",
     "gramsPlaceholder": "Enter grams (e.g., 150)",
     "gramsPlaceholderEdit": "Update grams",
     "gramsError": "Enter a valid number",

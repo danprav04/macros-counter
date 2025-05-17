@@ -162,6 +162,7 @@
     "grams": "גרם",
     "autoAi": "אוטומטי (AI)",
     "quickAddServing": "הוספה מהירה:",
+    "lastUsedServing": "אחרון: %{grams}ג",
     "gramsPlaceholder": "הזן גרמים (למשל, 150)",
     "gramsPlaceholderEdit": "עדכן גרמים",
     "gramsError": "הזן מספר חוקי",
