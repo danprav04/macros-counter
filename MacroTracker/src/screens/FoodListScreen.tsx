@@ -15,8 +15,9 @@ import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
-// import * as Sharing from 'expo-sharing'; // No longer needed for this specific share
-import * as Linking from 'expo-linking';
+// import * as Linking from 'expo-linking'; // Not directly needed for generating backend URL
+import Constants from 'expo-constants';
+
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
@@ -24,6 +25,21 @@ const PAGE_SIZE = 20;
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
+
+// Helper to get the backend URL for sharing
+const getBackendShareBaseUrl = (): string => {
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (envUrl) {
+        return envUrl.replace(/\/api\/v1$/, '').replace(/\/$/, ''); // Remove /api/v1 and trailing slash
+    }
+    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL;
+    if (configUrl) {
+         return configUrl.replace(/\/api\/v1$/, '').replace(/\/$/, ''); // Remove /api/v1 and trailing slash
+    }
+    console.warn("BACKEND_URL for sharing not found, using placeholder. This will not work in production.");
+    return 'http://192.168.1.15:8000'; // Fallback, ensure this matches your local dev if testing
+};
+
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
@@ -136,21 +152,20 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
         try {
             const jsonString = JSON.stringify(foodDataPayload);
-            const base64Data = btoa(jsonString);
-            const shareUrl = Linking.createURL('open-add-food-modal', {
-                queryParams: { foodData: base64Data }
-            });
-            
-            console.log("Sharing URL:", shareUrl);
+            const base64Data = btoa(jsonString)
+                .replace(/\+/g, '-') // Convert '+' to '-' for URL safety
+                .replace(/\//g, '_'); // Convert '/' to '_' for URL safety
+            // Do NOT remove trailing '=' padding characters. Python's decoder handles them.
 
-            // Use React Native's Share API
+            const backendBaseUrl = getBackendShareBaseUrl();
+            const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
+            
+            console.log("Sharing Web URL:", shareUrl);
+
             await Share.share({
-                message: shareUrl, // The content you want to share
-                title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}), // Optional title for some platforms
+                message: shareUrl,
+                title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}),
             });
-            // Note: Share.share() doesn't throw an error if the user cancels,
-            // it resolves with an object indicating the action (e.g., { action: Share.sharedAction })
-            // or { action: Share.dismissedAction } on Android if dismissed.
 
         } catch (error) {
             console.error("Error sharing food:", error);
@@ -170,7 +185,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
             if (params?.foodData && typeof params.foodData === 'string') {
                 try {
-                    const decodedJson = atob(params.foodData);
+                    // Adjust Base64 decoding for URL-safe variant
+                    let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
+                    // Python's urlsafe_b64decode handles padding automatically if it was present during encoding.
+                    // If padding was stripped, it might error here if not a multiple of 4.
+                    // Standard atob expects standard Base64 padding.
+                    const decodedJson = atob(b64);
                     const sharedFood: SharedFoodData = JSON.parse(decodedJson);
                     
                     if (sharedFood && typeof sharedFood.name === 'string') {
