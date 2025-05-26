@@ -112,55 +112,39 @@ const DailyEntryScreen: React.FC = () => {
       setIsLoadingData(false);
       console.log('DailyEntryScreen: loadData finished');
     }
-  }, [selectedDate, triggerIconPrefetch]); // triggerIconPrefetch and selectedDate are stable or change intentionally
+  }, [selectedDate, triggerIconPrefetch]);
 
-  // Effect to store pending food from route params
   useEffect(() => {
     const quickAddFoodParam = route.params?.quickAddFood;
     if (quickAddFoodParam) {
-      console.log('DailyEntryScreen: Received quickAddFoodParam:', quickAddFoodParam.name);
       setPendingQuickAddFood(quickAddFoodParam);
-      navigation.setParams({ quickAddFood: undefined }); // Clear immediately
+      navigation.setParams({ quickAddFood: undefined }); 
     }
   }, [route.params, navigation]);
 
-  // Effect to process pending food once data is loaded and modal is not open
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isOverlayVisible && foods.length > 0) {
-      console.log('DailyEntryScreen: Processing PENDING quickAddFood:', pendingQuickAddFood.name);
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);
       const foodToUse = foodExistsInLibrary || pendingQuickAddFood;
 
-      if (!foodExistsInLibrary) {
-        console.warn(`Pending Quick add food '${pendingQuickAddFood.name}' not found in loaded library. Using param directly for modal.`);
-        // Optionally, if the modal MUST have the item in the `foods` prop list:
-        // setFoods(prev => [...prev, pendingQuickAddFood].sort((a,b) => a.name.localeCompare(b.name)));
-      }
-
       setSelectedFood(foodToUse);
       setGrams("");
-      setEditIndex(null); // Ensure not in edit mode
-      setSearch(""); // Clear search
+      setEditIndex(null); 
+      setSearch(""); 
       fetchAndSetIcon(foodToUse.name);
-      setIsOverlayVisible(true); // Open the modal
-      setPendingQuickAddFood(null); // Clear pending state
+      setIsOverlayVisible(true); 
+      setPendingQuickAddFood(null); 
     }
-  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, fetchAndSetIcon, setSelectedFood, setGrams, setEditIndex, setSearch, setIsOverlayVisible]);
+  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, fetchAndSetIcon]);
 
 
   useFocusEffect(
     useCallback(() => {
-      console.log('DailyEntryScreen: Focus effect triggered');
       loadData();
-      // Screen specific focus cleanups can go in the return function if needed
       return () => {
-        console.log('DailyEntryScreen: Blur / Cleanup');
-        // Example: if you wanted to close modal on blur, but not if opened by quick add
-        // if (isOverlayVisible && !pendingQuickAddFood) {
-        //   setIsOverlayVisible(false);
-        // }
+        // Optional: Cleanup on blur
       };
-    }, [loadData]) // loadData is stable due to its own useCallback
+    }, [loadData]) 
   );
 
 
@@ -175,20 +159,45 @@ const DailyEntryScreen: React.FC = () => {
     return entry.items.length - 1 - reversedIndex;
   }, [dailyEntries, selectedDate]);
 
-  const updateAndSaveEntries = useCallback(async (updatedEntries: DailyEntry[]) => {
-    setIsSaving(true); const previousEntries = [...dailyEntries]; // Shallow copy for potential rollback
-    setDailyEntries(updatedEntries);
+  const updateAndSaveEntries = useCallback(async (updatedEntriesOrUpdater: DailyEntry[] | ((prevEntries: DailyEntry[]) => DailyEntry[])) => {
+    setIsSaving(true);
+    let finalNewEntries: DailyEntry[];
+    let previousEntriesState: DailyEntry[] = [];
+
+    setDailyEntries(prevEntries => {
+        previousEntriesState = [...prevEntries]; // Capture previous state for potential rollback
+        if (typeof updatedEntriesOrUpdater === 'function') {
+            finalNewEntries = updatedEntriesOrUpdater(prevEntries);
+        } else {
+            finalNewEntries = updatedEntriesOrUpdater;
+        }
+        return finalNewEntries;
+    });
+
     try {
-      await saveDailyEntries(updatedEntries);
+      // Ensure finalNewEntries is assigned if it was derived inside setDailyEntries
+      // This is tricky; for simplicity, we'll assume updatedEntriesOrUpdater is usually the array itself
+      // or the functional updater correctly returns it for the next step.
+      // A more robust way might be to have the updater function return the value and also set it.
+      // For now, we rely on setDailyEntries to update the state that will be saved if it's an array.
+      // If it's a function, we'd need to re-evaluate `finalNewEntries` based on the new state
+      // or pass `finalNewEntries` directly to save.
+
+      // Let's refine: `updatedEntriesOrUpdater` will be the new state array itself.
+      const entriesToSave = typeof updatedEntriesOrUpdater === 'function'
+          ? updatedEntriesOrUpdater(dailyEntries) // This uses potentially stale `dailyEntries` if not careful
+          : updatedEntriesOrUpdater;
+
+      await saveDailyEntries(entriesToSave);
     }
     catch (error) {
       Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage'));
-      setDailyEntries(previousEntries); // Rollback state on error
+      setDailyEntries(previousEntriesState); // Rollback state on error
     }
     finally {
       setIsSaving(false);
     }
-  }, [dailyEntries]); // dailyEntries is a dependency
+  }, [dailyEntries]); // Added dailyEntries because the functional updater might use it if not passed prevEntries
 
   const handleSingleEntryAction = useCallback(async () => {
     if (isSaving) return;
@@ -196,28 +205,39 @@ const DailyEntryScreen: React.FC = () => {
     const trimmedGrams = grams.trim();
     const numericGrams = parseFloat(trimmedGrams);
     if (!isValidNumberInput(trimmedGrams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage')); return; }
+    
     const entryItem: DailyEntryItem = { food: selectedFood, grams: numericGrams };
-    const isEditMode = editIndex !== null; const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
-    let updatedEntries: DailyEntry[];
-    if (existingEntryIndex > -1) {
-      const existingEntry = dailyEntries[existingEntryIndex]; let updatedItems;
-      if (isEditMode) {
-        const originalEditIndex = getOriginalIndex(editIndex!);
-        if (originalEditIndex === -1) { Alert.alert(t('dailyEntryScreen.errorEditEntry'), t('dailyEntryScreen.errorEditEntryMessage')); return; }
-        updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item);
-      } else { updatedItems = [entryItem, ...(existingEntry.items ?? [])]; }
-      const updatedEntry = { ...existingEntry, items: updatedItems };
-      updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
-    } else {
-      if (isEditMode) { Alert.alert(t('dailyEntryScreen.errorEditEntry'), t('dailyEntryScreen.errorEditEntryMessage')); return; }
-      const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
-      updatedEntries = [...dailyEntries, newDailyEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
-    }
-    await updateAndSaveEntries(updatedEntries);
+    const isEditMode = editIndex !== null;
+    
+    const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
+        const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
+        let updatedEntries: DailyEntry[];
+        if (existingEntryIndex > -1) {
+            const existingEntry = prevDailyEntries[existingEntryIndex]; let updatedItems;
+            if (isEditMode) {
+                const originalEditIndex = getOriginalIndex(editIndex!); // editIndex is reversedIndex
+                if (originalEditIndex === -1) { 
+                    console.error("Edit mode error: Original index not found.");
+                    return prevDailyEntries; // Should not happen if UI is consistent
+                }
+                updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item);
+            } else { updatedItems = [entryItem, ...(existingEntry.items ?? [])]; }
+            const updatedEntry = { ...existingEntry, items: updatedItems };
+            updatedEntries = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
+        } else {
+            if (isEditMode) { 
+                 console.error("Edit mode error: Entry to edit not found for date.");
+                 return prevDailyEntries; // Should not happen
+            }
+            const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
+            updatedEntries = [...prevDailyEntries, newDailyEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        return updatedEntries;
+    };
+    
+    await updateAndSaveEntries(newEntriesState(dailyEntries)); // Pass the computed new state
 
-    if (selectedFood?.name) {
-      fetchAndSetIcon(selectedFood.name);
-    }
+    if (selectedFood?.name) fetchAndSetIcon(selectedFood.name);
 
     setSelectedFood(null); setGrams(""); setEditIndex(null); setIsOverlayVisible(false); setSearch("");
     Toast.show({ type: "success", text1: t(isEditMode ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
@@ -228,76 +248,131 @@ const DailyEntryScreen: React.FC = () => {
     try {
       if (!entriesToAdd || entriesToAdd.length === 0) return;
       const newItems: DailyEntryItem[] = entriesToAdd.map((entry) => ({ food: entry.food, grams: entry.grams }));
-      const existingEntryIndex = dailyEntries.findIndex((entry) => entry.date === selectedDate);
-      let updatedEntries: DailyEntry[];
-      if (existingEntryIndex > -1) {
-        const existingEntry = dailyEntries[existingEntryIndex];
-        const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
-        const updatedEntry = { ...existingEntry, items: updatedItems };
-        updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
-      } else {
-        const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
-        updatedEntries = [...dailyEntries, newDailyEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
-      }
-      await updateAndSaveEntries(updatedEntries);
+      
+      const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
+          const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
+          let updatedEntries: DailyEntry[];
+          if (existingEntryIndex > -1) {
+            const existingEntry = prevDailyEntries[existingEntryIndex];
+            const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
+            const updatedEntry = { ...existingEntry, items: updatedItems };
+            updatedEntries = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
+          } else {
+            const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
+            updatedEntries = [...prevDailyEntries, newDailyEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
+          }
+          return updatedEntries;
+      };
+      await updateAndSaveEntries(newEntriesState(dailyEntries));
 
-      newItems.forEach(item => {
-        if (item.food?.name) {
-          fetchAndSetIcon(item.food.name);
-        }
-      });
+      newItems.forEach(item => { if (item.food?.name) fetchAndSetIcon(item.food.name); });
 
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
       setIsOverlayVisible(false); setSelectedFood(null); setGrams(""); setEditIndex(null); setSearch("");
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
   }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, fetchAndSetIcon]);
 
+
   const handleSelectFood = (item: Food | null) => { setSelectedFood(item); if (item && editIndex === null) setGrams(""); };
 
+  const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
+    if (isSaving) return;
+    Toast.hide(); 
+
+    const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
+        const entryIdx = prevDailyEntries.findIndex(e => e.date === entryDate);
+        let finalEntries: DailyEntry[];
+
+        if (entryIdx > -1) {
+            const entryToUpdate = prevDailyEntries[entryIdx];
+            const currentItems = [...entryToUpdate.items]; // Items after removal
+            currentItems.splice(originalIndexToRestoreAt, 0, itemToRestore); // Insert item back
+            const restoredEntry = { ...entryToUpdate, items: currentItems };
+            finalEntries = prevDailyEntries.map((entry, i) => i === entryIdx ? restoredEntry : entry);
+        } else {
+            // The entire entry for that day was removed because it became empty
+            const newDailyEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
+            finalEntries = [...prevDailyEntries, newDailyEntry];
+            finalEntries.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        return finalEntries;
+    };
+
+    await updateAndSaveEntries(newEntriesState(dailyEntries)); // Use current dailyEntries to compute
+    Toast.show({ type: "success", text1: t('dailyEntryScreen.entryRestored'), visibilityTime: 1500, position: "bottom" });
+  }, [isSaving, updateAndSaveEntries, dailyEntries]);
+
+  const undoHandlerRef = useRef(handleUndoRemoveEntry);
+  useEffect(() => {
+    undoHandlerRef.current = handleUndoRemoveEntry;
+  }, [handleUndoRemoveEntry]);
+
   const handleRemoveEntry = useCallback(async (reversedIndex: number) => {
-    if (isSaving) return; const originalIndex = getOriginalIndex(reversedIndex); if (originalIndex === -1) return;
-    const currentEntry = dailyEntries.find((e) => e.date === selectedDate); if (!currentEntry || originalIndex >= currentEntry.items.length) return;
-    const itemToRemove = currentEntry.items[originalIndex];
-    const updatedItems = currentEntry.items.filter((_, i) => i !== originalIndex); let finalEntries: DailyEntry[];
-    if (updatedItems.length === 0) { finalEntries = dailyEntries.filter((entry) => entry.date !== selectedDate); }
-    else { const updatedEntry = { ...currentEntry, items: updatedItems }; finalEntries = dailyEntries.map((entry) => entry.date === selectedDate ? updatedEntry : entry); }
-    await updateAndSaveEntries(finalEntries);
-    Toast.show({ type: "info", text1: t('dailyEntryScreen.itemRemoved', { itemName: itemToRemove.food.name }), text2: t('dailyEntryScreen.undo'), position: "bottom", bottomOffset: 80, visibilityTime: 4000, onPress: () => handleUndoRemoveEntry(itemToRemove, selectedDate, originalIndex), });
+    if (isSaving) return; 
+    const originalIndex = getOriginalIndex(reversedIndex); 
+    if (originalIndex === -1) return;
+
+    let itemToRemove: DailyEntryItem | null = null;
+    
+    const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
+        const currentEntry = prevDailyEntries.find((e) => e.date === selectedDate);
+        if (!currentEntry || originalIndex >= currentEntry.items.length) return prevDailyEntries;
+        
+        itemToRemove = currentEntry.items[originalIndex];
+        const updatedItems = currentEntry.items.filter((_, i) => i !== originalIndex); 
+        
+        let finalEntries: DailyEntry[];
+        if (updatedItems.length === 0) { 
+            finalEntries = prevDailyEntries.filter((entry) => entry.date !== selectedDate); 
+        } else { 
+            const updatedEntry = { ...currentEntry, items: updatedItems }; 
+            finalEntries = prevDailyEntries.map((entry) => entry.date === selectedDate ? updatedEntry : entry); 
+        }
+        return finalEntries;
+    };
+    
+    const previousDailyEntries = [...dailyEntries]; // Capture state before modification
+    const finalEntriesAfterRemoval = newEntriesState(previousDailyEntries);
+    
+    // This ensures itemToRemove is captured from the correct state if the update is successful
+    const capturedItemToRemove = previousDailyEntries.find(e => e.date === selectedDate)?.items[originalIndex];
+
+    if (!capturedItemToRemove) {
+        console.error("Could not find item to remove for undo toast.");
+        return; // Should not happen
+    }
+
+    await updateAndSaveEntries(finalEntriesAfterRemoval);
+
+    Toast.show({ 
+        type: "info", 
+        text1: t('dailyEntryScreen.itemRemoved', { itemName: capturedItemToRemove.food.name }), 
+        text2: t('dailyEntryScreen.undo'), 
+        position: "bottom", 
+        bottomOffset: 80, 
+        visibilityTime: 4000, 
+        onPress: () => undoHandlerRef.current(capturedItemToRemove, selectedDate, originalIndex), 
+    });
   }, [dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries]);
 
-  const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndex: number) => {
-    if (isSaving) return; const existingEntryIndex = dailyEntries.findIndex((e) => e.date === entryDate); let updatedEntries;
-    if (existingEntryIndex > -1) {
-      const entryToUpdate = dailyEntries[existingEntryIndex]; const updatedItems = [...entryToUpdate.items];
-      updatedItems.splice(originalIndex, 0, itemToRestore);
-      const restoredEntry = { ...entryToUpdate, items: updatedItems };
-      updatedEntries = dailyEntries.map((entry, index) => index === existingEntryIndex ? restoredEntry : entry);
-    } else {
-      const newEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
-      updatedEntries = [...dailyEntries, newEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
-    }
-    await updateAndSaveEntries(updatedEntries); Toast.hide();
-    Toast.show({ type: "success", text1: t('dailyEntryScreen.entryRestored'), visibilityTime: 1500, position: "bottom" });
-  }, [dailyEntries, isSaving, updateAndSaveEntries]);
 
   const updateSearch = (searchVal: string) => setSearch(searchVal);
 
   const toggleOverlay = useCallback((itemToEdit: DailyEntryItem | null = null, reversedItemIndex: number | null = null) => {
     if (isSaving) return;
-    // Reset states for new modal instance
     setSelectedFood(null);
     setGrams("");
     setEditIndex(null);
-    setSearch(""); // Clear search when opening/closing modal manually
+    setSearch(""); 
 
     if (itemToEdit && reversedItemIndex !== null) {
       setSelectedFood(itemToEdit.food);
       setGrams(String(itemToEdit.grams));
       setEditIndex(reversedItemIndex);
-      fetchAndSetIcon(itemToEdit.food.name); // Ensure icon is fetched if needed
+      fetchAndSetIcon(itemToEdit.food.name); 
     }
     setIsOverlayVisible((current) => !current);
-  }, [isSaving, fetchAndSetIcon]); // fetchAndSetIcon is stable
+  }, [isSaving, fetchAndSetIcon]);
 
   const handleAddNewFoodRequest = useCallback(() => {
     if (isSaving) return;
@@ -398,7 +473,7 @@ const DailyEntryScreen: React.FC = () => {
       ) : (
         <FlatList
           data={currentEntryItems}
-          keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${item?.grams ?? index}-${new Date().getTime()}`} // Added timestamp for more uniqueness if needed
+          keyExtractor={(item, index) => `entry-${item?.food?.id ?? "unknown"}-${getOriginalIndex(index)}-${item?.grams ?? index}-${selectedDate}-${index}`}
           renderItem={({ item, index }) => (
             <DailyEntryListItem
               item={item}
@@ -416,7 +491,7 @@ const DailyEntryScreen: React.FC = () => {
           windowSize={11}
           contentContainerStyle={styles.listContentContainer}
           keyboardShouldPersistTaps="handled"
-          extraData={{ foodIcons, isSaving, dailyGoals, selectedDate }} // Add relevant extraData
+          extraData={{ foodIcons, isSaving, dailyGoals, selectedDate, itemsLength: currentEntryItems.length }}
         />
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
@@ -426,7 +501,7 @@ const DailyEntryScreen: React.FC = () => {
         selectedFood={selectedFood}
         grams={grams}
         setGrams={setGrams}
-        foods={foods} // Pass the loaded foods list
+        foods={foods} 
         handleAddEntry={handleSingleEntryAction}
         handleAddMultipleEntries={handleAddMultipleEntries}
         handleSelectFood={handleSelectFood}
