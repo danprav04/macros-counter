@@ -10,7 +10,6 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Dimensions,
   StyleSheet,
   Alert,
@@ -54,15 +53,10 @@ import AmountInputSection from './AmountInputSection';
 interface AddEntryModalProps {
   isVisible: boolean;
   toggleOverlay: () => void;
-  selectedFood: Food | null; // This prop is now managed internally by AddEntryModal
-  grams: string; // This prop is now managed internally
-  setGrams: (grams: string) => void; // This prop is now managed internally
-  handleAddEntry: () => void; // This implies the parent screen handles the final add with selectedFood and grams
+  // selectedFood, grams, setGrams, updateSearch, search, handleSelectFood are now internal
+  handleAddEntry: () => void; 
   handleAddMultipleEntries: (entries: { food: Food; grams: number }[]) => void;
-  foods: Food[]; // Full food library
-  handleSelectFood: (item: Food | null) => void; // Parent's handler for when a food is selected
-  updateSearch: (search: string) => void; // Parent's handler for search term changes
-  search: string; // Current search term from parent
+  foods: Food[]; 
   isEditMode: boolean;
   initialGrams?: string;
   onAddNewFoodRequest: () => void;
@@ -76,12 +70,12 @@ const MAX_RECENT_FOODS = 5;
 type UnitMode = "grams" | "auto";
 type ModalMode = "normal" | "quickAddSelect";
 
-const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' | 'setGrams' | 'updateSearch' | 'search' | 'handleSelectFood'>> = ({
+const AddEntryModal: React.FC<AddEntryModalProps> = ({
   isVisible,
   toggleOverlay,
-  handleAddEntry: parentHandleAddEntry, // Renamed to avoid conflict with internal state/handlers
+  handleAddEntry: parentHandleAddEntry, 
   handleAddMultipleEntries: parentHandleAddMultipleEntries,
-  foods, // Full food library from parent
+  foods, 
   isEditMode,
   initialGrams,
   onAddNewFoodRequest,
@@ -91,7 +85,6 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
   const { theme } = useTheme();
   const styles = useStyles();
 
-  // Internal state for selected food, grams, search
   const [internalSelectedFood, setInternalSelectedFood] = useState<Food | null>(null);
   const [internalGrams, setInternalGrams] = useState("");
   const [internalSearch, setInternalSearch] = useState("");
@@ -152,13 +145,10 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
         setAutoInput("");
         setIsAiLoading(false);
         setQuickAddLoading(false);
-        // setFoodIcons({}); // Icons can persist for performance
-        // currentlyFetchingIcons.current.clear();
         setSelectedMultipleFoods(new Map());
       }, 300);
       return () => clearTimeout(timer);
     } else {
-        // When modal becomes visible
         if (isEditMode && internalSelectedFood && initialGrams !== undefined) {
             setInternalGrams(initialGrams);
             setUnitMode("grams");
@@ -181,14 +171,13 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
   const handleRequestIcon = useCallback((foodName: string) => {
     if (!foodName || foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
     currentlyFetchingIcons.current.add(foodName);
-    setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Mark as loading
+    setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); 
     getFoodIconUrl(foodName)
       .then(iconUrl => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl })))
-      .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) // Mark as failed
+      .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) 
       .finally(() => currentlyFetchingIcons.current.delete(foodName));
-  }, [foodIcons]); // foodIcons dependency is important here
+  }, [foodIcons]); 
 
-  // Icon prefetching for visible items in FoodSelectionList or QuickAddList
   useEffect(() => {
     if (!isVisible) return;
     let itemsToCheck: (Food | EstimatedFoodItem)[] = [];
@@ -196,9 +185,8 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
         const currentDisplayItems: Food[] = [];
         if (!internalSearch) {
             currentDisplayItems.push(...recentFoods);
-            // Add other non-recent foods if they are shown without search
             const recentIds = new Set(recentFoods.map(f => f.id));
-            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10)); // Limit for performance
+            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10));
         } else {
             currentDisplayItems.push(...foods.filter(f => f.name.toLowerCase().includes(internalSearch.toLowerCase())).slice(0,10));
         }
@@ -222,11 +210,11 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
     setRecentFoods((prevRecent) => {
-      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent; // Already first
+      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent; 
       const updated = prevRecent.filter((rf) => rf.id !== food.id);
       updated.unshift(food);
       const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch(() => {}); // Log error if needed
+      saveRecentFoods(trimmed).catch(() => {}); 
       return trimmed;
     });
   }, []);
@@ -270,14 +258,14 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
     if (!isValidNumberInput(internalGrams) || numericGrams <= 0) { Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage')); return; }
     if (isActionDisabled) return;
    
-    parentHandleAddEntry(); // Call parent's handler
+    parentHandleAddEntry(); 
 
     if (!isEditMode) {
         addToRecentFoods(internalSelectedFood);
         const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGrams };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
-    } else if (isEditMode && internalSelectedFood.id) { // Also update last used for edits
+    } else if (isEditMode && internalSelectedFood.id) { 
         const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGrams };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
@@ -303,7 +291,7 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
     const entriesToAdd: { food: Food; grams: number }[] = Array.from(selectedMultipleFoods.values());
     if (entriesToAdd.length === 0) return;
 
-    parentHandleAddMultipleEntries(entriesToAdd); // Call parent's handler
+    parentHandleAddMultipleEntries(entriesToAdd); 
 
     const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
     entriesToAdd.forEach(entry => {
@@ -414,7 +402,7 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
       });
 
       if (entriesToAdd.length > 0) {
-        parentHandleAddMultipleEntries(entriesToAdd); // Call parent's handler
+        parentHandleAddMultipleEntries(entriesToAdd); 
         setLastUsedPortions(newPortionsToSave);
         saveLastUsedPortions(newPortionsToSave).catch(() => {});
       } else { Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage')); }
@@ -509,7 +497,8 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
           />
 
           {modalMode === "normal" && (
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.normalModeScrollContent}>
+            // Removed ScrollView from here
+            <View style={styles.normalModeContentContainer}> 
               <FoodSelectionList
                 search={internalSearch}
                 updateSearch={setInternalSearch}
@@ -546,7 +535,7 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
                   foodGradeResult={foodGradeResult}
                 />
               )}
-            </ScrollView>
+            </View>
           )}
 
           {modalMode === "quickAddSelect" && (
@@ -569,7 +558,12 @@ const AddEntryModal: React.FC<Omit<AddEntryModalProps, 'selectedFood' | 'grams' 
                 foods={foods}
             />
           )}
-           <View style={{ height: 40 }} /> {/* Bottom spacer */}
+           {/* This View acts as a spacer, ensuring content doesn't get cut off by the modal's edge,
+               especially when the keyboard is involved or content is short.
+               It's not a ScrollView, so it won't cause nesting issues.
+               The KeyboardAvoidingView should push this (and thus the content above it) up.
+            */}
+           <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -580,11 +574,12 @@ const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: Dimensions.get("window").height * 0.85, },
     overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1, },
     keyboardAvoidingView: { width: "100%", height: "100%" },
-    normalModeScrollContent: {
-        paddingBottom: 30, // Space for content if it scrolls
+    normalModeContentContainer: { // Replaces normalModeScrollContent
+        flex: 1, // Allows content to take up space, important if FoodSelectionList is also flex:1
+        justifyContent: 'flex-start', // Align content to the top
     },
     quickAddListStyle: {
-        flex: 1, // Ensure QuickAddList takes available space
+        flex: 1, 
     },
 }));
 
