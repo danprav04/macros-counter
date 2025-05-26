@@ -6,13 +6,13 @@ import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
-import { isValidNumberInput } from "../utils/validationUtils";
+import { isValidNumberInput } from "../utils/validationUtils"; // Keep this import
 import DailyProgress from "../components/DailyProgress";
 import { Text, FAB, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AddEntryModal from "../components/AddEntryModal/AddEntryModal"; // Updated import path
+import AddEntryModal from "../components/AddEntryModal/AddEntryModal";
 import "react-native-get-random-values";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -33,18 +33,14 @@ const DailyEntryScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [foods, setFoods] = useState<Food[]>([]);
   
-  // State for AddEntryModal (passed down or managed by AddEntryModal itself)
-  const [addEntryModalSelectedFood, setAddEntryModalSelectedFood] = useState<Food | null>(null);
-  const [addEntryModalGrams, setAddEntryModalGrams] = useState("");
-  const [addEntryModalSearch, setAddEntryModalSearch] = useState("");
-
-
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
   
   const [editIndex, setEditIndex] = useState<number | null>(null); // This is reversedIndex for editing
   const [initialGramsForEdit, setInitialGramsForEdit] = useState<string | undefined>(undefined);
+  const [foodForEditModal, setFoodForEditModal] = useState<Food | null>(null);
+
 
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined; }>({});
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -127,18 +123,21 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [route.params, navigation]);
 
+  // Effect to open modal when pendingQuickAddFood is set
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isOverlayVisible && foods.length > 0) {
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);
       const foodToUse = foodExistsInLibrary || pendingQuickAddFood;
-
-      setAddEntryModalSelectedFood(foodToUse);
-      setAddEntryModalGrams(""); 
-      setEditIndex(null); 
-      setAddEntryModalSearch(""); 
+  
+      // For pendingQuickAddFood, we are essentially opening the modal for a "new" entry,
+      // but pre-filling the food.
+      setFoodForEditModal(foodToUse); // Use this to pass to AddEntryModal
+      setInitialGramsForEdit("");     // New entry, so grams are empty
+      setEditIndex(null);             // Not editing an existing list item
+  
       fetchAndSetIcon(foodToUse.name);
-      setIsOverlayVisible(true); 
-      setPendingQuickAddFood(null); 
+      setIsOverlayVisible(true);      // Open the modal
+      setPendingQuickAddFood(null);   // Clear pending food
     }
   }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, fetchAndSetIcon]);
 
@@ -191,25 +190,26 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [dailyEntries]);
 
+  // This function is now called by AddEntryModal with the food and grams
   const handleSingleEntryActionFinal = useCallback(async (foodToAdd: Food, gramsToAdd: number) => {
     if (isSaving) return;
     const entryItem: DailyEntryItem = { food: foodToAdd, grams: gramsToAdd };
-    const isEditing = editIndex !== null;
+    const isEditingThisAction = editIndex !== null; // Use a local const for clarity
     
     const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
         const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
         let updatedEntries: DailyEntry[];
         if (existingEntryIndex > -1) {
             const existingEntry = prevDailyEntries[existingEntryIndex]; let updatedItems;
-            if (isEditing) {
+            if (isEditingThisAction) { // Check if it was an edit operation
                 const originalEditIndex = getOriginalIndex(editIndex!);
-                if (originalEditIndex === -1) { return prevDailyEntries; }
+                if (originalEditIndex === -1) { console.error("Edit error: original index not found."); return prevDailyEntries; }
                 updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item);
             } else { updatedItems = [entryItem, ...(existingEntry.items ?? [])]; }
             const updatedEntry = { ...existingEntry, items: updatedItems };
             updatedEntries = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
         } else {
-            if (isEditing) { return prevDailyEntries; }
+            if (isEditingThisAction) { console.error("Edit error: entry to edit not found."); return prevDailyEntries; }
             const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
             updatedEntries = [...prevDailyEntries, newDailyEntry]; updatedEntries.sort((a, b) => a.date.localeCompare(b.date));
         }
@@ -218,12 +218,13 @@ const DailyEntryScreen: React.FC = () => {
     await updateAndSaveEntries(newEntriesState(dailyEntries));
 
     if (foodToAdd?.name) fetchAndSetIcon(foodToAdd.name);
+    
+    setIsOverlayVisible(false); // Close modal
+    setEditIndex(null); // Reset edit state
+    setInitialGramsForEdit(undefined);
+    setFoodForEditModal(null);
 
-    // Reset modal related state
-    setAddEntryModalSelectedFood(null); setAddEntryModalGrams(""); setEditIndex(null);
-    setInitialGramsForEdit(undefined); setIsOverlayVisible(false); setAddEntryModalSearch("");
-
-    Toast.show({ type: "success", text1: t(isEditing ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
+    Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
   }, [ isSaving, editIndex, dailyEntries, selectedDate, getOriginalIndex, updateAndSaveEntries, fetchAndSetIcon ]);
 
 
@@ -254,7 +255,9 @@ const DailyEntryScreen: React.FC = () => {
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
       
       setIsOverlayVisible(false); 
-      setAddEntryModalSelectedFood(null); setAddEntryModalGrams(""); setEditIndex(null); setInitialGramsForEdit(undefined); setAddEntryModalSearch("");
+      setEditIndex(null);
+      setInitialGramsForEdit(undefined);
+      setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
   }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, fetchAndSetIcon]);
 
@@ -313,30 +316,24 @@ const DailyEntryScreen: React.FC = () => {
     if (isSaving) return;
     
     if (itemToEdit && reversedItemIndex !== null) {
-      setAddEntryModalSelectedFood(itemToEdit.food);
-      setAddEntryModalGrams(String(itemToEdit.grams));
-      setInitialGramsForEdit(String(itemToEdit.grams)); // For AddEntryModal's internal state
+      setFoodForEditModal(itemToEdit.food); 
+      setInitialGramsForEdit(String(itemToEdit.grams));
       setEditIndex(reversedItemIndex);
-      fetchAndSetIcon(itemToEdit.food.name); 
+      if (itemToEdit.food.name) fetchAndSetIcon(itemToEdit.food.name); 
     } else {
-      setAddEntryModalSelectedFood(null);
-      setAddEntryModalGrams("");
+      setFoodForEditModal(null);
       setInitialGramsForEdit(undefined);
       setEditIndex(null);
     }
-    setAddEntryModalSearch(""); 
     setIsOverlayVisible((current) => !current);
   }, [isSaving, fetchAndSetIcon]);
 
   const handleAddNewFoodRequestFromModal = useCallback(() => {
     if (isSaving) return;
-    setIsOverlayVisible(false); // Close AddEntryModal first
-    // Reset AddEntryModal related state for cleanliness when it reopens
-    setAddEntryModalSelectedFood(null);
-    setAddEntryModalGrams("");
-    setEditIndex(null);
+    setIsOverlayVisible(false); 
+    setFoodForEditModal(null);
     setInitialGramsForEdit(undefined);
-    setAddEntryModalSearch("");
+    setEditIndex(null);
     navigation.navigate('FoodListRoute', { openAddFoodModal: true });
   }, [isSaving, navigation]);
 
@@ -358,7 +355,7 @@ const DailyEntryScreen: React.FC = () => {
         committedFood = await createFood(foodData as Omit<Food, 'id'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       }
-      fetchAndSetIcon(committedFood.name);
+      if(committedFood.name) fetchAndSetIcon(committedFood.name);
       return committedFood;
     } catch (error) {
       console.error("Error committing food to library:", error);
@@ -449,27 +446,19 @@ const DailyEntryScreen: React.FC = () => {
       )}
       <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
       
-      {isOverlayVisible && ( // Conditionally render to ensure state is fresh if selectedFood/grams passed directly
+      {isOverlayVisible && (
           <AddEntryModal
             isVisible={isOverlayVisible}
             toggleOverlay={toggleOverlay}
-            // Pass handlers that operate on this screen's state for foodToAdd, gramsToAdd
-            handleAddEntry={() => {
-                if (addEntryModalSelectedFood && isValidNumberInput(addEntryModalGrams) && parseFloat(addEntryModalGrams) > 0) {
-                    handleSingleEntryActionFinal(addEntryModalSelectedFood, parseFloat(addEntryModalGrams));
-                } else {
-                     Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
-                }
-            }}
+            handleAddEntry={handleSingleEntryActionFinal}
             handleAddMultipleEntries={handleAddMultipleEntriesFinal}
-            foods={foods} // Full food library
+            foods={foods} 
             isEditMode={editIndex !== null}
             initialGrams={initialGramsForEdit}
+            initialSelectedFoodForEdit={foodForEditModal}
             onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
             onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
             dailyGoals={dailyGoals}
-            // The following props are now managed by AddEntryModal internally or not needed from here:
-            // selectedFood, grams, setGrams, updateSearch, search, handleSelectFood
           />
       )}
     </SafeAreaView>
