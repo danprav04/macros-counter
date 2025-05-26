@@ -16,12 +16,36 @@ export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
   return newFood;
 };
 
-export const getFoods = async (offset: number = 0, limit?: number): Promise<{ items: Food[], total: number }> => {
-  return loadFoods(offset, limit);
+export const getFoods = async (
+  offset: number = 0,
+  limit?: number,
+  searchTerm?: string // New parameter for searching
+): Promise<{ items: Food[], total: number }> => {
+  // Load all foods first. For a real backend, the backend would handle filtering and pagination.
+  const { items: allFoodsFromStorage } = await loadFoods(); // This loads all items
+
+  let filteredFoods = allFoodsFromStorage;
+
+  if (searchTerm && searchTerm.trim() !== "") {
+    const lowercasedSearchTerm = searchTerm.toLowerCase().trim();
+    filteredFoods = allFoodsFromStorage.filter(food =>
+      food.name.toLowerCase().includes(lowercasedSearchTerm)
+    );
+  }
+
+  // After filtering (if any), then apply pagination
+  const totalFiltered = filteredFoods.length;
+
+  if (limit === undefined) {
+    return { items: filteredFoods, total: totalFiltered };
+  }
+
+  const paginatedFoods = filteredFoods.slice(offset, offset + limit);
+  return { items: paginatedFoods, total: totalFiltered };
 };
 
 export const updateFood = async (updatedFood: Food): Promise<Food> => {
-  const { items: foods, total } = await loadFoods(); // Load all foods to find and update
+  const { items: foods } = await loadFoods(); // Load all foods to find and update
   const index = foods.findIndex((f) => f.id === updatedFood.id);
   if (index === -1) {
     throw new Error('Food not found'); // Throw an error if not found
