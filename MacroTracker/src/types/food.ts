@@ -6,5 +6,7 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
-  // category: string;  // REMOVED
 }
+
+// Data structure for sharing food items. ID is omitted.
+export type SharedFoodData = Omit<Food, 'id'>;
