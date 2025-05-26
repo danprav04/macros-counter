@@ -8,12 +8,12 @@ import uuid from 'react-native-uuid';
 import i18n, { t } from '../localization/i18n'; // Import t and i18n
 
 const getBackendUrl = (): string => {
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_DEVELOPMENT;
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
     if (envUrl) {
         console.log("Using Backend URL from EXPO_PUBLIC_BACKEND_URL:", envUrl);
         return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
     }
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_DEVELOPMENT;
+    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
     console.log(envUrl, configUrl);
     
     if (configUrl) {

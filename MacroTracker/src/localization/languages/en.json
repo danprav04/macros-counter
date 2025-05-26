@@ -146,7 +146,13 @@
     "errorDeleteMessage": "Failed to delete food from storage. Restored item.",
     "fixErrors": "Please fix errors",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "shareFoodTitle": "Share %{foodName}",
+    "shareErrorTitle": "Share Error",
+    "shareErrorMessage": "Could not share food item.",
+    "deepLinkErrorTitle": "Error Opening Link",
+    "deepLinkInvalidData": "The food data from the link is invalid.",
+    "deepLinkParseError": "Could not read food data from the link."
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",

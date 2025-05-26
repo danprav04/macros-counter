@@ -11,12 +11,12 @@ import SettingsScreen from '../screens/SettingsScreen';
 import QuestionnaireScreen from '../screens/QuestionnaireScreen'; // Import new screen
 import { LanguageCode, Settings } from '../types/settings';
 import i18n, { t } from '../localization/i18n';
-import { Food } from '../types/food'; // Import Food type
+import { Food, SharedFoodData } from '../types/food'; // Import Food and SharedFoodData types
 
 // Define ParamList for the Tab Navigator
 export type MainTabParamList = {
   DailyEntryRoute: { quickAddFood?: Food }; // For DailyEntryScreen, can receive quickAddFood
-  FoodListRoute: { openAddFoodModal?: boolean };   // For FoodListScreen
+  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };   // For FoodListScreen, can receive foodData string from deep link
   SettingsStackRoute: undefined;             // For the Settings Stack
 };
 

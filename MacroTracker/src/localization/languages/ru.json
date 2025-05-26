@@ -146,7 +146,13 @@
     "errorDeleteMessage": "Не удалось удалить продукт из хранилища. Элемент восстановлен.",
     "fixErrors": "Пожалуйста, исправьте ошибки",
     "edit": "Изменить",
-    "delete": "Удалить"
+    "delete": "Удалить",
+    "shareFoodTitle": "Поделиться %{foodName}",
+    "shareErrorTitle": "Ошибка",
+    "shareErrorMessage": "Не удалось поделиться продуктом.",
+    "deepLinkErrorTitle": "Ошибка открытия ссылки",
+    "deepLinkInvalidData": "Данные о продукте из ссылки недействительны.",
+    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки."
   },
   "addEntryModal": {
     "titleAdd": "Добавить запись",

@@ -17,10 +17,12 @@ import {
   DevSettings // For dev reload
 } from "react-native";
 import * as Localization from 'expo-localization';
+import * as Linking from 'expo-linking'; // Import expo-linking
 import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
+  LinkingOptions, // Import LinkingOptions
 } from "@react-navigation/native";
 import { Colors } from "@rneui/base";
 import { Settings, LanguageCode } from "./src/types/settings";
@@ -28,6 +30,7 @@ import { LogBox, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { getClientId } from "./src/services/clientIDService";
 import i18n, { setLocale, t } from './src/localization/i18n'; // Import i18n setup
+import { MainTabParamList } from "./src/navigation/AppNavigator"; // For linking config
 
 LogBox.ignoreLogs(["Function components cannot be given refs"]);
 
@@ -81,6 +84,24 @@ const darkTheme: MyTheme = {
     grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e",
   },
 };
+
+// Linking configuration
+const linking: LinkingOptions<MainTabParamList> = { // Explicitly type the linking object
+  prefixes: [Linking.createURL('/')], // Handles macrosvisionai://
+  config: {
+    screens: {
+      // Define how paths map to your MainTabParamList screens
+      FoodListRoute: {
+        path: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+        // foodData query param will be passed to FoodListScreen route.params
+      },
+      // Add other deep linkable routes here if needed
+      // Example:
+      // DailyEntryRoute: 'daily/:date',
+    } // REMOVED "satisfies MainTabParamList" from here
+  },
+};
+
 
 const App = () => {
   const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">(
@@ -251,6 +272,8 @@ const App = () => {
               ? navigationTheme.dark
               : navigationTheme.light
           }
+          linking={linking}
+          fallback={<Text style={{color: currentTheme.colors.text, textAlign: 'center', marginTop: 50}}>{t('app.initializing')}</Text>} // Fallback for deep linking
         >
           <AppNavigator onThemeChange={handleThemeChange} onLocaleChange={handleLocaleChange} />
         </NavigationContainer>

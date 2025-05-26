@@ -146,7 +146,13 @@
     "errorDeleteMessage": "מחיקת המאכל מהאחסון נכשלה. הפריט שוחזר.",
     "fixErrors": "אנא תקן שגיאות",
     "edit": "ערוך",
-    "delete": "מחק"
+    "delete": "מחק",
+    "shareFoodTitle": "שתף את %{foodName}",
+    "shareErrorTitle": "שגיאת שיתוף",
+    "shareErrorMessage": "לא ניתן היה לשתף את פריט המזון.",
+    "deepLinkErrorTitle": "שגיאה בפתיחת הקישור",
+    "deepLinkInvalidData": "נתוני המזון מהקישור אינם חוקיים.",
+    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור."
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",

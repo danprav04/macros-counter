@@ -1,8 +1,8 @@
 // src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager } from "react-native";
+import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share } from "react-native"; // Import Share from react-native
 import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
-import { Food } from "../types/food";
+import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
 import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
@@ -15,6 +15,9 @@ import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
+// import * as Linking from 'expo-linking'; // Not directly needed for generating backend URL
+import Constants from 'expo-constants';
+
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
@@ -22,6 +25,21 @@ const PAGE_SIZE = 20;
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
+
+// Helper to get the backend URL for sharing
+const getBackendShareBaseUrl = (): string => {
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (envUrl) {
+        return envUrl.replace(/\/api\/v1$/, '').replace(/\/$/, ''); // Remove /api/v1 and trailing slash
+    }
+    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL;
+    if (configUrl) {
+         return configUrl.replace(/\/api\/v1$/, '').replace(/\/$/, ''); // Remove /api/v1 and trailing slash
+    }
+    console.warn("BACKEND_URL for sharing not found, using placeholder. This will not work in production.");
+    return 'http://192.168.1.15:8000'; // Fallback, ensure this matches your local dev if testing
+};
+
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
@@ -70,22 +88,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         currentSearchTerm?: string
     ) => {
         const termToUse = (currentSearchTerm !== undefined ? currentSearchTerm : search).trim();
-        // isActualLoadOperation is true if explicitly requested OR if the search term for this fetch
-        // is different from the current search state (implying a new search initiation)
         const isActualLoadOperation = isLoadOperationRequest || (currentSearchTerm !== undefined && termToUse !== search.trim());
 
         if (!isActualLoadOperation && (isLoadingMore || !hasMoreData)) {
-            // console.log(`[FoodListScreen] fetchFoodsData: Bailing. isLoadingMore: ${isLoadingMore}, hasMoreData: ${hasMoreData}`);
             return;
         }
 
         const currentOffsetToUse = isActualLoadOperation ? 0 : offset;
-        // console.log(`[FoodListScreen] fetchFoodsData: Term: "${termToUse}", Offset: ${currentOffsetToUse}, IsLoadOp: ${isActualLoadOperation}, IsLoadOpReq: ${isLoadOperationRequest}`);
         
         if (isActualLoadOperation) {
             setIsLoading(true);
-            // Only scroll to top if a new search term *actually* initiated this reset.
-            // Avoids scrolling if it's a focus-refresh of the same search term.
             if (flatListRef.current && currentSearchTerm !== undefined && termToUse !== search.trim()) {
                 flatListRef.current.scrollToOffset({ animated: false, offset: 0 });
             }
@@ -95,7 +107,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
         try {
             const { items: newItems, total } = await getFoods(currentOffsetToUse, PAGE_SIZE, termToUse);
-            // console.log(`[FoodListScreen] fetchFoodsData: Received ${newItems.length} items, Total: ${total} for term "${termToUse}"`);
             
             if (isActualLoadOperation) {
                 setFoods(newItems);
@@ -118,7 +129,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [search, offset, hasMoreData, isLoadingMore, triggerIconPrefetch, PAGE_SIZE, t]);
 
-    // Moved toggleOverlay definition before useFocusEffect
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
         if (foodToEdit) { 
@@ -130,26 +140,83 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
         setErrors({}); 
         setIsOverlayVisible(prev => !prev);
-    }, [isSaving]); // isSaving is the only dependency that could change its behavior
+    }, [isSaving]);
+
+    const handleShareFood = useCallback(async (foodToShare: Food) => {
+        const foodDataPayload: SharedFoodData = {
+            name: foodToShare.name,
+            calories: foodToShare.calories,
+            protein: foodToShare.protein,
+            carbs: foodToShare.carbs,
+            fat: foodToShare.fat,
+        };
+        try {
+            const jsonString = JSON.stringify(foodDataPayload);
+            const base64Data = btoa(jsonString)
+                .replace(/\+/g, '-') // Convert '+' to '-' for URL safety
+                .replace(/\//g, '_'); // Convert '/' to '_' for URL safety
+            // Do NOT remove trailing '=' padding characters. Python's decoder handles them.
+
+            const backendBaseUrl = getBackendShareBaseUrl();
+            const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
+            
+            console.log("Sharing Web URL:", shareUrl);
+
+            await Share.share({
+                message: shareUrl,
+                title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}),
+            });
+
+        } catch (error) {
+            console.error("Error sharing food:", error);
+            Alert.alert(t('foodListScreen.shareErrorTitle'), t('foodListScreen.shareErrorMessage'));
+        }
+    }, [t]);
 
     useFocusEffect(
         useCallback(() => {
-            // console.log(`[FoodListScreen] Focus effect. Current search state: "${search}". Calling fetchFoodsData with reset.`);
-            fetchFoodsData(true, search.trim()); // Always fetch page 1 of current search on focus
+            fetchFoodsData(true, search.trim());
     
             const params = route.params;
             if (params?.openAddFoodModal && !isOverlayVisible) {
                 toggleOverlay(); 
                 navigation.setParams({ openAddFoodModal: undefined });
             }
-            return () => {
-                // console.log('[FoodListScreen] Blur effect/cleanup. Search state:', search);
-            };
-            // Dependencies for re-running the focus effect:
-            // - search: If the search term changes, we need to re-evaluate.
-            // - route.params, navigation: For handling navigation-triggered actions.
-            // - isOverlayVisible, toggleOverlay: For modal interaction logic within the effect.
-        }, [search, route.params, navigation, isOverlayVisible, toggleOverlay]) 
+
+            if (params?.foodData && typeof params.foodData === 'string') {
+                try {
+                    // Adjust Base64 decoding for URL-safe variant
+                    let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
+                    // Python's urlsafe_b64decode handles padding automatically if it was present during encoding.
+                    // If padding was stripped, it might error here if not a multiple of 4.
+                    // Standard atob expects standard Base64 padding.
+                    const decodedJson = atob(b64);
+                    const sharedFood: SharedFoodData = JSON.parse(decodedJson);
+                    
+                    if (sharedFood && typeof sharedFood.name === 'string') {
+                        setNewFood({
+                            name: sharedFood.name,
+                            calories: sharedFood.calories,
+                            protein: sharedFood.protein,
+                            carbs: sharedFood.carbs,
+                            fat: sharedFood.fat,
+                        });
+                        setEditFood(null);
+                        setIsOverlayVisible(true);
+                        navigation.setParams({ foodData: undefined });
+                    } else {
+                        console.warn("Parsed shared food data is invalid:", sharedFood);
+                         Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
+                    }
+                } catch (e) {
+                    console.error("Error parsing shared food data from deep link:", e);
+                    Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
+                    navigation.setParams({ foodData: undefined });
+                }
+            }
+
+            return () => {};
+        }, [search, route.params, navigation, isOverlayVisible, toggleOverlay, fetchFoodsData, t]) 
     );
     
     const updateSearch = useCallback((text: string) => {
@@ -158,29 +225,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setSearch(text); 
 
         if (newTrimmedText !== oldTrimmedText) {
-            // console.log(`[FoodListScreen] updateSearch: Term changed from "${oldTrimmedText}" to "${newTrimmedText}". Fetching with reset.`);
             fetchFoodsData(true, newTrimmedText);
         } else if (text === "" && oldTrimmedText !== "") {
-            // Handles explicitly clearing a non-empty search field.
-            // console.log(`[FoodListScreen] updateSearch: Search cleared from "${oldTrimmedText}". Fetching all with reset.`);
              fetchFoodsData(true, "");
         }
-        // If newTrimmedText === oldTrimmedText (e.g., adding/removing spaces but trimmed is same), do nothing extra.
     }, [search, fetchFoodsData]);
 
     const handleClearSearch = useCallback(() => {
         const oldTrimmedText = search.trim();
         setSearch('');
         if (oldTrimmedText !== '') {
-            // console.log(`[FoodListScreen] handleClearSearch: Search cleared from "${oldTrimmedText}". Fetching all with reset.`);
             fetchFoodsData(true, '');
         }
     }, [search, fetchFoodsData]);
 
     const handleLoadMore = () => {
         if (!isLoading && !isLoadingMore && hasMoreData) {
-            // console.log("[FoodListScreen] handleLoadMore triggered.");
-            fetchFoodsData(false); // isLoadOperationRequest = false for pagination
+            fetchFoodsData(false);
         }
     };
 
@@ -305,6 +366,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onDelete={handleDeleteFood}
                         onUndoDelete={handleUndoDeleteFood}
                         onQuickAdd={handleQuickAdd}
+                        onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]}
                     />
                 )}

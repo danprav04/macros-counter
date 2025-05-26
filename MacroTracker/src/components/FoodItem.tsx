@@ -12,12 +12,13 @@ interface FoodItemProps {
   onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
   onUndoDelete: (food: Food) => void;
-  onQuickAdd: (food: Food) => void; // New prop for quick add
+  onQuickAdd: (food: Food) => void;
+  onShare: (food: Food) => void;
   foodIconUrl: string | null | undefined;
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, foodIconUrl }, ref) => {
+  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, onShare, foodIconUrl }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const [iconLoadError, setIconLoadError] = useState(false);
@@ -69,7 +70,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         leftContent={(reset) => (
           <Button title={t('foodListScreen.edit')} onPress={() => { onEdit(food); reset(); }} icon={{ name: "edit", color: theme.colors.white }} buttonStyle={styles.swipeButtonEdit} titleStyle={styles.swipeButtonTitle} />
         )}
-        rightContent={(reset) => (
+        rightContent={(reset) => ( // Share button removed from here
           <Button title={t('foodListScreen.delete')} onPress={() => { handleDelete(); reset(); }} icon={{ name: "delete", color: theme.colors.white }} buttonStyle={styles.swipeButtonDelete} titleStyle={styles.swipeButtonTitle} />
         )}
         containerStyle={styles.listItemContainer}
@@ -90,7 +91,10 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
             {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
           </ListItem.Subtitle>
         </ListItem.Content>
-        <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.quickAddButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+        <TouchableOpacity onPress={() => onShare(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+            <RNEIcon name="share-variant-outline" type="material-community" color={theme.colors.primary} size={24} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
             <RNEIcon name="add-circle-outline" type="ionicon" color={theme.colors.primary} size={26} />
         </TouchableOpacity>
         <ListItem.Chevron color={theme.colors.grey3} />
@@ -122,10 +126,11 @@ const useStyles = makeStyles((theme) => ({
     foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
-    quickAddButton: {
-        paddingHorizontal: 8, // Add some padding around the icon
+    actionButton: { // Unified style for quick add and share
+        paddingHorizontal: 8,
         justifyContent: 'center',
         alignItems: 'center',
+        marginLeft: 5, // Add some space between icons
     },
 }));
 
