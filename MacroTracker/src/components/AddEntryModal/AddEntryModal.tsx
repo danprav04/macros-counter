@@ -56,9 +56,9 @@ interface AddEntryModalProps {
   handleAddEntry: (food: Food, grams: number) => void; 
   handleAddMultipleEntries: (entries: { food: Food; grams: number }[]) => void;
   foods: Food[]; 
-  isEditMode: boolean;
-  initialGrams?: string;
-  initialSelectedFoodForEdit?: Food | null; // For initializing edit mode
+  isEditMode: boolean; // True if editing an existing DailyEntryItem
+  initialGrams?: string; // Grams for the item being edited, or "" for new pre-selected food
+  initialSelectedFoodForEdit?: Food | null; // Food for editing OR food to pre-select for a new entry
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
@@ -76,9 +76,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   handleAddEntry: parentHandleAddEntry, 
   handleAddMultipleEntries: parentHandleAddMultipleEntries,
   foods, 
-  isEditMode,
+  isEditMode, // This prop signifies if we are editing an *existing daily log item*
   initialGrams,
-  initialSelectedFoodForEdit,
+  initialSelectedFoodForEdit, // This prop can be the food from an existing log item OR a food to pre-select for a new entry
   onAddNewFoodRequest,
   onCommitFoodToLibrary,
   dailyGoals,
@@ -141,33 +141,49 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }
   }, [isVisible]);
 
-  // Main initialization effect for modal visibility and edit mode changes
+  // Main initialization effect for modal visibility and form state
   useEffect(() => {
     if (isVisible) {
-        if (isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined) {
-            setInternalSelectedFood(initialSelectedFoodForEdit);
-            setInternalGrams(initialGrams);
-            setUnitMode("grams");
-            setAutoInput("");
-            setSelectedMultipleFoods(new Map());
-            // Icon request for initialSelectedFoodForEdit is handled in a separate effect
-        } else if (!isEditMode) {
-            setInternalSelectedFood(null);
-            setInternalGrams("");
-            setUnitMode("grams");
-            setAutoInput("");
-            setInternalSearch(""); // Clear search for new entries
-            setSelectedMultipleFoods(new Map());
-        }
+      const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
 
-        // Reset modal mode logic (remains the same)
-        if (modalMode === 'quickAddSelect' && !quickAddLoading && quickAddItems.length === 0) {
-             // If came from quick add but no items, reset to normal.
-        } else if (modalMode !== 'normal' && !isEditMode && !quickAddLoading) {
-            // Default to normal mode if not editing and not in quick add process
+      if (actuallyEditingDailyItem) {
+        // Editing an existing daily entry item
+        setInternalSelectedFood(initialSelectedFoodForEdit);
+        setInternalGrams(initialGrams);
+        setUnitMode("grams");
+        setAutoInput("");
+        setInternalSearch("");
+        setSelectedMultipleFoods(new Map());
+      } else {
+        // Adding a new entry (could be blank or with a pre-selected food)
+        if (initialSelectedFoodForEdit) {
+          // New entry, but a food is pre-selected (e.g., from FoodList quick add)
+          setInternalSelectedFood(initialSelectedFoodForEdit);
+          setInternalGrams(initialGrams || ""); // initialGrams expected to be ""
+        } else {
+          // Standard new blank entry
+          setInternalSelectedFood(null);
+          setInternalGrams("");
         }
+        // Common resets for any new entry
+        setUnitMode("grams");
+        setAutoInput("");
+        setInternalSearch("");
+        setSelectedMultipleFoods(new Map());
+      }
 
-    } else { // When isVisible becomes false
+      // Modal mode adjustments
+      if (modalMode === "quickAddSelect" && !quickAddLoading && quickAddItems.length === 0) {
+        setModalMode("normal");
+      } else if (modalMode !== "normal" && !actuallyEditingDailyItem && !quickAddLoading) {
+        setModalMode("normal");
+      }
+      // If opening for a pre-selected food for a new entry, ensure modal mode is 'normal'.
+      if (!actuallyEditingDailyItem && initialSelectedFoodForEdit && modalMode !== "normal") {
+          setModalMode("normal");
+      }
+
+    } else { // When isVisible becomes false (modal is closing)
       const timer = setTimeout(() => {
         // Full reset when modal is hidden
         setInternalSelectedFood(null);
@@ -182,20 +198,25 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setIsAiLoading(false);
         setQuickAddLoading(false);
         setSelectedMultipleFoods(new Map());
-      }, 300);
+      }, 300); // Delay for animations
       return () => clearTimeout(timer);
     }
-  // Dependencies that should trigger re-initialization of these specific states
-  // Removed handleRequestIcon from here to prevent undesired re-runs clearing search
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, modalMode, quickAddLoading, quickAddItems.length]);
+  }, [
+    isVisible, 
+    isEditMode, 
+    initialSelectedFoodForEdit, 
+    initialGrams, 
+    modalMode, 
+    quickAddLoading, 
+    quickAddItems.length
+  ]);
 
-  // Effect specifically for requesting icon for the food item being edited
+  // Effect specifically for requesting icon for the food item being edited OR a pre-selected new food
   useEffect(() => {
-      if (isVisible && isEditMode && initialSelectedFoodForEdit?.name) {
+      if (isVisible && initialSelectedFoodForEdit?.name) {
           handleRequestIcon(initialSelectedFoodForEdit.name);
       }
-  // This effect runs if these specific conditions for editing are met, or if handleRequestIcon itself changes
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, handleRequestIcon]);
+  }, [isVisible, initialSelectedFoodForEdit, handleRequestIcon]);
 
 
   useEffect(() => {
@@ -230,7 +251,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
     });
     if (namesToFetch.size > 0) namesToFetch.forEach(name => handleRequestIcon(name));
-}, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, handleRequestIcon, foodIcons]);
+  }, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, handleRequestIcon, foodIcons]);
 
 
   const addToRecentFoods = useCallback(async (food: Food) => {
@@ -293,7 +314,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
    
     parentHandleAddEntry(internalSelectedFood, numericGramsValue); 
 
-    if (!isEditMode) {
+    if (!isEditMode) { // This isEditMode refers to editing a DailyEntryItem, not related to AddFoodModal's editFood prop
         addToRecentFoods(internalSelectedFood);
         const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
         setLastUsedPortions(updatedPortions);
@@ -307,7 +328,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions ]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
-    if (isEditMode || internalSelectedFood) return;
+    if (isEditMode || internalSelectedFood) return; // isEditMode refers to editing a DailyEntryItem
     setSelectedMultipleFoods(prev => {
         const newSelection = new Map(prev);
         if (newSelection.has(food.id)) {
@@ -339,7 +360,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [ isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods ]);
 
   const pickImageAndAnalyze = useCallback( async (source: "camera" | "gallery") => {
-      if (isEditMode) return;
+      if (isEditMode) return; // isEditMode refers to editing a DailyEntryItem
       setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
       setModalMode("quickAddSelect"); setQuickAddLoading(true);
       setSelectedMultipleFoods(new Map());
@@ -418,7 +439,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [isActionDisabled]);
 
   const handleConfirmQuickAdd = useCallback(() => {
-    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
+    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return; // isEditMode refers to editing a DailyEntryItem
     if (editingQuickAddItemIndex !== null) { Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel')); return; }
     if (selectedQuickAddIndices.size === 0) { Alert.alert(t('addEntryModal.alertQuickAddNoItemsSelected'), t('addEntryModal.alertQuickAddNoItemsSelectedMessage')); return; }
     try {
@@ -488,9 +509,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     ? editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit')
     : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing')
     : t('addEntryModal.titleQuickAddSelect')
-    : isEditMode ? t('addEntryModal.titleEdit')
-    : internalSelectedFood ? t('addEntryModal.titleAdd')
-    : t('addEntryModal.titleAdd');
+    : isEditMode ? t('addEntryModal.titleEdit') // Editing an existing daily entry item
+    : t('addEntryModal.titleAdd'); // Adding new (blank or pre-selected)
 
   const numericGramsValueForValidation = parseFloat(internalGrams);
   const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || numericGramsValueForValidation <= 0 || isActionDisabled;
@@ -507,7 +527,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         <View style={combinedOverlayStyle}>
           <ModalHeader
             title={modalTitle}
-            isEditMode={isEditMode}
+            isEditMode={isEditMode} // For DailyEntryItem edit
             modalMode={modalMode}
             quickAddLoading={quickAddLoading}
             selectedFood={internalSelectedFood}
@@ -549,7 +569,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 foodIcons={foodIcons}
                 onAddNewFoodRequest={onAddNewFoodRequest}
                 isActionDisabled={isActionDisabled}
-                isEditMode={isEditMode}
+                isEditMode={isEditMode} // For DailyEntryItem edit
                 lastUsedPortions={lastUsedPortions}
                 modalMode={modalMode}
               />
@@ -565,7 +585,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                   handleEstimateGrams={handleEstimateGrams}
                   isAiLoading={isAiLoading}
                   isAiButtonDisabled={isAiButtonDisabled}
-                  isEditMode={isEditMode}
+                  isEditMode={isEditMode} // For DailyEntryItem edit
                   servingSizeSuggestions={servingSizeSuggestions}
                   isActionDisabled={isActionDisabled}
                   foodGradeResult={foodGradeResult}

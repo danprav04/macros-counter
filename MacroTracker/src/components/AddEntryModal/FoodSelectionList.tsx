@@ -1,20 +1,20 @@
 // src/components/AddEntryModal/FoodSelectionList.tsx
-import React, { useMemo, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, Image, ActivityIndicator, Platform, Keyboard } from 'react-native';
+import React, { useMemo, useCallback, useRef, useEffect } from 'react';
+import { View, FlatList, TouchableOpacity, Image, ActivityIndicator, Platform, Keyboard, StyleSheet } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { LastUsedPortions } from '../../services/storageService';
 import { t } from '../../localization/i18n';
 
 const DEFAULT_GRAMS_FOR_MULTI_ADD = 100;
-const MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL = 3;
+// const MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL = 3; // No longer strictly used for combining logic
 
 interface FoodSelectionListProps {
     search: string;
     updateSearch: (search: string) => void;
     foods: Food[]; // Full library
     recentFoods: Food[];
-    selectedFood: Food | null;
+    selectedFood: Food | null; // This is internalSelectedFood from AddEntryModal
     handleSelectFood: (food: Food | null) => void;
     setGrams: (grams: string) => void;
     setSelectedMultipleFoods: React.Dispatch<React.SetStateAction<Map<string, { food: Food; grams: number }>>>;
@@ -23,7 +23,7 @@ interface FoodSelectionListProps {
     foodIcons: { [foodName: string]: string | null | undefined };
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
-    isEditMode: boolean;
+    isEditMode: boolean; // Editing a DailyEntryItem, not AddFoodModal's editFood
     lastUsedPortions: LastUsedPortions;
     modalMode: "normal" | "quickAddSelect";
 }
@@ -35,7 +35,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     updateSearch,
     foods,
     recentFoods,
-    selectedFood,
+    selectedFood, // This is internalSelectedFood from AddEntryModal
     handleSelectFood,
     setGrams,
     setSelectedMultipleFoods,
@@ -50,6 +50,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const flatListRef = useRef<FlatList<DisplayFoodItem>>(null);
 
     const filteredFoodsForSearch = useMemo(() => {
         if (!search) return [];
@@ -63,28 +64,60 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         if (search) {
             return filteredFoodsForSearch;
         }
-        // No search term: combine recent and library foods
-        let combinedList: DisplayFoodItem[] = recentFoods.map(f => ({...f, isRecent: true}));
-        const recentFoodIds = new Set(recentFoods.map(f => f.id));
 
-        if (recentFoods.length < MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL && foods.length > 0) {
-            const otherFoodsFromLibrary = foods
-                .filter(food => !recentFoodIds.has(food.id))
-                .sort((a, b) => a.name.localeCompare(b.name));
-            combinedList = [...combinedList, ...otherFoodsFromLibrary.map(f => ({...f, isRecent: false}))];
-        } else if (recentFoods.length >= MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL && foods.length > 0 && recentFoods.length !== foods.length) {
-             // If many recents, only show recents unless search is active or library is very small
-             // This behavior might need adjustment based on UX preference
+        const tempCombinedList: DisplayFoodItem[] = [];
+        const displayedIds = new Set<string>();
+
+        // 1. If selectedFood is provided (pre-selected), ensure it's at the top.
+        if (selectedFood) {
+            const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
+            tempCombinedList.push({ ...selectedFood, isRecent: isSelRecent });
+            displayedIds.add(selectedFood.id);
         }
-        return combinedList;
-    }, [search, recentFoods, foods, filteredFoodsForSearch]);
+
+        // 2. Add recent foods not already added.
+        recentFoods.forEach(rf => {
+            if (!displayedIds.has(rf.id)) {
+                tempCombinedList.push({ ...rf, isRecent: true });
+                displayedIds.add(rf.id);
+            }
+        });
+        
+        // 3. Add other foods from the main library, not already added, sorted, and limited.
+        const otherLibraryFoods = foods
+            .filter(food => !displayedIds.has(food.id))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .slice(0, 10); // Limit the number of general library items shown when no search
+
+        otherLibraryFoods.forEach(olf => {
+             // No need to check displayedIds again due to filter, but add to combined list
+            tempCombinedList.push({ ...olf, isRecent: false });
+        });
+        
+        return tempCombinedList;
+
+    }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
+
+
+    // Effect to scroll to the selected item when it changes and list is ready
+    useEffect(() => {
+        if (selectedFood && flatListRef.current && listDisplayData.length > 0 && !search) {
+            const index = listDisplayData.findIndex(item => item.id === selectedFood.id);
+            if (index !== -1) {
+                // Give a slight delay for the list to render before scrolling
+                setTimeout(() => {
+                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); // Try to center it a bit
+                }, 150);
+            }
+        }
+    }, [selectedFood, listDisplayData, search]); // Re-run if selectedFood, list, or search changes
 
 
     const handleInternalSelectFood = useCallback((item: Food | null) => {
         handleSelectFood(item);
-        updateSearch(""); // Clear search when a food is selected for single entry
+        updateSearch(""); 
         Keyboard.dismiss();
-        setSelectedMultipleFoods(new Map()); // Clear multi-selection when entering single food mode
+        setSelectedMultipleFoods(new Map()); 
 
         if (!isEditMode && item?.id !== selectedFood?.id) {
             const lastPortion = item?.id ? lastUsedPortions[item.id] : undefined;
@@ -98,16 +131,16 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     
     const handleSearchChange = (text: string) => {
         updateSearch(text);
-        if (selectedFood) {
+        if (selectedFood && text.trim() !== "") { // Clear single selection only if user starts typing
             handleSelectFood(null);
             setGrams("");
-            setSelectedMultipleFoods(new Map());
+            // setSelectedMultipleFoods(new Map()); // Keep multi-select if user is searching
         }
     };
 
     const renderFoodItem = ({ item }: { item: DisplayFoodItem }) => {
         const foodItem = item;
-        const isSingleSelected = selectedFood?.id === foodItem.id;
+        const isSingleSelected = selectedFood?.id === foodItem.id && !search; // Only highlight single selection if not searching
         const iconStatus = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
@@ -154,7 +187,9 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                                 {t('addEntryModal.grams')}: {displayGramsForMulti}g
                             </ListItem.Subtitle>
                         )}
-                        {foodItem.isRecent && !search && <Text style={styles.recentBadge}>{t('addEntryModal.recent')}</Text>}
+                        {foodItem.isRecent && !search && (!selectedFood || selectedFood.id !== foodItem.id) && (
+                             <Text style={styles.recentBadge}>{t('addEntryModal.recent')}</Text>
+                        )}
                     </ListItem.Content>
                     {isSingleSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
                 </ListItem>
@@ -181,7 +216,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 </View>
             );
         }
-        if (!search && foods.length === 0 && recentFoods.length === 0) { // Check both foods and recentFoods
+        if (!search && foods.length === 0 && recentFoods.length === 0) { 
              return (
                  <View style={styles.noResultsContainer}>
                      <Text style={styles.noFoodsText}>
@@ -213,24 +248,29 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 containerStyle={styles.searchBarContainer}
                 inputContainerStyle={styles.searchBarInputContainer}
                 inputStyle={styles.searchInputStyle}
-                onCancel={() => handleSearchChange("")}
+                onCancel={() => { updateSearch(""); Keyboard.dismiss();}}
                 showCancel={Platform.OS === "ios"}
-                onClear={() => handleSearchChange("")}
+                onClear={() => updateSearch("")}
                 disabled={isActionDisabled || modalMode !== "normal"}
             />
             <FlatList
+                ref={flatListRef}
                 data={listDisplayData}
                 renderItem={renderFoodItem}
-                keyExtractor={(item) => `food-${item.id}`}
+                keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search }}
+                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length }}
                 keyboardShouldPersistTaps="handled"
-                initialNumToRender={10}
+                initialNumToRender={15}
                 maxToRenderPerBatch={10}
-                windowSize={11}
+                windowSize={21} // Ensure enough items are rendered for scrollToIndex to work smoothly
                 removeClippedSubviews={Platform.OS === 'android'}
                 style={styles.flatListContainer}
                 contentContainerStyle={styles.flatListContentContainer}
+                getItemLayout={(data, index) => (
+                    // Assuming a fixed height for list items for optimization, adjust if dynamic
+                    { length: 65, offset: 65 * index, index } 
+                )}
             />
         </View>
     );
@@ -255,8 +295,8 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'left',
     },
     flatListContainer: {
-        // Max height or flex grow might be needed depending on parent layout
-        maxHeight: 250, // Example, adjust as needed
+        maxHeight: 250, 
+        minHeight: 150, // Ensure it has some height even when few items
     },
     flatListContentContainer: {
         paddingBottom: 10,
@@ -284,6 +324,7 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 8,
         paddingHorizontal: 5,
         borderBottomColor: theme.colors.divider,
+        minHeight: 65, // Ensure items have a consistent height for getItemLayout
     },
     selectedListItem: {
         backgroundColor: theme.colors.grey5,
@@ -335,6 +376,8 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         paddingVertical: 20,
         paddingHorizontal: 10,
+        minHeight: 150, // Ensure it takes space
+        justifyContent: 'center',
     },
     noFoodsText: {
         color: theme.colors.grey2,
