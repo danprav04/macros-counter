@@ -14,7 +14,7 @@ import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
-import { clearIconCache } from "../utils/iconUtils";
+// Removed: import { clearIconCache } from "../utils/iconUtils"; 
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
@@ -23,13 +23,12 @@ import i18n from '../localization/i18n';
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // This prop now comes from AppNavigator and is handleFoodChange
+  onDataOperation: () => void; 
 }
 
-// Define param list for Settings Stack
 type SettingsStackParamList = {
-  SettingsHome: undefined; // Current screen (SettingsScreen)
-  Questionnaire: undefined; // The new QuestionnaireScreen
+  SettingsHome: undefined; 
+  Questionnaire: undefined; 
 };
 
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
@@ -47,23 +46,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [isClearingCache, setIsClearingCache] = useState(false);
+  // Removed: const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true); // For initial load
+  const [isDataLoading, setIsDataLoading] = useState(true); 
 
   const { theme } = useTheme();
   const styles = useStyles();
-  const navigation = useNavigation<SettingsNavigationProp>(); // Typed navigation
+  const navigation = useNavigation<SettingsNavigationProp>(); 
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
     macro: MacroType,
     currentGoals: { [key in MacroType]: number }
   ): MacroData[][] => {
-    const intakeDataMap = new Map<number, number>(); // timestamp -> value
-    const goalDataMap = new Map<number, number>();   // timestamp -> value (for calories)
+    const intakeDataMap = new Map<number, number>(); 
+    const goalDataMap = new Map<number, number>();   
 
     dailyEntries.forEach((entry) => {
       try {
@@ -150,7 +149,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           const loadedSettings = await loadSettings();
           if (!isActive) return;
           setSettings(loadedSettings);
-          // Update title based on loaded settings (language might have changed)
           navigation.setOptions({ title: t('settingsScreen.title') });
           await fetchUserStatus();
           await updateStatistics(loadedSettings.dailyGoals);
@@ -164,7 +162,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus, navigation]) // Added navigation to dependency array
+    }, [updateStatistics, fetchUserStatus, navigation]) 
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
@@ -187,8 +185,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [updateStatistics]);
 
 
-  // This local function is passed to DataManagementButtons.
-  // It now also calls the onDataOperation prop received from AppNavigator.
   const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
     try {
@@ -196,23 +192,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme); // Update theme via AppNavigator's callback
-      onLocaleChange(reloadedSettings.language); // Update locale via AppNavigator's callback
+      onThemeChange(reloadedSettings.theme); 
+      onLocaleChange(reloadedSettings.language); 
       
-      onDataOperation(); // <= THIS IS THE KEY CHANGE: Call the prop from AppNavigator
+      onDataOperation(); 
 
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
   }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
-
-   const handleClearIconCache = useCallback(async () => {
-      setIsClearingCache(true);
-      try { await clearIconCache(); Toast.show({ type: 'success', text1: t('settings.iconsCacheCleared'), text2: t('settings.iconsCacheClearedMessage'), position: 'bottom' }); }
-      catch (error) { Toast.show({ type: 'error', text1: t('settings.errorClearCache'), text2: error instanceof Error ? error.message : t('settings.errorClearCacheMessage'), position: 'bottom' }); }
-      finally { setIsClearingCache(false); }
-   }, []);
 
     const handleAddTestCoins = useCallback(async () => {
         setIsAddingCoins(true);
@@ -223,7 +212,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
-    onLocaleChange(newLanguage); // This calls App.tsx's handleLocaleChange
+    onLocaleChange(newLanguage); 
   };
 
   const handleNavigateToQuestionnaire = () => {
@@ -287,13 +276,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
         </View>
 
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.cacheManagement.title')}</Text>
-        <View style={styles.buttonGroup}>
-            <Button title={t('settings.refreshIcons')} onPress={handleClearIconCache} buttonStyle={[styles.button, { backgroundColor: theme.colors.secondary }]}
-                    icon={<Icon name="refresh-outline" type="ionicon" color="white" size={20} style={{ marginRight: 8 }} />}
-                    loading={isClearingCache} disabled={isClearingCache} />
-        </View>
-
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
         <View style={styles.chartContainer}>
             <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
@@ -332,12 +314,12 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 25,
-    marginBottom: 10, // Reduced bottom margin as inputs follow directly
+    marginBottom: 10, 
   },
   sectionTitleInline: {
-    marginTop: 0, // Reset margin for inline title
-    marginBottom: 0, // Reset margin
-    borderLeftWidth: 0, // Remove border for inline version or style differently
+    marginTop: 0, 
+    marginBottom: 0, 
+    borderLeftWidth: 0, 
     paddingLeft: 0,
     flexShrink: 1,
   },

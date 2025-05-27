@@ -21,9 +21,6 @@
     "goals": {
       "estimateButton": "הערכת יעדים"
     },
-    "cacheManagement": {
-      "title": "ניהול מטמון"
-    },
     "statistics": {
       "title": "סטטיסטיקה"
     },
@@ -271,13 +268,6 @@
   },
   "dateNavigator": {
     "invalidDate": "תאריך לא חוקי"
-  },
-  "settings": {
-    "refreshIcons": "רענן סמלי מאכל",
-    "iconsCacheCleared": "מטמון הסמלים נוקה",
-    "iconsCacheClearedMessage": "הסמלים יתרעננו.",
-    "errorClearCache": "ניקוי המטמון נכשל",
-    "errorClearCacheMessage": "שגיאה לא ידועה."
   },
   "utils": {
     "macros": {

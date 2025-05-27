@@ -21,9 +21,6 @@
     "goals": {
       "estimateButton": "Estimate Goals"
     },
-    "cacheManagement": {
-      "title": "Cache Management"
-    },
     "statistics": {
       "title": "Statistics"
     },
@@ -271,13 +268,6 @@
   },
   "dateNavigator": {
     "invalidDate": "Invalid Date"
-  },
-  "settings": {
-    "refreshIcons": "Refresh Food Icons",
-    "iconsCacheCleared": "Icon Cache Cleared",
-    "iconsCacheClearedMessage": "Icons will refresh.",
-    "errorClearCache": "Failed to Clear Cache",
-    "errorClearCacheMessage": "Unknown error."
   },
   "utils": {
     "macros": {

@@ -21,9 +21,6 @@
     "goals": {
       "estimateButton": "Рассчитать цели"
     },
-    "cacheManagement": {
-      "title": "Управление кэшем"
-    },
     "statistics": {
       "title": "Статистика"
     },
@@ -271,13 +268,6 @@
   },
   "dateNavigator": {
     "invalidDate": "Неверная дата"
-  },
-  "settings": {
-    "refreshIcons": "Обновить иконки продуктов",
-    "iconsCacheCleared": "Кэш иконок очищен",
-    "iconsCacheClearedMessage": "Иконки будут обновлены.",
-    "errorClearCache": "Не удалось очистить кэш",
-    "errorClearCacheMessage": "Неизвестная ошибка."
   },
   "utils": {
     "macros": {
