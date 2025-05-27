@@ -141,6 +141,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }
   }, [isVisible]);
 
+  // Main initialization effect for modal visibility and edit mode changes
   useEffect(() => {
     if (isVisible) {
         if (isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined) {
@@ -149,21 +150,21 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             setUnitMode("grams");
             setAutoInput("");
             setSelectedMultipleFoods(new Map());
-            if(initialSelectedFoodForEdit.name) handleRequestIcon(initialSelectedFoodForEdit.name);
+            // Icon request for initialSelectedFoodForEdit is handled in a separate effect
         } else if (!isEditMode) {
             setInternalSelectedFood(null);
             setInternalGrams("");
             setUnitMode("grams");
             setAutoInput("");
             setInternalSearch(""); // Clear search for new entries
+            setSelectedMultipleFoods(new Map());
         }
-         // Reset modal mode to normal when it becomes visible unless specific conditions are met
+
+        // Reset modal mode logic (remains the same)
         if (modalMode === 'quickAddSelect' && !quickAddLoading && quickAddItems.length === 0) {
              // If came from quick add but no items, reset to normal.
-             // This might need adjustment if quick add can be re-entered without picking image again.
         } else if (modalMode !== 'normal' && !isEditMode && !quickAddLoading) {
             // Default to normal mode if not editing and not in quick add process
-            // setModalMode("normal"); // This line could cause issues if quick add is initiated from outside.
         }
 
     } else { // When isVisible becomes false
@@ -181,10 +182,20 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setIsAiLoading(false);
         setQuickAddLoading(false);
         setSelectedMultipleFoods(new Map());
-      }, 300); // Delay to allow animation
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, handleRequestIcon]);
+  // Dependencies that should trigger re-initialization of these specific states
+  // Removed handleRequestIcon from here to prevent undesired re-runs clearing search
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, modalMode, quickAddLoading, quickAddItems.length]);
+
+  // Effect specifically for requesting icon for the food item being edited
+  useEffect(() => {
+      if (isVisible && isEditMode && initialSelectedFoodForEdit?.name) {
+          handleRequestIcon(initialSelectedFoodForEdit.name);
+      }
+  // This effect runs if these specific conditions for editing are met, or if handleRequestIcon itself changes
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, handleRequestIcon]);
 
 
   useEffect(() => {
