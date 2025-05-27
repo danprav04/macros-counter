@@ -18,7 +18,7 @@ interface FoodSelectionListProps {
     setGrams: (grams: string) => void;
     setSelectedMultipleFoods: React.Dispatch<React.SetStateAction<Map<string, { food: Food; grams: number }>>>;
     selectedMultipleFoods: Map<string, { food: Food; grams: number }>;
-    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void;
+    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void; // This comes from AddEntryModal
     foodIcons: { [foodName: string]: string | null | undefined };
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
@@ -34,12 +34,12 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     updateSearch,
     foods,
     recentFoods,
-    selectedFood, // This is internalSelectedFood from AddEntryModal
+    selectedFood, 
     handleSelectFood,
     setGrams,
     setSelectedMultipleFoods,
     selectedMultipleFoods,
-    handleToggleMultipleFoodSelection,
+    handleToggleMultipleFoodSelection, // Prop from AddEntryModal
     foodIcons,
     onAddNewFoodRequest,
     isActionDisabled,
@@ -63,36 +63,28 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         if (search) {
             return filteredFoodsForSearch;
         }
-
         const tempCombinedList: DisplayFoodItem[] = [];
         const displayedIds = new Set<string>();
-
         if (selectedFood) {
             const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
             tempCombinedList.push({ ...selectedFood, isRecent: isSelRecent });
             displayedIds.add(selectedFood.id);
         }
-
         recentFoods.forEach(rf => {
             if (!displayedIds.has(rf.id)) {
                 tempCombinedList.push({ ...rf, isRecent: true });
                 displayedIds.add(rf.id);
             }
         });
-        
         const otherLibraryFoods = foods
             .filter(food => !displayedIds.has(food.id))
             .sort((a, b) => a.name.localeCompare(b.name))
             .slice(0, 10); 
-
         otherLibraryFoods.forEach(olf => {
             tempCombinedList.push({ ...olf, isRecent: false });
         });
-        
         return tempCombinedList;
-
     }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
-
 
     useEffect(() => {
         if (selectedFood && flatListRef.current && listDisplayData.length > 0 && !search) {
@@ -105,35 +97,24 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         }
     }, [selectedFood, listDisplayData, search]);
 
-
-    const handleInternalSelectFood = useCallback((item: Food | null) => {
-        // Guard: If multi-select is active and user tries to select a NEW single item, block it.
-        // Allows deselecting an already single-selected item, or selecting if multi-select is empty.
+    const handleInternalSingleSelectFood = useCallback((item: Food | null) => {
         if (selectedMultipleFoods.size > 0 && item !== null && (!selectedFood || selectedFood.id !== item.id)) {
-            Keyboard.dismiss(); // Still dismiss keyboard if an interaction attempt was made
-            return;
+            Keyboard.dismiss();
+            return; 
         }
-
         Keyboard.dismiss();
-        
         if (selectedFood && item && selectedFood.id === item.id) {
-            // Item clicked is the currently selected item, so deselect it
             handleSelectFood(null);
             setGrams(""); 
             updateSearch(""); 
             setSelectedMultipleFoods(new Map()); 
-        } else if (item === null) { // Explicitly clearing selection (e.g., from search starting)
+        } else if (item === null) { 
             handleSelectFood(null);
             setGrams("");
-            // setSelectedMultipleFoods state remains as is, could be populated if search started during multi-select.
-            // Or, if search clears single selection, it should also clear multi-selection:
-            // setSelectedMultipleFoods(new Map()); // Uncomment if search should clear multi-select too.
         } else if (item !== null) { 
-            // New item selected (and not in multi-select mode as per guard above)
             handleSelectFood(item);
             updateSearch(""); 
             setSelectedMultipleFoods(new Map()); 
-
             if (!isEditMode) { 
                 const lastPortion = lastUsedPortions[item.id];
                 if (lastPortion) {
@@ -150,31 +131,37 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         setGrams, 
         lastUsedPortions, 
         setSelectedMultipleFoods, 
-        isEditMode, 
-        selectedMultipleFoods.size // Dependency on the size of multi-selected items
+        isEditMode,
+        selectedMultipleFoods.size 
     ]);
     
     const handleSearchChange = (text: string) => {
         updateSearch(text);
         if (selectedFood && text.trim() !== "") { 
-            handleSelectFood(null); 
-            setGrams("");
+            handleInternalSingleSelectFood(null);
         }
     };
 
     const renderFoodItem = ({ item }: { item: DisplayFoodItem }) => {
         const foodItem = item;
-        const isSingleSelected = selectedFood?.id === foodItem.id && !search; 
+        const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
+        const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
         const iconStatus = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
-        const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
-        // Checkbox appears if not editing, no single food is selected, OR if multi-selection is already active
-        const canShowCheckbox = modalMode === "normal" && !isEditMode && (!selectedFood || selectedMultipleFoods.size > 0);
 
+        const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
+        const showSingleSelectCheckmark = isSingleSelectedViaState && selectedMultipleFoods.size === 0 && !search;
 
         return (
             <TouchableOpacity
-                onPress={() => !isActionDisabled && handleInternalSelectFood(foodItem)}
+                onPress={() => {
+                    if (isActionDisabled) return;
+                    if (selectedMultipleFoods.size > 0) {
+                        handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                    } else {
+                        handleInternalSingleSelectFood(foodItem);
+                    }
+                }}
                 disabled={isActionDisabled}
                 style={[isActionDisabled && styles.disabledOverlay]}
             >
@@ -182,17 +169,20 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                     bottomDivider
                     containerStyle={[
                         styles.listItemContainer,
-                        isSingleSelected && styles.selectedListItem,
-                        isMultiSelected && canShowCheckbox && styles.multiSelectedListItem, // Apply style if multi-selected and checkbox is visible context
+                        (showSingleSelectCheckmark || isMultiSelected) && styles.selectedListItem,
+                        isMultiSelected && styles.multiSelectedListItemBorder,
                     ]}
                 >
                     {canShowCheckbox && (
                         <CheckBox
                             checked={isMultiSelected}
-                            onPress={() => handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti)}
-                            containerStyle={styles.multiSelectCheckbox} // Style for touch area
+                            onPress={() => { 
+                                if (isActionDisabled) return;
+                                handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                            }}
+                            containerStyle={styles.multiSelectCheckboxContainer}
                             size={22}
-                            disabled={isActionDisabled} // Checkbox itself not disabled by single select logic, only action disable
+                            disabled={isActionDisabled}
                         />
                     )}
                     {iconStatus === undefined ? (
@@ -208,7 +198,6 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                         <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
                             {foodItem.name}
                         </ListItem.Title>
-                        {/* Show grams for multi-select mode if checkbox is visible and item is part of potential multi-add */}
                         {canShowCheckbox && (
                             <ListItem.Subtitle style={styles.listItemSubtitleSecondary}>
                                 {t('addEntryModal.grams')}: {displayGramsForMulti}g
@@ -218,7 +207,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                              <Text style={styles.recentBadge}>{t('addEntryModal.recent')}</Text>
                         )}
                     </ListItem.Content>
-                    {isSingleSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
+                    {showSingleSelectCheckmark && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
                 </ListItem>
             </TouchableOpacity>
         );
@@ -263,7 +252,6 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         }
         return null;
     };
-
 
     return (
         <View>
@@ -348,25 +336,22 @@ const useStyles = makeStyles((theme) => ({
     listItemContainer: {
         backgroundColor: "transparent",
         paddingVertical: 8,
-        paddingHorizontal: 5, // Base padding
+        paddingHorizontal: 5,
         borderBottomColor: theme.colors.divider,
         minHeight: 65,
     },
-    selectedListItem: {
-        backgroundColor: theme.colors.grey5, // Standard single select background
+    selectedListItem: { 
+        backgroundColor: theme.colors.grey5, 
         borderRadius: 8,
     },
-    multiSelectedListItem: {
-        backgroundColor: theme.colors.grey5, // Same background as single select for "more like" feel
-        borderRadius: 8,
-        borderLeftWidth: 4, // Keep a distinct visual cue
-        borderLeftColor: theme.colors.success, // Use success color for the border
-        paddingLeft: Platform.OS === 'web' ? 1 : 2, //Slight adjust for border
+    multiSelectedListItemBorder: { 
+        borderLeftWidth: 3, 
+        borderLeftColor: theme.colors.success, 
     },
-    multiSelectCheckbox: {
-        padding: 10, // Increased touch area
-        marginRight: 0, // Adjust if padding creates too much space before icon
-        marginLeft: -10, // Counteract some of the padding to keep checkbox visually aligned
+    multiSelectCheckboxContainer: { 
+        padding: 10, 
+        marginRight: 0, 
+        marginLeft: -10, 
         backgroundColor: 'transparent',
         borderWidth: 0,
     },
