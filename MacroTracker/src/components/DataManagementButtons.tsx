@@ -37,9 +37,11 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleExportData = async () => {
     try {
       const dailyEntries = await loadDailyEntries();
-      const foods = await loadFoods();
+      const { items: foodItems } = await loadFoods(); // Correctly destructure to get the array of food items
       const settings = await loadSettings();
-      const exportData = { dailyEntries, foods, settings };
+      
+      const exportData = { dailyEntries, foods: foodItems, settings }; // Use the foodItems array
+      
       const exportDataString = JSON.stringify(exportData, null, 2);
       const formattedDate = formatDateISO(new Date());
       const fileName = `macro_data_${formattedDate}.json`;

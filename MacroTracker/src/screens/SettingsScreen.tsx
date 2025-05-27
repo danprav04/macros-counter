@@ -23,7 +23,7 @@ import i18n from '../localization/i18n';
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void;
+  onDataOperation: () => void; // This prop now comes from AppNavigator and is handleFoodChange
 }
 
 // Define param list for Settings Stack
@@ -35,7 +35,7 @@ type SettingsStackParamList = {
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
     language: "system",
@@ -187,20 +187,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [updateStatistics]);
 
 
-  const handleDataOperation = useCallback(async () => {
+  // This local function is passed to DataManagementButtons.
+  // It now also calls the onDataOperation prop received from AppNavigator.
+  const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
     try {
       const reloadedSettings = await loadSettings();
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme);
-      onLocaleChange(reloadedSettings.language);
+      onThemeChange(reloadedSettings.theme); // Update theme via AppNavigator's callback
+      onLocaleChange(reloadedSettings.language); // Update locale via AppNavigator's callback
+      
+      onDataOperation(); // <= THIS IS THE KEY CHANGE: Call the prop from AppNavigator
+
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus]);
+  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
 
    const handleClearIconCache = useCallback(async () => {
       setIsClearingCache(true);
@@ -218,7 +223,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
-    onLocaleChange(newLanguage);
+    onLocaleChange(newLanguage); // This calls App.tsx's handleLocaleChange
   };
 
   const handleNavigateToQuestionnaire = () => {
@@ -296,7 +301,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
         <View style={styles.buttonGroup}>
-            <DataManagementButtons onDataOperation={handleDataOperation} />
+            <DataManagementButtons onDataOperation={localDataOperationHandler} />
         </View>
     </ScrollView>
   );

@@ -33,10 +33,19 @@ const SettingsStackNav = createNativeStackNavigator<SettingsStackParamList>();
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
   onLocaleChange: (locale: LanguageCode) => void;
+  // No longer needs onDataOperation here, as handleFoodChange serves this purpose internally
 }
 
+// Props for the SettingsStackNavigatorComponent
+interface SettingsStackProps {
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onLocaleChange: (locale: LanguageCode) => void;
+  onDataOperation: () => void; // This will be handleFoodChange from AppNavigator
+}
+
+
 // Settings Stack Navigator
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange }: AppNavigatorProps) {
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: SettingsStackProps) {
   const { theme } = useTheme();
   return (
     <SettingsStackNav.Navigator
@@ -48,7 +57,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange }: AppN
       }}
     >
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={() => console.log("Data operation in AppNav")} />}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
         {() => <QuestionnaireScreen />}
@@ -110,13 +119,17 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChan
         name={foodListRouteName}
         options={{ title: t('foodListScreen.tabTitle') }}
       >
-        {() => <FoodListScreen onFoodChange={handleFoodChange} key={i18n.locale} />}
+        {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
       <Tab.Screen
         name={settingsStackRouteName} 
         options={{ title: t('settingsScreen.title') }} 
       >
-        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} />}
+        {() => <SettingsStackNavigatorComponent 
+                  onThemeChange={onThemeChange} 
+                  onLocaleChange={onLocaleChange} 
+                  onDataOperation={handleFoodChange} // Pass handleFoodChange here
+                />}
       </Tab.Screen>
     </Tab.Navigator>
   );
