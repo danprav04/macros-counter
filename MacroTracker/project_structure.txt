@@ -3054,9 +3054,11 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleExportData = async () => {
     try {
       const dailyEntries = await loadDailyEntries();
-      const foods = await loadFoods();
+      const { items: foodItems } = await loadFoods(); // Correctly destructure to get the array of food items
       const settings = await loadSettings();
-      const exportData = { dailyEntries, foods, settings };
+      
+      const exportData = { dailyEntries, foods: foodItems, settings }; // Use the foodItems array
+      
       const exportDataString = JSON.stringify(exportData, null, 2);
       const formattedDate = formatDateISO(new Date());
       const fileName = `macro_data_${formattedDate}.json`;
@@ -3161,6 +3163,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
 };
 
 export default DataManagementButtons;
+
 ---------- END DataManagementButtons.tsx ----------
 
 
@@ -5804,10 +5807,19 @@ const SettingsStackNav = createNativeStackNavigator<SettingsStackParamList>();
 interface AppNavigatorProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
   onLocaleChange: (locale: LanguageCode) => void;
+  // No longer needs onDataOperation here, as handleFoodChange serves this purpose internally
 }
 
+// Props for the SettingsStackNavigatorComponent
+interface SettingsStackProps {
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  onLocaleChange: (locale: LanguageCode) => void;
+  onDataOperation: () => void; // This will be handleFoodChange from AppNavigator
+}
+
+
 // Settings Stack Navigator
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange }: AppNavigatorProps) {
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: SettingsStackProps) {
   const { theme } = useTheme();
   return (
     <SettingsStackNav.Navigator
@@ -5819,7 +5831,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange }: AppN
       }}
     >
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={() => console.log("Data operation in AppNav")} />}
+        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
         {() => <QuestionnaireScreen />}
@@ -5881,19 +5893,24 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChan
         name={foodListRouteName}
         options={{ title: t('foodListScreen.tabTitle') }}
       >
-        {() => <FoodListScreen onFoodChange={handleFoodChange} key={i18n.locale} />}
+        {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
       <Tab.Screen
         name={settingsStackRouteName} 
         options={{ title: t('settingsScreen.title') }} 
       >
-        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} />}
+        {() => <SettingsStackNavigatorComponent 
+                  onThemeChange={onThemeChange} 
+                  onLocaleChange={onLocaleChange} 
+                  onDataOperation={handleFoodChange} // Pass handleFoodChange here
+                />}
       </Tab.Screen>
     </Tab.Navigator>
   );
 };
 
 export default AppNavigator;
+
 ---------- END AppNavigator.tsx ----------
 
 
@@ -7222,7 +7239,7 @@ import i18n from '../localization/i18n';
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void;
+  onDataOperation: () => void; // This prop now comes from AppNavigator and is handleFoodChange
 }
 
 // Define param list for Settings Stack
@@ -7234,7 +7251,7 @@ type SettingsStackParamList = {
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
     language: "system",
@@ -7386,20 +7403,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [updateStatistics]);
 
 
-  const handleDataOperation = useCallback(async () => {
+  // This local function is passed to DataManagementButtons.
+  // It now also calls the onDataOperation prop received from AppNavigator.
+  const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
     try {
       const reloadedSettings = await loadSettings();
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme);
-      onLocaleChange(reloadedSettings.language);
+      onThemeChange(reloadedSettings.theme); // Update theme via AppNavigator's callback
+      onLocaleChange(reloadedSettings.language); // Update locale via AppNavigator's callback
+      
+      onDataOperation(); // <= THIS IS THE KEY CHANGE: Call the prop from AppNavigator
+
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus]);
+  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
 
    const handleClearIconCache = useCallback(async () => {
       setIsClearingCache(true);
@@ -7417,7 +7439,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
-    onLocaleChange(newLanguage);
+    onLocaleChange(newLanguage); // This calls App.tsx's handleLocaleChange
   };
 
   const handleNavigateToQuestionnaire = () => {
@@ -7495,7 +7517,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
         <View style={styles.buttonGroup}>
-            <DataManagementButtons onDataOperation={handleDataOperation} />
+            <DataManagementButtons onDataOperation={localDataOperationHandler} />
         </View>
     </ScrollView>
   );
@@ -7577,6 +7599,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default SettingsScreen;
+
 ---------- END SettingsScreen.tsx ----------
 
 

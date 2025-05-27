@@ -7,7 +7,6 @@ import { LastUsedPortions } from '../../services/storageService';
 import { t } from '../../localization/i18n';
 
 const DEFAULT_GRAMS_FOR_MULTI_ADD = 100;
-// const MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL = 3; // No longer strictly used for combining logic
 
 interface FoodSelectionListProps {
     search: string;
@@ -90,7 +89,6 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
             .slice(0, 10); // Limit the number of general library items shown when no search
 
         otherLibraryFoods.forEach(olf => {
-             // No need to check displayedIds again due to filter, but add to combined list
             tempCombinedList.push({ ...olf, isRecent: false });
         });
         
@@ -99,40 +97,55 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
 
 
-    // Effect to scroll to the selected item when it changes and list is ready
     useEffect(() => {
         if (selectedFood && flatListRef.current && listDisplayData.length > 0 && !search) {
             const index = listDisplayData.findIndex(item => item.id === selectedFood.id);
             if (index !== -1) {
-                // Give a slight delay for the list to render before scrolling
                 setTimeout(() => {
-                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); // Try to center it a bit
+                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); 
                 }, 150);
             }
         }
-    }, [selectedFood, listDisplayData, search]); // Re-run if selectedFood, list, or search changes
+    }, [selectedFood, listDisplayData, search]);
 
 
     const handleInternalSelectFood = useCallback((item: Food | null) => {
-        handleSelectFood(item);
-        updateSearch(""); 
         Keyboard.dismiss();
-        setSelectedMultipleFoods(new Map()); 
+        // Check if the clicked item is the currently selected item
+        if (selectedFood && item && selectedFood.id === item.id) {
+            // Item clicked is the currently selected item, so deselect it
+            handleSelectFood(null);
+            setGrams(""); // Clear grams when deselecting
+            updateSearch(""); // Clear search as well
+            setSelectedMultipleFoods(new Map()); // Ensure multi-select is cleared
+        } else {
+            // New item selected or selection is being cleared by passing null (e.g. from search change)
+            handleSelectFood(item);
+            updateSearch(""); // Clear search on new selection
+            setSelectedMultipleFoods(new Map()); // Clear any multi-selections
 
-        if (!isEditMode && item?.id !== selectedFood?.id) {
-            const lastPortion = item?.id ? lastUsedPortions[item.id] : undefined;
-            if (lastPortion) {
-                setGrams(String(lastPortion));
+            if (item) { // If a new food is selected (item is not null)
+                 if (!isEditMode) { // Only auto-fill grams if not editing a daily entry item
+                    const lastPortion = lastUsedPortions[item.id];
+                    if (lastPortion) {
+                        setGrams(String(lastPortion));
+                    } else {
+                        setGrams(""); // Clear grams if no last portion for the new item
+                    }
+                }
+                // If isEditMode is true (editing a daily log item), AddEntryModal's useEffect handles initialGrams.
+                // We should not overwrite it here with last used portions.
             } else {
+                // If item is null (selection explicitly cleared, e.g. by starting a search), ensure grams are cleared
                 setGrams("");
             }
         }
-    }, [handleSelectFood, updateSearch, isEditMode, selectedFood, setGrams, lastUsedPortions, setSelectedMultipleFoods]);
+    }, [handleSelectFood, updateSearch, selectedFood, setGrams, lastUsedPortions, setSelectedMultipleFoods, isEditMode]);
     
     const handleSearchChange = (text: string) => {
         updateSearch(text);
-        if (selectedFood && text.trim() !== "") { // Clear single selection only if user starts typing
-            handleSelectFood(null);
+        if (selectedFood && text.trim() !== "") { 
+            handleSelectFood(null); // Clear single selection if user starts typing
             setGrams("");
             // setSelectedMultipleFoods(new Map()); // Keep multi-select if user is searching
         }
@@ -140,7 +153,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
 
     const renderFoodItem = ({ item }: { item: DisplayFoodItem }) => {
         const foodItem = item;
-        const isSingleSelected = selectedFood?.id === foodItem.id && !search; // Only highlight single selection if not searching
+        const isSingleSelected = selectedFood?.id === foodItem.id && !search; 
         const iconStatus = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
@@ -263,12 +276,11 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}
-                windowSize={21} // Ensure enough items are rendered for scrollToIndex to work smoothly
+                windowSize={21} 
                 removeClippedSubviews={Platform.OS === 'android'}
                 style={styles.flatListContainer}
                 contentContainerStyle={styles.flatListContentContainer}
                 getItemLayout={(data, index) => (
-                    // Assuming a fixed height for list items for optimization, adjust if dynamic
                     { length: 65, offset: 65 * index, index } 
                 )}
             />
@@ -296,7 +308,7 @@ const useStyles = makeStyles((theme) => ({
     },
     flatListContainer: {
         maxHeight: 250, 
-        minHeight: 150, // Ensure it has some height even when few items
+        minHeight: 150,
     },
     flatListContentContainer: {
         paddingBottom: 10,
@@ -324,7 +336,7 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 8,
         paddingHorizontal: 5,
         borderBottomColor: theme.colors.divider,
-        minHeight: 65, // Ensure items have a consistent height for getItemLayout
+        minHeight: 65,
     },
     selectedListItem: {
         backgroundColor: theme.colors.grey5,
@@ -376,7 +388,7 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         paddingVertical: 20,
         paddingHorizontal: 10,
-        minHeight: 150, // Ensure it takes space
+        minHeight: 150, 
         justifyContent: 'center',
     },
     noFoodsText: {
