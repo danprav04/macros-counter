@@ -27,14 +27,11 @@ src/
     DateNavigator.tsx
     Entry/
       QuickAddItem.tsx
-    Food/
     FoodFormFields.tsx
     FoodItem.tsx
-    Modal/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
-  hooks/
   localization/
     i18n.ts
     languages/
@@ -1738,7 +1735,6 @@ import { LastUsedPortions } from '../../services/storageService';
 import { t } from '../../localization/i18n';
 
 const DEFAULT_GRAMS_FOR_MULTI_ADD = 100;
-// const MAX_RECENT_FOODS_TO_DISPLAY_WITH_ALL = 3; // No longer strictly used for combining logic
 
 interface FoodSelectionListProps {
     search: string;
@@ -1750,7 +1746,7 @@ interface FoodSelectionListProps {
     setGrams: (grams: string) => void;
     setSelectedMultipleFoods: React.Dispatch<React.SetStateAction<Map<string, { food: Food; grams: number }>>>;
     selectedMultipleFoods: Map<string, { food: Food; grams: number }>;
-    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void;
+    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void; // This comes from AddEntryModal
     foodIcons: { [foodName: string]: string | null | undefined };
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
@@ -1766,12 +1762,12 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     updateSearch,
     foods,
     recentFoods,
-    selectedFood, // This is internalSelectedFood from AddEntryModal
+    selectedFood, 
     handleSelectFood,
     setGrams,
     setSelectedMultipleFoods,
     selectedMultipleFoods,
-    handleToggleMultipleFoodSelection,
+    handleToggleMultipleFoodSelection, // Prop from AddEntryModal
     foodIcons,
     onAddNewFoodRequest,
     isActionDisabled,
@@ -1795,91 +1791,105 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         if (search) {
             return filteredFoodsForSearch;
         }
-
         const tempCombinedList: DisplayFoodItem[] = [];
         const displayedIds = new Set<string>();
-
-        // 1. If selectedFood is provided (pre-selected), ensure it's at the top.
         if (selectedFood) {
             const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
             tempCombinedList.push({ ...selectedFood, isRecent: isSelRecent });
             displayedIds.add(selectedFood.id);
         }
-
-        // 2. Add recent foods not already added.
         recentFoods.forEach(rf => {
             if (!displayedIds.has(rf.id)) {
                 tempCombinedList.push({ ...rf, isRecent: true });
                 displayedIds.add(rf.id);
             }
         });
-        
-        // 3. Add other foods from the main library, not already added, sorted, and limited.
         const otherLibraryFoods = foods
             .filter(food => !displayedIds.has(food.id))
             .sort((a, b) => a.name.localeCompare(b.name))
-            .slice(0, 10); // Limit the number of general library items shown when no search
-
+            .slice(0, 10); 
         otherLibraryFoods.forEach(olf => {
-             // No need to check displayedIds again due to filter, but add to combined list
             tempCombinedList.push({ ...olf, isRecent: false });
         });
-        
         return tempCombinedList;
-
     }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
 
-
-    // Effect to scroll to the selected item when it changes and list is ready
     useEffect(() => {
         if (selectedFood && flatListRef.current && listDisplayData.length > 0 && !search) {
             const index = listDisplayData.findIndex(item => item.id === selectedFood.id);
             if (index !== -1) {
-                // Give a slight delay for the list to render before scrolling
                 setTimeout(() => {
-                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); // Try to center it a bit
+                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); 
                 }, 150);
             }
         }
-    }, [selectedFood, listDisplayData, search]); // Re-run if selectedFood, list, or search changes
+    }, [selectedFood, listDisplayData, search]);
 
-
-    const handleInternalSelectFood = useCallback((item: Food | null) => {
-        handleSelectFood(item);
-        updateSearch(""); 
+    const handleInternalSingleSelectFood = useCallback((item: Food | null) => {
+        if (selectedMultipleFoods.size > 0 && item !== null && (!selectedFood || selectedFood.id !== item.id)) {
+            Keyboard.dismiss();
+            return; 
+        }
         Keyboard.dismiss();
-        setSelectedMultipleFoods(new Map()); 
-
-        if (!isEditMode && item?.id !== selectedFood?.id) {
-            const lastPortion = item?.id ? lastUsedPortions[item.id] : undefined;
-            if (lastPortion) {
-                setGrams(String(lastPortion));
-            } else {
-                setGrams("");
+        if (selectedFood && item && selectedFood.id === item.id) {
+            handleSelectFood(null);
+            setGrams(""); 
+            updateSearch(""); 
+            setSelectedMultipleFoods(new Map()); 
+        } else if (item === null) { 
+            handleSelectFood(null);
+            setGrams("");
+        } else if (item !== null) { 
+            handleSelectFood(item);
+            updateSearch(""); 
+            setSelectedMultipleFoods(new Map()); 
+            if (!isEditMode) { 
+                const lastPortion = lastUsedPortions[item.id];
+                if (lastPortion) {
+                    setGrams(String(lastPortion));
+                } else {
+                    setGrams(""); 
+                }
             }
         }
-    }, [handleSelectFood, updateSearch, isEditMode, selectedFood, setGrams, lastUsedPortions, setSelectedMultipleFoods]);
+    }, [
+        handleSelectFood, 
+        updateSearch, 
+        selectedFood, 
+        setGrams, 
+        lastUsedPortions, 
+        setSelectedMultipleFoods, 
+        isEditMode,
+        selectedMultipleFoods.size 
+    ]);
     
     const handleSearchChange = (text: string) => {
         updateSearch(text);
-        if (selectedFood && text.trim() !== "") { // Clear single selection only if user starts typing
-            handleSelectFood(null);
-            setGrams("");
-            // setSelectedMultipleFoods(new Map()); // Keep multi-select if user is searching
+        if (selectedFood && text.trim() !== "") { 
+            handleInternalSingleSelectFood(null);
         }
     };
 
     const renderFoodItem = ({ item }: { item: DisplayFoodItem }) => {
         const foodItem = item;
-        const isSingleSelected = selectedFood?.id === foodItem.id && !search; // Only highlight single selection if not searching
+        const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
+        const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
         const iconStatus = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
-        const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
-        const canMultiSelect = modalMode === "normal" && !isEditMode && !selectedFood;
+
+        const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
+        const showSingleSelectCheckmark = isSingleSelectedViaState && selectedMultipleFoods.size === 0 && !search;
 
         return (
             <TouchableOpacity
-                onPress={() => !isActionDisabled && handleInternalSelectFood(foodItem)}
+                onPress={() => {
+                    if (isActionDisabled) return;
+                    if (selectedMultipleFoods.size > 0) {
+                        handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                    } else {
+                        handleInternalSingleSelectFood(foodItem);
+                    }
+                }}
                 disabled={isActionDisabled}
                 style={[isActionDisabled && styles.disabledOverlay]}
             >
@@ -1887,17 +1897,20 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                     bottomDivider
                     containerStyle={[
                         styles.listItemContainer,
-                        isSingleSelected && styles.selectedListItem,
-                        isMultiSelected && canMultiSelect && styles.multiSelectedListItem,
+                        (showSingleSelectCheckmark || isMultiSelected) && styles.selectedListItem,
+                        isMultiSelected && styles.multiSelectedListItemBorder,
                     ]}
                 >
-                    {!isEditMode && !selectedFood && (
+                    {canShowCheckbox && (
                         <CheckBox
                             checked={isMultiSelected}
-                            onPress={() => handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti)}
-                            containerStyle={styles.multiSelectCheckbox}
+                            onPress={() => { 
+                                if (isActionDisabled) return;
+                                handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                            }}
+                            containerStyle={styles.multiSelectCheckboxContainer}
                             size={22}
-                            disabled={!canMultiSelect || isActionDisabled}
+                            disabled={isActionDisabled}
                         />
                     )}
                     {iconStatus === undefined ? (
@@ -1913,7 +1926,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                         <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
                             {foodItem.name}
                         </ListItem.Title>
-                        {!selectedFood && !isEditMode && (
+                        {canShowCheckbox && (
                             <ListItem.Subtitle style={styles.listItemSubtitleSecondary}>
                                 {t('addEntryModal.grams')}: {displayGramsForMulti}g
                             </ListItem.Subtitle>
@@ -1922,7 +1935,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                              <Text style={styles.recentBadge}>{t('addEntryModal.recent')}</Text>
                         )}
                     </ListItem.Content>
-                    {isSingleSelected && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
+                    {showSingleSelectCheckmark && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
                 </ListItem>
             </TouchableOpacity>
         );
@@ -1968,7 +1981,6 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         return null;
     };
 
-
     return (
         <View>
             <SearchBar
@@ -1994,12 +2006,11 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}
-                windowSize={21} // Ensure enough items are rendered for scrollToIndex to work smoothly
+                windowSize={21} 
                 removeClippedSubviews={Platform.OS === 'android'}
                 style={styles.flatListContainer}
                 contentContainerStyle={styles.flatListContentContainer}
                 getItemLayout={(data, index) => (
-                    // Assuming a fixed height for list items for optimization, adjust if dynamic
                     { length: 65, offset: 65 * index, index } 
                 )}
             />
@@ -2027,7 +2038,7 @@ const useStyles = makeStyles((theme) => ({
     },
     flatListContainer: {
         maxHeight: 250, 
-        minHeight: 150, // Ensure it has some height even when few items
+        minHeight: 150,
     },
     flatListContentContainer: {
         paddingBottom: 10,
@@ -2055,22 +2066,20 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 8,
         paddingHorizontal: 5,
         borderBottomColor: theme.colors.divider,
-        minHeight: 65, // Ensure items have a consistent height for getItemLayout
+        minHeight: 65,
     },
-    selectedListItem: {
-        backgroundColor: theme.colors.grey5,
+    selectedListItem: { 
+        backgroundColor: theme.colors.grey5, 
         borderRadius: 8,
     },
-    multiSelectedListItem: {
-        backgroundColor: theme.colors.successLight,
-        borderRadius: 8,
-        borderLeftWidth: 3,
-        borderLeftColor: theme.colors.success,
+    multiSelectedListItemBorder: { 
+        borderLeftWidth: 3, 
+        borderLeftColor: theme.colors.success, 
     },
-    multiSelectCheckbox: {
-        padding: 0,
-        margin: 0,
-        marginRight: 10,
+    multiSelectCheckboxContainer: { 
+        padding: 10, 
+        marginRight: 0, 
+        marginLeft: -10, 
         backgroundColor: 'transparent',
         borderWidth: 0,
     },
@@ -2107,7 +2116,7 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         paddingVertical: 20,
         paddingHorizontal: 10,
-        minHeight: 150, // Ensure it takes space
+        minHeight: 150, 
         justifyContent: 'center',
     },
     noFoodsText: {
@@ -4622,9 +4631,6 @@ export default i18n;
     "goals": {
       "estimateButton": "Estimate Goals"
     },
-    "cacheManagement": {
-      "title": "Cache Management"
-    },
     "statistics": {
       "title": "Statistics"
     },
@@ -4873,13 +4879,6 @@ export default i18n;
   "dateNavigator": {
     "invalidDate": "Invalid Date"
   },
-  "settings": {
-    "refreshIcons": "Refresh Food Icons",
-    "iconsCacheCleared": "Icon Cache Cleared",
-    "iconsCacheClearedMessage": "Icons will refresh.",
-    "errorClearCache": "Failed to Clear Cache",
-    "errorClearCacheMessage": "Unknown error."
-  },
   "utils": {
     "macros": {
       "alertAiErrorRecipe": "AI Error (Recipe)",
@@ -5012,9 +5011,6 @@ export default i18n;
     },
     "goals": {
       "estimateButton": "הערכת יעדים"
-    },
-    "cacheManagement": {
-      "title": "ניהול מטמון"
     },
     "statistics": {
       "title": "סטטיסטיקה"
@@ -5264,13 +5260,6 @@ export default i18n;
   "dateNavigator": {
     "invalidDate": "תאריך לא חוקי"
   },
-  "settings": {
-    "refreshIcons": "רענן סמלי מאכל",
-    "iconsCacheCleared": "מטמון הסמלים נוקה",
-    "iconsCacheClearedMessage": "הסמלים יתרעננו.",
-    "errorClearCache": "ניקוי המטמון נכשל",
-    "errorClearCacheMessage": "שגיאה לא ידועה."
-  },
   "utils": {
     "macros": {
       "alertAiErrorRecipe": "שגיאת AI (מתכון)",
@@ -5403,9 +5392,6 @@ export default i18n;
     },
     "goals": {
       "estimateButton": "Рассчитать цели"
-    },
-    "cacheManagement": {
-      "title": "Управление кэшем"
     },
     "statistics": {
       "title": "Статистика"
@@ -5654,13 +5640,6 @@ export default i18n;
   },
   "dateNavigator": {
     "invalidDate": "Неверная дата"
-  },
-  "settings": {
-    "refreshIcons": "Обновить иконки продуктов",
-    "iconsCacheCleared": "Кэш иконок очищен",
-    "iconsCacheClearedMessage": "Иконки будут обновлены.",
-    "errorClearCache": "Не удалось очистить кэш",
-    "errorClearCacheMessage": "Неизвестная ошибка."
   },
   "utils": {
     "macros": {
@@ -7230,7 +7209,7 @@ import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
-import { clearIconCache } from "../utils/iconUtils";
+// Removed: import { clearIconCache } from "../utils/iconUtils"; 
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
@@ -7239,13 +7218,12 @@ import i18n from '../localization/i18n';
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // This prop now comes from AppNavigator and is handleFoodChange
+  onDataOperation: () => void; 
 }
 
-// Define param list for Settings Stack
 type SettingsStackParamList = {
-  SettingsHome: undefined; // Current screen (SettingsScreen)
-  Questionnaire: undefined; // The new QuestionnaireScreen
+  SettingsHome: undefined; 
+  Questionnaire: undefined; 
 };
 
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
@@ -7263,23 +7241,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [isClearingCache, setIsClearingCache] = useState(false);
+  // Removed: const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true); // For initial load
+  const [isDataLoading, setIsDataLoading] = useState(true); 
 
   const { theme } = useTheme();
   const styles = useStyles();
-  const navigation = useNavigation<SettingsNavigationProp>(); // Typed navigation
+  const navigation = useNavigation<SettingsNavigationProp>(); 
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
     macro: MacroType,
     currentGoals: { [key in MacroType]: number }
   ): MacroData[][] => {
-    const intakeDataMap = new Map<number, number>(); // timestamp -> value
-    const goalDataMap = new Map<number, number>();   // timestamp -> value (for calories)
+    const intakeDataMap = new Map<number, number>(); 
+    const goalDataMap = new Map<number, number>();   
 
     dailyEntries.forEach((entry) => {
       try {
@@ -7366,7 +7344,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           const loadedSettings = await loadSettings();
           if (!isActive) return;
           setSettings(loadedSettings);
-          // Update title based on loaded settings (language might have changed)
           navigation.setOptions({ title: t('settingsScreen.title') });
           await fetchUserStatus();
           await updateStatistics(loadedSettings.dailyGoals);
@@ -7380,7 +7357,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus, navigation]) // Added navigation to dependency array
+    }, [updateStatistics, fetchUserStatus, navigation]) 
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
@@ -7403,8 +7380,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [updateStatistics]);
 
 
-  // This local function is passed to DataManagementButtons.
-  // It now also calls the onDataOperation prop received from AppNavigator.
   const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
     try {
@@ -7412,23 +7387,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
       await fetchUserStatus();
-      onThemeChange(reloadedSettings.theme); // Update theme via AppNavigator's callback
-      onLocaleChange(reloadedSettings.language); // Update locale via AppNavigator's callback
+      onThemeChange(reloadedSettings.theme); 
+      onLocaleChange(reloadedSettings.language); 
       
-      onDataOperation(); // <= THIS IS THE KEY CHANGE: Call the prop from AppNavigator
+      onDataOperation(); 
 
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
   }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
-
-   const handleClearIconCache = useCallback(async () => {
-      setIsClearingCache(true);
-      try { await clearIconCache(); Toast.show({ type: 'success', text1: t('settings.iconsCacheCleared'), text2: t('settings.iconsCacheClearedMessage'), position: 'bottom' }); }
-      catch (error) { Toast.show({ type: 'error', text1: t('settings.errorClearCache'), text2: error instanceof Error ? error.message : t('settings.errorClearCacheMessage'), position: 'bottom' }); }
-      finally { setIsClearingCache(false); }
-   }, []);
 
     const handleAddTestCoins = useCallback(async () => {
         setIsAddingCoins(true);
@@ -7439,7 +7407,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
-    onLocaleChange(newLanguage); // This calls App.tsx's handleLocaleChange
+    onLocaleChange(newLanguage); 
   };
 
   const handleNavigateToQuestionnaire = () => {
@@ -7503,13 +7471,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
         </View>
 
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.cacheManagement.title')}</Text>
-        <View style={styles.buttonGroup}>
-            <Button title={t('settings.refreshIcons')} onPress={handleClearIconCache} buttonStyle={[styles.button, { backgroundColor: theme.colors.secondary }]}
-                    icon={<Icon name="refresh-outline" type="ionicon" color="white" size={20} style={{ marginRight: 8 }} />}
-                    loading={isClearingCache} disabled={isClearingCache} />
-        </View>
-
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
         <View style={styles.chartContainer}>
             <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
@@ -7548,12 +7509,12 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 25,
-    marginBottom: 10, // Reduced bottom margin as inputs follow directly
+    marginBottom: 10, 
   },
   sectionTitleInline: {
-    marginTop: 0, // Reset margin for inline title
-    marginBottom: 0, // Reset margin
-    borderLeftWidth: 0, // Remove border for inline version or style differently
+    marginTop: 0, 
+    marginBottom: 0, 
+    borderLeftWidth: 0, 
     paddingLeft: 0,
     flexShrink: 1,
   },
@@ -7599,7 +7560,6 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default SettingsScreen;
-
 ---------- END SettingsScreen.tsx ----------
 
 
