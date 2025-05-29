@@ -27,14 +27,11 @@ src/
     DateNavigator.tsx
     Entry/
       QuickAddItem.tsx
-    Food/
     FoodFormFields.tsx
     FoodItem.tsx
-    Modal/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
-  hooks/
   localization/
     i18n.ts
     languages/
@@ -1197,18 +1194,27 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           const base64Image = await getBase64FromUri(assetForAnalysis.uri);
           const mimeType = determineMimeType(assetForAnalysis);
           const results = await getMultipleFoodsFromImage(base64Image, mimeType);
-          if (results.length === 0) { Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'}); setTimeout(() => { setModalMode("normal"); setQuickAddLoading(false); }, 500); }
-          else {
-            setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+          if (results.length === 0) {
+            Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
+            setQuickAddItems([]); // Ensure items are cleared
+            setQuickAddLoading(false); // Loading is done
+            setModalMode("normal"); // No items, go back to normal
+          } else {
+            setQuickAddItems(results);
+            setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
             results.forEach(qaItem => { if (qaItem.foodName) { handleRequestIcon(qaItem.foodName); } });
-            setTimeout(() => setQuickAddLoading(false), 150);
+            setQuickAddLoading(false); // Set loading to false immediately after items are set
+            // Modal mode is already 'quickAddSelect'
           }
         } else { throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect')); }
       } catch (error: any) {
         if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
           Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
         }
-        setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setQuickAddLoading(false);
+        setModalMode("normal");
+        setQuickAddItems([]);
+        setSelectedQuickAddIndices(new Set());
+        setQuickAddLoading(false);
       }
     }, [isEditMode, handleRequestIcon]
   );
