@@ -147,11 +147,6 @@ yarn-error.*
       },
       "package": "com.macrosvisionai.app",
       "userInterfaceStyle": "automatic",
-      "statusBar": {
-        "backgroundColor": "#00000000",
-        "translucent": true,
-        "barStyle": "auto"
-      },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -197,7 +192,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
          "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
       }
     }
@@ -532,7 +527,7 @@ export default App;
         "buildType": "apk"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
          "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
       }
     },
