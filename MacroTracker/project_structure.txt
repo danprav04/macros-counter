@@ -197,8 +197,8 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
+         "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
       }
     }
   }
@@ -532,8 +532,8 @@ export default App;
         "buildType": "apk"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.18.1.15:8000"
+         "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
       }
     },
     "production": {
@@ -6450,12 +6450,12 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
 
-// Polyfill atob if not available (e.g., in some JS environments without DOM)
+// Polyfill atob/btoa if not available, ensuring they work with binary strings
 if (typeof atob === 'undefined') {
-  global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+  global.atob = (str: string): string => Buffer.from(str, 'base64').toString('binary');
 }
 if (typeof btoa === 'undefined') {
-  global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
+  global.btoa = (str: string): string => Buffer.from(str, 'binary').toString('base64');
 }
 
 
@@ -6467,32 +6467,35 @@ type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'F
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
 
 const getBackendShareBaseUrl = (): string => {
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION || process.env.EXPO_PUBLIC_BACKEND_URL;
-    if (envUrl) {
-        return envUrl.replace(/\/api\/v1$/, '').replace(/\/$/, '');
+    let prodBaseUrl: string | undefined;
+    prodBaseUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+
+    if (!prodBaseUrl) {
+        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
+        if (prodBaseUrl) {
+            console.log("Share Link: Using BACKEND_URL_PRODUCTION from app.json for share link base.");
+        }
     }
-    const configUrlKey = __DEV__ ? 'BACKEND_URL_DEVELOPMENT' : 'BACKEND_URL_PRODUCTION';
-    const configUrl = Constants.expoConfig?.extra?.env?.[configUrlKey];
-    
-    if (configUrl) {
-        console.warn(`Using Backend URL from app.json extra.env.${configUrlKey}. Consider using build-time environment variables (EXPO_PUBLIC_*) for production consistency.`);
-        return configUrl.replace(/\/api\/v1$/, '').replace(/\/$/, '');
+
+    if (!prodBaseUrl) {
+        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION || "https://macros-vision-ai.xyz"; 
+        console.warn(
+            `Share Link WARNING: Production backend URL is not configured via EXPO_PUBLIC_BACKEND_URL_PRODUCTION. ` +
+            `Attempting to use extra.env.BACKEND_URL_PRODUCTION or falling back to a hardcoded default: ${prodBaseUrl}. ` +
+            `IT IS CRITICAL TO ENSURE 'EXPO_PUBLIC_BACKEND_URL_PRODUCTION' IS SET CORRECTLY IN YOUR BUILD ENVIRONMENT FOR PRODUCTION RELEASES.`
+        );
     }
-    console.error("Backend URL for sharing not found. Using default DEVELOPMENT URL. THIS IS NOT FOR PRODUCTION.");
-    const DEV_URL = Constants.expoConfig?.extra?.env?.BACKEND_URL_DEVELOPMENT || 'http://192.168.1.15:8000';
-    return DEV_URL.replace(/\/api\/v1$/, '').replace(/\/$/, '');
+    return prodBaseUrl.replace(/\/api\/v1$/, '').replace(/\/$/, '');
 };
 
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
-
     const [offset, setOffset] = useState(0);
     const [totalFoods, setTotalFoods] = useState(0);
-    const [isLoading, setIsLoading] = useState(true); // Start true for initial load
+    const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
@@ -6505,7 +6508,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const flatListRef = useRef<FlatList<Food>>(null);
     const foodIconsRef = useRef(foodIcons);
     const prevSearchTermRef = useRef<string>(search.trim());
-    const isFirstRunRef = useRef(true); // To track the very first run of useFocusEffect
+    const isFirstRunRef = useRef(true);
 
     useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
@@ -6528,33 +6531,19 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     }, []);
 
     const doFetchFoods = useCallback(async (
-        isInitialOrNewSearch: boolean,
-        termToFetch: string,
-        currentOffset: number, // Current offset state before this fetch
-        currentFoodsLength: number, // Current foods.length before this fetch
-        currentTotalFoods: number, // Current totalFoods state before this fetch
-        currentIsLoadingMore: boolean // Current isLoadingMore state
+        isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
+        currentFoodsLength: number, currentTotalFoods: number, currentIsLoadingMore: boolean
     ) => {
-        // Prevent fetching more if already loading more or no more data for non-initial searches
         if (!isInitialOrNewSearch && (currentIsLoadingMore || (currentFoodsLength >= currentTotalFoods && currentTotalFoods > 0))) {
             return;
         }
-
         const offsetForThisFetch = isInitialOrNewSearch ? 0 : currentOffset;
-
-        if (isInitialOrNewSearch) {
-            setIsLoading(true); // Set main loading true
-        } else {
-            setIsLoadingMore(true);
-        }
+        if (isInitialOrNewSearch) setIsLoading(true); else setIsLoadingMore(true);
 
         try {
             const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch);
-
             if (isInitialOrNewSearch) {
-                if (flatListRef.current) {
-                    flatListRef.current.scrollToOffset({ animated: false, offset: 0 });
-                }
+                flatListRef.current?.scrollToOffset({ animated: false, offset: 0 });
                 setFoods(newItemsFromApi);
             } else {
                 setFoods(prevFoods => {
@@ -6568,14 +6557,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             triggerIconPrefetch(newItemsFromApi);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            if (isInitialOrNewSearch) {
-                 setFoods([]);
-                 setTotalFoods(0);
-                 setOffset(0);
-            }
+            if (isInitialOrNewSearch) { setFoods([]); setTotalFoods(0); setOffset(0); }
         } finally {
-            if (isInitialOrNewSearch) setIsLoading(false); // Critical: Set main loading false
-            else setIsLoadingMore(false);
+            if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
         }
     }, [triggerIconPrefetch, PAGE_SIZE, t]);
 
@@ -6595,21 +6579,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     useFocusEffect(
         useCallback(() => {
             const currentTrimmedSearch = search.trim();
-            const isNewSearch = prevSearchTermRef.current !== currentTrimmedSearch;
-            let shouldFetchInitially = false;
-
-            if (isFirstRunRef.current) {
-                shouldFetchInitially = true;
-                isFirstRunRef.current = false; 
-            } else if (isNewSearch) {
-                shouldFetchInitially = true;
-            }
-            
-            if (shouldFetchInitially) {
-                // Pass current state values that doFetchFoods needs for its internal logic
+            if (isFirstRunRef.current || prevSearchTermRef.current !== currentTrimmedSearch) {
                 doFetchFoods(true, currentTrimmedSearch, offset, foods.length, totalFoods, isLoadingMore);
+                isFirstRunRef.current = false;
+                prevSearchTermRef.current = currentTrimmedSearch;
             }
-            prevSearchTermRef.current = currentTrimmedSearch;
 
             const params = route.params;
             if (params) {
@@ -6620,7 +6594,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 if (params.foodData && typeof params.foodData === 'string') {
                     try {
                         let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
-                        const decodedJson = atob(b64); 
+                        const binaryString = atob(b64);
+                        const utf8Bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            utf8Bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const decodedJson = new TextDecoder().decode(utf8Bytes);
                         const sharedFood: SharedFoodData = JSON.parse(decodedJson);
 
                         if (sharedFood && typeof sharedFood.name === 'string') {
@@ -6630,39 +6609,25 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                             });
                             setEditFood(null);
                             setIsOverlayVisible(true); 
-                            navigation.setParams({ foodData: undefined });
                         } else {
                             console.warn("Parsed shared food data is invalid:", sharedFood);
                             Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
-                            navigation.setParams({ foodData: undefined });
                         }
                     } catch (e) {
                         console.error("Error parsing shared food data from deep link:", e);
                         Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
-                        navigation.setParams({ foodData: undefined });
+                    } finally {
+                        navigation.setParams({ foodData: undefined }); // Clear after processing
                     }
                 }
             }
-            return () => {};
-        }, [
-            search, route.params, isOverlayVisible, 
-            offset, foods.length, totalFoods, isLoadingMore, // Pass these to effect for doFetchFoods call
-            doFetchFoods, toggleOverlay, navigation, t
-        ])
+        }, [search, route.params, isOverlayVisible, offset, foods.length, totalFoods, isLoadingMore, doFetchFoods, toggleOverlay, navigation, t])
     );
 
-    const updateSearch = useCallback((text: string) => {
-        setSearch(text);
-        // Actual fetch will be triggered by useFocusEffect due to `search` dependency change
-    }, []);
-
-    const handleClearSearch = useCallback(() => {
-        setSearch('');
-        // Actual fetch will be triggered by useFocusEffect
-    }, []);
+    const updateSearch = useCallback((text: string) => setSearch(text), []);
+    const handleClearSearch = useCallback(() => setSearch(''), []);
 
     const handleLoadMore = () => {
-        // Pass current state values to doFetchFoods
         if (!isLoading && !isLoadingMore && (foods.length < totalFoods)) {
             doFetchFoods(false, search.trim(), offset, foods.length, totalFoods, isLoadingMore);
         }
@@ -6691,7 +6656,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); // Refresh list
+            doFetchFoods(true, search.trim(), 0, 0, 0, false);
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -6708,7 +6673,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); // Refresh list
+            doFetchFoods(true, search.trim(), 0, 0, 0, false);
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -6723,7 +6688,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             if (foodToDelete.name && foodIconsRef.current[foodToDelete.name] !== undefined) {
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); // Refresh list
+            doFetchFoods(true, search.trim(), 0, 0, 0, false);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
             doFetchFoods(true, search.trim(), 0, 0, 0, false);
@@ -6732,10 +6697,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false); // Refresh list
+        doFetchFoods(true, search.trim(), 0, 0, 0, false);
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
     }, [search, doFetchFoods, t]); 
-
 
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
@@ -6744,9 +6708,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
         try {
             const jsonString = JSON.stringify(foodDataPayload);
-            const base64Data = btoa(jsonString).replace(/\+/g, '-').replace(/\//g, '_');
+            const utf8Bytes = new TextEncoder().encode(jsonString);
+            let binaryString = '';
+            utf8Bytes.forEach((byte) => { binaryString += String.fromCharCode(byte); });
+            
+            const base64Data = btoa(binaryString)
+                                 .replace(/\+/g, '-')
+                                 .replace(/\//g, '_');
+                                 // Padding is kept based on previous discussion
+            
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
+            
             await Share.share({ message: shareUrl, title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}), });
         } catch (error) {
             console.error("Error sharing food:", error);
@@ -6773,12 +6746,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         if (isEdit) { setEditFood(updateState); } else { setNewFood(updateState); }
     }, []);
 
-    const renderFooter = () => {
-        if (!isLoadingMore) return null;
-        return ( <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> );
-    };
+    const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
 
-    // Condition to show the main loading screen
     if (isLoading && foods.length === 0 && !isOverlayVisible) {
         return ( <SafeAreaView style={styles.centeredLoader} edges={['top', 'left', 'right']}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('foodListScreen.loadingFoods')}</Text></SafeAreaView> );
     }
@@ -6786,78 +6755,43 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <SearchBar
-                placeholder={t('foodListScreen.searchPlaceholder')}
-                onChangeText={updateSearch}
-                value={search}
+                placeholder={t('foodListScreen.searchPlaceholder')} onChangeText={updateSearch} value={search}
                 platform={Platform.OS === "ios" ? "ios" : "android"}
-                containerStyle={styles.searchBarContainer}
-                inputContainerStyle={styles.searchBarInputContainer}
-                inputStyle={styles.searchInputStyle}
-                onClear={handleClearSearch}
+                containerStyle={styles.searchBarContainer} inputContainerStyle={styles.searchBarInputContainer}
+                inputStyle={styles.searchInputStyle} onClear={handleClearSearch}
                 showCancel={Platform.OS === 'ios' && search.length > 0}
                 cancelButtonProps={{ color: theme.colors.primary }}
                 showLoading={isLoading && search.trim().length > 0} 
             />
             <FlatList
-                ref={flatListRef}
-                data={foods}
-                keyExtractor={(item) => item.id}
+                ref={flatListRef} data={foods} keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <FoodItem
-                        food={item}
-                        onEdit={() => toggleOverlay(item)}
-                        onDelete={handleDeleteFood}
-                        onUndoDelete={handleUndoDeleteFood}
-                        onQuickAdd={handleQuickAdd}
-                        onShare={handleShareFood}
-                        foodIconUrl={foodIcons[item.name]} 
-                    />
+                    <FoodItem food={item} onEdit={() => toggleOverlay(item)} onDelete={handleDeleteFood}
+                        onUndoDelete={handleUndoDeleteFood} onQuickAdd={handleQuickAdd} onShare={handleShareFood}
+                        foodIconUrl={foodIcons[item.name]} />
                 )}
-                ListEmptyComponent={
-                    !isLoading ? ( // Only show empty component if not in main loading state
-                        <View style={styles.emptyListContainer}>
-                            <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
-                            <Text style={styles.emptyListText}>
-                                {search.trim() ? t('foodListScreen.noResults', { searchTerm: search.trim() }) : t('foodListScreen.emptyLibrary')}
-                            </Text>
-                            {!search.trim() && <Text style={styles.emptyListSubText}>{t('foodListScreen.emptyLibraryHint')}</Text>}
-                        </View>
-                    ) : null 
-                }
+                ListEmptyComponent={ !isLoading ? (
+                    <View style={styles.emptyListContainer}>
+                        <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
+                        <Text style={styles.emptyListText}>
+                            {search.trim() ? t('foodListScreen.noResults', { searchTerm: search.trim() }) : t('foodListScreen.emptyLibrary')}
+                        </Text>
+                        {!search.trim() && <Text style={styles.emptyListSubText}>{t('foodListScreen.emptyLibraryHint')}</Text>}
+                    </View>
+                ) : null }
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
+                onEndReached={handleLoadMore} onEndReachedThreshold={0.5} ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ 
-                    foodIconsLength: Object.keys(foodIcons).length, 
-                    isLoadingMore, 
-                    isLoading, 
-                    search, 
-                    foodsLength: foods.length,
-                    totalFoods
-                }}
+                extraData={{ foodIconsLength: Object.keys(foodIcons).length, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
             />
-            <FAB
-                icon={<RNEIcon name="add" color={theme.colors.white} />}
-                color={theme.colors.primary}
-                onPress={() => !isSaving && toggleOverlay()} 
-                placement="right"
-                size="large"
-                style={styles.fab}
-                disabled={isSaving || isLoading} 
-            />
+            <FAB icon={<RNEIcon name="add" color={theme.colors.white} />} color={theme.colors.primary}
+                onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab}
+                disabled={isSaving || isLoading} />
             <AddFoodModal
-                isVisible={isOverlayVisible}
-                toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} 
-                newFood={newFood}
-                editFood={editFood}
-                errors={errors}
-                handleInputChange={handleInputChange}
-                handleCreateFood={handleCreateFood}
-                handleUpdateFood={handleUpdateFood}
-                validateFood={validateFood}
-                setErrors={setErrors}
+                isVisible={isOverlayVisible} toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} 
+                newFood={newFood} editFood={editFood} errors={errors}
+                handleInputChange={handleInputChange} handleCreateFood={handleCreateFood}
+                handleUpdateFood={handleUpdateFood} validateFood={validateFood} setErrors={setErrors}
             />
         </SafeAreaView>
     );

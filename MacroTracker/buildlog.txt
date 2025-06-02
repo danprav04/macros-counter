@@ -1,0 +1,325 @@
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "production" environment on EAS.
+Environment variables loaded from the "preview" build profile "env" configuration: BACKEND_URL_PRODUCTION, BACKEND_URL_DEVELOPMENT.
+
+✔ Using remote Android credentials (Expo server)
+⌛️ Computing the project fingerprint is taking longer than expected...
+⏩ To skip this step, set the environment variable: EAS_SKIP_AUTO_FINGERPRINT=1
+ANDROID_NDK_HOME environment variable was not specified, continuing build without NDK
+[SETUP_WORKINGDIR] Preparing workingdir /tmp/daniel/eas-build-local-nodejs/b1db0b09-6645-4a5f-80c2-fcb5954dc012
+[START_BUILD] Starting build
+  "job": {
+    "type": "managed",
+    "platform": "android",
+    "projectRootDirectory": "MacroTracker",
+    "projectArchive": {
+      "type": "PATH",
+      "path": "/tmp/daniel/eas-cli-nodejs/5b39e989-d5a5-4004-aa91-c45fcbb0ef7f.tar.gz"
+    },
+    "builderEnvironment": {
+      "env": {
+        "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+        "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+      }
+    },
+    "cache": {
+      "disabled": false,
+      "paths": [],
+      "clear": false
+    },
+    "updates": {},
+    "buildType": "apk",
+    "username": "danprav",
+    "version": {
+      "versionCode": "1"
+    },
+    "experimental": {},
+    "mode": "build",
+    "triggeredBy": "EAS_CLI",
+    "appId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1",
+    "initiatingUserId": "e34b8f49-0682-4c95-9236-5ed79844ec33"
+  }
+[READ_PACKAGE_JSON] Using package.json:
+[READ_PACKAGE_JSON] {
+  "name": "macrosvisionai",
+  "license": "0BSD",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-community/datetimepicker": "8.2.0",
+    "@react-native-picker/picker": "^2.11.0",
+    "@react-navigation/bottom-tabs": "^7.3.1",
+    "@react-navigation/native": "^7.0.17",
+    "@react-navigation/native-stack": "^7.3.12",
+    "@rneui/base": "^4.0.0-rc.7",
+    "@rneui/themed": "^4.0.0-rc.8",
+    "@types/d3-scale": "^4.0.9",
+    "d3-scale": "^4.0.2",
+    "date-fns": "^4.1.0",
+    "expo": "~52.0.40",
+    "expo-constants": "~16.0.2",
+    "expo-document-picker": "^13.0.3",
+    "expo-file-system": "^18.0.12",
+    "expo-image-manipulator": "~13.0.5",
+    "expo-image-picker": "^16.0.6",
+    "expo-localization": "~15.0.3",
+    "expo-sharing": "~13.0.1",
+    "expo-status-bar": "~2.0.1",
+    "i18n-js": "^4.5.1",
+    "react": "18.3.1",
+    "react-native": "0.76.7",
+    "react-native-config": "^1.5.5",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-mime-types": "^2.5.0",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "^4.14.1",
+    "react-native-screens": "^4.9.2",
+    "react-native-svg": "^15.11.2",
+    "react-native-toast-message": "^2.2.1",
+    "react-native-uuid": "^2.0.3",
+    "react-native-webview": "^13.13.4",
+    "uuid": "^11.1.0",
+    "expo-linking": "~7.0.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/i18n-js": "^4.0.1",
+    "@types/react": "~18.3.12",
+    "@types/react-native": "^0.73.0",
+    "@types/react-native-svg-charts": "^5.0.16",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.3.3",
+    "victory": "^37.3.6"
+  },
+  "private": true
+}
+[INSTALL_DEPENDENCIES] Running "npm install" in /tmp/daniel/eas-build-local-nodejs/b1db0b09-6645-4a5f-80c2-fcb5954dc012/build/MacroTracker directory
+[INSTALL_DEPENDENCIES] added 1039 packages, and audited 1040 packages in 10s
+[INSTALL_DEPENDENCIES] 91 packages are looking for funding
+[INSTALL_DEPENDENCIES]   run `npm fund` for details
+[INSTALL_DEPENDENCIES] 1 high severity vulnerability
+[INSTALL_DEPENDENCIES] 
+[INSTALL_DEPENDENCIES] To address all issues, run:
+[INSTALL_DEPENDENCIES]   npm audit fix
+[INSTALL_DEPENDENCIES] 
+[INSTALL_DEPENDENCIES] Run `npm audit` for details.
+[READ_APP_CONFIG] Using app configuration:
+[READ_APP_CONFIG] {
+  "name": "MacrosVisionAI",
+  "slug": "MacroTracker",
+  "version": "2.0.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "scheme": "macrosvisionai",
+  "userInterfaceStyle": "automatic",
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#000000"
+  },
+  "androidStatusBar": {
+    "backgroundColor": "#000000",
+    "translucent": false,
+    "barStyle": "light-content"
+  },
+  "assetBundlePatterns": [
+    "**/*"
+  ],
+  "ios": {
+    "supportsTablet": true,
+    "bundleIdentifier": "com.macrosvisionai.app",
+    "infoPlist": {
+      "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
+      "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
+      "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis."
+    }
+  },
+  "android": {
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
+      "backgroundColor": "#ffffff"
+    },
+    "package": "com.macrosvisionai.app",
+    "userInterfaceStyle": "automatic",
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.RECORD_AUDIO"
+    ],
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "data": [
+          {
+            "scheme": "macrosvisionai",
+            "host": "open-add-food-modal"
+          }
+        ],
+        "category": [
+          "BROWSABLE",
+          "DEFAULT"
+        ]
+      }
+    ]
+  },
+  "web": {
+    "favicon": "./assets/favicon.png"
+  },
+  "plugins": [
+    [
+      "expo-document-picker",
+      {
+        "appleTeamId": "YOUR_TEAM_ID"
+      }
+    ],
+    [
+      "expo-image-picker",
+      {
+        "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
+        "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis."
+      }
+    ]
+  ],
+  "extra": {
+    "eas": {
+      "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
+    },
+    "env": {
+      "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
+      "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+    }
+  },
+  "sdkVersion": "52.0.0",
+  "platforms": [
+    "ios",
+    "android"
+  ]
+}
+[RUN_EXPO_DOCTOR] Running "expo doctor"
+[RUN_EXPO_DOCTOR] Running 15 checks on your project...
+[RUN_EXPO_DOCTOR] 11/15 checks passed. 4 checks failed. Possible issues detected:
+[RUN_EXPO_DOCTOR] Use the --verbose flag to see more details about passed checks.
+[RUN_EXPO_DOCTOR] 
+[RUN_EXPO_DOCTOR] ✖ Check dependencies for packages that should not be installed directly
+[RUN_EXPO_DOCTOR] The package  "@types/react-native" should not be installed directly in your project, as types are included with the "react-native" package.
+[RUN_EXPO_DOCTOR] Advice:
+[RUN_EXPO_DOCTOR] Remove these packages from your package.json.
+[RUN_EXPO_DOCTOR] 
+[RUN_EXPO_DOCTOR] ✖ Check that native modules use compatible support package versions for installed Expo SDK
+[RUN_EXPO_DOCTOR] Expected package @expo/config-plugins@~9.0.0
+[RUN_EXPO_DOCTOR] Found invalid:
+[RUN_EXPO_DOCTOR]   @expo/config-plugins@8.0.11
+[RUN_EXPO_DOCTOR]   (for more info, run: npm why @expo/config-plugins)
+[RUN_EXPO_DOCTOR] Advice:
+[RUN_EXPO_DOCTOR] Upgrade dependencies that are using the invalid package versions.
+[RUN_EXPO_DOCTOR] 
+[RUN_EXPO_DOCTOR] ✖ Validate packages against React Native Directory package metadata
+[RUN_EXPO_DOCTOR] The following issues were found when validating your dependencies against React Native Directory:
+[RUN_EXPO_DOCTOR]   Unmaintained: @rneui/base, @rneui/themed
+[RUN_EXPO_DOCTOR]   No metadata available: d3-scale, react-native-mime-types, uuid
+[RUN_EXPO_DOCTOR] Advice:
+[RUN_EXPO_DOCTOR] Use libraries that are actively maintained and support the New Architecture. Find alternative libraries with https://reactnative.directory.
+[RUN_EXPO_DOCTOR] Add packages to expo.doctor.reactNativeDirectoryCheck.exclude in package.json to selectively skip validations, if the warning is not relevant.
+[RUN_EXPO_DOCTOR] Update React Native Directory to include metadata for unknown packages. Alternatively, set expo.doctor.reactNativeDirectoryCheck.listUnknownPackages in package.json to false to skip warnings about packages with no metadata, if the warning is not relevant.
+[RUN_EXPO_DOCTOR] 
+[RUN_EXPO_DOCTOR] ✖ Check that packages match versions required by installed Expo SDK
+[RUN_EXPO_DOCTOR] The following packages should be updated for best compatibility with the installed expo version:
+[RUN_EXPO_DOCTOR]   @react-native-async-storage/async-storage@2.1.2 - expected version: 1.23.1
+[RUN_EXPO_DOCTOR]   @react-native-picker/picker@2.11.0 - expected version: 2.9.0
+[RUN_EXPO_DOCTOR]   expo@52.0.40 - expected version: ~52.0.46
+[RUN_EXPO_DOCTOR]   expo-constants@16.0.2 - expected version: ~17.0.8
+[RUN_EXPO_DOCTOR]   expo-localization@15.0.3 - expected version: ~16.0.1
+[RUN_EXPO_DOCTOR]   react-native@0.76.7 - expected version: 0.76.9
+[RUN_EXPO_DOCTOR]   react-native-safe-area-context@4.14.1 - expected version: 4.12.0
+[RUN_EXPO_DOCTOR]   react-native-screens@4.10.0 - expected version: ~4.4.0
+[RUN_EXPO_DOCTOR]   react-native-svg@15.11.2 - expected version: 15.8.0
+[RUN_EXPO_DOCTOR]   react-native-webview@13.13.4 - expected version: 13.12.5
+[RUN_EXPO_DOCTOR] Your project may not work correctly until you install the expected versions of the packages.
+[RUN_EXPO_DOCTOR] Found outdated dependencies
+[RUN_EXPO_DOCTOR] Advice:
+[RUN_EXPO_DOCTOR] Use 'npx expo install --check' to review and upgrade your dependencies.
+[PREBUILD] - Creating native directory (./android)
+[PREBUILD] ✔ Created native directory
+[PREBUILD] - Updating package.json
+[PREBUILD] - Updating package.json
+[PREBUILD] ✔ Updated package.json
+[PREBUILD] - Running prebuild
+[PREBUILD] - Running prebuild
+[PREBUILD] ✔ Finished prebuild
+[PREBUILD] Running "npm install" in /tmp/daniel/eas-build-local-nodejs/b1db0b09-6645-4a5f-80c2-fcb5954dc012/build/MacroTracker directory
+[PREBUILD] up to date, audited 1040 packages in 1s
+[PREBUILD] 91 packages are looking for funding
+[PREBUILD]   run `npm fund` for details
+[PREBUILD] 1 high severity vulnerability
+[PREBUILD] 
+[PREBUILD] To address all issues, run:
+[PREBUILD]   npm audit fix
+[PREBUILD] 
+[PREBUILD] Run `npm audit` for details.
+[PREPARE_CREDENTIALS] Writing secrets to the project's directory
+[PREPARE_CREDENTIALS] Injecting signing config into build.gradle
+[EAGER_BUNDLE] Starting Metro Bundler
+[EAGER_BUNDLE] 
+[EAGER_BUNDLE] Android Bundled 4685ms index.ts (2268 modules)
+[EAGER_BUNDLE] Writing bundle output to: /tmp/npsaiypp3a/index.js
+[EAGER_BUNDLE] Copying 44 asset files
+[EAGER_BUNDLE] Done writing bundle output
+[RUN_GRADLEW] Running 'gradlew :app:assembleRelease' in /tmp/daniel/eas-build-local-nodejs/b1db0b09-6645-4a5f-80c2-fcb5954dc012/build/MacroTracker/android
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors
+[RUN_GRADLEW] > Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors
+[RUN_GRADLEW] > Task :gradle-plugin:shared:processResources NO-SOURCE
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:pluginDescriptors
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:processResources
+[RUN_GRADLEW] > Task :gradle-plugin:shared:compileKotlin
+[RUN_GRADLEW] > Task :gradle-plugin:shared:compileJava NO-SOURCE
+[RUN_GRADLEW] > Task :gradle-plugin:shared:classes UP-TO-DATE
+[RUN_GRADLEW] > Task :gradle-plugin:shared:jar
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:compileKotlin
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:classes
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:jar
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:processResources
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:compileKotlin
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:classes
+[RUN_GRADLEW] > Task :gradle-plugin:react-native-gradle-plugin:jar
+[RUN_GRADLEW] > Configure project :expo-modules-core
+[RUN_GRADLEW] Checking the license for package NDK (Side by side) 26.1.10909125 in /mnt/c/Users/Daniel/AppData/Local/Android/Sdk/licenses
+[RUN_GRADLEW] License for package NDK (Side by side) 26.1.10909125 accepted.
+[RUN_GRADLEW] Preparing "Install NDK (Side by side) 26.1.10909125 v.26.1.10909125".
+[RUN_GRADLEW] "Install NDK (Side by side) 26.1.10909125 v.26.1.10909125" ready.
+[RUN_GRADLEW] Installing NDK (Side by side) 26.1.10909125 in /mnt/c/Users/Daniel/AppData/Local/Android/Sdk/ndk/26.1.10909125
+[RUN_GRADLEW] "Install NDK (Side by side) 26.1.10909125 v.26.1.10909125" complete.
+[RUN_GRADLEW] "Install NDK (Side by side) 26.1.10909125 v.26.1.10909125" finished.
+[RUN_GRADLEW] > Configure project :expo
+[RUN_GRADLEW] Using expo modules
+[RUN_GRADLEW] - [32mexpo-asset[0m (11.0.5)
+[RUN_GRADLEW]   - [32mexpo-constants[0m (16.0.2)
+[RUN_GRADLEW]   - [32mexpo-document-picker[0m (13.0.3)
+[RUN_GRADLEW]   - [32mexpo-file-system[0m (18.0.12)
+[RUN_GRADLEW]   - [32mexpo-font[0m (13.0.4)
+[RUN_GRADLEW]   - [32mexpo-image-loader[0m (5.0.0)
+[RUN_GRADLEW]   - [32mexpo-image-manipulator[0m (13.0.6)
+[RUN_GRADLEW]   - [32mexpo-image-picker[0m (16.0.6)
+[RUN_GRADLEW]   - [32mexpo-keep-awake[0m (14.0.3)
+[RUN_GRADLEW]   - [32mexpo-linking[0m (7.0.5)
+[RUN_GRADLEW]   - [32mexpo-localization[0m (15.0.3)
+[RUN_GRADLEW]   - [32mexpo-modules-core[0m (2.2.3)
+[RUN_GRADLEW]   - [32mexpo-sharing[0m (13.0.1)
+[RUN_GRADLEW] > Configure project :react-native-reanimated
+[RUN_GRADLEW] Android gradle plugin: 8.6.0
+[RUN_GRADLEW] Gradle: 8.10.2
+[RUN_GRADLEW] Checking the license for package Android SDK Build-Tools 35 in /mnt/c/Users/Daniel/AppData/Local/Android/Sdk/licenses
+[RUN_GRADLEW] License for package Android SDK Build-Tools 35 accepted.
+[RUN_GRADLEW] Preparing "Install Android SDK Build-Tools 35 v.35.0.0".
