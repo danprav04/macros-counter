@@ -6,14 +6,13 @@ import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
 import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
 import { Settings } from '../types/settings';
-import { getFoodIconUrl } from '../utils/iconUtils'; // Import local icon utility
-import i18n from '../localization/i18n';
+import { getFoodIconUrl } from '../utils/iconUtils';
 
 
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
     reversedIndex: number;
-    foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined' for loading
+    foodIcons: { [foodName: string]: string | null };
     setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null }>>;
     onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
@@ -39,13 +38,11 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
             if (foodIcons[item.food.name] !== undefined) {
                 return foodIcons[item.food.name];
             }
-            // Icon not yet in state, resolve it
-            return getFoodIconUrl(item.food.name, i18n.locale);
+            return getFoodIconUrl(item.food.name); // No locale needed
         }
         return null;
-    }, [item.food?.name, foodIcons, i18n.locale]);
+    }, [item.food?.name, foodIcons]);
 
-    // Update foodIcons state if a new icon was resolved
     useEffect(() => {
         if (item?.food?.name && iconIdentifier !== undefined && foodIcons[item.food.name] === undefined) {
             setFoodIcons(prev => ({ ...prev, [item.food.name]: iconIdentifier }));
@@ -67,10 +64,9 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                  </View>
              );
         }
-        if (iconIdentifier) { // iconIdentifier is now string (emoji) or null
+        if (iconIdentifier) {
             return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
         } else {
-            // Fallback if no icon found (e.g., default or placeholder)
             return (
                 <View style={[styles.foodIcon, styles.iconPlaceholder]}>
                     <RNEIcon name="fast-food-outline" type="ionicon" size={20} color={theme.colors.grey3} />
@@ -146,7 +142,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
 const useStyles = makeStyles((theme) => ({
     foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     foodIconEmoji: {
-        fontSize: 28, // Adjust size for emoji
+        fontSize: 28,
         width: 40,
         height: 40,
         marginRight: 15,

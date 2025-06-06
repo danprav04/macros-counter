@@ -1,61 +1,57 @@
 // src/utils/iconUtils.ts
 import { findBestIcon } from './foodIconMatcher';
+import { detectLanguageFromText } from './languageUtils'; // Import new utility
+import { LanguageCode } from '../types/settings';
 
-// In-memory cache for synchronous lookups.
-// Key: `${locale}_${normalizedFoodName}`
-// Value: `string | null` (the icon identifier or null)
 const syncMemoryCache = new Map<string, string | null>();
-
-const MAX_CACHE_SIZE = 200; // Limit cache size to prevent memory bloat
+const MAX_CACHE_SIZE = 300;
 
 /**
  * Synchronously gets the icon identifier (e.g., emoji) for a food item.
- * Uses an in-memory cache for repeated lookups.
+ * It first detects the language of the food name, then uses an in-memory cache.
+ * Relies on `findBestIcon` which uses localized tags based on the detected language.
  *
  * @param foodName The name of the food item.
- * @param locale The desired locale for the icon search (e.g., 'en', 'ru').
  * @returns An icon string (emoji) or null if not found or an error occurred.
  */
-export const getFoodIconUrl = (foodName: string, locale: string = 'en'): string | null => {
+export const getFoodIconUrl = (foodName: string): string | null => {
   if (!foodName || foodName.trim() === '') {
-    // console.warn("getFoodIconUrl (sync) called with empty foodName.");
     return null;
   }
 
-  const normalizedName = foodName.toLowerCase().trim();
-  const cacheKey = `${locale}_${normalizedName}`;
+  const detectedLocale = detectLanguageFromText(foodName);
+  const normalizedNameForCache = foodName.toLowerCase().trim();
+  const cacheKey = `${detectedLocale}_${normalizedNameForCache}`;
 
-  // 1. Check Memory Cache
   if (syncMemoryCache.has(cacheKey)) {
-    return syncMemoryCache.get(cacheKey)!;
+    const cachedIcon = syncMemoryCache.get(cacheKey)!;
+    // console.log(`[getFoodIconUrl] CACHE HIT for key "${cacheKey}". Food: "${foodName}", Detected Locale: ${detectedLocale}, Icon: ${cachedIcon}`);
+    return cachedIcon;
   }
+  // console.log(`[getFoodIconUrl] CACHE MISS for key "${cacheKey}". Food: "${foodName}", Detected Locale: ${detectedLocale}. Calling findBestIcon.`);
 
-  // 2. Find icon using the matcher
-  const iconIdentifier = findBestIcon(normalizedName, locale);
+  const iconIdentifier = findBestIcon(foodName, detectedLocale);
 
-  // 3. Update Memory Cache
-  // Simple eviction strategy: if cache is too big, clear it.
-  // More sophisticated strategies like LRU could be used if needed.
   if (syncMemoryCache.size >= MAX_CACHE_SIZE) {
-    syncMemoryCache.clear();
-    // console.log("Food icon memory cache cleared due to size limit.");
+    const keys = Array.from(syncMemoryCache.keys());
+    for (let i = 0; i < Math.floor(MAX_CACHE_SIZE / 4); i++) {
+        const randomIndex = Math.floor(Math.random() * keys.length);
+        const keyToRemove = keys.splice(randomIndex, 1)[0];
+        if(keyToRemove) syncMemoryCache.delete(keyToRemove);
+    }
+    // console.log(`[getFoodIconUrl] Food icon memory cache partially cleared. New size: ${syncMemoryCache.size}`);
   }
   syncMemoryCache.set(cacheKey, iconIdentifier);
+  // console.log(`[getFoodIconUrl] Cached new icon for key "${cacheKey}". Food: "${foodName}", Icon: ${iconIdentifier}`);
 
   return iconIdentifier;
 };
 
-/**
- * Clears the in-memory icon cache.
- */
 export const clearLocalIconCache = (): void => {
   syncMemoryCache.clear();
-  console.log("In-memory food icon cache cleared.");
+  console.log("[clearLocalIconCache] In-memory food icon cache CLEARED.");
 };
 
-/**
- * Logs the current size of the in-memory icon cache.
- */
 export const logLocalIconCacheSize = (): void => {
-  console.log(`In-memory food icon cache size: ${syncMemoryCache.size}`);
+  console.log(`[logLocalIconCacheSize] In-memory food icon cache size: ${syncMemoryCache.size}`);
 };

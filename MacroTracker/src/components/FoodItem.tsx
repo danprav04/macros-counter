@@ -1,11 +1,11 @@
 // src/components/FoodItem.tsx
-import React, { forwardRef, useState, useCallback, memo, useMemo, useEffect } from "react";
+import React, { forwardRef, useCallback, memo, useMemo, useEffect } from "react";
 import { StyleSheet, View, TouchableOpacity } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
 import { t } from '../localization/i18n';
-import i18n from "../localization/i18n";
+// import i18n from "../localization/i18n"; // No longer needed here
 import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
 import { getFoodIconUrl } from "../utils/iconUtils";
 
@@ -28,8 +28,8 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
 
     const iconIdentifier = useMemo(() => {
         if (foodIconUrl !== undefined) return foodIconUrl; 
-        return getFoodIconUrl(food.name, i18n.locale);
-    }, [food.name, foodIconUrl, i18n.locale]);
+        return getFoodIconUrl(food.name); // No locale needed
+    }, [food.name, foodIconUrl]);
 
     useEffect(() => {
         if (food.name && iconIdentifier !== undefined && foodIconUrl === undefined) {
@@ -57,7 +57,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
             onPress: handleUndo,
             bottomOffset: 80,
         });
-    }, [food.id, food.name, onDelete, handleUndo]);
+    }, [food.id, food.name, onDelete, handleUndo, t]);
 
 
     const renderIcon = () => {
@@ -132,7 +132,7 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
-    foodIconEmoji: { // Style for emoji text
+    foodIconEmoji: {
         fontSize: 28,
         width: 40,
         height: 40,
@@ -140,7 +140,7 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'center',
         textAlignVertical: 'center',
     },
-    foodIconPlaceholderView: { // Style for the placeholder view
+    foodIconPlaceholderView: {
         width: 40, 
         height: 40, 
         marginRight: 15, 

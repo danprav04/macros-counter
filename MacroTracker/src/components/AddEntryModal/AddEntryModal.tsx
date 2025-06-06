@@ -4,7 +4,7 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  useRef,
+  // useRef, // No longer needed here if list scrolling isn't an issue
 } from "react";
 import {
   View,
@@ -29,7 +29,7 @@ import {
   saveLastUsedPortions,
   LastUsedPortions,
 } from "../../services/storageService";
-import { getFoodIconUrl } from "../../utils/iconUtils";
+import { getFoodIconUrl } from "../../utils/iconUtils"; // Correct
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
@@ -42,7 +42,7 @@ import {
 import { compressImageIfNeeded, getBase64FromUri } from "../../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "../QuickAddList";
-import i18n, { t } from '../../localization/i18n';
+import { t } from '../../localization/i18n'; // No i18n instance needed directly for locale here
 import { calculateDailyEntryGrade, FoodGradeResult } from "../../utils/gradingUtils";
 import { Settings } from '../../types/settings';
 
@@ -56,9 +56,9 @@ interface AddEntryModalProps {
   handleAddEntry: (food: Food, grams: number) => void;
   handleAddMultipleEntries: (entries: { food: Food; grams: number }[]) => void;
   foods: Food[];
-  isEditMode: boolean; // True if editing an existing DailyEntryItem
-  initialGrams?: string; // Grams for the item being edited, or "" for new pre-selected food
-  initialSelectedFoodForEdit?: Food | null; // Food for editing OR food to pre-select for a new entry
+  isEditMode: boolean;
+  initialGrams?: string;
+  initialSelectedFoodForEdit?: Food | null;
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
@@ -92,7 +92,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
   const [foodIcons, setFoodIcons] = useState<{
-    [foodName: string]: string | null; // No 'undefined' for loading if sync
+    [foodName: string]: string | null;
   }>({});
 
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
@@ -117,11 +117,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
-    if (!foodName || foodIcons[foodName] !== undefined) return; // Already resolved or invalid
-    const icon = getFoodIconUrl(foodName, i18n.locale);
+    if (!foodName || foodIcons[foodName] !== undefined) return;
+    const icon = getFoodIconUrl(foodName); // No locale needed
     setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: icon }));
-  }, [foodIcons, i18n.locale]);
-
+  }, [foodIcons]); // Removed i18n.locale
 
   const foodGradeResult = useMemo((): FoodGradeResult | null => {
     const numericGramsValue = parseFloat(internalGrams);
@@ -169,11 +168,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
         setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams("");
         setIsAiLoading(false); setQuickAddLoading(false);
-        // setFoodIcons({}); // Optionally clear icons on close if memory is a concern
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]); // modalMode removed
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
   useEffect(() => {
     if (isVisible && modalMode === "normal") {
@@ -240,7 +238,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         }
     });
     return suggestions;
-  }, [internalSelectedFood, lastUsedPortions, i18n.locale]);
+    // Removed i18n.locale from dependency array as t() will use current global locale
+  }, [internalSelectedFood, lastUsedPortions, t]);
 
 
   const handleEstimateGrams = useCallback(async () => {
@@ -256,7 +255,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom", });
     } catch (error: any) { /* Error already handled by getGramsFromNaturalLanguage with an Alert */ }
     finally { setIsAiLoading(false); }
-  }, [internalSelectedFood, autoInput, isAiLoading]);
+  }, [internalSelectedFood, autoInput, isAiLoading, t]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
     Keyboard.dismiss();
@@ -283,7 +282,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
     }
-  }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions ]);
+  }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t ]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
@@ -372,7 +371,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setSelectedQuickAddIndices(new Set());
         setQuickAddLoading(false);
       }
-    }, [isEditMode, resolveAndSetIcon]
+    }, [isEditMode, resolveAndSetIcon, t]
   );
 
   const handleQuickAddImage = useCallback(async () => {
@@ -383,7 +382,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         { text: t('addEntryModal.camera'), onPress: () => pickImageAndAnalyze("camera") },
         { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") }, ]
     );
-  }, [ isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze ]);
+  }, [ isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze, t ]);
 
 
   const handleToggleQuickAddItem = useCallback( (index: number) => {
@@ -399,7 +398,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       }
       const item = quickAddItems[index]; setEditingQuickAddItemIndex(index);
       setEditedFoodName(item.foodName); setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
-    }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled]
+    }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled, t]
   );
 
   const handleSaveQuickAddItemEdit = useCallback(() => {
@@ -410,7 +409,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
     if (trimmedName) { resolveAndSetIcon(trimmedName); }
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
-  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, resolveAndSetIcon]);
+  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, resolveAndSetIcon, t]);
 
   const handleCancelQuickAddItemEdit = useCallback(() => {
     if (isActionDisabled) return; setEditingQuickAddItemIndex(null);
@@ -443,7 +442,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         saveLastUsedPortions(newPortionsToSave).catch(() => {});
       } else { Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage')); }
     } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
-  }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions ]);
+  }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions, t ]);
 
 
   const handleQuickAddGramsChange = useCallback((text: string) => {
@@ -484,7 +483,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' });
         setSavingState(false);
     }
-  }, [foods, onCommitFoodToLibrary, resolveAndSetIcon]);
+  }, [foods, onCommitFoodToLibrary, resolveAndSetIcon, t]);
 
 
   const modalTitle = modalMode === "quickAddSelect"

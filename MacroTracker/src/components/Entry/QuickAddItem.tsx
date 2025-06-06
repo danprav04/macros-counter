@@ -19,7 +19,7 @@ import { EstimatedFoodItem } from "../../types/macros";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
 import { t } from "../../localization/i18n";
-import i18n from "../../localization/i18n";
+// import i18n from "../../localization/i18n"; // No longer needed here
 import {
   calculateBaseFoodGrade,
   FoodGradeResult,
@@ -34,7 +34,7 @@ interface QuickAddItemProps {
   isEditingThisItem: boolean;
   isAnyItemEditing: boolean;
   isLoading?: boolean;
-  foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined'
+  foodIcons: { [foodName: string]: string | null };
   editedName: string;
   editedGrams: string;
   onToggleItem: (index: number) => void;
@@ -111,14 +111,15 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   };
 
   const renderFoodIcon = (foodName: string) => {
-    const iconIdentifier = foodIcons[foodName] ?? getFoodIconUrl(foodName, i18n.locale); // Resolve if not in state
+    // Check foodIcons state first, then call getFoodIconUrl (which handles its own caching and lang detection)
+    const iconIdentifier = foodIcons[foodName] ?? getFoodIconUrl(foodName);
     if (iconIdentifier) {
       return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
     }
     return (
       <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
         <Icon
-          name="help-outline" // Fallback icon
+          name="help-outline"
           type="material"
           size={22}
           color={theme.colors.grey3}
@@ -346,7 +347,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: "transparent",
     borderWidth: 0,
   },
-  foodIconContainer: { // For placeholder view
+  foodIconContainer: {
     width: 38,
     height: 38,
     marginRight: 10,
@@ -355,8 +356,8 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     overflow: "hidden",
   },
-  foodIconEmoji: { // For emoji text
-    fontSize: 26, // Adjust size for emoji
+  foodIconEmoji: {
+    fontSize: 26,
     width: 38,
     height: 38,
     marginRight: 10,

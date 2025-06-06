@@ -11,6 +11,9 @@ index.ts
 package.json
 projectToFile.js
 src/
+  assets/
+    food_icons/
+      iconDefinitions.ts
   components/
     AccountSettings.tsx
     AddEntryModal/
@@ -59,6 +62,7 @@ src/
     settings.ts
   utils/
     dateUtils.ts
+    foodIconMatcher.ts
     gradingUtils.ts
     iconUtils.ts
     imageUtils.ts
@@ -705,6 +709,127 @@ fs.stat(projectRoot, (err, stats) => {
 ---------- END projectToFile.js ----------
 
 
+---------- iconDefinitions.ts ----------
+// src/assets/food_icons/iconDefinitions.ts
+
+// The `icon` property should be an emoji string.
+// The `tagKey` property refers to a key within the "foodIconTags" section of your language JSON files.
+// For example, a `tagKey` of "apple" will look for `t('foodIconTags.apple')` which should return an array of tags.
+export interface FoodIconDefinition {
+  icon: string; // Emoji character
+  tagKey: string; // Base key for tags, e.g., "apple", "banana". Full key will be "foodIconTags.apple"
+  priority?: number; // Optional: Higher number means higher priority if multiple tags match
+}
+
+export const foodIconDefinitions: FoodIconDefinition[] = [
+  // Fruits
+  { icon: '🍎', tagKey: 'apple', priority: 10 },
+  { icon: '🍌', tagKey: 'banana', priority: 10 },
+  { icon: '🍇', tagKey: 'grapes', priority: 10 },
+  { icon: '🍓', tagKey: 'strawberry', priority: 10 },
+  { icon: '🫐', tagKey: 'blueberry', priority: 10 },
+  { icon: '🍊', tagKey: 'orange', priority: 10 },
+  { icon: '🍋', tagKey: 'lemonLime', priority: 10 },
+  { icon: '🍉', tagKey: 'watermelon', priority: 10 },
+  { icon: '🍍', tagKey: 'pineapple', priority: 10 },
+  { icon: '🥭', tagKey: 'mango', priority: 10 },
+  { icon: '🥝', tagKey: 'kiwi', priority: 10 },
+  { icon: '🍑', tagKey: 'peachNectarine', priority: 10 },
+  { icon: '🍒', tagKey: 'cherry', priority: 10 },
+  { icon: '🍐', tagKey: 'pear', priority: 10 },
+  { icon: '🥑', tagKey: 'avocado', priority: 10 },
+  { icon: '🥥', tagKey: 'coconut', priority: 10 },
+  { icon: '🍅', tagKey: 'tomato', priority: 9 }, // Often culinary vegetable
+
+  // Vegetables
+  { icon: '🥕', tagKey: 'carrot', priority: 10 },
+  { icon: '🥦', tagKey: 'broccoli', priority: 10 },
+  { icon: '🥬', tagKey: 'leafyGreen', priority: 10 },
+  { icon: '🥒', tagKey: 'cucumber', priority: 10 },
+  { icon: '🌶️', tagKey: 'pepperGeneral', priority: 10 }, // General pepper
+  { icon: '🫑', tagKey: 'bellPepper', priority: 11 },   // More specific bell pepper (can cover green, yellow, orange)
+  { icon: '🌽', tagKey: 'corn', priority: 10 },
+  { icon: '🥔', tagKey: 'potato', priority: 10 },
+  { icon: '🧅', tagKey: 'onion', priority: 10 },
+  { icon: '🧄', tagKey: 'garlic', priority: 10 },
+  { icon: '🍆', tagKey: 'eggplant', priority: 10 },
+  { icon: '🍄', tagKey: 'mushroom', priority: 10 },
+
+  // Meats & Poultry
+  { icon: '🍗', tagKey: 'poultry', priority: 10 },
+  { icon: '🥩', tagKey: 'redMeat', priority: 10 },
+  { icon: '🥓', tagKey: 'bacon', priority: 10 },
+  { icon: '🍖', tagKey: 'processedMeat', priority: 9 },
+
+  // Seafood
+  { icon: '🐟', tagKey: 'fish', priority: 10 },
+  { icon: '🦐', tagKey: 'shrimpPrawn', priority: 10 },
+  { icon: '🦞', tagKey: 'lobster', priority: 10 },
+  { icon: '🦀', tagKey: 'crab', priority: 10 },
+  { icon: '🍣', tagKey: 'sushi', priority: 10 },
+
+  // Dairy & Eggs
+  { icon: '🥚', tagKey: 'egg', priority: 10 },
+  { icon: '🥛', tagKey: 'milk', priority: 10 },
+  { icon: '🧀', tagKey: 'cheese', priority: 10 },
+  { icon: '🧈', tagKey: 'butter', priority: 10 },
+  { icon: '🍦', tagKey: 'iceCream', priority: 8 },
+  { icon: '🍧', tagKey: 'yogurt', priority: 10 }, // Changed from 🍧 to a more generic yogurt emoji, or keep 🍧 for frozen
+
+  // Grains, Bread, Pasta, Cereal
+  { icon: '🍞', tagKey: 'bread', priority: 10 },
+  { icon: '🍚', tagKey: 'rice', priority: 10 },
+  { icon: '🍝', tagKey: 'pasta', priority: 10 },
+  { icon: '🥣', tagKey: 'cerealOats', priority: 10 },
+  { icon: '🌾', tagKey: 'otherGrains', priority: 10 }, // Quinoa, couscous etc.
+  { icon: '🫓', tagKey: 'flatbread', priority: 10 },
+
+  // Legumes
+  { icon: '🫘', tagKey: 'beansLegumes', priority: 10 },
+  { icon: '🥜', tagKey: 'peanut', priority: 9 },
+
+  // Nuts & Seeds
+  { icon: '🌰', tagKey: 'nuts', priority: 10 },
+  { icon: '🌻', tagKey: 'seeds', priority: 10 }, // Using sunflower as general seed representation
+
+  // Sweets & Snacks
+  { icon: '🍩', tagKey: 'donut', priority: 7 },
+  { icon: '🍪', tagKey: 'cookie', priority: 7 },
+  { icon: '🍫', tagKey: 'chocolate', priority: 7 },
+  { icon: '🍰', tagKey: 'cake', priority: 7 },
+  { icon: '🍬', tagKey: 'candy', priority: 6 },
+  { icon: '🍿', tagKey: 'popcorn', priority: 8 },
+  { icon: '🥨', tagKey: 'pretzel', priority: 8 },
+  { icon: '🍟', tagKey: 'friesChips', priority: 7 },
+
+  // Drinks
+  { icon: '☕', tagKey: 'coffee', priority: 9 },
+  { icon: '🍵', tagKey: 'tea', priority: 9 },
+  { icon: '🥤', tagKey: 'softDrinkJuice', priority: 8 },
+  { icon: '💧', tagKey: 'water', priority: 10 },
+  { icon: '🍷', tagKey: 'wine', priority: 7 },
+  { icon: '🍺', tagKey: 'beer', priority: 7 },
+  { icon: '🍸', tagKey: 'cocktail', priority: 7 },
+
+  // Prepared Meals / Dishes
+  { icon: '🍕', tagKey: 'pizza', priority: 8 },
+  { icon: '🍔', tagKey: 'burger', priority: 8 },
+  { icon: '🌮', tagKey: 'tacoBurrito', priority: 8 },
+  { icon: '🥪', tagKey: 'sandwich', priority: 9 },
+  { icon: '🍲', tagKey: 'soupStew', priority: 9 },
+  { icon: '🥗', tagKey: 'salad', priority: 10 },
+  { icon: '🍜', tagKey: 'noodleDish', priority: 9 },
+
+
+  // Generic fallbacks - these should have broad tags in the language files
+  { icon: '🍓', tagKey: 'genericFruit', priority: 2 },
+  { icon: '🥬', tagKey: 'genericVegetable', priority: 2 },
+  { icon: '🍽️', tagKey: 'genericMeal', priority: 1 },
+  { icon: '❓', tagKey: 'unknownFood', priority: 0 }, // Lowest priority
+];
+---------- END iconDefinitions.ts ----------
+
+
 ---------- AccountSettings.tsx ----------
 // src/components/AccountSettings.tsx
 import React from 'react';
@@ -887,9 +1012,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
   const [foodIcons, setFoodIcons] = useState<{
-    [foodName: string]: string | null | undefined;
+    [foodName: string]: string | null; // No 'undefined' for loading if sync
   }>({});
-  const currentlyFetchingIcons = useRef<Set<string>>(new Set());
 
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
@@ -912,15 +1036,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
   const isActionDisabled = isAiLoading || quickAddLoading;
 
-  const handleRequestIcon = useCallback((foodName: string) => {
-    if (!foodName || foodIcons[foodName] !== undefined || currentlyFetchingIcons.current.has(foodName)) return;
-    currentlyFetchingIcons.current.add(foodName);
-    setFoodIcons(prev => ({ ...prev, [foodName]: undefined })); // Indicate loading
-    getFoodIconUrl(foodName)
-      .then(iconUrl => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: iconUrl })))
-      .catch(() => setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: null }))) // Mark as failed (null)
-      .finally(() => currentlyFetchingIcons.current.delete(foodName));
-  }, [foodIcons]); // Keep foodIcons dependency to re-trigger if it changes externally (less likely here)
+  const resolveAndSetIcon = useCallback((foodName: string) => {
+    if (!foodName || foodIcons[foodName] !== undefined) return; // Already resolved or invalid
+    const icon = getFoodIconUrl(foodName, i18n.locale);
+    setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: icon }));
+  }, [foodIcons, i18n.locale]);
+
 
   const foodGradeResult = useMemo((): FoodGradeResult | null => {
     const numericGramsValue = parseFloat(internalGrams);
@@ -930,7 +1051,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     return null;
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
-  // Load last used portions when modal becomes visible
   useEffect(() => {
     if (isVisible) {
         loadLastUsedPortions().then(setLastUsedPortions).catch(err => {
@@ -939,128 +1059,85 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }
   }, [isVisible]);
 
-  // Main initialization and reset effect when modal visibility or primary mode (edit/new) changes
   useEffect(() => {
     if (isVisible) {
       const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
 
       if (actuallyEditingDailyItem) {
-        // Editing an existing daily item: Set form for edit, force normal mode.
         setInternalSelectedFood(initialSelectedFoodForEdit);
         setInternalGrams(initialGrams);
-        setUnitMode("grams");
-        setAutoInput("");
-        setInternalSearch("");
-        setSelectedMultipleFoods(new Map());
-        setModalMode("normal"); // Ensure normal mode for direct edits
+        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
+        setSelectedMultipleFoods(new Map()); setModalMode("normal");
+        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
       } else if (initialSelectedFoodForEdit) {
-        // Pre-selected food for a *new* entry (e.g., from FoodListScreen quick add):
-        // Set form for this food, ensure normal mode.
         setInternalSelectedFood(initialSelectedFoodForEdit);
-        setInternalGrams(initialGrams || ""); // Use initialGrams if provided (e.g., default)
-        setUnitMode("grams");
-        setAutoInput("");
-        setInternalSearch(""); // Clear search as food is pre-selected
-        setSelectedMultipleFoods(new Map());
-        setModalMode("normal"); // Ensure normal mode
+        setInternalGrams(initialGrams || "");
+        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
+        setSelectedMultipleFoods(new Map()); setModalMode("normal");
+        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
       } else {
-        // Standard new blank entry or returning from a completed/cancelled quick add:
-        // Only reset form fields if not in an active quick add selection phase.
-        // `modalMode` will be "quickAddSelect" if user is in that flow.
         if (modalMode !== "quickAddSelect") {
-          setInternalSelectedFood(null);
-          setInternalGrams("");
-          setInternalSearch("");
-          setUnitMode("grams");
-          setAutoInput("");
-          setSelectedMultipleFoods(new Map());
-          setModalMode("normal"); // Default to normal mode
+          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch("");
+          setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
+          setModalMode("normal");
         }
-        // If modalMode IS "quickAddSelect", it means pickImageAndAnalyze has set it,
-        // and the form fields were already prepared by it. So, no changes here.
       }
-    } else { // Modal is closing
+    } else {
       const timer = setTimeout(() => {
-        // Reset all relevant states for a clean slate next time
-        setInternalSelectedFood(null);
-        setInternalSearch("");
-        setInternalGrams("");
-        setUnitMode("grams");
-        setAutoInput("");
-        setSelectedMultipleFoods(new Map());
-
-        setModalMode("normal"); // Always reset to normal on close
-        setQuickAddItems([]);
-        setSelectedQuickAddIndices(new Set());
-        setEditingQuickAddItemIndex(null);
-        setEditedFoodName("");
-        setEditedGrams("");
-
-        setIsAiLoading(false);
-        setQuickAddLoading(false); // Ensure loading states are reset
-      }, 300); // Delay to allow animation
+        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
+        setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
+        setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
+        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams("");
+        setIsAiLoading(false); setQuickAddLoading(false);
+        // setFoodIcons({}); // Optionally clear icons on close if memory is a concern
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams]); // `modalMode` removed from deps here as it's now managed more directly or reset on close.
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]); // modalMode removed
 
-  // Effect for requesting icon for initially selected food (edit or new pre-selected)
-  useEffect(() => {
-      if (isVisible && initialSelectedFoodForEdit?.name) {
-          handleRequestIcon(initialSelectedFoodForEdit.name);
-      }
-  }, [isVisible, initialSelectedFoodForEdit, handleRequestIcon]);
-
-  // Effect for loading recent foods when in normal mode
   useEffect(() => {
     if (isVisible && modalMode === "normal") {
-       loadRecentFoods().then(setRecentFoods).catch(err => {
+       loadRecentFoods().then(loadedRecent => {
+           setRecentFoods(loadedRecent);
+           loadedRecent.forEach(food => resolveAndSetIcon(food.name));
+       }).catch(err => {
             // console.warn("Failed to load recent foods:", err);
        });
     }
-  }, [isVisible, modalMode]);
+  }, [isVisible, modalMode, resolveAndSetIcon]);
 
-  // Effect for pre-fetching icons for visible items in the list (normal or quickAddSelect)
   useEffect(() => {
     if (!isVisible) return;
 
-    let itemsToCheck: (Food | EstimatedFoodItem)[] = [];
+    let itemsToCheckNames: string[] = [];
     if (modalMode === "normal") {
         const currentDisplayItems: Food[] = [];
-        if (!internalSearch) { // No search term, show recents then general
+        if (!internalSearch) {
             currentDisplayItems.push(...recentFoods);
             const recentIds = new Set(recentFoods.map(f => f.id));
-            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10)); // Limit general foods for performance
-        } else { // Search term active
-            currentDisplayItems.push(...foods.filter(f => f.name.toLowerCase().includes(internalSearch.toLowerCase())).slice(0,10)); // Limit search results
+            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10));
+        } else {
+            currentDisplayItems.push(...foods.filter(f => f.name.toLowerCase().includes(internalSearch.toLowerCase())).slice(0,10));
         }
-        itemsToCheck.push(...currentDisplayItems);
+        itemsToCheckNames = currentDisplayItems.map(item => item.name).filter(Boolean);
     } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
-        itemsToCheck = quickAddItems;
+        itemsToCheckNames = quickAddItems.map(item => item.foodName).filter(Boolean);
     }
 
-    const namesToFetch = new Set<string>();
-    itemsToCheck.forEach(item => {
-        // Safely access name property based on item type
-        const name = (item as Food).name || (item as EstimatedFoodItem).foodName;
-        if (name && foodIcons[name] === undefined && !currentlyFetchingIcons.current.has(name)) {
-            namesToFetch.add(name);
-        }
-    });
-
-    if (namesToFetch.size > 0) {
-        namesToFetch.forEach(name => handleRequestIcon(name));
+    if (itemsToCheckNames.length > 0) {
+        itemsToCheckNames.forEach(name => resolveAndSetIcon(name));
     }
-  }, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, handleRequestIcon, foodIcons]);
+  }, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, resolveAndSetIcon]);
 
 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
     setRecentFoods((prevRecent) => {
-      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent; // Already most recent
+      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent;
       const updated = prevRecent.filter((rf) => rf.id !== food.id);
       updated.unshift(food);
       const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch(() => {}); // fire and forget
+      saveRecentFoods(trimmed).catch(() => {});
       return trimmed;
     });
   }, []);
@@ -1073,13 +1150,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (lastUsed) {
       suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
     }
-    // Default suggestions, ensuring no duplicates with lastUsed
     const defaultSuggestions = [
         { label: "50g", value: "50" }, { label: "100g", value: "100" },
         { label: "150g", value: "150" }, { label: "200g", value: "200" }
     ];
     defaultSuggestions.forEach(sugg => {
-        if (!lastUsed || String(lastUsed) !== sugg.value) { // Add if not same as last used
+        if (!lastUsed || String(lastUsed) !== sugg.value) {
             suggestions.push(sugg);
         }
     });
@@ -1096,7 +1172,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     try {
       const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput);
       const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams);
-      setUnitMode("grams"); setAutoInput(""); // Switch back to grams input
+      setUnitMode("grams"); setAutoInput("");
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom", });
     } catch (error: any) { /* Error already handled by getGramsFromNaturalLanguage with an Alert */ }
     finally { setIsAiLoading(false); }
@@ -1115,23 +1191,22 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }
     if (isActionDisabled) return;
 
-    parentHandleAddEntry(internalSelectedFood, numericGramsValue); // Call parent's handler
+    parentHandleAddEntry(internalSelectedFood, numericGramsValue);
 
-    if (!isEditMode) { // Only add to recent/last used if it's a new entry
+    if (!isEditMode) {
         addToRecentFoods(internalSelectedFood);
         const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
-    } else if (isEditMode && internalSelectedFood.id) { // If editing, still update last used portion for this food
+    } else if (isEditMode && internalSelectedFood.id) {
         const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
         setLastUsedPortions(updatedPortions);
         saveLastUsedPortions(updatedPortions).catch(() => {});
     }
-    // toggleOverlay(); // Parent component (DailyEntryScreen) now handles closing the overlay
   }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions ]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
-    if (isEditMode || internalSelectedFood) return; // Disable multi-select if editing or a single food is already selected
+    if (isEditMode || internalSelectedFood) return;
     setSelectedMultipleFoods(prev => {
         const newSelection = new Map(prev);
         if (newSelection.has(food.id)) {
@@ -1149,9 +1224,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const entriesToAdd: { food: Food; grams: number }[] = Array.from(selectedMultipleFoods.values());
     if (entriesToAdd.length === 0) return;
 
-    parentHandleAddMultipleEntries(entriesToAdd); // Call parent's handler
+    parentHandleAddMultipleEntries(entriesToAdd);
 
-    // Update recent foods and last used portions for all added items
     const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
     entriesToAdd.forEach(entry => {
         if (entry.food.id) { newPortionsToSave[entry.food.id] = entry.grams; }
@@ -1159,19 +1233,16 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
     setLastUsedPortions(newPortionsToSave);
     saveLastUsedPortions(newPortionsToSave).catch(() => {});
-    setSelectedMultipleFoods(new Map()); // Clear selection
-    // toggleOverlay(); // Parent component handles closing
+    setSelectedMultipleFoods(new Map());
   }, [ isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods ]);
 
 
   const pickImageAndAnalyze = useCallback( async (source: "camera" | "gallery") => {
-      if (isEditMode) return; // Prevent if modal is for editing an existing entry
+      if (isEditMode) return;
 
-      // Reset and prepare for quick add flow
       setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
-      setModalMode("quickAddSelect"); // Switch to quick add UI
+      setModalMode("quickAddSelect");
       setQuickAddLoading(true);
-      // Clear any single/multi food selection from normal mode
       setSelectedMultipleFoods(new Map());
       setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
 
@@ -1181,7 +1252,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           permissionResult = await ImagePicker.requestCameraPermissionsAsync();
           if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddCameraPermission')); throw new Error("Permission denied"); }
           pickerResult = await ImagePicker.launchCameraAsync({ quality: 1, exif: false });
-        } else { // gallery
+        } else {
           permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
           if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddGalleryPermission')); throw new Error("Permission denied"); }
           pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
@@ -1191,7 +1262,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
         if (pickerResult.assets && pickerResult.assets.length > 0) {
           const originalAsset = pickerResult.assets[0];
-          // Compress and get Base64
           const compressedResult = await compressImageIfNeeded(originalAsset);
           const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
           const base64Image = await getBase64FromUri(assetForAnalysis.uri);
@@ -1201,31 +1271,28 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
           if (results.length === 0) {
             Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
-            setQuickAddItems([]); // Ensure items are cleared
+            setQuickAddItems([]);
             setQuickAddLoading(false);
-            setModalMode("normal"); // No items, go back to normal mode
+            setModalMode("normal");
           } else {
             setQuickAddItems(results);
-            setSelectedQuickAddIndices(new Set(results.map((_, i) => i))); // Pre-select all
-            results.forEach(qaItem => { if (qaItem.foodName) { handleRequestIcon(qaItem.foodName); } });
-            setQuickAddLoading(false); // Loading finished, items are set
-            // Modal mode is already "quickAddSelect", so QuickAddList will show
+            setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            results.forEach(qaItem => { if (qaItem.foodName) { resolveAndSetIcon(qaItem.foodName); } });
+            setQuickAddLoading(false);
           }
         } else {
           throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
         }
       } catch (error: any) {
-        // Only show generic alert if it's not a user cancellation or permission denial or a BackendError (already alerted)
         if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
           Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
         }
-        // Reset to normal mode on any error in this flow
         setModalMode("normal");
         setQuickAddItems([]);
         setSelectedQuickAddIndices(new Set());
         setQuickAddLoading(false);
       }
-    }, [isEditMode, handleRequestIcon] // Dependencies
+    }, [isEditMode, resolveAndSetIcon]
   );
 
   const handleQuickAddImage = useCallback(async () => {
@@ -1240,13 +1307,13 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
 
   const handleToggleQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) return; // Prevent toggle if editing
+      if (editingQuickAddItemIndex !== null || isActionDisabled) return;
       setSelectedQuickAddIndices((prev) => { const newSet = new Set(prev); if (newSet.has(index)) newSet.delete(index); else newSet.add(index); return newSet; });
     }, [editingQuickAddItemIndex, isActionDisabled]
   );
 
   const handleEditQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) { // If already editing another, or actions disabled
+      if (editingQuickAddItemIndex !== null || isActionDisabled) {
         if (editingQuickAddItemIndex !== null) Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
         return;
       }
@@ -1261,9 +1328,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const numericEditedGramsValue = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericEditedGramsValue <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
     const roundedGrams = Math.round(numericEditedGramsValue);
     setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
-    if (trimmedName) { handleRequestIcon(trimmedName); } // Request icon for potentially new name
+    if (trimmedName) { resolveAndSetIcon(trimmedName); }
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
-  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, handleRequestIcon]);
+  }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, resolveAndSetIcon]);
 
   const handleCancelQuickAddItemEdit = useCallback(() => {
     if (isActionDisabled) return; setEditingQuickAddItemIndex(null);
@@ -1282,34 +1349,31 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         if (index >= 0 && index < quickAddItems.length) {
           const item = quickAddItems[index];
           const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-          // If food exists in library, use its full data. Otherwise, create a temporary Food object.
           let foodToAdd: Food = existingFood ? existingFood : { id: uuidv4(), name: item.foodName, calories: Math.round(Number(item.calories_per_100g) || 0), protein: Math.round(Number(item.protein_per_100g) || 0), carbs: Math.round(Number(item.carbs_per_100g) || 0), fat: Math.round(Number(item.fat_per_100g) || 0), };
-          const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1)); // Ensure grams is at least 1
+          const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1));
           entriesToAdd.push({ food: foodToAdd, grams: entryGrams });
 
-          // Update last used portions
           if (foodToAdd.id) { newPortionsToSave[foodToAdd.id] = entryGrams; }
         }
       });
 
       if (entriesToAdd.length > 0) {
-        parentHandleAddMultipleEntries(entriesToAdd); // Call parent's handler
+        parentHandleAddMultipleEntries(entriesToAdd);
         setLastUsedPortions(newPortionsToSave);
         saveLastUsedPortions(newPortionsToSave).catch(() => {});
       } else { Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage')); }
-      // toggleOverlay(); // Parent handles closing
     } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
   }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions ]);
 
 
   const handleQuickAddGramsChange = useCallback((text: string) => {
-    const cleanedText = text.replace(/[^0-9]/g, ""); // Allow only digits
+    const cleanedText = text.replace(/[^0-9]/g, "");
     setEditedGrams(cleanedText);
   }, []);
 
   const handleSaveQuickAddItemToLibrary = useCallback(async (
     item: EstimatedFoodItem,
-    setSavingState: (isSaving: boolean) => void // Callback to manage QuickAddItem's local saving state
+    setSavingState: (isSaving: boolean) => void
   ) => {
     setSavingState(true);
     try {
@@ -1320,39 +1384,36 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         };
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
 
-        if (existingFood) { // Food already exists, confirm overwrite
+        if (existingFood) {
             Alert.alert( t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }),
                 [ { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
                   { text: t('addEntryModal.overwrite'), onPress: async () => {
-                          const foodToUpdate: Food = { ...existingFood, ...foodData }; // Spread existing then new to update
-                          const updatedFood = await onCommitFoodToLibrary(foodToUpdate, true); // isUpdate = true
-                          if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); handleRequestIcon(updatedFood.name); }
+                          const foodToUpdate: Food = { ...existingFood, ...foodData };
+                          const updatedFood = await onCommitFoodToLibrary(foodToUpdate, true);
+                          if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); resolveAndSetIcon(updatedFood.name); }
                           setSavingState(false);
                       },
                   }, ]
             );
-        } else { // New food, commit directly
-            const newFood = await onCommitFoodToLibrary(foodData, false); // isUpdate = false
-            if (newFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: newFood.name }), position: 'bottom' }); handleRequestIcon(newFood.name); }
+        } else {
+            const newFood = await onCommitFoodToLibrary(foodData, false);
+            if (newFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: newFood.name }), position: 'bottom' }); resolveAndSetIcon(newFood.name); }
             setSavingState(false);
         }
     } catch (error) {
-        // console.error("Error saving quick add item to library:", error);
         Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' });
         setSavingState(false);
     }
-  }, [foods, onCommitFoodToLibrary, handleRequestIcon]);
+  }, [foods, onCommitFoodToLibrary, resolveAndSetIcon]);
 
 
-  // Determine modal title based on current mode and state
   const modalTitle = modalMode === "quickAddSelect"
     ? editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit')
     : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing')
     : t('addEntryModal.titleQuickAddSelect')
-    : isEditMode ? t('addEntryModal.titleEdit') // Normal mode, editing existing entry
-    : t('addEntryModal.titleAdd'); // Normal mode, adding new entry
+    : isEditMode ? t('addEntryModal.titleEdit')
+    : t('addEntryModal.titleAdd');
 
-  // Button disable logic
   const numericGramsValueForValidation = parseFloat(internalGrams);
   const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || numericGramsValueForValidation <= 0 || isActionDisabled;
   const isMultiAddButtonDisabled = modalMode !== "normal" || selectedMultipleFoods.size === 0 || !!internalSelectedFood || isEditMode || isActionDisabled;
@@ -1360,7 +1421,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const isQuickAddConfirmDisabled = isEditMode || modalMode !== "quickAddSelect" || selectedQuickAddIndices.size === 0 || editingQuickAddItemIndex !== null || isActionDisabled || quickAddLoading;
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled || quickAddLoading;
 
-  // Overlay style
   const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
 
   return (
@@ -1369,7 +1429,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         <View style={combinedOverlayStyle}>
           <ModalHeader
             title={modalTitle}
-            isEditMode={isEditMode} // For styling the title if it's an existing daily entry edit
+            isEditMode={isEditMode}
             modalMode={modalMode}
             quickAddLoading={quickAddLoading}
             selectedFood={internalSelectedFood}
@@ -1381,18 +1441,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             isMultiAddButtonDisabled={isMultiAddButtonDisabled}
             isQuickAddConfirmDisabled={isQuickAddConfirmDisabled}
             isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
-            isAiLoading={isAiLoading} // For single add/update button loading state
+            isAiLoading={isAiLoading}
             toggleOverlay={toggleOverlay}
             onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
             onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected}
             onConfirmQuickAdd={handleConfirmQuickAdd}
             onQuickAddImage={handleQuickAddImage}
-            onBackFromQuickAdd={() => { // Action for back button in QuickAdd mode header
+            onBackFromQuickAdd={() => {
                 setModalMode("normal");
                 setQuickAddItems([]);
                 setSelectedQuickAddIndices(new Set());
                 setEditingQuickAddItemIndex(null);
-                // Form fields (grams, search etc.) will be reset by the main useEffect if needed when isVisible changes or for new entries.
             }}
           />
 
@@ -1404,19 +1463,19 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 foods={foods}
                 recentFoods={recentFoods}
                 selectedFood={internalSelectedFood}
-                handleSelectFood={setInternalSelectedFood} // Directly set the food
-                setGrams={setInternalGrams} // Allow FoodSelectionList to set grams (e.g. from last used)
-                setSelectedMultipleFoods={setSelectedMultipleFoods} // Manage multi-selection map
+                handleSelectFood={setInternalSelectedFood}
+                setGrams={setInternalGrams}
+                setSelectedMultipleFoods={setSelectedMultipleFoods}
                 selectedMultipleFoods={selectedMultipleFoods}
                 handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection}
                 foodIcons={foodIcons}
                 onAddNewFoodRequest={onAddNewFoodRequest}
                 isActionDisabled={isActionDisabled}
-                isEditMode={isEditMode} // Editing an existing daily entry, not food library item
+                isEditMode={isEditMode}
                 lastUsedPortions={lastUsedPortions}
                 modalMode={modalMode}
               />
-              {internalSelectedFood && ( // Only show amount input if a food is selected
+              {internalSelectedFood && (
                 <AmountInputSection
                   selectedFood={internalSelectedFood}
                   grams={internalGrams}
@@ -1428,7 +1487,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                   handleEstimateGrams={handleEstimateGrams}
                   isAiLoading={isAiLoading}
                   isAiButtonDisabled={isAiButtonDisabled}
-                  isEditMode={isEditMode} // Editing an existing daily entry
+                  isEditMode={isEditMode}
                   servingSizeSuggestions={servingSizeSuggestions}
                   isActionDisabled={isActionDisabled}
                   foodGradeResult={foodGradeResult}
@@ -1450,14 +1509,13 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                 onCancelEdit={handleCancelQuickAddItemEdit}
                 onNameChange={setEditedFoodName}
                 onGramsChange={handleQuickAddGramsChange}
-                isLoading={quickAddLoading} // Pass loading state to QuickAddList
+                isLoading={quickAddLoading}
                 foodIcons={foodIcons}
                 style={styles.quickAddListStyle}
                 onSaveItemToLibrary={handleSaveQuickAddItemToLibrary}
-                foods={foods} // Pass full food library for checking existence
+                foods={foods}
             />
           )}
-           {/* Spacer for keyboard avoidance, especially on iOS */}
            <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
         </View>
       </KeyboardAvoidingView>
@@ -1467,14 +1525,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: Dimensions.get("window").height * 0.85, },
-    overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, /* paddingBottom handled by spacer view */ backgroundColor: theme.colors.background, flex: 1, },
-    keyboardAvoidingView: { width: "100%", height: "100%" }, // Ensure KAV takes full space of overlay
+    overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1, },
+    keyboardAvoidingView: { width: "100%", height: "100%" },
     normalModeContentContainer: {
-        flex: 1, // Allow this section to grow and shrink
-        justifyContent: 'flex-start', // Align content to the top
+        flex: 1,
+        justifyContent: 'flex-start',
     },
     quickAddListStyle: {
-        flex: 1, // Allow list to take available space
+        flex: 1,
     },
 }));
 
@@ -1772,7 +1830,7 @@ export default AmountInputSection;
 ---------- FoodSelectionList.tsx ----------
 // src/components/AddEntryModal/FoodSelectionList.tsx
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Image, ActivityIndicator, Platform, Keyboard, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, ActivityIndicator, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { LastUsedPortions } from '../../services/storageService';
@@ -1785,16 +1843,16 @@ interface FoodSelectionListProps {
     updateSearch: (search: string) => void;
     foods: Food[]; // Full library
     recentFoods: Food[];
-    selectedFood: Food | null; // This is internalSelectedFood from AddEntryModal
+    selectedFood: Food | null;
     handleSelectFood: (food: Food | null) => void;
     setGrams: (grams: string) => void;
     setSelectedMultipleFoods: React.Dispatch<React.SetStateAction<Map<string, { food: Food; grams: number }>>>;
     selectedMultipleFoods: Map<string, { food: Food; grams: number }>;
-    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void; // This comes from AddEntryModal
-    foodIcons: { [foodName: string]: string | null | undefined };
+    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void;
+    foodIcons: { [foodName: string]: string | null }; // No 'undefined'
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
-    isEditMode: boolean; // Editing a DailyEntryItem, not AddFoodModal's editFood
+    isEditMode: boolean;
     lastUsedPortions: LastUsedPortions;
     modalMode: "normal" | "quickAddSelect";
 }
@@ -1811,7 +1869,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     setGrams,
     setSelectedMultipleFoods,
     selectedMultipleFoods,
-    handleToggleMultipleFoodSelection, // Prop from AddEntryModal
+    handleToggleMultipleFoodSelection,
     foodIcons,
     onAddNewFoodRequest,
     isActionDisabled,
@@ -1918,7 +1976,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         const foodItem = item;
         const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
-        const iconStatus = foodIcons[foodItem.name];
+        const iconIdentifier = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
 
         const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
@@ -1957,13 +2015,11 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                             disabled={isActionDisabled}
                         />
                     )}
-                    {iconStatus === undefined ? (
-                        <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />
-                    ) : iconStatus ? (
-                        <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" />
+                    {iconIdentifier ? (
+                        <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>
                     ) : (
                         <View style={styles.defaultIconContainer}>
-                            <Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} />
+                            <Icon name="help-outline" type="material" size={22} color={theme.colors.grey3} />
                         </View>
                     )}
                     <ListItem.Content>
@@ -2078,7 +2134,7 @@ const useStyles = makeStyles((theme) => ({
     searchInputStyle: {
         color: theme.colors.text,
         fontSize: 15,
-        textAlign: 'left',
+        textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
         maxHeight: 250, 
@@ -2087,14 +2143,13 @@ const useStyles = makeStyles((theme) => ({
     flatListContentContainer: {
         paddingBottom: 10,
     },
-    foodIcon: {
+    foodIconEmoji: {
+        fontSize: 26,
         width: 35,
         height: 35,
+        textAlign: 'center',
+        textAlignVertical: 'center',
         marginRight: 10,
-        borderRadius: 17.5,
-        backgroundColor: theme.colors.grey5,
-        alignItems: "center",
-        justifyContent: "center",
     },
     defaultIconContainer: {
         width: 35,
@@ -2731,22 +2786,25 @@ export default ConfirmationModal;
 ---------- DailyEntryListItem.tsx ----------
 // src/components/DailyEntryListItem.tsx
 import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
-import { View, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles, Text } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
 import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
 import { Settings } from '../types/settings';
+import { getFoodIconUrl } from '../utils/iconUtils'; // Import local icon utility
+import i18n from '../localization/i18n';
+
 
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
     reversedIndex: number;
-    foodIcons: { [foodName: string]: string | null | undefined };
-    setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null | undefined }>>;
+    foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined' for loading
+    setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null }>>;
     onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
     isSaving: boolean;
-    dailyGoals: Settings['dailyGoals']; // Added dailyGoals prop
+    dailyGoals: Settings['dailyGoals'];
 }
 
 const DailyEntryListItem = memo<DailyEntryListItemProps>(({
@@ -2757,31 +2815,35 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     onEdit,
     onRemove,
     isSaving,
-    dailyGoals, // Destructure dailyGoals
+    dailyGoals,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [iconLoadError, setIconLoadError] = useState(false);
 
-    const iconStatus = item?.food?.name ? foodIcons[item.food.name] : undefined;
-    const isLoadingIcon = iconStatus === undefined;
+    const iconIdentifier = useMemo(() => {
+        if (item?.food?.name) {
+            if (foodIcons[item.food.name] !== undefined) {
+                return foodIcons[item.food.name];
+            }
+            // Icon not yet in state, resolve it
+            return getFoodIconUrl(item.food.name, i18n.locale);
+        }
+        return null;
+    }, [item.food?.name, foodIcons, i18n.locale]);
+
+    // Update foodIcons state if a new icon was resolved
+    useEffect(() => {
+        if (item?.food?.name && iconIdentifier !== undefined && foodIcons[item.food.name] === undefined) {
+            setFoodIcons(prev => ({ ...prev, [item.food.name]: iconIdentifier }));
+        }
+    }, [item.food?.name, iconIdentifier, foodIcons, setFoodIcons]);
+
 
     const gradeResult: FoodGradeResult | null = useMemo(() => {
         if (!item || !item.food || !dailyGoals) return null;
         return calculateDailyEntryGrade(item.food, item.grams, dailyGoals);
     }, [item, dailyGoals]);
 
-    const handleImageError = useCallback(() => {
-        console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
-        setIconLoadError(true);
-        if (item?.food?.name && foodIcons[item.food.name] !== null) {
-            setFoodIcons(prev => ({ ...prev, [item.food.name]: null }));
-        }
-    }, [item.food.name, iconStatus, foodIcons, setFoodIcons]);
-
-    useEffect(() => {
-        setIconLoadError(false);
-    }, [iconStatus]);
 
     const renderListItemIcon = () => {
         if (!item?.food) {
@@ -2791,15 +2853,10 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                  </View>
              );
         }
-        if (isLoadingIcon) {
-            return (
-                <View style={[styles.foodIcon, styles.iconPlaceholder]}>
-                    <ActivityIndicator size="small" color={theme.colors.grey3} />
-                </View>
-            );
-        } else if (iconStatus && !iconLoadError) {
-            return <Image source={{ uri: iconStatus }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain" />;
+        if (iconIdentifier) { // iconIdentifier is now string (emoji) or null
+            return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
         } else {
+            // Fallback if no icon found (e.g., default or placeholder)
             return (
                 <View style={[styles.foodIcon, styles.iconPlaceholder]}>
                     <RNEIcon name="fast-food-outline" type="ionicon" size={20} color={theme.colors.grey3} />
@@ -2860,7 +2917,6 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                         </Text>
                     )}
                     <ListItem.Title style={styles.listItemTitle}>
-                        {/* Removed numberOfLines and ellipsizeMode to allow multiline */}
                         {item.food.name}
                     </ListItem.Title>
                 </View>
@@ -2875,7 +2931,14 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
 
 const useStyles = makeStyles((theme) => ({
     foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
-    foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
+    foodIconEmoji: {
+        fontSize: 28, // Adjust size for emoji
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+    },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
     titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
@@ -2897,7 +2960,6 @@ const useStyles = makeStyles((theme) => ({
         fontSize: 16,
         flexShrink: 1,
         textAlign: 'left',
-        // Removed numberOfLines and ellipsizeMode to allow multiline
     },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
@@ -3340,7 +3402,6 @@ import {
   TouchableOpacity,
   Pressable,
   ActivityIndicator,
-  Image,
 } from "react-native";
 import {
   ListItem,
@@ -3355,10 +3416,13 @@ import { EstimatedFoodItem } from "../../types/macros";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
 import { t } from "../../localization/i18n";
+import i18n from "../../localization/i18n";
 import {
   calculateBaseFoodGrade,
   FoodGradeResult,
 } from "../../utils/gradingUtils";
+import { getFoodIconUrl } from "../../utils/iconUtils";
+
 
 interface QuickAddItemProps {
   item: EstimatedFoodItem;
@@ -3367,7 +3431,7 @@ interface QuickAddItemProps {
   isEditingThisItem: boolean;
   isAnyItemEditing: boolean;
   isLoading?: boolean;
-  foodIcons: { [foodName: string]: string | null | undefined };
+  foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined'
   editedName: string;
   editedGrams: string;
   onToggleItem: (index: number) => void;
@@ -3380,7 +3444,7 @@ interface QuickAddItemProps {
     item: EstimatedFoodItem,
     setSavingState: (isSaving: boolean) => void
   ) => Promise<void>;
-  foods: Food[]; // Add foods prop
+  foods: Food[];
 }
 
 const QuickAddItem: React.FC<QuickAddItemProps> = ({
@@ -3400,7 +3464,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   onNameChange,
   onGramsChange,
   onSaveToLibrary,
-  foods, // Destructure foods
+  foods,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -3444,33 +3508,20 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   };
 
   const renderFoodIcon = (foodName: string) => {
-    const iconStatus = foodIcons[foodName];
-    if (iconStatus === undefined) {
-      return (
-        <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
-          <ActivityIndicator size="small" color={theme.colors.grey3} />
-        </View>
-      );
-    } else if (iconStatus) {
-      return (
-        <Image
-          source={{ uri: iconStatus }}
-          style={styles.foodIconImage}
-          resizeMode="contain"
-        />
-      );
-    } else {
-      return (
-        <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
-          <Icon
-            name="image-off-outline"
-            type="material-community"
-            size={18}
-            color={theme.colors.grey3}
-          />
-        </View>
-      );
+    const iconIdentifier = foodIcons[foodName] ?? getFoodIconUrl(foodName, i18n.locale); // Resolve if not in state
+    if (iconIdentifier) {
+      return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
     }
+    return (
+      <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
+        <Icon
+          name="help-outline" // Fallback icon
+          type="material"
+          size={22}
+          color={theme.colors.grey3}
+        />
+      </View>
+    );
   };
 
   const canPerformActions =
@@ -3614,7 +3665,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
               ) : (
                 <TouchableOpacity
                   onPress={handleSaveToLibraryPress}
-                  disabled={!canPerformActions} // Button is not disabled if already in library, allowing overwrite flow
+                  disabled={!canPerformActions}
                   style={styles.actionIconPadding}
                 >
                   <Icon
@@ -3692,7 +3743,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: "transparent",
     borderWidth: 0,
   },
-  foodIconContainer: {
+  foodIconContainer: { // For placeholder view
     width: 38,
     height: 38,
     marginRight: 10,
@@ -3701,11 +3752,13 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     overflow: "hidden",
   },
-  foodIconImage: {
+  foodIconEmoji: { // For emoji text
+    fontSize: 26, // Adjust size for emoji
     width: 38,
     height: 38,
     marginRight: 10,
-    borderRadius: 6,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   iconPlaceholder: {
     backgroundColor: theme.colors.grey5,
@@ -3931,13 +3984,16 @@ export default FoodFormFields;
 
 ---------- FoodItem.tsx ----------
 // src/components/FoodItem.tsx
-import React, { forwardRef, useState, useCallback, memo, useMemo } from "react";
-import { StyleSheet, View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import React, { forwardRef, useState, useCallback, memo, useMemo, useEffect } from "react";
+import { StyleSheet, View, TouchableOpacity } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
 import { t } from '../localization/i18n';
+import i18n from "../localization/i18n";
 import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
+import { getFoodIconUrl } from "../utils/iconUtils";
+
 
 interface FoodItemProps {
   food: Food;
@@ -3946,14 +4002,26 @@ interface FoodItemProps {
   onUndoDelete: (food: Food) => void;
   onQuickAdd: (food: Food) => void;
   onShare: (food: Food) => void;
-  foodIconUrl: string | null | undefined;
+  foodIconUrl: string | null; 
+  setFoodIconForName: (name: string, icon: string | null) => void;
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, onShare, foodIconUrl }, ref) => {
+  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, onShare, foodIconUrl, setFoodIconForName }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [iconLoadError, setIconLoadError] = useState(false);
+
+    const iconIdentifier = useMemo(() => {
+        if (foodIconUrl !== undefined) return foodIconUrl; 
+        return getFoodIconUrl(food.name, i18n.locale);
+    }, [food.name, foodIconUrl, i18n.locale]);
+
+    useEffect(() => {
+        if (food.name && iconIdentifier !== undefined && foodIconUrl === undefined) {
+            setFoodIconForName(food.name, iconIdentifier);
+        }
+    }, [food.name, iconIdentifier, foodIconUrl, setFoodIconForName]);
+
 
     const gradeResult: FoodGradeResult | null = useMemo(() => {
         return calculateBaseFoodGrade(food);
@@ -3976,22 +4044,16 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         });
     }, [food.id, food.name, onDelete, handleUndo]);
 
-    const handleImageError = useCallback(() => {
-        setIconLoadError(true);
-    }, []); 
-
-    React.useEffect(() => {
-        setIconLoadError(false); 
-    }, [foodIconUrl]);
 
     const renderIcon = () => {
-        const isLoadingIcon = foodIconUrl === undefined;
-        if (isLoadingIcon) {
-            return ( <View style={[styles.foodIcon, styles.iconPlaceholder]}><ActivityIndicator size="small" color={theme.colors.grey3} /></View> );
-        } else if (foodIconUrl && !iconLoadError) {
-             return ( <Image source={{ uri: foodIconUrl }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain" /> );
+        if (iconIdentifier) {
+            return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
         } else {
-            return ( <View style={[styles.foodIcon, styles.iconPlaceholder]}><RNEIcon name="fast-food-outline" type="ionicon" size={20} color={theme.colors.grey3} /></View> );
+            return (
+                <View style={[styles.foodIconPlaceholderView]}>
+                    <RNEIcon name="help-outline" type="material" size={22} color={theme.colors.grey3} />
+                </View>
+            );
         }
     };
 
@@ -4002,7 +4064,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         leftContent={(reset) => (
           <Button title={t('foodListScreen.edit')} onPress={() => { onEdit(food); reset(); }} icon={{ name: "edit", color: theme.colors.white }} buttonStyle={styles.swipeButtonEdit} titleStyle={styles.swipeButtonTitle} />
         )}
-        rightContent={(reset) => ( // Share button removed from here
+        rightContent={(reset) => (
           <Button title={t('foodListScreen.delete')} onPress={() => { handleDelete(); reset(); }} icon={{ name: "delete", color: theme.colors.white }} buttonStyle={styles.swipeButtonDelete} titleStyle={styles.swipeButtonTitle} />
         )}
         containerStyle={styles.listItemContainer}
@@ -4055,14 +4117,28 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
-    foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
-    foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
-    iconPlaceholder: { backgroundColor: theme.colors.grey5, },
-    actionButton: { // Unified style for quick add and share
+    foodIconEmoji: { // Style for emoji text
+        fontSize: 28,
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+    },
+    foodIconPlaceholderView: { // Style for the placeholder view
+        width: 40, 
+        height: 40, 
+        marginRight: 15, 
+        borderRadius: 8, 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: theme.colors.grey5,
+    },
+    actionButton: { 
         paddingHorizontal: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 5, // Add some space between icons
+        marginLeft: 5,
     },
 }));
 
@@ -4602,7 +4678,10 @@ const i18n = new I18n(translations);
 
 // Helper type to recursively generate dot-notation paths including intermediate paths
 type Paths<T> = T extends object ? {
-    [K in keyof T]: K extends string ? `${K}` | `${K}.${Paths<T[K]>}` : never;
+    [K in keyof T]: K extends string ? 
+        T[K] extends any[] ? `${K}` : // If it's an array, the key itself is a valid path to the array
+        `${K}` | `${K}.${Paths<T[K]>}` 
+        : never;
 }[keyof T] : never;
 
 // Flattens the union type generated by Paths (removes trailing dots)
@@ -4635,11 +4714,10 @@ export const setLocale = (locale: string) => {
 const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
 setLocale(deviceLocale);
 
-// Updated t function with the correct type for scope
-export const t = (scope: TranslationKey, options?: any): string => {
-  // Cast scope to string for the underlying i18n.t function
-  return i18n.t(scope as string, { ...options, locale: i18n.locale });
-};
+// Updated t function with generic type for better type safety with `returnObjects: true`
+export function t<TResult = string>(scope: TranslationKey, options?: any): TResult {
+  return i18n.t(scope as string, { ...options, locale: i18n.locale }) as TResult;
+}
 
 // Function to get date-fns locale (unchanged)
 export const getDateFnLocale = async () => {
@@ -5035,6 +5113,88 @@ export default i18n;
       "minCaloriesAdjustedTitle": "Calories Adjusted",
       "minCaloriesAdjustedMessage": "Your calorie goal was adjusted to a minimum of %{calories} kcal."
     }
+  },
+  "foodIconTags": {
+    "apple": ["apple", "red apple", "green apple", "gala", "fuji", "granny smith", "apples"],
+    "banana": ["banana", "plantain", "bananas"],
+    "grapes": ["grape", "grapes"],
+    "strawberry": ["strawberry", "strawberries"],
+    "blueberry": ["blueberry", "blueberries"],
+    "orange": ["orange", "mandarin", "tangerine", "clementine", "oranges"],
+    "lemonLime": ["lemon", "lime", "lemons"],
+    "watermelon": ["watermelon"],
+    "pineapple": ["pineapple"],
+    "mango": ["mango", "mangoes"],
+    "kiwi": ["kiwi", "kiwifruit"],
+    "peachNectarine": ["peach", "nectarine", "peaches"],
+    "cherry": ["cherry", "cherries"],
+    "pear": ["pear", "pears"],
+    "avocado": ["avocado", "avocados"],
+    "coconut": ["coconut", "coconuts"],
+    "tomato": ["tomato", "tomatoes", "roma tomato", "cherry tomato", "heirloom tomato"],
+    "carrot": ["carrot", "carrots"],
+    "broccoli": ["broccoli", "broccolini"],
+    "leafyGreen": ["lettuce", "spinach", "kale", "greens", "leafy green", "romaine", "arugula", "swiss chard", "collard greens"],
+    "cucumber": ["cucumber", "cucumbers", "pickle", "pickles", "gherkin"],
+    "pepperGeneral": ["pepper", "chili", "chilli", "jalapeno", "capsicum", "pimiento"],
+    "bellPepper": ["bell pepper", "green pepper", "red pepper", "yellow pepper", "orange pepper"],
+    "corn": ["corn", "maize", "sweet corn", "corn on the cob"],
+    "potato": ["potato", "potatoes", "sweet potato", "yam", "russet", "red potato", "yukon gold"],
+    "onion": ["onion", "shallot", "spring onion", "scallion", "red onion", "yellow onion", "white onion", "onions"],
+    "garlic": ["garlic", "garlic clove"],
+    "eggplant": ["eggplant", "aubergine"],
+    "mushroom": ["mushroom", "mushrooms", "portobello", "shiitake", "champignon", "cremini", "oyster mushroom"],
+    "poultry": ["chicken", "chicken breast", "chicken thigh", "chicken leg", "drumstick", "turkey", "duck", "poultry", "roast chicken", "grilled chicken"],
+    "redMeat": ["beef", "steak", "mince", "ground beef", "pork", "lamb", "veal", "red meat", "patty", "roast beef", "pork chop", "loin"],
+    "bacon": ["bacon", "pancetta"],
+    "processedMeat": ["ham", "sausage", "hot dog", "frankfurter", "chorizo", "salami", "pepperoni", "bologna", "bratwurst", "processed meat"],
+    "fish": ["fish", "salmon", "tuna", "cod", "tilapia", "mackerel", "sardine", "halibut", "white fish", "trout", "sea bass", "grilled fish", "baked fish"],
+    "shrimpPrawn": ["shrimp", "prawn", "prawns", "shellfish"],
+    "lobster": ["lobster", "crayfish", "shellfish"],
+    "crab": ["crab", "shellfish"],
+    "sushi": ["sushi", "sashimi", "raw fish", "nigiri", "maki", "uramaki"],
+    "egg": ["egg", "eggs", "scrambled eggs", "fried egg", "omelette", "boiled egg", "poached egg"],
+    "milk": ["milk", "dairy milk", "cow milk", "soy milk", "almond milk", "oat milk", "plant milk", "rice milk", "coconut milk", "goat milk"],
+    "cheese": ["cheese", "cheddar", "mozzarella", "parmesan", "gouda", "brie", "feta", "cottage cheese", "swiss cheese", "provolone", "blue cheese", "goat cheese", "cream cheese"],
+    "butter": ["butter", "margarine"],
+    "iceCream": ["ice cream", "gelato", "sorbet", "frozen yogurt", "sherbet"],
+    "yogurt": ["yogurt", "yoghurt", "greek yogurt", "plain yogurt", "flavored yogurt", "dairy"],
+    "bread": ["bread", "toast", "bagel", "croissant", "bun", "roll", "sourdough", "whole wheat bread", "white bread", "rye bread", "multigrain bread", "baguette"],
+    "rice": ["rice", "white rice", "brown rice", "basmati rice", "jasmine rice", "wild rice", "grain"],
+    "pasta": ["pasta", "spaghetti", "macaroni", "noodles", "fettuccine", "lasagna", "ramen", "penne", "linguine"],
+    "cerealOats": ["cereal", "oats", "oatmeal", "granola", "muesli", "porridge", "corn flakes", "bran flakes"],
+    "otherGrains": ["quinoa", "couscous", "barley", "bulgur", "farro", "spelt", "millet", "ancient grain"],
+    "flatbread": ["tortilla", "wrap", "pita", "naan", "flatbread", "chapati", "roti"],
+    "beansLegumes": ["beans", "black beans", "kidney beans", "chickpeas", "garbanzo beans", "lentils", "peas", "legume", "edamame", "soybeans", "lima beans", "pinto beans"],
+    "peanut": ["peanut", "peanuts", "peanut butter"],
+    "nuts": ["nuts", "almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "brazil nut", "macadamia nut", "mixed nuts"],
+    "seeds": ["seeds", "sunflower seeds", "pumpkin seeds", "chia seeds", "flax seeds", "sesame seeds", "hemp seeds"],
+    "donut": ["donut", "doughnut", "pastry", "fritter"],
+    "cookie": ["cookie", "biscuit", "shortbread", "macaroon"],
+    "chocolate": ["chocolate", "chocolate bar", "dark chocolate", "milk chocolate", "white chocolate", "cocoa", "cacao"],
+    "cake": ["cake", "cupcake", "muffin", "brownie", "cheesecake", "pound cake"],
+    "candy": ["candy", "sweets", "gummy", "lollipop", "jelly beans", "taffy", "fudge", "marshmallow"],
+    "popcorn": ["popcorn"],
+    "pretzel": ["pretzel", "pretzels"],
+    "friesChips": ["fries", "french fries", "chips", "potato chips", "crisps", "potato wedges", "sweet potato fries"],
+    "coffee": ["coffee", "espresso", "latte", "cappuccino", "americano", "mocha", "cold brew"],
+    "tea": ["tea", "green tea", "black tea", "herbal tea", "chai", "oolong tea", "white tea"],
+    "softDrinkJuice": ["soda", "coke", "pepsi", "soft drink", "juice", "orange juice", "apple juice", "smoothie", "protein shake", "lemonade", "iced tea (sweetened)"],
+    "water": ["water", "bottled water", "mineral water", "sparkling water", "still water"],
+    "wine": ["wine", "red wine", "white wine", "rosé wine", "sparkling wine", "champagne", "alcohol"],
+    "beer": ["beer", "lager", "ale", "stout", "ipa", "pilsner", "craft beer", "alcohol"],
+    "cocktail": ["cocktail", "spirit", "liquor", "vodka", "gin", "rum", "whiskey", "tequila", "margarita", "martini", "alcohol"],
+    "pizza": ["pizza", "margherita pizza", "pepperoni pizza", "hawaiian pizza", "vegetarian pizza", "deep dish pizza"],
+    "burger": ["burger", "hamburger", "cheeseburger", "veggie burger", "chicken burger", "slider"],
+    "tacoBurrito": ["taco", "burrito", "quesadilla", "fajita", "enchilada", "mexican food"],
+    "sandwich": ["sandwich", "sub", "blt", "club sandwich", "panini", "grilled cheese", "wrap sandwich"],
+    "soupStew": ["soup", "stew", "broth", "chowder", "pho", "consomme", "minestrone", "chili con carne"],
+    "salad": ["salad", "caesar salad", "greek salad", "garden salad", "cobb salad", "fruit salad", "pasta salad", "potato salad"],
+    "noodleDish": ["ramen noodles", "pho noodles", "noodle soup", "pad thai", "chow mein", "lo mein", "soba", "udon"],
+    "genericFruit": ["fruit", "tropical fruit", "stone fruit", "citrus fruit", "berries"],
+    "genericVegetable": ["vegetable", "veg", "root vegetable", "cruciferous", "greens"],
+    "genericMeal": ["food", "meal", "dish", "plate", "entrée", "main course", "snack", "lunch", "dinner", "breakfast", "generic food", "cooked food", "leftovers"],
+    "unknownFood": ["unknown", "unidentified"]
   }
 }
 ---------- END en.json ----------
@@ -5416,6 +5576,88 @@ export default i18n;
       "minCaloriesAdjustedTitle": "הקלוריות עודכנו",
       "minCaloriesAdjustedMessage": "יעד הקלוריות שלך עודכן למינימום של %{calories} קק\"ל."
     }
+  },
+  "foodIconTags": {
+    "apple": ["תפוח", "תפוח עץ", "תפוח אדום", "תפוח ירוק", "גאלה", "פוג'י", "גרני סמית", "תפוחים"],
+    "banana": ["בננה", "בננות"],
+    "grapes": ["ענב", "ענבים"],
+    "strawberry": ["תות", "תות שדה", "תותים"],
+    "blueberry": ["אוכמנית", "אוכמניות"],
+    "orange": ["תפוז", "מנדרינה", "קלמנטינה", "תפוזים"],
+    "lemonLime": ["לימון", "ליים", "לימונים"],
+    "watermelon": ["אבטיח"],
+    "pineapple": ["אננס"],
+    "mango": ["מנגו"],
+    "kiwi": ["קיווי"],
+    "peachNectarine": ["אפרסק", "נקטרינה", "אפרסקים"],
+    "cherry": ["דובדבן", "דובדבנים", "גודגדן"],
+    "pear": ["אגס", "אגסים"],
+    "avocado": ["אבוקדו"],
+    "coconut": ["קוקוס"],
+    "tomato": ["עגבניה", "עגבניות", "עגבניית שרי", "עגבניית תמר"],
+    "carrot": ["גזר", "גזרים"],
+    "broccoli": ["ברוקולי"],
+    "leafyGreen": ["חסה", "תרד", "קייל", "עלים ירוקים", "רומית", "אורוגולה", "מנגולד", "עלי בייבי"],
+    "cucumber": ["מלפפון", "מלפפונים", "חמוץ", "חמוצים", "קפונאטה"],
+    "pepperGeneral": ["פלפל", "צ'ילי", "חריף", "חלפיניו", "שיפקה"],
+    "bellPepper": ["גמבה", "פלפל ירוק", "פלפל אדום", "פלפל צהוב", "פלפל כתום"],
+    "corn": ["תירס", "קלחי תירס"],
+    "potato": ["תפוח אדמה", "תפוחי אדמה", "בטטה", "יאם", "תפוד"],
+    "onion": ["בצל", "שאלוט", "בצל ירוק", "בצלים", "עירית"],
+    "garlic": ["שום", "שן שום"],
+    "eggplant": ["חציל", "חצילים"],
+    "mushroom": ["פטרייה", "פטריות", "פורטובלו", "שיטאקי", "שמפיניון", "ירדן"],
+    "poultry": ["עוף", "חזה עוף", "כרע עוף", "שוק עוף", "פולקע", "הודו", "ברווז", "עוף בגריל", "עוף צלוי", "פרגית"],
+    "redMeat": ["בקר", "סטייק", "בשר טחון", "קציצה", "חזיר", "טלה", "עגל", "בשר אדום", "צלעות", "אנטריקוט", "סינטה"],
+    "bacon": ["בייקון", "פנצ'טה"],
+    "processedMeat": ["נקניק", "נקניקיה", "פסטרמה", "קבנוס", "סלמי", "פפרוני", "בשר מעובד", "האם"],
+    "fish": ["דג", "סלמון", "טונה", "בקלה", "אמנון", "מקרל", "סרדין", "הליבוט", "דג לבן", "פורל", "דג בגריל", "דג אפוי", "לברק", "מוסר"],
+    "shrimpPrawn": ["שרימפס", "חסילון", "פירות ים", "פרוון"],
+    "lobster": ["לובסטר", "סרטן נהרות", "פירות ים"],
+    "crab": ["סרטן", "פירות ים"],
+    "sushi": ["סושי", "סשימי", "דג נא", "ניגירי", "מאקי", "רול"],
+    "egg": ["ביצה", "ביצים", "ביצה מקושקשת", "ביצת עין", "אומלט", "ביצה קשה", "חביתה"],
+    "milk": ["חלב", "חלב פרה", "חלב סויה", "חלב שקדים", "חלב שיבולת שועל", "חלב צמחי", "חלב אורז", "חלב קוקוס", "חלב עיזים"],
+    "cheese": ["גבינה", "צ'דר", "מוצרלה", "פרמזן", "גאודה", "ברי", "פטה", "קוטג'", "גבינה שוויצרית", "גבינה כחולה", "גבינת עיזים", "גבינת שמנת", "צפתית", "בולגרית"],
+    "butter": ["חמאה", "מרגרינה"],
+    "iceCream": ["גלידה", "ג'לאטו", "סורבה", "יוגורט קפוא", "ארטיק"],
+    "yogurt": ["יוגורט", "יוגורט יווני", "יוגורט טבעי", "מעדן חלב", "לבן", "אשל"],
+    "bread": ["לחם", "טוסט", "בייגל", "קרואסון", "לחמניה", "גליל", "לחם מחמצת", "לחם מלא", "לחם לבן", "לחם שיפון", "באגט", "חלה"],
+    "rice": ["אורז", "אורז לבן", "אורז חום", "אורז בסמטי", "אורז יסמין", "אורז בר", "דגן", "אורז מלא"],
+    "pasta": ["פסטה", "ספגטי", "מקרוני", "אטריות", "פטוצ'יני", "לזניה", "ראמן", "פנה", "רביולי"],
+    "cerealOats": ["דגני בוקר", "שיבולת שועל", "דייסה", "גרנולה", "מוזלי", "קורנפלקס", "ברנפלקס"],
+    "otherGrains": ["קינואה", "קוסקוס", "שעורה", "בורגול", "פארו", "כוסמין", "דוחן", "גריסים"],
+    "flatbread": ["טורטיה", "לאפה", "פיתה", "נאן", "צ'פאטי", "רוטי", "מצה"],
+    "beansLegumes": ["שעועית", "שעועית שחורה", "שעועית אדומה", "חומוס", "גרגרי חומוס", "עדשים", "אפונה", "קטניות", "אדממה", "פולי סויה", "פול"],
+    "peanut": ["בוטן", "בוטנים", "חמאת בוטנים"],
+    "nuts": ["אגוזים", "שקד", "אגוז מלך", "קשיו", "פקאן", "פיסטוק", "אגוז לוז", "אגוז ברזיל", "אגוזי מקדמיה", "ערמונים"],
+    "seeds": ["זרעים", "גרעיני חמניה", "גרעיני דלעת", "זרעי צ'יה", "זרעי פשתן", "שומשום", "זרעי המפ", "גרעינים"],
+    "donut": ["סופגניה", "דונאט", "מאפה"],
+    "cookie": ["עוגיה", "ביסקוויט", "מקרון", "עוגיות"],
+    "chocolate": ["שוקולד", "חטיף שוקולד", "שוקולד מריר", "שוקולד חלב", "שוקולד לבן", "קקאו"],
+    "cake": ["עוגה", "קאפקייק", "מאפין", "בראוני", "עוגת גבינה", "רולדה"],
+    "candy": ["ממתק", "ממתקים", "סוכריה", "סוכריות גומי", "סוכריה על מקל", "מרשמלו", "טופי"],
+    "popcorn": ["פופקורן"],
+    "pretzel": ["בייגלה", "פרעצל"],
+    "friesChips": ["צ'יפס", "טוגנים", "תפוצ'יפס", "חטיף תפוחי אדמה", "פוטטו"],
+    "coffee": ["קפה", "אספרסו", "לאטה", "קפוצ'ינו", "אמריקנו", "מוקה", "קפה קר", "נס קפה"],
+    "tea": ["תה", "תה ירוק", "תה שחור", "תה צמחים", "צ'אי", "חליטת צמחים"],
+    "softDrinkJuice": ["משקה קל", "קולה", "סודה", "מיץ", "מיץ תפוזים", "מיץ תפוחים", "שייק", "שייק חלבון", "לימונדה", "אייס טי", "משקה מוגז"],
+    "water": ["מים", "מים מינרליים", "סודה (מים)"],
+    "wine": ["יין", "יין אדום", "יין לבן", "רוזה", "יין מבעבע", "שמפניה", "אלכוהול"],
+    "beer": ["בירה", "לאגר", "אייל", "סטאוט", "אלכוהול"],
+    "cocktail": ["קוקטייל", "משקה חריף", "ליקר", "וודקה", "ג'ין", "רום", "וויסקי", "טקילה", "מרגריטה", "אלכוהול"],
+    "pizza": ["פיצה", "פיצה מרגריטה", "פיצה פפרוני"],
+    "burger": ["המבורגר", "בורגר", "צ'יזבורגר", "בורגר צמחוני", "קציצת המבורגר"],
+    "tacoBurrito": ["טאקו", "בוריטו", "קסאדייה", "פاهיטה", "אנצ'ילדה", "אוכל מקסיקני"],
+    "sandwich": ["כריך", "סנדוויץ'", "טוסט", "באגט"],
+    "soupStew": ["מרק", "נזיד", "ציר", "צ'אודר", "פו", "מרק ירקות", "מרק עוף"],
+    "salad": ["סלט", "סלט קיסר", "סלט יווני", "סלט ירקות", "סלט פירות", "סלט טונה"],
+    "noodleDish": ["ראמן", "אטריות פו", "מרק אטריות", "פאד תאי", "נודלס מוקפץ", "אטריות אורז", "אטריות ביצים"],
+    "genericFruit": ["פרי", "פירות", "פירות יער", "פירות הדר", "פירות טרופיים"],
+    "genericVegetable": ["ירק", "ירקות", "ירקות שורש", "ירקות עלים", "ירוקים"],
+    "genericMeal": ["אוכל", "ארוחה", "מנה", "צלחת", "מנה עיקרית", "חטיף", "ארוחת צהריים", "ארוחת ערב", "ארוחת בוקר", "אוכל כללי", "אוכל מבושל", "שאריות", "תבשיל"],
+    "unknownFood": ["לא ידוע", "לא מזוהה", "אחר"]
   }
 }
 ---------- END he.json ----------
@@ -5797,6 +6039,88 @@ export default i18n;
       "minCaloriesAdjustedTitle": "Калории скорректированы",
       "minCaloriesAdjustedMessage": "Ваша цель по калориям была скорректирована до минимума в %{calories} ккал."
     }
+  },
+  "foodIconTags": {
+    "apple": ["яблоко", "красное яблоко", "зеленое яблоко", "гала", "фуджи", "гренни смит", "яблоки"],
+    "banana": ["банан", "бананы"],
+    "grapes": ["виноград"],
+    "strawberry": ["клубника", "земляника"],
+    "blueberry": ["голубика", "черника"],
+    "orange": ["апельсин", "мандарин", "клементин", "апельсины"],
+    "lemonLime": ["лимон", "лайм", "лимоны"],
+    "watermelon": ["арбуз"],
+    "pineapple": ["ананас"],
+    "mango": ["манго"],
+    "kiwi": ["киви"],
+    "peachNectarine": ["персик", "нектарин", "персики"],
+    "cherry": ["вишня", "черешня"],
+    "pear": ["груша", "груши"],
+    "avocado": ["авокадо"],
+    "coconut": ["кокос", "кокосы"],
+    "tomato": ["помидор", "томат", "помидоры", "томаты", "черри", "сливка"],
+    "carrot": ["морковь", "морковка"],
+    "broccoli": ["брокколи"],
+    "leafyGreen": ["салат", "шпинат", "капуста кале", "зелень", "листовая зелень", "руккола", "мангольд", "айсберг"],
+    "cucumber": ["огурец", "огурцы", "соленый огурец", "маринованный огурец", "корнишон"],
+    "pepperGeneral": ["перец", "чили", "халапеньо", "паприка", "острый перец"],
+    "bellPepper": ["сладкий перец", "болгарский перец", "зеленый перец", "красный перец", "желтый перец", "оранжевый перец"],
+    "corn": ["кукуруза", "зерно кукурузы", "кукурузный початок"],
+    "potato": ["картофель", "картошка", "батат", "ямс"],
+    "onion": ["лук", "репчатый лук", "зеленый лук", "лук-шалот", "порей"],
+    "garlic": ["чеснок", "зубчик чеснока"],
+    "eggplant": ["баклажан", "баклажаны"],
+    "mushroom": ["гриб", "грибы", "шампиньон", "портобелло", "шиитаке", "вешенка", "белый гриб", "лисичка"],
+    "poultry": ["курица", "куриная грудка", "куриное бедро", "куриная ножка", "индейка", "утка", "птица", "жареная курица", "курица гриль", "филе курицы"],
+    "redMeat": ["говядина", "стейк", "фарш", "свинина", "баранина", "телятина", "красное мясо", "котлета", "жаркое", "свиная отбивная", "вырезка"],
+    "bacon": ["бекон", "грудинка"],
+    "processedMeat": ["ветчина", "колбаса", "сосиска", "сарделька", "чоризо", "салями", "пепперони", "сервелат", "мясные деликатесы", "буженина"],
+    "fish": ["рыба", "лосось", "тунец", "треска", "тилапия", "скумбрия", "сельдь", "сардина", "палтус", "белая рыба", "форель", "морской окунь", "жареная рыба", "запеченная рыба", "хек", "минтай"],
+    "shrimpPrawn": ["креветка", "креветки", "морепродукты", "королевская креветка"],
+    "lobster": ["лобстер", "омар", "рак", "морепродукты"],
+    "crab": ["краб", "морепродукты", "крабовое мясо"],
+    "sushi": ["суши", "роллы", "сашими", "сырая рыба", "нигири", "маки", "Филадельфия", "Калифорния"],
+    "egg": ["яйцо", "яйца", "яичница", "омлет", "вареное яйцо", "яйцо пашот"],
+    "milk": ["молоко", "коровье молоко", "соевое молоко", "миндальное молоко", "овсяное молоко", "растительное молоко", "рисовое молоко", "кокосовое молоко", "козье молоко", "кефир", "ряженка", "простокваша"],
+    "cheese": ["сыр", "чеддер", "моцарелла", "пармезан", "гауда", "бри", "фета", "творог", "швейцарский сыр", "проволоне", "голубой сыр", "козий сыр", "сливочный сыр", "российский сыр", "адыгейский сыр"],
+    "butter": ["масло сливочное", "маргарин", "спред"],
+    "iceCream": ["мороженое", "джелато", "сорбет", "замороженный йогурт", "пломбир", "эскимо"],
+    "yogurt": ["йогурт", "греческий йогурт", "натуральный йогурт", "питьевой йогурт", "биойогурт"],
+    "bread": ["хлеб", "тост", "бублик", "круассан", "булка", "булочка", "лаваш", "цельнозерновой хлеб", "белый хлеб", "ржаной хлеб", "багет", "батон", "чиабатта"],
+    "rice": ["рис", "белый рис", "коричневый рис", "рис басмати", "рис жас민", "дикий рис", "крупа", "бурый рис"],
+    "pasta": ["макароны", "паста", "спагетти", "лапша", "фетучини", "лазанья", "рамен", "вермишель", "рожки", "перья"],
+    "cerealOats": ["хлопья", "овсянка", "овсяные хлопья", "гранола", "мюсли", "каша", "кукурузные хлопья", "гречка"],
+    "otherGrains": ["киноа", "кус-кус", "ячмень", "булгур", "полба", "пшено", "крупы", "перловка"],
+    "flatbread": ["тортилья", "лаваш", "пита", "наан", "лепешка", "чапати", "роти", "маца"],
+    "beansLegumes": ["фасоль", "черная фасоль", "красная фасоль", "нут", "чечевица", "горох", "бобовые", "эдамаме", "соевые бобы", "маш"],
+    "peanut": ["арахис", "арахисовая паста", "земляной орех"],
+    "nuts": ["орехи", "миндаль", "грецкий орех", "кешью", "пекан", "фисташки", "фундук", "бразильский орех", "макадамия", "смесь орехов", "кедровый орех"],
+    "seeds": ["семечки", "семена подсолнечника", "тыквенные семечки", "семена чиа", "семена льна", "кунжут", "конопляные семена"],
+    "donut": ["пончик", "пышка", "выпечка", "донат"],
+    "cookie": ["печенье", "бисквит", "галета", "макарун", "овсяное печенье", "пряник"],
+    "chocolate": ["шоколад", "шоколадная плитка", "темный шоколад", "молочный шоколад", "белый шоколад", "какао", "шоколадка"],
+    "cake": ["торт", "пирожное", "кекс", "маффин", "брауни", "чизкейк", "рулет"],
+    "candy": ["конфета", "конфеты", "сладости", "леденец", "мармелад", "ирис", "зефир", "пастила", "карамель"],
+    "popcorn": ["попкорн", "воздушная кукуруза"],
+    "pretzel": ["крендель", "соломка", "брецель"],
+    "friesChips": ["картофель фри", "картошка фри", "чипсы", "картофельные чипсы", "картофельные дольки", "наггетсы (картофельные)"],
+    "coffee": ["кофе", "эспрессо", "латте", "капучино", "американо", "мокко", "холодный кофе", "растворимый кофе"],
+    "tea": ["чай", "зеленый чай", "черный чай", "травяной чай", "чай масала", "улун", "белый чай", "каркаде", "пуэр"],
+    "softDrinkJuice": ["газировка", "лимонад", "кола", "пепси", "безалкогольный напиток", "сок", "апельсиновый сок", "яблочный сок", "смузи", "протеиновый коктейль", "холодный чай (сладкий)", "морс", "компот"],
+    "water": ["вода", "бутилированная вода", "минеральная вода", "газированная вода", "негазированная вода", "питьевая вода"],
+    "wine": ["вино", "красное вино", "белое вино", "розовое вино", "игристое вино", "шампанское", "алкоголь"],
+    "beer": ["пиво", "лагер", "эль", "стаут", "алкоголь", "крафтовое пиво"],
+    "cocktail": ["коктейль", "спиртное", "ликер", "водка", "джин", "ром", "виски", "текила", "маргарита", "мартини", "алкоголь", "напиток алкогольный"],
+    "pizza": ["пицца", "маргарита", "пепперони", "гавайская пицца"],
+    "burger": ["бургер", "гамбургер", "чизбургер", "вегетарианский бургер", "куриный бургер", "сэндвич с котлетой"],
+    "tacoBurrito": ["тако", "буррито", "кесадилья", "фахита", "энчилада", "мексиканская еда", "шаурма"],
+    "sandwich": ["сэндвич", "бутерброд", "панини", "горячий бутерброд", "тост с начинкой", "клаб сэндвич"],
+    "soupStew": ["суп", "рагу", "бульон", "похлебка", "борщ", "щи", "солянка", "гуляш", "харчо", "уха"],
+    "salad": ["салат", "цезарь", "греческий салат", "овощной салат", "фруктовый салат", "оливье", "винегрет", "салат с тунцом"],
+    "noodleDish": ["лапша рамен", "суп фо", "суп с лапшой", "пад тай", "вок", "удон", "соба", "фунчоза"],
+    "genericFruit": ["фрукт", "фрукты", "ягода", "ягоды", "цитрус", "цитрусовые", "экзотический фрукт"],
+    "genericVegetable": ["овощ", "овощи", "корнеплод", "зелень листовая", "огородные овощи"],
+    "genericMeal": ["еда", "блюдо", "обед", "ужин", "завтрак", "перекус", "готовое блюдо", "остатки еды", "пища", "кушанье", "трапеза"],
+    "unknownFood": ["неизвестно", "неопознано", "другое", "прочее"]
   }
 }
 ---------- END ru.json ----------
@@ -5954,7 +6278,7 @@ import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
-import { isValidNumberInput } from "../utils/validationUtils"; // Keep this import
+import { isValidNumberInput } from "../utils/validationUtils"; 
 import DailyProgress from "../components/DailyProgress";
 import { Text, FAB, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
@@ -5985,22 +6309,18 @@ const DailyEntryScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
   
-  const [editIndex, setEditIndex] = useState<number | null>(null); // This is reversedIndex for editing
+  const [editIndex, setEditIndex] = useState<number | null>(null);
   const [initialGramsForEdit, setInitialGramsForEdit] = useState<string | undefined>(undefined);
   const [foodForEditModal, setFoodForEditModal] = useState<Food | null>(null);
 
-
-  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined; }>({});
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({}); // No 'undefined'
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
 
-
   const { theme } = useTheme();
   const styles = useStyles();
-  const foodIconsRef = useRef(foodIcons);
-  useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
   const navigation = useNavigation<DailyEntryScreenNavigationProp>();
   const route = useRoute<DailyEntryScreenRouteProp>();
@@ -6013,30 +6333,36 @@ const DailyEntryScreen: React.FC = () => {
     updateDateForToast();
   }, [selectedDate, i18n.locale]);
 
-  const fetchAndSetIcon = useCallback(async (foodName: string) => {
+  const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName) return;
-    if (foodIconsRef.current[foodName] === undefined) {
-      setFoodIcons(prev => ({ ...prev, [foodName]: undefined }));
-      try {
-        const url = await getFoodIconUrl(foodName);
-        setFoodIcons(prev => ({ ...prev, [foodName]: url }));
-      } catch (error) {
-        console.error(`Failed to fetch icon for ${foodName}:`, error);
-        setFoodIcons(prev => ({ ...prev, [foodName]: null }));
-      }
+    if (foodIcons[foodName] === undefined) { // Only resolve if not already in state
+      const icon = getFoodIconUrl(foodName, i18n.locale);
+      setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
     }
-  }, []);
+  }, [foodIcons, i18n.locale]);
 
   const triggerIconPrefetch = useCallback((entries: DailyEntry[], currentSelectedDate: string) => {
     const uniqueFoodNames = new Set<string>();
-    entries.forEach(entry => { if (entry.date === currentSelectedDate && entry.items) { entry.items.forEach(item => { if (item.food?.name) uniqueFoodNames.add(item.food.name); }); } });
+    entries.forEach(entry => { 
+      if (entry.date === currentSelectedDate && entry.items) { 
+        entry.items.forEach(item => { 
+          if (item.food?.name) uniqueFoodNames.add(item.food.name); 
+        }); 
+      } 
+    });
 
     if (uniqueFoodNames.size > 0) {
+      const newIcons: { [key: string]: string | null } = {};
       Array.from(uniqueFoodNames).forEach(name => {
-        fetchAndSetIcon(name);
+        if (foodIcons[name] === undefined) { // Check global state, not just local current batch
+           newIcons[name] = getFoodIconUrl(name, i18n.locale);
+        }
       });
+      if (Object.keys(newIcons).length > 0) {
+          setFoodIcons(prev => ({ ...prev, ...newIcons }));
+      }
     }
-  }, [fetchAndSetIcon]);
+  }, [resolveAndSetIcon, foodIcons, i18n.locale]); // Added foodIcons to deps
 
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
@@ -6071,24 +6397,20 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [route.params, navigation]);
 
-  // Effect to open modal when pendingQuickAddFood is set
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isOverlayVisible && foods.length > 0) {
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);
       const foodToUse = foodExistsInLibrary || pendingQuickAddFood;
   
-      // For pendingQuickAddFood, we are essentially opening the modal for a "new" entry,
-      // but pre-filling the food.
-      setFoodForEditModal(foodToUse); // Use this to pass to AddEntryModal
-      setInitialGramsForEdit("");     // New entry, so grams are empty
-      setEditIndex(null);             // Not editing an existing list item
+      setFoodForEditModal(foodToUse);
+      setInitialGramsForEdit("");    
+      setEditIndex(null);            
   
-      fetchAndSetIcon(foodToUse.name);
-      setIsOverlayVisible(true);      // Open the modal
-      setPendingQuickAddFood(null);   // Clear pending food
+      if (foodToUse.name) resolveAndSetIcon(foodToUse.name);
+      setIsOverlayVisible(true);      
+      setPendingQuickAddFood(null);   
     }
-  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, fetchAndSetIcon]);
-
+  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, resolveAndSetIcon]);
 
   useFocusEffect(
     useCallback(() => {
@@ -6096,7 +6418,6 @@ const DailyEntryScreen: React.FC = () => {
       return () => {};
     }, [loadData]) 
   );
-
 
   const currentEntryItems = useMemo(() => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
@@ -6138,18 +6459,17 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [dailyEntries]);
 
-  // This function is now called by AddEntryModal with the food and grams
   const handleSingleEntryActionFinal = useCallback(async (foodToAdd: Food, gramsToAdd: number) => {
     if (isSaving) return;
     const entryItem: DailyEntryItem = { food: foodToAdd, grams: gramsToAdd };
-    const isEditingThisAction = editIndex !== null; // Use a local const for clarity
+    const isEditingThisAction = editIndex !== null;
     
     const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
         const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
         let updatedEntries: DailyEntry[];
         if (existingEntryIndex > -1) {
             const existingEntry = prevDailyEntries[existingEntryIndex]; let updatedItems;
-            if (isEditingThisAction) { // Check if it was an edit operation
+            if (isEditingThisAction) {
                 const originalEditIndex = getOriginalIndex(editIndex!);
                 if (originalEditIndex === -1) { console.error("Edit error: original index not found."); return prevDailyEntries; }
                 updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item);
@@ -6165,15 +6485,15 @@ const DailyEntryScreen: React.FC = () => {
     };
     await updateAndSaveEntries(newEntriesState(dailyEntries));
 
-    if (foodToAdd?.name) fetchAndSetIcon(foodToAdd.name);
+    if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
     
-    setIsOverlayVisible(false); // Close modal
-    setEditIndex(null); // Reset edit state
+    setIsOverlayVisible(false);
+    setEditIndex(null);
     setInitialGramsForEdit(undefined);
     setFoodForEditModal(null);
 
     Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, editIndex, dailyEntries, selectedDate, getOriginalIndex, updateAndSaveEntries, fetchAndSetIcon ]);
+  }, [ isSaving, editIndex, dailyEntries, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon ]);
 
 
   const handleAddMultipleEntriesFinal = useCallback(async (entriesToAdd: { food: Food; grams: number }[]) => {
@@ -6198,7 +6518,7 @@ const DailyEntryScreen: React.FC = () => {
       };
       await updateAndSaveEntries(newEntriesState(dailyEntries));
 
-      newItems.forEach(item => { if (item.food?.name) fetchAndSetIcon(item.food.name); });
+      newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
       
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
       
@@ -6207,7 +6527,7 @@ const DailyEntryScreen: React.FC = () => {
       setInitialGramsForEdit(undefined);
       setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
-  }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, fetchAndSetIcon]);
+  }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon]);
 
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
@@ -6267,14 +6587,14 @@ const DailyEntryScreen: React.FC = () => {
       setFoodForEditModal(itemToEdit.food); 
       setInitialGramsForEdit(String(itemToEdit.grams));
       setEditIndex(reversedItemIndex);
-      if (itemToEdit.food.name) fetchAndSetIcon(itemToEdit.food.name); 
+      if (itemToEdit.food.name) resolveAndSetIcon(itemToEdit.food.name); 
     } else {
       setFoodForEditModal(null);
       setInitialGramsForEdit(undefined);
       setEditIndex(null);
     }
     setIsOverlayVisible((current) => !current);
-  }, [isSaving, fetchAndSetIcon]);
+  }, [isSaving, resolveAndSetIcon]);
 
   const handleAddNewFoodRequestFromModal = useCallback(() => {
     if (isSaving) return;
@@ -6303,7 +6623,7 @@ const DailyEntryScreen: React.FC = () => {
         committedFood = await createFood(foodData as Omit<Food, 'id'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       }
-      if(committedFood.name) fetchAndSetIcon(committedFood.name);
+      if(committedFood.name) resolveAndSetIcon(committedFood.name);
       return committedFood;
     } catch (error) {
       console.error("Error committing food to library:", error);
@@ -6312,7 +6632,7 @@ const DailyEntryScreen: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, fetchAndSetIcon]);
+  }, [isSaving, resolveAndSetIcon]);
 
 
   const handleEditEntryViaModal = (item: DailyEntryItem, reversedIndex: number) => toggleOverlay(item, reversedIndex);
@@ -6448,7 +6768,7 @@ import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { getFoodIconUrl } from "../utils/iconUtils";
-import { t } from '../localization/i18n';
+import i18n, { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
@@ -6470,31 +6790,32 @@ type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'F
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
 
 const getBackendShareBaseUrl = (): string => {
-    let prodBaseUrl: string | undefined;
-    prodBaseUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    const appJsonUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
+    let chosenUrl: string;
 
-    if (!prodBaseUrl) {
-        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-        if (prodBaseUrl) {
-            console.log("Share Link: Using BACKEND_URL_PRODUCTION from app.json for share link base.");
-        }
-    }
-
-    if (!prodBaseUrl) {
-        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION || "https://macros-vision-ai.xyz"; 
+    if (envUrl) {
+        chosenUrl = envUrl;
+        console.log("Share Link: Using EXPO_PUBLIC_BACKEND_URL_PRODUCTION for share link base:", chosenUrl);
+    } else if (appJsonUrl) {
+        chosenUrl = appJsonUrl;
+        console.log("Share Link: Using BACKEND_URL_PRODUCTION from app.json for share link base:", chosenUrl);
+    } else {
+        chosenUrl = "https://macros-vision-ai.xyz"; // Hardcoded default fallback
         console.warn(
-            `Share Link WARNING: Production backend URL is not configured via EXPO_PUBLIC_BACKEND_URL_PRODUCTION. ` +
-            `Attempting to use extra.env.BACKEND_URL_PRODUCTION or falling back to a hardcoded default: ${prodBaseUrl}. ` +
-            `IT IS CRITICAL TO ENSURE 'EXPO_PUBLIC_BACKEND_URL_PRODUCTION' IS SET CORRECTLY IN YOUR BUILD ENVIRONMENT FOR PRODUCTION RELEASES.`
+            `Share Link WARNING: Production backend URL is not configured via EXPO_PUBLIC_BACKEND_URL_PRODUCTION or app.json. ` +
+            `Falling back to a hardcoded default: ${chosenUrl}. ` +
+            `IT IS CRITICAL TO ENSURE A PRODUCTION URL IS SET CORRECTLY.`
         );
     }
-    return prodBaseUrl.replace(/\/api\/v1$/, '').replace(/\/$/, '');
+    // Ensure chosenUrl is a string and then clean it up
+    return String(chosenUrl).replace(/\/api\/v1$/, '').replace(/\/$/, '');
 };
 
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
-    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
+    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({}); // No 'undefined'
     const [offset, setOffset] = useState(0);
     const [totalFoods, setTotalFoods] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -6509,29 +6830,32 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const flatListRef = useRef<FlatList<Food>>(null);
-    const foodIconsRef = useRef(foodIcons);
     const prevSearchTermRef = useRef<string>(search.trim());
     const isFirstRunRef = useRef(true);
-
-    useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
+    const resolveAndSetFoodIcon = useCallback((foodName: string, currentIcon?: string | null) => {
+        if (foodName && currentIcon === undefined) { 
+            const icon = getFoodIconUrl(foodName, i18n.locale);
+            setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
+        }
+    }, [i18n.locale]);
+
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
+        const newIcons: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name && foodIconsRef.current[food.name] === undefined) {
-                setFoodIcons(prev => ({ ...prev, [food.name]: undefined }));
-                getFoodIconUrl(food.name)
-                    .then(url => setFoodIcons(prev => ({ ...prev, [food.name]: url })))
-                    .catch(err => {
-                        console.warn(`Failed to fetch icon for ${food.name} in triggerIconPrefetch:`, err);
-                        setFoodIcons(prev => ({ ...prev, [food.name]: null }));
-                    });
+            if (food.name && foodIcons[food.name] === undefined) {
+                newIcons[food.name] = getFoodIconUrl(food.name, i18n.locale);
             }
         });
-    }, []);
+        if (Object.keys(newIcons).length > 0) {
+            setFoodIcons(prev => ({ ...prev, ...newIcons }));
+        }
+    }, [foodIcons, i18n.locale]);
+
 
     const doFetchFoods = useCallback(async (
         isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
@@ -6620,7 +6944,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         console.error("Error parsing shared food data from deep link:", e);
                         Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
                     } finally {
-                        navigation.setParams({ foodData: undefined }); // Clear after processing
+                        navigation.setParams({ foodData: undefined });
                     }
                 }
             }
@@ -6659,7 +6983,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -6676,7 +7000,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -6688,19 +7012,19 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         try {
             await deleteFood(foodId);
             onFoodChange?.();
-            if (foodToDelete.name && foodIconsRef.current[foodToDelete.name] !== undefined) {
+            if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false);
+        doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
     }, [search, doFetchFoods, t]); 
 
@@ -6718,7 +7042,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const base64Data = btoa(binaryString)
                                  .replace(/\+/g, '-')
                                  .replace(/\//g, '_');
-                                 // Padding is kept based on previous discussion
             
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
@@ -6771,7 +7094,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 renderItem={({ item }) => (
                     <FoodItem food={item} onEdit={() => toggleOverlay(item)} onDelete={handleDeleteFood}
                         onUndoDelete={handleUndoDeleteFood} onQuickAdd={handleQuickAdd} onShare={handleShareFood}
-                        foodIconUrl={foodIcons[item.name]} />
+                        foodIconUrl={foodIcons[item.name]} 
+                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({ ...prev, [name]: icon }))}
+                        />
                 )}
                 ListEmptyComponent={ !isLoading ? (
                     <View style={styles.emptyListContainer}>
@@ -6785,7 +7110,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
                 onEndReached={handleLoadMore} onEndReachedThreshold={0.5} ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIconsLength: Object.keys(foodIcons).length, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
+                extraData={{ foodIcons, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
             />
             <FAB icon={<RNEIcon name="add" color={theme.colors.white} />} color={theme.colors.primary}
                 onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab}
@@ -7581,7 +7906,7 @@ const BASE_URL = getBackendUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-interface IconResponse { icon_url: string | null | undefined; }
+// IconResponse removed as icons are handled locally
 export interface UserStatus { client_id: string; coins: number; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
@@ -7661,16 +7986,16 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         }
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', {status}); // Default translated message
+            let errorMessage = t('backendService.errorRequestFailedParse', {status}); 
             let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
 
             if (isJson && responseBody) {
                  const errorData = responseBody as BackendErrorResponse;
                  if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail; // Use backend's specific string detail if available
+                    errorMessage = errorData.detail; 
                     errorDetail = errorMessage;
                  } else if (Array.isArray(errorData.detail)) {
-                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); // Generic for validation array
+                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); 
                      errorDetail = errorData.detail;
                      console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
                  } else {
@@ -7739,19 +8064,7 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
     return response.grams;
 };
 
-export const getFoodIcon = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
-    const encodedFoodName = encodeURIComponent(foodName);
-    const encodedLocale = encodeURIComponent(locale); // Use the passed locale
-    try {
-        const response = await fetchBackend<IconResponse>( `/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`, {}, false );
-        if (response === null) return null;
-        return response.icon_url ?? null; // Ensure null if undefined
-    } catch (error) {
-        if (error instanceof BackendError && error.status === 404) return null;
-        console.error(`Failed to get icon for ${foodName} via backend service:`, error);
-         return null;
-    }
-};
+// getFoodIcon function removed as icons are now handled locally
 
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     const clientId = await getClientId();
@@ -8361,6 +8674,144 @@ export const getTodayDateString = (): string => {
 ---------- END dateUtils.ts ----------
 
 
+---------- foodIconMatcher.ts ----------
+// src/utils/foodIconMatcher.ts
+import { foodIconDefinitions } from '../assets/food_icons/iconDefinitions';
+import i18n, { t, TranslationKey } from '../localization/i18n'; // Import i18n instance
+
+// Normalize food name for matching (simple version)
+const normalizeFoodNameForMatching = (name: string): string => {
+    // Lowercase and remove common punctuation that might interfere with matching.
+    // Keep it simple to avoid over-normalization.
+    return name.toLowerCase()
+        .replace(/[()",.&'/#!$%^*;:{}=_`~?]/g, '') // Remove more punctuation
+        .trim(); 
+};
+
+const getNormalizedWords = (name: string): string[] => {
+    return normalizeFoodNameForMatching(name)
+        .split(/\s+/)
+        .map(word => word.replace(/s$/, '')) // Basic plural 's' removal
+        .filter(word => word.length > 1 && !['and', 'with', 'of', 'a', 'the', 'in', 'on', 'for', 'g', 'ml'].includes(word)); // Filter short/common words
+}
+
+/**
+ * Finds the best matching icon for a given food name based on localized tags.
+ * @param foodName The name of the food.
+ * @param currentLocale The current application locale string (e.g., 'en', 'ru', 'he').
+ * @returns An emoji string for the icon, or null if no good match is found.
+ */
+export const findBestIcon = (foodName: string, currentLocale: string): string | null => {
+    if (!foodName || foodName.trim() === '') {
+        return null;
+    }
+
+    const normalizedFoodNameQuery = normalizeFoodNameForMatching(foodName);
+    const foodNameWords = getNormalizedWords(foodName); // Use original foodName for word splitting
+
+    let bestMatch: { icon: string; score: number; priority: number } | null = null;
+
+    for (const definition of foodIconDefinitions) {
+        let currentScore = 0;
+        let matchFoundInDefinition = false;
+
+        const fullTagKey = `foodIconTags.${definition.tagKey}` as TranslationKey;
+        
+        let localizedTags: string[] = [];
+        try {
+            // Attempt to get tags for the current locale
+            const tagsForLocale = i18n.t(fullTagKey, { locale: currentLocale, returnObjects: true, defaultValue: [] });
+            if (Array.isArray(tagsForLocale)) {
+                localizedTags = tagsForLocale;
+            } else if (tagsForLocale && typeof tagsForLocale === 'object' && !Array.isArray(tagsForLocale)) {
+                // This case might happen if i18n-js returns the object structure for a missing array leaf
+                // console.warn(`Expected array for ${fullTagKey} in ${currentLocale}, got object. Defaulting to empty.`);
+            }
+
+            // If no tags found in current locale (and not English), try English as a fallback for this definition
+            if (localizedTags.length === 0 && currentLocale !== 'en' && definition.tagKey !== 'unknownFood' && definition.tagKey !== 'genericMeal') {
+                const tagsForEnglish = i18n.t(fullTagKey, { locale: 'en', returnObjects: true, defaultValue: [] });
+                if (Array.isArray(tagsForEnglish)) {
+                    localizedTags = tagsForEnglish;
+                }
+            }
+        } catch (e) {
+            // console.error(`Error fetching/processing translation for key: ${fullTagKey} in locale: ${currentLocale}`, e);
+        }
+
+
+        for (const localizedTag of localizedTags) {
+            const lowerLocalizedTag = localizedTag.toLowerCase().trim();
+            if (!lowerLocalizedTag) continue;
+
+            // 1. Exact match of a tag against the full normalized food name query
+            if (lowerLocalizedTag === normalizedFoodNameQuery) {
+                currentScore = Math.max(currentScore, 100); // Strongest match
+                matchFoundInDefinition = true;
+                break; // Found exact match for this definition, no need to check other tags for it
+            }
+
+            // 2. Tag is a substring of the normalized food name (e.g., "apple" in "gala apple pie")
+            if (normalizedFoodNameQuery.includes(lowerLocalizedTag)) {
+                currentScore = Math.max(currentScore, 70 + lowerLocalizedTag.length); // Prioritize longer tag matches
+                matchFoundInDefinition = true;
+            }
+            
+            // 3. Any significant word from the food name is present in the tag
+            // (e.g., food "chicken breast", tag "grilled chicken")
+            if (foodNameWords.some(foodWord => foodWord.length > 2 && lowerLocalizedTag.includes(foodWord))) {
+                 currentScore = Math.max(currentScore, 60);
+                 matchFoundInDefinition = true;
+            }
+        }
+        
+        // If still no match, try if the food name query contains any of the tag words (split tag)
+        // This helps with multi-word tags where one part might match.
+        // e.g. foodName "apple slices", tag "red apple" -> match on "apple"
+        if (!matchFoundInDefinition && localizedTags.length > 0) {
+            for (const localizedTag of localizedTags) {
+                const tagWords = localizedTag.toLowerCase().trim().split(/\s+/).filter(tw => tw.length > 2);
+                if (tagWords.some(tw => normalizedFoodNameQuery.includes(tw))) {
+                    currentScore = Math.max(currentScore, 50);
+                    matchFoundInDefinition = true;
+                    break;
+                }
+            }
+        }
+
+
+        if (matchFoundInDefinition) {
+            const priority = definition.priority || 0;
+            if (!bestMatch || currentScore > bestMatch.score || (currentScore === bestMatch.score && priority > bestMatch.priority)) {
+                bestMatch = { icon: definition.icon, score: currentScore, priority };
+            }
+        }
+    }
+
+    if (bestMatch && bestMatch.score > 0) {
+        // console.log(`Best match for "${foodName}" (locale: ${currentLocale}): ${bestMatch.icon} (Score: ${bestMatch.score}, Prio: ${bestMatch.priority})`);
+        return bestMatch.icon;
+    }
+
+    // Fallback to generic meal icon if specified and no other match
+    const genericMealDefinition = foodIconDefinitions.find(def => def.tagKey === 'genericMeal');
+    if (genericMealDefinition) {
+        const genericMealKey = `foodIconTags.${genericMealDefinition.tagKey}` as TranslationKey;
+        const genericMealTags = i18n.t(genericMealKey, { locale: currentLocale, returnObjects: true, defaultValue: [] });
+        if (Array.isArray(genericMealTags) && genericMealTags.some(tag => normalizedFoodNameQuery.includes(tag.toLowerCase().trim()))) {
+            // console.log(`Fallback match for "${foodName}" (locale: ${currentLocale}): ${genericMealDefinition.icon} (Generic Meal)`);
+            return genericMealDefinition.icon;
+        }
+    }
+    
+    // Ultimate fallback to unknown icon
+    const unknownFoodDefinition = foodIconDefinitions.find(def => def.tagKey === 'unknownFood');
+    // console.log(`No specific match for "${foodName}" (locale: ${currentLocale}). Returning: ${unknownFoodDefinition ? unknownFoodDefinition.icon : null}`);
+    return unknownFoodDefinition ? unknownFoodDefinition.icon : null;
+};
+---------- END foodIconMatcher.ts ----------
+
+
 ---------- gradingUtils.ts ----------
 // src/utils/gradingUtils.ts
 import { Food } from '../types/food';
@@ -8546,129 +8997,73 @@ export const calculateDailyEntryGrade = (
 
 
 ---------- iconUtils.ts ----------
-// ---------- src/utils/iconUtils.ts ----------
-// Import necessary modules
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFoodIcon } from '../services/backendService'; // Import backend service
+// src/utils/iconUtils.ts
+import { findBestIcon } from './foodIconMatcher';
+import i18n from '../localization/i18n'; // Import i18n for current locale
 
-// Cache Configuration
-const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+// In-memory cache for synchronous lookups.
+// Key: `${locale}_${normalizedFoodName}`
+// Value: `string | null` (the icon identifier or null)
+const syncMemoryCache = new Map<string, string | null>();
 
-// Define the cache entry type including timestamp
-type CacheEntry = {
-  url: string | null;
-  timestamp: number; // Unix timestamp (ms) when the entry was created/updated
-};
-
-// In-memory cache for fast access
-const memoryCache = new Map<string, CacheEntry>();
-
-// Prefix for AsyncStorage keys (versioned)
-const STORAGE_KEY_PREFIX = 'foodIconCacheBE_v2_'; // Updated version for TTL change
-
-// --- Main Exported Function ---
+const MAX_CACHE_SIZE = 300; // Increased cache size a bit
 
 /**
- * Gets the icon URL for a food item.
- * Checks memory cache, then AsyncStorage (respecting TTL), then calls the backend service.
- * Caches the result (including null for failures/not found) with a timestamp.
+ * Synchronously gets the icon identifier (e.g., emoji) for a food item.
+ * Uses an in-memory cache for repeated lookups.
+ * Relies on the `findBestIcon` which uses localized tags.
  *
  * @param foodName The name of the food item.
- * @param locale The desired locale for the icon search (defaults to 'en').
- * @returns A Promise resolving to the icon URL (string) or null if not found or an error occurred.
+ * @param currentLocale The current application locale string (e.g., 'en', 'ru', 'he').
+ * @returns An icon string (emoji) or null if not found or an error occurred.
  */
-export const getFoodIconUrl = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
+export const getFoodIconUrl = (foodName: string, currentLocale: string = i18n.locale): string | null => {
   if (!foodName || foodName.trim() === '') {
-      console.warn("getFoodIconUrl called with empty foodName.");
-      return null;
+    return null;
   }
 
-  const cacheKey = `${locale}_${foodName.toLowerCase().trim()}`;
-  const now = Date.now();
+  // Normalize name for consistency in caching & matching, but keep original casing for display aspects if needed elsewhere
+  const normalizedNameForCache = foodName.toLowerCase().trim();
+  const cacheKey = `${currentLocale}_${normalizedNameForCache}`;
 
-  // 1. Check Memory Cache (and TTL)
-  const memoryEntry = memoryCache.get(cacheKey);
-  if (memoryEntry !== undefined) {
-    if (now < memoryEntry.timestamp + ICON_CACHE_TTL_MS) {
-        // console.log(`Icon Cache HIT (Memory, valid): ${cacheKey} -> ${memoryEntry.url}`);
-        return memoryEntry.url;
-    } else {
-        // console.log(`Icon Cache STALE (Memory): ${cacheKey}`);
-        memoryCache.delete(cacheKey); // Remove stale entry from memory
+  // 1. Check Memory Cache
+  if (syncMemoryCache.has(cacheKey)) {
+    return syncMemoryCache.get(cacheKey)!;
+  }
+
+  // 2. Find icon using the matcher, passing the current locale
+  const iconIdentifier = findBestIcon(foodName, currentLocale); // Pass original foodName to matcher
+
+  // 3. Update Memory Cache
+  if (syncMemoryCache.size >= MAX_CACHE_SIZE) {
+    // Simple eviction: remove a random 1/4 of the cache to make space.
+    // A more sophisticated LRU would be better for larger caches but adds complexity.
+    const keys = Array.from(syncMemoryCache.keys());
+    for (let i = 0; i < MAX_CACHE_SIZE / 4; i++) {
+        const randomIndex = Math.floor(Math.random() * keys.length);
+        const keyToRemove = keys.splice(randomIndex, 1)[0];
+        if(keyToRemove) syncMemoryCache.delete(keyToRemove);
     }
+    // console.log(`Food icon memory cache partially cleared due to size limit. New size: ${syncMemoryCache.size}`);
   }
+  syncMemoryCache.set(cacheKey, iconIdentifier);
 
-  // 2. Check AsyncStorage (and TTL)
-  const storageKey = STORAGE_KEY_PREFIX + cacheKey;
-  try {
-    const storedValue = await AsyncStorage.getItem(storageKey);
-    if (storedValue !== null) {
-      const parsed: CacheEntry = JSON.parse(storedValue);
-      if (parsed && typeof parsed.timestamp === 'number' && typeof parsed.url !== 'undefined') {
-        if (now < parsed.timestamp + ICON_CACHE_TTL_MS) {
-            // console.log(`Icon Cache HIT (Storage, valid): ${cacheKey} -> ${parsed.url}`);
-            memoryCache.set(cacheKey, parsed); // Update memory cache
-            return parsed.url;
-        } else {
-            // console.log(`Icon Cache STALE (Storage): ${cacheKey}`);
-            // Don't need to remove from storage here, fetching new will overwrite
-        }
-      } else {
-         console.warn(`Invalid cache entry format found in storage for ${storageKey}. Ignoring.`);
-         // Optionally remove invalid entry: await AsyncStorage.removeItem(storageKey);
-      }
-    }
-  } catch (error) {
-    console.error(`Error reading icon cache from AsyncStorage for key ${storageKey}:`, error);
-    // Continue to fetch if storage read fails
-  }
-
-  // 3. Fetch from Backend API
-  // console.log(`Icon Cache MISS or STALE / Fetching Backend API: ${cacheKey}`);
-  let iconUrl: string | null = null;
-  try {
-      // Call the backend service function - it handles its own errors and returns null on failure
-      iconUrl = await getFoodIcon(foodName, locale);
-      // console.log(`Backend returned icon URL for ${foodName}: ${iconUrl}`);
-
-  } catch (error) {
-      // This catch block might be redundant if getFoodIcon handles all errors,
-      // but kept as a safeguard against unexpected issues in the service call itself.
-      console.error(`Unexpected error calling getFoodIcon service for ${foodName}:`, error);
-      iconUrl = null; // Ensure null is cached on unexpected error during service call
-  }
-
-  // 4. Cache the final result (even nulls) from backend with current timestamp
-  const newCacheEntry: CacheEntry = { url: iconUrl, timestamp: now };
-  memoryCache.set(cacheKey, newCacheEntry); // Cache in memory
-  try {
-    // Cache in AsyncStorage
-    await AsyncStorage.setItem(storageKey, JSON.stringify(newCacheEntry));
-  } catch (error) {
-    console.error(`Error saving icon cache to AsyncStorage for key ${storageKey}:`, error);
-  }
-
-  return iconUrl;
+  return iconIdentifier;
 };
 
-// --- Cache Management (Unchanged - manual clear still useful) ---
-
-export const clearIconCache = async () => {
-    memoryCache.clear();
-    try {
-        const keys = await AsyncStorage.getAllKeys();
-        const cacheKeys = keys.filter(key => key.startsWith(STORAGE_KEY_PREFIX));
-        if (cacheKeys.length > 0) {
-             await AsyncStorage.multiRemove(cacheKeys);
-             console.log(`Cleared ${cacheKeys.length} items from AsyncStorage icon cache (Backend Version).`);
-        }
-    } catch (error) {
-        console.error("Error clearing backend icon cache from AsyncStorage:", error);
-    }
+/**
+ * Clears the in-memory icon cache.
+ */
+export const clearLocalIconCache = (): void => {
+  syncMemoryCache.clear();
+  console.log("In-memory food icon cache cleared.");
 };
 
-export const logMemoryCacheSize = () => {
-    console.log(`In-memory icon cache size: ${memoryCache.size}`);
+/**
+ * Logs the current size of the in-memory icon cache.
+ */
+export const logLocalIconCacheSize = (): void => {
+  console.log(`In-memory food icon cache size: ${syncMemoryCache.size}`);
 };
 ---------- END iconUtils.ts ----------
 
