@@ -1,6 +1,6 @@
 // src/components/AddEntryModal/FoodSelectionList.tsx
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Image, ActivityIndicator, Platform, Keyboard, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, ActivityIndicator, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { LastUsedPortions } from '../../services/storageService';
@@ -13,16 +13,16 @@ interface FoodSelectionListProps {
     updateSearch: (search: string) => void;
     foods: Food[]; // Full library
     recentFoods: Food[];
-    selectedFood: Food | null; // This is internalSelectedFood from AddEntryModal
+    selectedFood: Food | null;
     handleSelectFood: (food: Food | null) => void;
     setGrams: (grams: string) => void;
     setSelectedMultipleFoods: React.Dispatch<React.SetStateAction<Map<string, { food: Food; grams: number }>>>;
     selectedMultipleFoods: Map<string, { food: Food; grams: number }>;
-    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void; // This comes from AddEntryModal
-    foodIcons: { [foodName: string]: string | null | undefined };
+    handleToggleMultipleFoodSelection: (food: Food, displayGrams: number) => void;
+    foodIcons: { [foodName: string]: string | null }; // No 'undefined'
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
-    isEditMode: boolean; // Editing a DailyEntryItem, not AddFoodModal's editFood
+    isEditMode: boolean;
     lastUsedPortions: LastUsedPortions;
     modalMode: "normal" | "quickAddSelect";
 }
@@ -39,7 +39,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     setGrams,
     setSelectedMultipleFoods,
     selectedMultipleFoods,
-    handleToggleMultipleFoodSelection, // Prop from AddEntryModal
+    handleToggleMultipleFoodSelection,
     foodIcons,
     onAddNewFoodRequest,
     isActionDisabled,
@@ -146,7 +146,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         const foodItem = item;
         const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
-        const iconStatus = foodIcons[foodItem.name];
+        const iconIdentifier = foodIcons[foodItem.name];
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
 
         const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
@@ -185,13 +185,11 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                             disabled={isActionDisabled}
                         />
                     )}
-                    {iconStatus === undefined ? (
-                        <ActivityIndicator size="small" color={theme.colors.grey3} style={styles.foodIcon} />
-                    ) : iconStatus ? (
-                        <Image source={{ uri: iconStatus }} style={styles.foodIcon} resizeMode="contain" />
+                    {iconIdentifier ? (
+                        <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>
                     ) : (
                         <View style={styles.defaultIconContainer}>
-                            <Icon name="restaurant" type="material" size={18} color={theme.colors.grey3} />
+                            <Icon name="help-outline" type="material" size={22} color={theme.colors.grey3} />
                         </View>
                     )}
                     <ListItem.Content>
@@ -306,7 +304,7 @@ const useStyles = makeStyles((theme) => ({
     searchInputStyle: {
         color: theme.colors.text,
         fontSize: 15,
-        textAlign: 'left',
+        textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
         maxHeight: 250, 
@@ -315,14 +313,13 @@ const useStyles = makeStyles((theme) => ({
     flatListContentContainer: {
         paddingBottom: 10,
     },
-    foodIcon: {
+    foodIconEmoji: {
+        fontSize: 26,
         width: 35,
         height: 35,
+        textAlign: 'center',
+        textAlignVertical: 'center',
         marginRight: 10,
-        borderRadius: 17.5,
-        backgroundColor: theme.colors.grey5,
-        alignItems: "center",
-        justifyContent: "center",
     },
     defaultIconContainer: {
         width: 35,

@@ -29,7 +29,7 @@ const BASE_URL = getBackendUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-interface IconResponse { icon_url: string | null | undefined; }
+// IconResponse removed as icons are handled locally
 export interface UserStatus { client_id: string; coins: number; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
@@ -109,16 +109,16 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         }
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', {status}); // Default translated message
+            let errorMessage = t('backendService.errorRequestFailedParse', {status}); 
             let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
 
             if (isJson && responseBody) {
                  const errorData = responseBody as BackendErrorResponse;
                  if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail; // Use backend's specific string detail if available
+                    errorMessage = errorData.detail; 
                     errorDetail = errorMessage;
                  } else if (Array.isArray(errorData.detail)) {
-                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); // Generic for validation array
+                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); 
                      errorDetail = errorData.detail;
                      console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
                  } else {
@@ -187,19 +187,7 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
     return response.grams;
 };
 
-export const getFoodIcon = async (foodName: string, locale: string = 'en'): Promise<string | null> => {
-    const encodedFoodName = encodeURIComponent(foodName);
-    const encodedLocale = encodeURIComponent(locale); // Use the passed locale
-    try {
-        const response = await fetchBackend<IconResponse>( `/icons/food?food_name=${encodedFoodName}&locale=${encodedLocale}`, {}, false );
-        if (response === null) return null;
-        return response.icon_url ?? null; // Ensure null if undefined
-    } catch (error) {
-        if (error instanceof BackendError && error.status === 404) return null;
-        console.error(`Failed to get icon for ${foodName} via backend service:`, error);
-         return null;
-    }
-};
+// getFoodIcon function removed as icons are now handled locally
 
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     const clientId = await getClientId();

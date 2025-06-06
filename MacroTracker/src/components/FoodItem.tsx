@@ -1,11 +1,14 @@
 // src/components/FoodItem.tsx
-import React, { forwardRef, useState, useCallback, memo, useMemo } from "react";
-import { StyleSheet, View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import React, { forwardRef, useState, useCallback, memo, useMemo, useEffect } from "react";
+import { StyleSheet, View, TouchableOpacity } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
 import { t } from '../localization/i18n';
+import i18n from "../localization/i18n";
 import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
+import { getFoodIconUrl } from "../utils/iconUtils";
+
 
 interface FoodItemProps {
   food: Food;
@@ -14,14 +17,26 @@ interface FoodItemProps {
   onUndoDelete: (food: Food) => void;
   onQuickAdd: (food: Food) => void;
   onShare: (food: Food) => void;
-  foodIconUrl: string | null | undefined;
+  foodIconUrl: string | null; 
+  setFoodIconForName: (name: string, icon: string | null) => void;
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, onShare, foodIconUrl }, ref) => {
+  ({ food, onEdit, onDelete, onUndoDelete, onQuickAdd, onShare, foodIconUrl, setFoodIconForName }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [iconLoadError, setIconLoadError] = useState(false);
+
+    const iconIdentifier = useMemo(() => {
+        if (foodIconUrl !== undefined) return foodIconUrl; 
+        return getFoodIconUrl(food.name, i18n.locale);
+    }, [food.name, foodIconUrl, i18n.locale]);
+
+    useEffect(() => {
+        if (food.name && iconIdentifier !== undefined && foodIconUrl === undefined) {
+            setFoodIconForName(food.name, iconIdentifier);
+        }
+    }, [food.name, iconIdentifier, foodIconUrl, setFoodIconForName]);
+
 
     const gradeResult: FoodGradeResult | null = useMemo(() => {
         return calculateBaseFoodGrade(food);
@@ -44,22 +59,16 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         });
     }, [food.id, food.name, onDelete, handleUndo]);
 
-    const handleImageError = useCallback(() => {
-        setIconLoadError(true);
-    }, []); 
-
-    React.useEffect(() => {
-        setIconLoadError(false); 
-    }, [foodIconUrl]);
 
     const renderIcon = () => {
-        const isLoadingIcon = foodIconUrl === undefined;
-        if (isLoadingIcon) {
-            return ( <View style={[styles.foodIcon, styles.iconPlaceholder]}><ActivityIndicator size="small" color={theme.colors.grey3} /></View> );
-        } else if (foodIconUrl && !iconLoadError) {
-             return ( <Image source={{ uri: foodIconUrl }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain" /> );
+        if (iconIdentifier) {
+            return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
         } else {
-            return ( <View style={[styles.foodIcon, styles.iconPlaceholder]}><RNEIcon name="fast-food-outline" type="ionicon" size={20} color={theme.colors.grey3} /></View> );
+            return (
+                <View style={[styles.foodIconPlaceholderView]}>
+                    <RNEIcon name="help-outline" type="material" size={22} color={theme.colors.grey3} />
+                </View>
+            );
         }
     };
 
@@ -70,7 +79,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         leftContent={(reset) => (
           <Button title={t('foodListScreen.edit')} onPress={() => { onEdit(food); reset(); }} icon={{ name: "edit", color: theme.colors.white }} buttonStyle={styles.swipeButtonEdit} titleStyle={styles.swipeButtonTitle} />
         )}
-        rightContent={(reset) => ( // Share button removed from here
+        rightContent={(reset) => (
           <Button title={t('foodListScreen.delete')} onPress={() => { handleDelete(); reset(); }} icon={{ name: "delete", color: theme.colors.white }} buttonStyle={styles.swipeButtonDelete} titleStyle={styles.swipeButtonTitle} />
         )}
         containerStyle={styles.listItemContainer}
@@ -123,14 +132,28 @@ const useStyles = makeStyles((theme) => ({
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
-    foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
-    foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
-    iconPlaceholder: { backgroundColor: theme.colors.grey5, },
-    actionButton: { // Unified style for quick add and share
+    foodIconEmoji: { // Style for emoji text
+        fontSize: 28,
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+    },
+    foodIconPlaceholderView: { // Style for the placeholder view
+        width: 40, 
+        height: 40, 
+        marginRight: 15, 
+        borderRadius: 8, 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: theme.colors.grey5,
+    },
+    actionButton: { 
         paddingHorizontal: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 5, // Add some space between icons
+        marginLeft: 5,
     },
 }));
 

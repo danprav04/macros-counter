@@ -113,7 +113,7 @@ yarn-error.*
   "expo": {
     "name": "MacrosVisionAI",
     "slug": "MacroTracker",
-    "version": "2.0.0",
+    "version": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "macrosvisionai",
@@ -192,7 +192,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+         "BACKEND_URL_PRODUCTION": "http://192.168.1.185:8000",
          "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
       }
     }
@@ -2859,7 +2859,8 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                             {gradeResult.letter}
                         </Text>
                     )}
-                    <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                    <ListItem.Title style={styles.listItemTitle}>
+                        {/* Removed numberOfLines and ellipsizeMode to allow multiline */}
                         {item.food.name}
                     </ListItem.Title>
                 </View>
@@ -2890,7 +2891,14 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'center',
         overflow: 'hidden',
     },
-    listItemTitle: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', },
+    listItemTitle: {
+        color: theme.colors.text,
+        fontWeight: "600",
+        fontSize: 16,
+        flexShrink: 1,
+        textAlign: 'left',
+        // Removed numberOfLines and ellipsizeMode to allow multiline
+    },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
@@ -4007,7 +4015,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
                     {gradeResult.letter}
                 </Text>
             )}
-            <ListItem.Title style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            <ListItem.Title style={styles.title}>
                 {food.name}
             </ListItem.Title>
           </View>

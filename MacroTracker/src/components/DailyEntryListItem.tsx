@@ -1,21 +1,24 @@
 // src/components/DailyEntryListItem.tsx
 import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
-import { View, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles, Text } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
 import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
 import { Settings } from '../types/settings';
+import { getFoodIconUrl } from '../utils/iconUtils'; // Import local icon utility
+import i18n from '../localization/i18n';
+
 
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
     reversedIndex: number;
-    foodIcons: { [foodName: string]: string | null | undefined };
-    setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null | undefined }>>;
+    foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined' for loading
+    setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null }>>;
     onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
     isSaving: boolean;
-    dailyGoals: Settings['dailyGoals']; // Added dailyGoals prop
+    dailyGoals: Settings['dailyGoals'];
 }
 
 const DailyEntryListItem = memo<DailyEntryListItemProps>(({
@@ -26,31 +29,35 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     onEdit,
     onRemove,
     isSaving,
-    dailyGoals, // Destructure dailyGoals
+    dailyGoals,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [iconLoadError, setIconLoadError] = useState(false);
 
-    const iconStatus = item?.food?.name ? foodIcons[item.food.name] : undefined;
-    const isLoadingIcon = iconStatus === undefined;
+    const iconIdentifier = useMemo(() => {
+        if (item?.food?.name) {
+            if (foodIcons[item.food.name] !== undefined) {
+                return foodIcons[item.food.name];
+            }
+            // Icon not yet in state, resolve it
+            return getFoodIconUrl(item.food.name, i18n.locale);
+        }
+        return null;
+    }, [item.food?.name, foodIcons, i18n.locale]);
+
+    // Update foodIcons state if a new icon was resolved
+    useEffect(() => {
+        if (item?.food?.name && iconIdentifier !== undefined && foodIcons[item.food.name] === undefined) {
+            setFoodIcons(prev => ({ ...prev, [item.food.name]: iconIdentifier }));
+        }
+    }, [item.food?.name, iconIdentifier, foodIcons, setFoodIcons]);
+
 
     const gradeResult: FoodGradeResult | null = useMemo(() => {
         if (!item || !item.food || !dailyGoals) return null;
         return calculateDailyEntryGrade(item.food, item.grams, dailyGoals);
     }, [item, dailyGoals]);
 
-    const handleImageError = useCallback(() => {
-        console.warn(`Image component failed to load icon for ${item.food.name}: ${iconStatus}`);
-        setIconLoadError(true);
-        if (item?.food?.name && foodIcons[item.food.name] !== null) {
-            setFoodIcons(prev => ({ ...prev, [item.food.name]: null }));
-        }
-    }, [item.food.name, iconStatus, foodIcons, setFoodIcons]);
-
-    useEffect(() => {
-        setIconLoadError(false);
-    }, [iconStatus]);
 
     const renderListItemIcon = () => {
         if (!item?.food) {
@@ -60,15 +67,10 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                  </View>
              );
         }
-        if (isLoadingIcon) {
-            return (
-                <View style={[styles.foodIcon, styles.iconPlaceholder]}>
-                    <ActivityIndicator size="small" color={theme.colors.grey3} />
-                </View>
-            );
-        } else if (iconStatus && !iconLoadError) {
-            return <Image source={{ uri: iconStatus }} style={styles.foodIconImage} onError={handleImageError} resizeMode="contain" />;
+        if (iconIdentifier) { // iconIdentifier is now string (emoji) or null
+            return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
         } else {
+            // Fallback if no icon found (e.g., default or placeholder)
             return (
                 <View style={[styles.foodIcon, styles.iconPlaceholder]}>
                     <RNEIcon name="fast-food-outline" type="ionicon" size={20} color={theme.colors.grey3} />
@@ -129,7 +131,6 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                         </Text>
                     )}
                     <ListItem.Title style={styles.listItemTitle}>
-                        {/* Removed numberOfLines and ellipsizeMode to allow multiline */}
                         {item.food.name}
                     </ListItem.Title>
                 </View>
@@ -144,7 +145,14 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
 
 const useStyles = makeStyles((theme) => ({
     foodIcon: { width: 40, height: 40, marginRight: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
-    foodIconImage: { width: 40, height: 40, marginRight: 15, borderRadius: 8, },
+    foodIconEmoji: {
+        fontSize: 28, // Adjust size for emoji
+        width: 40,
+        height: 40,
+        marginRight: 15,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+    },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
     listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
     titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
@@ -166,7 +174,6 @@ const useStyles = makeStyles((theme) => ({
         fontSize: 16,
         flexShrink: 1,
         textAlign: 'left',
-        // Removed numberOfLines and ellipsizeMode to allow multiline
     },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
     swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },

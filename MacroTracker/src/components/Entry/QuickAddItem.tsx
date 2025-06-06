@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Pressable,
   ActivityIndicator,
-  Image,
 } from "react-native";
 import {
   ListItem,
@@ -20,10 +19,13 @@ import { EstimatedFoodItem } from "../../types/macros";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
 import { t } from "../../localization/i18n";
+import i18n from "../../localization/i18n";
 import {
   calculateBaseFoodGrade,
   FoodGradeResult,
 } from "../../utils/gradingUtils";
+import { getFoodIconUrl } from "../../utils/iconUtils";
+
 
 interface QuickAddItemProps {
   item: EstimatedFoodItem;
@@ -32,7 +34,7 @@ interface QuickAddItemProps {
   isEditingThisItem: boolean;
   isAnyItemEditing: boolean;
   isLoading?: boolean;
-  foodIcons: { [foodName: string]: string | null | undefined };
+  foodIcons: { [foodName: string]: string | null }; // Changed: no 'undefined'
   editedName: string;
   editedGrams: string;
   onToggleItem: (index: number) => void;
@@ -45,7 +47,7 @@ interface QuickAddItemProps {
     item: EstimatedFoodItem,
     setSavingState: (isSaving: boolean) => void
   ) => Promise<void>;
-  foods: Food[]; // Add foods prop
+  foods: Food[];
 }
 
 const QuickAddItem: React.FC<QuickAddItemProps> = ({
@@ -65,7 +67,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   onNameChange,
   onGramsChange,
   onSaveToLibrary,
-  foods, // Destructure foods
+  foods,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -109,33 +111,20 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   };
 
   const renderFoodIcon = (foodName: string) => {
-    const iconStatus = foodIcons[foodName];
-    if (iconStatus === undefined) {
-      return (
-        <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
-          <ActivityIndicator size="small" color={theme.colors.grey3} />
-        </View>
-      );
-    } else if (iconStatus) {
-      return (
-        <Image
-          source={{ uri: iconStatus }}
-          style={styles.foodIconImage}
-          resizeMode="contain"
-        />
-      );
-    } else {
-      return (
-        <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
-          <Icon
-            name="image-off-outline"
-            type="material-community"
-            size={18}
-            color={theme.colors.grey3}
-          />
-        </View>
-      );
+    const iconIdentifier = foodIcons[foodName] ?? getFoodIconUrl(foodName, i18n.locale); // Resolve if not in state
+    if (iconIdentifier) {
+      return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
     }
+    return (
+      <View style={[styles.foodIconContainer, styles.iconPlaceholder]}>
+        <Icon
+          name="help-outline" // Fallback icon
+          type="material"
+          size={22}
+          color={theme.colors.grey3}
+        />
+      </View>
+    );
   };
 
   const canPerformActions =
@@ -279,7 +268,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
               ) : (
                 <TouchableOpacity
                   onPress={handleSaveToLibraryPress}
-                  disabled={!canPerformActions} // Button is not disabled if already in library, allowing overwrite flow
+                  disabled={!canPerformActions}
                   style={styles.actionIconPadding}
                 >
                   <Icon
@@ -357,7 +346,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: "transparent",
     borderWidth: 0,
   },
-  foodIconContainer: {
+  foodIconContainer: { // For placeholder view
     width: 38,
     height: 38,
     marginRight: 10,
@@ -366,11 +355,13 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     overflow: "hidden",
   },
-  foodIconImage: {
+  foodIconEmoji: { // For emoji text
+    fontSize: 26, // Adjust size for emoji
     width: 38,
     height: 38,
     marginRight: 10,
-    borderRadius: 6,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   iconPlaceholder: {
     backgroundColor: theme.colors.grey5,

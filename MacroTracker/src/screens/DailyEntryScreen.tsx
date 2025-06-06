@@ -6,7 +6,7 @@ import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
-import { isValidNumberInput } from "../utils/validationUtils"; // Keep this import
+import { isValidNumberInput } from "../utils/validationUtils"; 
 import DailyProgress from "../components/DailyProgress";
 import { Text, FAB, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
@@ -37,22 +37,18 @@ const DailyEntryScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
   
-  const [editIndex, setEditIndex] = useState<number | null>(null); // This is reversedIndex for editing
+  const [editIndex, setEditIndex] = useState<number | null>(null);
   const [initialGramsForEdit, setInitialGramsForEdit] = useState<string | undefined>(undefined);
   const [foodForEditModal, setFoodForEditModal] = useState<Food | null>(null);
 
-
-  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined; }>({});
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({}); // No 'undefined'
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
 
-
   const { theme } = useTheme();
   const styles = useStyles();
-  const foodIconsRef = useRef(foodIcons);
-  useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
   const navigation = useNavigation<DailyEntryScreenNavigationProp>();
   const route = useRoute<DailyEntryScreenRouteProp>();
@@ -65,30 +61,36 @@ const DailyEntryScreen: React.FC = () => {
     updateDateForToast();
   }, [selectedDate, i18n.locale]);
 
-  const fetchAndSetIcon = useCallback(async (foodName: string) => {
+  const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName) return;
-    if (foodIconsRef.current[foodName] === undefined) {
-      setFoodIcons(prev => ({ ...prev, [foodName]: undefined }));
-      try {
-        const url = await getFoodIconUrl(foodName);
-        setFoodIcons(prev => ({ ...prev, [foodName]: url }));
-      } catch (error) {
-        console.error(`Failed to fetch icon for ${foodName}:`, error);
-        setFoodIcons(prev => ({ ...prev, [foodName]: null }));
-      }
+    if (foodIcons[foodName] === undefined) { // Only resolve if not already in state
+      const icon = getFoodIconUrl(foodName, i18n.locale);
+      setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
     }
-  }, []);
+  }, [foodIcons, i18n.locale]);
 
   const triggerIconPrefetch = useCallback((entries: DailyEntry[], currentSelectedDate: string) => {
     const uniqueFoodNames = new Set<string>();
-    entries.forEach(entry => { if (entry.date === currentSelectedDate && entry.items) { entry.items.forEach(item => { if (item.food?.name) uniqueFoodNames.add(item.food.name); }); } });
+    entries.forEach(entry => { 
+      if (entry.date === currentSelectedDate && entry.items) { 
+        entry.items.forEach(item => { 
+          if (item.food?.name) uniqueFoodNames.add(item.food.name); 
+        }); 
+      } 
+    });
 
     if (uniqueFoodNames.size > 0) {
+      const newIcons: { [key: string]: string | null } = {};
       Array.from(uniqueFoodNames).forEach(name => {
-        fetchAndSetIcon(name);
+        if (foodIcons[name] === undefined) { // Check global state, not just local current batch
+           newIcons[name] = getFoodIconUrl(name, i18n.locale);
+        }
       });
+      if (Object.keys(newIcons).length > 0) {
+          setFoodIcons(prev => ({ ...prev, ...newIcons }));
+      }
     }
-  }, [fetchAndSetIcon]);
+  }, [resolveAndSetIcon, foodIcons, i18n.locale]); // Added foodIcons to deps
 
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
@@ -123,24 +125,20 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [route.params, navigation]);
 
-  // Effect to open modal when pendingQuickAddFood is set
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isOverlayVisible && foods.length > 0) {
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);
       const foodToUse = foodExistsInLibrary || pendingQuickAddFood;
   
-      // For pendingQuickAddFood, we are essentially opening the modal for a "new" entry,
-      // but pre-filling the food.
-      setFoodForEditModal(foodToUse); // Use this to pass to AddEntryModal
-      setInitialGramsForEdit("");     // New entry, so grams are empty
-      setEditIndex(null);             // Not editing an existing list item
+      setFoodForEditModal(foodToUse);
+      setInitialGramsForEdit("");    
+      setEditIndex(null);            
   
-      fetchAndSetIcon(foodToUse.name);
-      setIsOverlayVisible(true);      // Open the modal
-      setPendingQuickAddFood(null);   // Clear pending food
+      if (foodToUse.name) resolveAndSetIcon(foodToUse.name);
+      setIsOverlayVisible(true);      
+      setPendingQuickAddFood(null);   
     }
-  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, fetchAndSetIcon]);
-
+  }, [pendingQuickAddFood, isLoadingData, isOverlayVisible, foods, resolveAndSetIcon]);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,7 +146,6 @@ const DailyEntryScreen: React.FC = () => {
       return () => {};
     }, [loadData]) 
   );
-
 
   const currentEntryItems = useMemo(() => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
@@ -190,18 +187,17 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [dailyEntries]);
 
-  // This function is now called by AddEntryModal with the food and grams
   const handleSingleEntryActionFinal = useCallback(async (foodToAdd: Food, gramsToAdd: number) => {
     if (isSaving) return;
     const entryItem: DailyEntryItem = { food: foodToAdd, grams: gramsToAdd };
-    const isEditingThisAction = editIndex !== null; // Use a local const for clarity
+    const isEditingThisAction = editIndex !== null;
     
     const newEntriesState = (prevDailyEntries: DailyEntry[]): DailyEntry[] => {
         const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
         let updatedEntries: DailyEntry[];
         if (existingEntryIndex > -1) {
             const existingEntry = prevDailyEntries[existingEntryIndex]; let updatedItems;
-            if (isEditingThisAction) { // Check if it was an edit operation
+            if (isEditingThisAction) {
                 const originalEditIndex = getOriginalIndex(editIndex!);
                 if (originalEditIndex === -1) { console.error("Edit error: original index not found."); return prevDailyEntries; }
                 updatedItems = existingEntry.items.map((item, index) => index === originalEditIndex ? entryItem : item);
@@ -217,15 +213,15 @@ const DailyEntryScreen: React.FC = () => {
     };
     await updateAndSaveEntries(newEntriesState(dailyEntries));
 
-    if (foodToAdd?.name) fetchAndSetIcon(foodToAdd.name);
+    if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
     
-    setIsOverlayVisible(false); // Close modal
-    setEditIndex(null); // Reset edit state
+    setIsOverlayVisible(false);
+    setEditIndex(null);
     setInitialGramsForEdit(undefined);
     setFoodForEditModal(null);
 
     Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, editIndex, dailyEntries, selectedDate, getOriginalIndex, updateAndSaveEntries, fetchAndSetIcon ]);
+  }, [ isSaving, editIndex, dailyEntries, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon ]);
 
 
   const handleAddMultipleEntriesFinal = useCallback(async (entriesToAdd: { food: Food; grams: number }[]) => {
@@ -250,7 +246,7 @@ const DailyEntryScreen: React.FC = () => {
       };
       await updateAndSaveEntries(newEntriesState(dailyEntries));
 
-      newItems.forEach(item => { if (item.food?.name) fetchAndSetIcon(item.food.name); });
+      newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
       
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
       
@@ -259,7 +255,7 @@ const DailyEntryScreen: React.FC = () => {
       setInitialGramsForEdit(undefined);
       setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
-  }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, fetchAndSetIcon]);
+  }, [dailyEntries, selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon]);
 
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
@@ -319,14 +315,14 @@ const DailyEntryScreen: React.FC = () => {
       setFoodForEditModal(itemToEdit.food); 
       setInitialGramsForEdit(String(itemToEdit.grams));
       setEditIndex(reversedItemIndex);
-      if (itemToEdit.food.name) fetchAndSetIcon(itemToEdit.food.name); 
+      if (itemToEdit.food.name) resolveAndSetIcon(itemToEdit.food.name); 
     } else {
       setFoodForEditModal(null);
       setInitialGramsForEdit(undefined);
       setEditIndex(null);
     }
     setIsOverlayVisible((current) => !current);
-  }, [isSaving, fetchAndSetIcon]);
+  }, [isSaving, resolveAndSetIcon]);
 
   const handleAddNewFoodRequestFromModal = useCallback(() => {
     if (isSaving) return;
@@ -355,7 +351,7 @@ const DailyEntryScreen: React.FC = () => {
         committedFood = await createFood(foodData as Omit<Food, 'id'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       }
-      if(committedFood.name) fetchAndSetIcon(committedFood.name);
+      if(committedFood.name) resolveAndSetIcon(committedFood.name);
       return committedFood;
     } catch (error) {
       console.error("Error committing food to library:", error);
@@ -364,7 +360,7 @@ const DailyEntryScreen: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, fetchAndSetIcon]);
+  }, [isSaving, resolveAndSetIcon]);
 
 
   const handleEditEntryViaModal = (item: DailyEntryItem, reversedIndex: number) => toggleOverlay(item, reversedIndex);

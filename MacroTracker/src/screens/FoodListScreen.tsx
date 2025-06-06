@@ -12,7 +12,7 @@ import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { getFoodIconUrl } from "../utils/iconUtils";
-import { t } from '../localization/i18n';
+import i18n, { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
@@ -34,31 +34,32 @@ type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'F
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
 
 const getBackendShareBaseUrl = (): string => {
-    let prodBaseUrl: string | undefined;
-    prodBaseUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    const appJsonUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
+    let chosenUrl: string;
 
-    if (!prodBaseUrl) {
-        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-        if (prodBaseUrl) {
-            console.log("Share Link: Using BACKEND_URL_PRODUCTION from app.json for share link base.");
-        }
-    }
-
-    if (!prodBaseUrl) {
-        prodBaseUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION || "https://macros-vision-ai.xyz"; 
+    if (envUrl) {
+        chosenUrl = envUrl;
+        console.log("Share Link: Using EXPO_PUBLIC_BACKEND_URL_PRODUCTION for share link base:", chosenUrl);
+    } else if (appJsonUrl) {
+        chosenUrl = appJsonUrl;
+        console.log("Share Link: Using BACKEND_URL_PRODUCTION from app.json for share link base:", chosenUrl);
+    } else {
+        chosenUrl = "https://macros-vision-ai.xyz"; // Hardcoded default fallback
         console.warn(
-            `Share Link WARNING: Production backend URL is not configured via EXPO_PUBLIC_BACKEND_URL_PRODUCTION. ` +
-            `Attempting to use extra.env.BACKEND_URL_PRODUCTION or falling back to a hardcoded default: ${prodBaseUrl}. ` +
-            `IT IS CRITICAL TO ENSURE 'EXPO_PUBLIC_BACKEND_URL_PRODUCTION' IS SET CORRECTLY IN YOUR BUILD ENVIRONMENT FOR PRODUCTION RELEASES.`
+            `Share Link WARNING: Production backend URL is not configured via EXPO_PUBLIC_BACKEND_URL_PRODUCTION or app.json. ` +
+            `Falling back to a hardcoded default: ${chosenUrl}. ` +
+            `IT IS CRITICAL TO ENSURE A PRODUCTION URL IS SET CORRECTLY.`
         );
     }
-    return prodBaseUrl.replace(/\/api\/v1$/, '').replace(/\/$/, '');
+    // Ensure chosenUrl is a string and then clean it up
+    return String(chosenUrl).replace(/\/api\/v1$/, '').replace(/\/$/, '');
 };
 
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
-    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null | undefined }>({});
+    const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({}); // No 'undefined'
     const [offset, setOffset] = useState(0);
     const [totalFoods, setTotalFoods] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -73,29 +74,32 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const flatListRef = useRef<FlatList<Food>>(null);
-    const foodIconsRef = useRef(foodIcons);
     const prevSearchTermRef = useRef<string>(search.trim());
     const isFirstRunRef = useRef(true);
-
-    useEffect(() => { foodIconsRef.current = foodIcons; }, [foodIcons]);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
+    const resolveAndSetFoodIcon = useCallback((foodName: string, currentIcon?: string | null) => {
+        if (foodName && currentIcon === undefined) { 
+            const icon = getFoodIconUrl(foodName, i18n.locale);
+            setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
+        }
+    }, [i18n.locale]);
+
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
+        const newIcons: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name && foodIconsRef.current[food.name] === undefined) {
-                setFoodIcons(prev => ({ ...prev, [food.name]: undefined }));
-                getFoodIconUrl(food.name)
-                    .then(url => setFoodIcons(prev => ({ ...prev, [food.name]: url })))
-                    .catch(err => {
-                        console.warn(`Failed to fetch icon for ${food.name} in triggerIconPrefetch:`, err);
-                        setFoodIcons(prev => ({ ...prev, [food.name]: null }));
-                    });
+            if (food.name && foodIcons[food.name] === undefined) {
+                newIcons[food.name] = getFoodIconUrl(food.name, i18n.locale);
             }
         });
-    }, []);
+        if (Object.keys(newIcons).length > 0) {
+            setFoodIcons(prev => ({ ...prev, ...newIcons }));
+        }
+    }, [foodIcons, i18n.locale]);
+
 
     const doFetchFoods = useCallback(async (
         isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
@@ -184,7 +188,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         console.error("Error parsing shared food data from deep link:", e);
                         Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
                     } finally {
-                        navigation.setParams({ foodData: undefined }); // Clear after processing
+                        navigation.setParams({ foodData: undefined });
                     }
                 }
             }
@@ -223,7 +227,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -240,7 +244,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -252,19 +256,19 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         try {
             await deleteFood(foodId);
             onFoodChange?.();
-            if (foodToDelete.name && foodIconsRef.current[foodToDelete.name] !== undefined) {
+            if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), 0, 0, 0, false);
+            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false);
+        doFetchFoods(true, search.trim(), 0, 0, 0, false); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
     }, [search, doFetchFoods, t]); 
 
@@ -282,7 +286,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const base64Data = btoa(binaryString)
                                  .replace(/\+/g, '-')
                                  .replace(/\//g, '_');
-                                 // Padding is kept based on previous discussion
             
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
@@ -335,7 +338,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 renderItem={({ item }) => (
                     <FoodItem food={item} onEdit={() => toggleOverlay(item)} onDelete={handleDeleteFood}
                         onUndoDelete={handleUndoDeleteFood} onQuickAdd={handleQuickAdd} onShare={handleShareFood}
-                        foodIconUrl={foodIcons[item.name]} />
+                        foodIconUrl={foodIcons[item.name]} 
+                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({ ...prev, [name]: icon }))}
+                        />
                 )}
                 ListEmptyComponent={ !isLoading ? (
                     <View style={styles.emptyListContainer}>
@@ -349,7 +354,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
                 onEndReached={handleLoadMore} onEndReachedThreshold={0.5} ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIconsLength: Object.keys(foodIcons).length, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
+                extraData={{ foodIcons, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
             />
             <FAB icon={<RNEIcon name="add" color={theme.colors.white} />} color={theme.colors.primary}
                 onPress={() => !isSaving && toggleOverlay()} placement="right" size="large" style={styles.fab}
