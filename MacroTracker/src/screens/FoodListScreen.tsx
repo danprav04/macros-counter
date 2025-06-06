@@ -11,8 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { getFoodIconUrl, clearLocalIconCache } from "../utils/iconUtils";
-import { t } from '../localization/i18n'; // No i18n instance needed directly for locale here
+import { getFoodIconUrl } from "../utils/iconUtils"; // Removed clearLocalIconCache
+import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
@@ -72,25 +72,25 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const resolveAndSetFoodIcon = useCallback((foodName: string) => { // Removed currentIcon param
+    const resolveAndSetFoodIcon = useCallback((foodName: string) => {
         if (foodName && foodIcons[foodName] === undefined) { 
-            const icon = getFoodIconUrl(foodName); // No locale needed
+            const icon = getFoodIconUrl(foodName);
             setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
         }
-    }, [foodIcons]); // Removed i18n.locale
+    }, [foodIcons]);
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
         const newIcons: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
             if (food.name && foodIcons[food.name] === undefined) {
-                newIcons[food.name] = getFoodIconUrl(food.name); // No locale needed
+                newIcons[food.name] = getFoodIconUrl(food.name);
             }
         });
         if (Object.keys(newIcons).length > 0) {
             setFoodIcons(prev => ({ ...prev, ...newIcons }));
         }
-    }, [foodIcons]); // Removed i18n.locale
+    }, [foodIcons]);
 
 
     const doFetchFoods = useCallback(async (
@@ -124,7 +124,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } finally {
             if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
         }
-    }, [triggerIconPrefetch, t]); // PAGE_SIZE removed, it's a const
+    }, [triggerIconPrefetch, t]);
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -141,10 +141,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     useFocusEffect(
         useCallback(() => {
-            // !!!!! TEMPORARY FOR DEBUGGING ICON ISSUES !!!!!
-            console.log("FoodListScreen useFocusEffect: Clearing local icon cache for testing.");
-            clearLocalIconCache(); 
-            // !!!!! REMOVE AFTER TESTING !!!!!
+            // Cache clearing removed from here for production
+            // console.log("FoodListScreen useFocusEffect: Icon cache is now active.");
 
             const currentTrimmedSearch = search.trim();
             if (isFirstRunRef.current || prevSearchTermRef.current !== currentTrimmedSearch) {
@@ -369,7 +367,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]} 
-                        setFoodIconForName={resolveAndSetFoodIcon} // Pass the corrected resolve function
+                        setFoodIconForName={resolveAndSetFoodIcon}
                         />
                 )}
                 ListEmptyComponent={
