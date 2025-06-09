@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build Android Preview APK
     runs-on: ubuntu-latest
+    # CHANGE 1: Assign the job to the 'Production' environment to access its secrets.
+    environment: Production
 
     steps:
       # Step 1: Check out your repository code
@@ -24,11 +26,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          # Point the cache to the lock file inside the subdirectory for efficiency
           cache: 'npm'
           cache-dependency-path: 'MacroTracker/package-lock.json'
 
-      # Step 3: Set up the Java Development Kit (required for Android builds)
+      # Step 3: Set up the Java Development Kit
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -39,34 +40,31 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Step 5: Install project dependencies using the lock file
-      # This step now runs inside the 'MacroTracker' directory
+      # Step 5: Install project dependencies
       - name: Install dependencies
         working-directory: ./MacroTracker
         run: npm ci
 
-      # Step 6: Install the EAS CLI globally in the runner
+      # Step 6: Install the EAS CLI globally
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      # Step 7: Log in to Expo using the secret token
-      - name: EAS Login
-        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+      # CHANGE 2: The 'EAS Login' step has been REMOVED. It's not needed.
 
-      # Step 8: Start the EAS Build process
-      # This step also runs inside the 'MacroTracker' directory
+      # Step 7: Start the EAS Build process
       - name: Build with EAS
         working-directory: ./MacroTracker
         run: eas build --platform android --profile preview --non-interactive --local
         env:
-          # This secret must be set in your GitHub repository settings
+          # CHANGE 3: Pass the token directly to the command that needs it.
+          # The EAS CLI automatically uses this environment variable for authentication.
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
 
-      # Step 9: Find the generated APK file to upload it
+      # Step 8: Find the generated APK file
       - name: Find APK
         id: find_apk
         run: |
-          # Search for the APK inside the MacroTracker/android directory
           APK_PATH=$(find ./MacroTracker/android -type f -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
             echo "APK not found!"
@@ -75,7 +73,7 @@ jobs:
           echo "Found APK at: $APK_PATH"
           echo "path=$APK_PATH" >> $GITHUB_OUTPUT
 
-      # Step 10: Upload the APK as a build artifact so you can download it
+      # Step 9: Upload the APK as a build artifact
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
