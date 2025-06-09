@@ -1,0 +1,67 @@
+# .github/workflows/android-preview-build.yml
+name: EAS Android Preview Build (Local)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    name: Build Android Preview APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: EAS Login
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build with EAS
+        run: eas build --platform android --profile preview --non-interactive --local
+        env:
+          # This secret must be set in your GitHub repository settings
+          EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
+
+      - name: Find APK
+        id: find_apk
+        run: |
+          # The APK is typically in android/app/build/outputs/apk/preview/app-preview.apk
+          # We'll use a find command to be more robust and handle different build variants.
+          APK_PATH=$(find ./android -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "APK not found!"
+            exit 1
+          fi
+          echo "Found APK at: $APK_PATH"
+          echo "path=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macros-vision-ai-preview-apk
+          path: ${{ steps.find_apk.outputs.path }}
