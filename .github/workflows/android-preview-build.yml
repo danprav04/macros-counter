@@ -65,7 +65,9 @@ jobs:
       - name: Find APK
         id: find_apk
         run: |
-          APK_PATH=$(find ./MacroTracker/android -type f -name "*.apk" | head -n 1)
+          # CHANGE 4: Search for the APK in the './MacroTracker' directory, not './MacroTracker/android'.
+          # The -maxdepth 1 flag prevents 'find' from searching in subdirectories like node_modules, making it faster.
+          APK_PATH=$(find ./MacroTracker -maxdepth 1 -type f -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
             echo "APK not found!"
             exit 1
