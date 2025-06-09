@@ -1,6 +1,7 @@
 # .github/workflows/android-preview-build.yml
 name: EAS Android Preview Build (Local)
 
+# This workflow runs on pushes to the main/master branch, or can be triggered manually.
 on:
   workflow_dispatch:
   push:
@@ -14,44 +15,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Check out your repository code
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # Step 2: Set up the Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: 'npm' # Note: cache path is based on the lock file location
-          cache-dependency-path: 'MacroTracker/package-lock.json' # <-- Specify lock file path for caching
+          # Point the cache to the lock file inside the subdirectory for efficiency
+          cache: 'npm'
+          cache-dependency-path: 'MacroTracker/package-lock.json'
 
+      # Step 3: Set up the Java Development Kit (required for Android builds)
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # Step 4: Set up the Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # Step 5: Install project dependencies using the lock file
+      # This step now runs inside the 'MacroTracker' directory
       - name: Install dependencies
-        # This step now runs inside the 'MacroTracker' directory
         working-directory: ./MacroTracker
         run: npm ci
 
+      # Step 6: Install the EAS CLI globally in the runner
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
+      # Step 7: Log in to Expo using the secret token
       - name: EAS Login
         run: eas login --token ${{ secrets.EXPO_TOKEN }}
 
+      # Step 8: Start the EAS Build process
+      # This step also runs inside the 'MacroTracker' directory
       - name: Build with EAS
-        # This step also runs inside the 'MacroTracker' directory
         working-directory: ./MacroTracker
         run: eas build --platform android --profile preview --non-interactive --local
         env:
           # This secret must be set in your GitHub repository settings
           EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
 
+      # Step 9: Find the generated APK file to upload it
       - name: Find APK
         id: find_apk
         run: |
@@ -64,6 +75,7 @@ jobs:
           echo "Found APK at: $APK_PATH"
           echo "path=$APK_PATH" >> $GITHUB_OUTPUT
 
+      # Step 10: Upload the APK as a build artifact so you can download it
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
