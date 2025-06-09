@@ -51,7 +51,7 @@ jobs:
 
       # Step 7: Log in to Expo using the secret token
       - name: EAS Login
-        run: eas login --token ${{ secrets.EXPOTOKEN }}
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
 
       # Step 8: Start the EAS Build process
       # This step also runs inside the 'MacroTracker' directory
