@@ -157,11 +157,12 @@
     "titleQuickAddSelect": "Select Items to Add",
     "titleQuickAddEdit": "Edit Item",
     "titleQuickAddAnalyzing": "Analyzing...",
+    "titleQuickAddFromText": "Quick Add from Text",
     "searchPlaceholder": "Search Foods...",
     "recent": "Recent",
     "noResults": "No foods found matching \"%{searchTerm}\".",
     "emptyLibraryMessage": "Your food library is empty. Tap below to add your first food item!",
-    "noQuickAddResults": "No food items found in the image.",
+    "noQuickAddResults": "No food items found.",
     "amount": "Amount",
     "grams": "Grams",
     "autoAi": "Auto (AI)",
@@ -216,7 +217,13 @@
     "overwrite": "Overwrite",
     "toastFoodSavedToLibrary": "\"%{foodName}\" saved to library.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" updated in library.",
-    "toastErrorSavingToLibrary": "Error saving food to library."
+    "toastErrorSavingToLibrary": "Error saving food to library.",
+    "textQuickAdd": {
+      "placeholder": "Describe your meal...\ne.g., '150g chicken breast, a side salad with tomatoes, and one apple'",
+      "analyzeButton": "Analyze Text",
+      "alertInputEmpty": "Input Empty",
+      "alertInputEmptyMessage": "Please type or say what you ate to analyze."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Add New Food",

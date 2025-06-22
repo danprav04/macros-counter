@@ -1,26 +1,21 @@
 // src/services/backendService.ts
-// ---------- src/services/backendService.ts ----------
 import Constants from 'expo-constants';
 import { getClientId } from './clientIDService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
 import uuid from 'react-native-uuid';
-import i18n, { t } from '../localization/i18n'; // Import t and i18n
+import i18n, { t } from '../localization/i18n';
 
 const getBackendUrl = (): string => {
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
     if (envUrl) {
-        console.log("Using Backend URL from EXPO_PUBLIC_BACKEND_URL:", envUrl);
         return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
     }
     const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    console.log(envUrl, configUrl);
-    
     if (configUrl) {
-        console.warn("Using Backend URL from app.json extra.env. Consider using build-time environment variables (EXPO_PUBLIC_*) for production.");
         return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
     }
-    console.error("BACKEND_URL not found in environment variables or app.json extra.env. Using default DEVELOPMENT URL. THIS IS NOT FOR PRODUCTION.");
+    console.error("BACKEND_URL not found. Using default DEVELOPMENT URL.");
     const DEV_URL = 'http://192.168.1.15:8000';
     return `${DEV_URL}/api/v1`;
 };
@@ -29,7 +24,6 @@ const BASE_URL = getBackendUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-// IconResponse removed as icons are handled locally
 export interface UserStatus { client_id: string; coins: number; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
@@ -42,156 +36,70 @@ export class BackendError extends Error {
 }
 
 async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, needsAuth: boolean = true ): Promise<T> {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${BASE_URL}${cleanEndpoint}`;
-    const method = options.method || 'GET';
-    let response: Response | null = null; let requestId: string | null = null;
-
-    console.log(`[API Request] ${method} ${url} - Starting (Auth: ${needsAuth}, Locale: ${i18n.locale})`);
-
-    const defaultHeaders: HeadersInit = {
-        'Content-Type': 'application/json', 'Accept': 'application/json',
-        'X-Platform': Platform.OS, 'Accept-Language': i18n.locale,
-    };
-    let authHeaders: HeadersInit = {};
-    if (needsAuth) {
-        const clientId = await getClientId();
-        if (!uuid.validate(clientId)) {
-             console.error(`[API Request] Invalid Client ID format detected: ${clientId}. Aborting request.`);
-             throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-        }
-        authHeaders = { 'X-Client-ID': clientId };
-        console.log(`[API Request] Adding X-Client-ID header.`);
-    }
-    const config: RequestInit = { ...options, headers: { ...defaultHeaders, ...authHeaders, ...options.headers, } };
-
-     if (config.body && typeof config.body === 'string') {
-          try {
-              const bodyObj = JSON.parse(config.body);
-              const bodyKeys = Object.keys(bodyObj);
-              const bodyPreview = bodyKeys.length > 0 ? `{ keys: [${bodyKeys.join(', ')}] }` : '{}';
-              console.log(`[API Request] ${method} ${url} - Body Preview: ${bodyPreview}`);
-          } catch {
-              console.log(`[API Request] ${method} ${url} - Body: (non-JSON or failed parse)`);
-          }
-     }
-
+    const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    let response: Response | null = null;
+    let requestId: string | null = null;
     try {
-        response = await fetch(url, config);
+        // Fix: Explicitly type headers as a Record to allow arbitrary keys like 'X-Client-ID'.
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Platform': Platform.OS,
+            'Accept-Language': i18n.locale,
+            ...(options.headers as Record<string, string> || {})
+        };
+
+        if (needsAuth) {
+            const clientId = await getClientId();
+            if (!uuid.validate(clientId)) throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
+            headers['X-Client-ID'] = clientId;
+        }
+        
+        response = await fetch(url, { ...options, headers });
         requestId = response.headers.get("X-Request-ID");
-        const status = response.status; const contentType = response.headers.get("content-type");
 
-        console.log(`[API Response] ${method} ${url} - Status: ${status}, Content-Type: ${contentType}, RequestID: ${requestId || 'N/A'}`);
+        if (response.status === 204) return null as T;
 
-        if (status === 204) {
-             console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
-             return null as T;
-        }
-
-        let responseBody: any; let isJson = false;
-        try {
-            if (contentType && contentType.includes("application/json")) {
-                responseBody = await response.json();
-                isJson = true;
-            } else {
-                responseBody = await response.text();
-                console.log(`[API Response] ${method} ${url} - Received Text: ${responseBody.substring(0, 200)}...`);
-            }
-        } catch (parseError) {
-            console.error(`[API Error] ${method} ${url} - Failed to parse response body (Status: ${status}):`, parseError);
-            const rawText = await response.text().catch(() => '(Could not get raw text)');
-            if (!response.ok) {
-                throw new BackendError(t('backendService.errorRequestFailedParse', {status}), status, rawText, requestId);
-            } else {
-                console.warn(`[API Warning] ${method} ${url} - Status ${status} OK, but failed to parse response body.`);
-                 return null as T;
-            }
-        }
+        const contentType = response.headers.get("content-type");
+        const isJson = contentType && contentType.includes("application/json");
+        const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', {status}); 
-            let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
-
-            if (isJson && responseBody) {
-                 const errorData = responseBody as BackendErrorResponse;
-                 if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail; 
-                    errorDetail = errorMessage;
-                 } else if (Array.isArray(errorData.detail)) {
-                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); 
-                     errorDetail = errorData.detail;
-                     console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
-                 } else {
-                      errorMessage = t('backendService.errorRequestFailedDetailFormat', {status});
-                      errorDetail = JSON.stringify(responseBody);
-                 }
+            let errorMessage = t('backendService.errorRequestFailedParse', { status: response.status });
+            if (isJson && responseBody?.detail) {
+                errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
             } else if (!isJson) {
-                 errorMessage = t('backendService.errorRequestFailedWithServerMsg', {status, response: responseBody.substring(0,100)});
-                 errorDetail = responseBody;
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status, response: responseBody.substring(0, 100) });
             }
-
-            if (status === 401 && needsAuth) errorMessage = t('backendService.errorAuthFailed');
-            if (status === 403) errorMessage = t('backendService.errorPermissionDenied');
-            if (status === 404) errorMessage = t('backendService.errorNotFound');
-            if (status === 429) errorMessage = t('backendService.errorTooManyRequests');
-            if (status === 402) errorMessage = t('backendService.errorInsufficientCoins');
-
-            console.error(`[API Error] ${method} ${url} - Status: ${status}, Message: "${errorMessage}", Detail:`, errorDetail);
-            throw new BackendError(errorMessage, status, errorDetail, requestId);
+            if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
+            if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
-
-        console.log(`[API Response] ${method} ${url} - Success (Status: ${status})`);
         return responseBody as T;
 
     } catch (error) {
-        const logRequestId = requestId ? ` (RequestID: ${requestId})` : '';
         if (error instanceof BackendError) throw error;
-
-        console.error(`[API Network Error] ${method} ${url}${logRequestId} - Error:`, error);
         let networkErrorMessage = t('backendService.errorNetwork');
-         if (error instanceof Error) {
-             if (error.name === 'AbortError' || error.message.includes('timed out')) networkErrorMessage = t('backendService.errorNetworkTimeout');
-             else if (error.message.includes('Network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
-             else networkErrorMessage += t('backendService.errorNetworkDetails', {error: error.message});
-         } else networkErrorMessage += t('backendService.errorNetworkUnknown');
+        if (error instanceof Error && error.name === 'AbortError') {
+            networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error) {
+            networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+        }
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    return fetchBackend<UserStatus>(`/users/status/${clientId}`, {}, true);
-};
-
-export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
-    const body = { food_name: foodName, ingredients };
-    return fetchBackend<Macros>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
+export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => fetchBackend<Macros>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForTextMultiple = async (text: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
-    const body = { food_name: foodName, quantity_description: quantityDescription };
-    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify(body), }, true);
-    if (response === null || typeof response.grams !== 'number') {
-        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
-    }
+    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
+    if (response === null || typeof response.grams !== 'number') throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
     return response.grams;
 };
-
-// getFoodIcon function removed as icons are now handled locally
-
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    const body = { amount };
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, { method: 'POST', body: JSON.stringify(body), }, true);
+    return fetchBackend<UserStatus>(`/users/add_coins/${await getClientId()}`, { method: 'POST', body: JSON.stringify({ amount }) });
 };

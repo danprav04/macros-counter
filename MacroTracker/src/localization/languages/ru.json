@@ -157,11 +157,12 @@
     "titleQuickAddSelect": "Выберите элементы для добавления",
     "titleQuickAddEdit": "Изменить элемент",
     "titleQuickAddAnalyzing": "Анализ...",
+    "titleQuickAddFromText": "Быстрое добавление по тексту",
     "searchPlaceholder": "Поиск продуктов...",
     "recent": "Недавние",
     "noResults": "Продукты, соответствующие \"%{searchTerm}\", не найдены.",
     "emptyLibraryMessage": "Ваша библиотека продуктов пуста. Нажмите ниже, чтобы добавить первый продукт!",
-    "noQuickAddResults": "На изображении не найдено пищевых продуктов.",
+    "noQuickAddResults": "Продукты не найдены.",
     "amount": "Количество",
     "grams": "Граммы",
     "autoAi": "Авто (ИИ)",
@@ -216,7 +217,13 @@
     "overwrite": "Перезаписать",
     "toastFoodSavedToLibrary": "\"%{foodName}\" сохранено в библиотеку.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" обновлено в библиотеке.",
-    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку."
+    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку.",
+    "textQuickAdd": {
+      "placeholder": "Опишите ваш прием пищи...\nнапример, '150г куриной грудки, небольшой салат с помидорами и одно яблоко'",
+      "analyzeButton": "Анализировать текст",
+      "alertInputEmpty": "Пустое поле",
+      "alertInputEmptyMessage": "Пожалуйста, напишите или произнесите, что вы съели, для анализа."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Добавить новый продукт",

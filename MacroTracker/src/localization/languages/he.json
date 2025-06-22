@@ -157,11 +157,12 @@
     "titleQuickAddSelect": "בחר פריטים להוספה",
     "titleQuickAddEdit": "ערוך פריט",
     "titleQuickAddAnalyzing": "מנתח...",
+    "titleQuickAddFromText": "הוספה מהירה מטקסט",
     "searchPlaceholder": "חפש מאכלים...",
     "recent": "אחרונים",
     "noResults": "לא נמצאו מאכלים התואמים ל-\"%{searchTerm}\".",
     "emptyLibraryMessage": "ספריית המאכלים שלך ריקה. לחץ למטה להוספת המאכל הראשון שלך!",
-    "noQuickAddResults": "לא נמצאו פריטי מזון בתמונה.",
+    "noQuickAddResults": "לא נמצאו פריטי מזון.",
     "amount": "כמות",
     "grams": "גרם",
     "autoAi": "אוטומטי (AI)",
@@ -216,7 +217,13 @@
     "overwrite": "החלף",
     "toastFoodSavedToLibrary": "\"%{foodName}\" נשמר לספרייה.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" עודכן בספרייה.",
-    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה."
+    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה.",
+    "textQuickAdd": {
+      "placeholder": "תאר את הארוחה שלך...\nלמשל, '150ג חזה עוף, סלט קטן עם עגבניות, ותפוח אחד'",
+      "analyzeButton": "נתח טקסט",
+      "alertInputEmpty": "קלט ריק",
+      "alertInputEmptyMessage": "אנא הקלד או אמור מה אכלת לצורך הניתוח."
+    }
   },
   "addFoodModal": {
     "titleAdd": "הוסף מאכל חדש",
