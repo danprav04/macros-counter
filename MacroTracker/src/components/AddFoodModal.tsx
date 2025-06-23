@@ -123,11 +123,26 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setAiTextLoading(true);
             try {
                 const macros = await getMacrosFromText(currentFoodName, ingredients);
-                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate); handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
-                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate); handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-                setMode("normal"); Toast.show({ type: 'info', text1: t('addFoodModal.macrosEstimatedText'), position: 'bottom' });
-            } catch (error) { console.error("AI Macro fetch error (recipe - modal):", error); }
-            finally { setAiTextLoading(false); }
+                // The 'macros' object now includes 'foodName'
+                if (macros.foodName) {
+                    handleInputChange("name", macros.foodName, isUpdate);
+                }
+                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
+                handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
+                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
+                handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
+                setMode("normal");
+                Toast.show({
+                    type: 'info',
+                    text1: currentFoodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
+                    text2: currentFoodName ? undefined : t('addFoodModal.foodIdentifiedMessage', { foodName: macros.foodName }),
+                    position: 'bottom'
+                });
+            } catch (error) {
+                console.error("AI Macro fetch error (recipe - modal):", error);
+            } finally {
+                setAiTextLoading(false);
+            }
         }
     };
 
@@ -143,7 +158,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      const result = await getMacrosForImageFile(assetForAnalysis);
                      const isUpdate = !!editFood;
                      handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
-                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate); handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
+                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
+                     handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
                      setMode("normal"); setIngredients("");
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });

@@ -16,7 +16,7 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
     }
 }
 
-export async function getMacrosFromText(foodName: string, ingredients: string): Promise<Macros> {
+export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
     try {
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {

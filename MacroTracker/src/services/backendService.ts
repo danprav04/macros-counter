@@ -40,7 +40,6 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
     let response: Response | null = null;
     let requestId: string | null = null;
     try {
-        // Fix: Explicitly type headers as a Record to allow arbitrary keys like 'X-Client-ID'.
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -90,7 +89,7 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
 }
 
 export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
-export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => fetchBackend<Macros>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
 export const getMacrosForTextMultiple = async (text: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });

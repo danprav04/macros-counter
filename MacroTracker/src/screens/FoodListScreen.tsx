@@ -292,7 +292,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [t]);
 
-    const handleInputChange = useCallback((key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
+    const handleInputChange = (key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
         const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
     
@@ -325,8 +325,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } else {
             setNewFood(updateState);
         }
-    }, []);
-
+    };
 
     const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
 
