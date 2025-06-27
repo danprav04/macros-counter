@@ -12,9 +12,13 @@ import {
   AppState,
   AppStateStatus,
   Platform,
-  I18nManager, // Import I18nManager
-  Alert, // For restart prompt
-  DevSettings // For dev reload
+  I18nManager,
+  Alert,
+  DevSettings,
+  LogBox,
+  View,
+  Text,
+  TextInput,
 } from "react-native";
 import * as Localization from 'expo-localization';
 import * as Linking from 'expo-linking'; // Import expo-linking
@@ -26,11 +30,19 @@ import {
 } from "@react-navigation/native";
 import { Colors } from "@rneui/base";
 import { Settings, LanguageCode } from "./src/types/settings";
-import { LogBox, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { getClientId } from "./src/services/clientIDService";
 import i18n, { setLocale, t } from './src/localization/i18n'; // Import i18n setup
 import { MainTabParamList } from "./src/navigation/AppNavigator"; // For linking config
+
+// --- FONT SCALING PATCH ---
+// Disable font scaling for all Text and TextInput components globally
+// to ensure a consistent UI across different device accessibility settings.
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.allowFontScaling = false;
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.allowFontScaling = false;
+// --- END FONT SCALING PATCH ---
 
 LogBox.ignoreLogs(["Function components cannot be given refs"]);
 

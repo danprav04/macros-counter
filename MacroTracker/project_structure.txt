@@ -199,7 +199,7 @@ yarn-error.*
       },
       "env": {
          "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
       }
     }
   }
@@ -921,53 +921,23 @@ export default AccountSettings;
 
 ---------- AddEntryModal.tsx ----------
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  // useRef, // No longer needed here if list scrolling isn't an issue
-} from "react";
-import {
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-  StyleSheet,
-  Alert,
-  Keyboard,
-} from "react-native";
-import {
-  Overlay,
-  makeStyles,
-  useTheme,
-} from "@rneui/themed";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
+import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import {
-  loadRecentFoods,
-  saveRecentFoods,
-  loadLastUsedPortions,
-  saveLastUsedPortions,
-  LastUsedPortions,
-} from "../../services/storageService";
-import { getFoodIconUrl } from "../../utils/iconUtils"; // Correct
+import { loadRecentFoods, saveRecentFoods, loadLastUsedPortions, saveLastUsedPortions, LastUsedPortions } from "../../services/storageService";
+import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
-import {
-  EstimatedFoodItem,
-  getMultipleFoodsFromImage,
-  BackendError,
-  determineMimeType,
-} from "../../utils/macros";
+import { EstimatedFoodItem, getMultipleFoodsFromImage, getMultipleFoodsFromText, BackendError, determineMimeType } from "../../utils/macros";
 import { compressImageIfNeeded, getBase64FromUri } from "../../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "../QuickAddList";
-import { t } from '../../localization/i18n'; // No i18n instance needed directly for locale here
+import { t } from '../../localization/i18n';
 import { calculateDailyEntryGrade, FoodGradeResult } from "../../utils/gradingUtils";
 import { Settings } from '../../types/settings';
-
 import ModalHeader from './ModalHeader';
 import FoodSelectionList from './FoodSelectionList';
 import AmountInputSection from './AmountInputSection';
@@ -990,20 +960,11 @@ const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
 const MAX_RECENT_FOODS = 5;
 
 type UnitMode = "grams" | "auto";
-type ModalMode = "normal" | "quickAddSelect";
+type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
-  isVisible,
-  toggleOverlay,
-  handleAddEntry: parentHandleAddEntry,
-  handleAddMultipleEntries: parentHandleAddMultipleEntries,
-  foods,
-  isEditMode,
-  initialGrams,
-  initialSelectedFoodForEdit,
-  onAddNewFoodRequest,
-  onCommitFoodToLibrary,
-  dailyGoals,
+  isVisible, toggleOverlay, handleAddEntry: parentHandleAddEntry, handleAddMultipleEntries: parentHandleAddMultipleEntries,
+  foods, isEditMode, initialGrams, initialSelectedFoodForEdit, onAddNewFoodRequest, onCommitFoodToLibrary, dailyGoals,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -1011,12 +972,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [internalSelectedFood, setInternalSelectedFood] = useState<Food | null>(null);
   const [internalGrams, setInternalGrams] = useState("");
   const [internalSearch, setInternalSearch] = useState("");
-
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
-  const [foodIcons, setFoodIcons] = useState<{
-    [foodName: string]: string | null;
-  }>({});
-
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({});
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -1024,25 +981,23 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [modalMode, setModalMode] = useState<ModalMode>("normal");
   const [quickAddLoading, setQuickAddLoading] = useState(false);
   const [quickAddItems, setQuickAddItems] = useState<EstimatedFoodItem[]>([]);
-  const [selectedQuickAddIndices, setSelectedQuickAddIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<
-    number | null
-  >(null);
+  const [selectedQuickAddIndices, setSelectedQuickAddIndices] = useState<Set<number>>(new Set());
+  const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-
   const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
+  
+  const [quickAddTextInput, setQuickAddTextInput] = useState("");
+  const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
 
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName || foodIcons[foodName] !== undefined) return;
-    const icon = getFoodIconUrl(foodName); // No locale needed
+    const icon = getFoodIconUrl(foodName);
     setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: icon }));
-  }, [foodIcons]); // Removed i18n.locale
+  }, [foodIcons]);
 
   const foodGradeResult = useMemo((): FoodGradeResult | null => {
     const numericGramsValue = parseFloat(internalGrams);
@@ -1053,283 +1008,174 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    if (isVisible) {
-        loadLastUsedPortions().then(setLastUsedPortions).catch(err => {
-            // console.warn("Failed to load last used portions:", err)
-        });
-    }
+    if (isVisible) loadLastUsedPortions().then(setLastUsedPortions);
   }, [isVisible]);
 
   useEffect(() => {
     if (isVisible) {
       const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
-
       if (actuallyEditingDailyItem) {
-        setInternalSelectedFood(initialSelectedFoodForEdit);
-        setInternalGrams(initialGrams);
-        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal");
+        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams);
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
       } else if (initialSelectedFoodForEdit) {
-        setInternalSelectedFood(initialSelectedFoodForEdit);
-        setInternalGrams(initialGrams || "");
-        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal");
+        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams || "");
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      } else {
-        if (modalMode !== "quickAddSelect") {
-          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch("");
-          setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
-          setModalMode("normal");
-        }
+      }
+      if (!actuallyEditingDailyItem && !initialSelectedFoodForEdit && modalMode !== "quickAddSelect" && modalMode !== "quickAddText") {
+          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch(""); setUnitMode("grams"); setAutoInput("");
       }
     } else {
       const timer = setTimeout(() => {
-        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
-        setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
-        setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
-        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams("");
-        setIsAiLoading(false); setQuickAddLoading(false);
+        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams(""); setUnitMode("grams"); setAutoInput("");
+        setSelectedMultipleFoods(new Map()); setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
+        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); setIsAiLoading(false); setQuickAddLoading(false);
+        setQuickAddTextInput(""); setIsTextQuickAddLoading(false);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon, modalMode]);
 
-  useEffect(() => {
-    if (isVisible && modalMode === "normal") {
-       loadRecentFoods().then(loadedRecent => {
-           setRecentFoods(loadedRecent);
-           loadedRecent.forEach(food => resolveAndSetIcon(food.name));
-       }).catch(err => {
-            // console.warn("Failed to load recent foods:", err);
-       });
-    }
-  }, [isVisible, modalMode, resolveAndSetIcon]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-
-    let itemsToCheckNames: string[] = [];
-    if (modalMode === "normal") {
-        const currentDisplayItems: Food[] = [];
-        if (!internalSearch) {
-            currentDisplayItems.push(...recentFoods);
-            const recentIds = new Set(recentFoods.map(f => f.id));
-            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10));
-        } else {
-            currentDisplayItems.push(...foods.filter(f => f.name.toLowerCase().includes(internalSearch.toLowerCase())).slice(0,10));
-        }
-        itemsToCheckNames = currentDisplayItems.map(item => item.name).filter(Boolean);
-    } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
-        itemsToCheckNames = quickAddItems.map(item => item.foodName).filter(Boolean);
-    }
-
-    if (itemsToCheckNames.length > 0) {
-        itemsToCheckNames.forEach(name => resolveAndSetIcon(name));
-    }
-  }, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, resolveAndSetIcon]);
-
+  useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
+  useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
-    setRecentFoods((prevRecent) => {
-      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent;
-      const updated = prevRecent.filter((rf) => rf.id !== food.id);
-      updated.unshift(food);
-      const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch(() => {});
-      return trimmed;
+    setRecentFoods(prev => {
+      const updated = [food, ...prev.filter(f => f.id !== food.id)].slice(0, MAX_RECENT_FOODS);
+      saveRecentFoods(updated).catch(() => {}); return updated;
     });
   }, []);
 
   const servingSizeSuggestions = useMemo(() => {
-    if (!internalSelectedFood || !internalSelectedFood.id) return [];
+    if (!internalSelectedFood?.id) return [];
     const suggestions = [];
     const lastUsed = lastUsedPortions[internalSelectedFood.id];
-
-    if (lastUsed) {
-      suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
-    }
-    const defaultSuggestions = [
-        { label: "50g", value: "50" }, { label: "100g", value: "100" },
-        { label: "150g", value: "150" }, { label: "200g", value: "200" }
-    ];
-    defaultSuggestions.forEach(sugg => {
-        if (!lastUsed || String(lastUsed) !== sugg.value) {
-            suggestions.push(sugg);
-        }
-    });
+    if (lastUsed) suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
+    ["50", "100", "150", "200"].forEach(val => { if (String(lastUsed) !== val) suggestions.push({ label: `${val}g`, value: val }); });
     return suggestions;
-    // Removed i18n.locale from dependency array as t() will use current global locale
   }, [internalSelectedFood, lastUsedPortions, t]);
 
-
   const handleEstimateGrams = useCallback(async () => {
-    Keyboard.dismiss();
-    if (!internalSelectedFood || !autoInput.trim()) {
-      Alert.alert(t('addEntryModal.alertInputMissing'), t('addEntryModal.alertInputMissingMessage')); return;
-    }
-    if (isAiLoading) return; setIsAiLoading(true);
+    Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
+    setIsAiLoading(true);
     try {
       const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput);
-      const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams);
-      setUnitMode("grams"); setAutoInput("");
-      Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom", });
-    } catch (error: any) { /* Error already handled by getGramsFromNaturalLanguage with an Alert */ }
-    finally { setIsAiLoading(false); }
+      const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams); setUnitMode("grams"); setAutoInput("");
+      Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom" });
+    } catch (error) { /* Handled by getGramsFromNaturalLanguage */ } finally { setIsAiLoading(false); }
   }, [internalSelectedFood, autoInput, isAiLoading, t]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
-    Keyboard.dismiss();
-    if (!internalSelectedFood || !internalSelectedFood.id) {
-        Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
-        return;
-    }
+    Keyboard.dismiss(); if (!internalSelectedFood?.id) return Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
     const numericGramsValue = parseFloat(internalGrams);
-    if (!isValidNumberInput(internalGrams) || numericGramsValue <= 0) {
-        Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
-        return;
-    }
+    if (!isValidNumberInput(internalGrams) || numericGramsValue <= 0) return Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
     if (isActionDisabled) return;
-
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
-
-    if (!isEditMode) {
-        addToRecentFoods(internalSelectedFood);
-        const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-        setLastUsedPortions(updatedPortions);
-        saveLastUsedPortions(updatedPortions).catch(() => {});
-    } else if (isEditMode && internalSelectedFood.id) {
-        const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-        setLastUsedPortions(updatedPortions);
-        saveLastUsedPortions(updatedPortions).catch(() => {});
-    }
-  }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t ]);
+    if (!isEditMode) addToRecentFoods(internalSelectedFood);
+    const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
+    setLastUsedPortions(updatedPortions); saveLastUsedPortions(updatedPortions);
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
-    setSelectedMultipleFoods(prev => {
-        const newSelection = new Map(prev);
-        if (newSelection.has(food.id)) {
-            newSelection.delete(food.id);
-        } else {
-            newSelection.set(food.id, { food, grams: displayGrams });
-        }
-        return newSelection;
-    });
+    setSelectedMultipleFoods(prev => { const newMap = new Map(prev); newMap.has(food.id) ? newMap.delete(food.id) : newMap.set(food.id, { food, grams: displayGrams }); return newMap; });
   }, [isEditMode, internalSelectedFood]);
 
   const handleConfirmAddMultipleSelected = useCallback(async () => {
     if (isEditMode || internalSelectedFood || selectedMultipleFoods.size === 0 || isActionDisabled) return;
     Keyboard.dismiss();
-    const entriesToAdd: { food: Food; grams: number }[] = Array.from(selectedMultipleFoods.values());
-    if (entriesToAdd.length === 0) return;
-
+    const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
+    const newPortions = { ...lastUsedPortions };
+    entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; addToRecentFoods(entry.food); });
+    setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions); setSelectedMultipleFoods(new Map());
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods]);
 
-    const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
-    entriesToAdd.forEach(entry => {
-        if (entry.food.id) { newPortionsToSave[entry.food.id] = entry.grams; }
-        addToRecentFoods(entry.food);
-    });
-    setLastUsedPortions(newPortionsToSave);
-    saveLastUsedPortions(newPortionsToSave).catch(() => {});
-    setSelectedMultipleFoods(new Map());
-  }, [ isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods ]);
+  const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
+    if (isEditMode) return;
+    setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
+    setModalMode("quickAddSelect"); setQuickAddLoading(true); setIsTextQuickAddLoading(false);
+    
+    let permissionResult, pickerResult: ImagePicker.ImagePickerResult;
+    try {
+      permissionResult = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) throw new Error("Permission denied");
+      pickerResult = source === "camera" ? await ImagePicker.launchCameraAsync({ quality: 1 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+      if (pickerResult.canceled) throw new Error("User cancelled");
 
+      const asset = pickerResult.assets?.[0]; if (!asset) throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
+      const compressed = await compressImageIfNeeded(asset);
+      const assetForAnalysis = compressed ? { ...asset, uri: compressed.uri, mimeType: 'image/jpeg' } : asset;
+      const base64 = await getBase64FromUri(assetForAnalysis.uri);
+      const mimeType = determineMimeType(assetForAnalysis);
+      const results = await getMultipleFoodsFromImage(base64, mimeType);
 
-  const pickImageAndAnalyze = useCallback( async (source: "camera" | "gallery") => {
-      if (isEditMode) return;
-
-      setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
-      setModalMode("quickAddSelect");
-      setQuickAddLoading(true);
-      setSelectedMultipleFoods(new Map());
-      setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
-
-      let permissionResult; let pickerResult: ImagePicker.ImagePickerResult;
-      try {
-        if (source === "camera") {
-          permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-          if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddCameraPermission')); throw new Error("Permission denied"); }
-          pickerResult = await ImagePicker.launchCameraAsync({ quality: 1, exif: false });
-        } else {
-          permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddGalleryPermission')); throw new Error("Permission denied"); }
-          pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
-        }
-
-        if (pickerResult.canceled) throw new Error(t('addEntryModal.alertQuickAddUserCancelled'));
-
-        if (pickerResult.assets && pickerResult.assets.length > 0) {
-          const originalAsset = pickerResult.assets[0];
-          const compressedResult = await compressImageIfNeeded(originalAsset);
-          const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
-          const base64Image = await getBase64FromUri(assetForAnalysis.uri);
-          const mimeType = determineMimeType(assetForAnalysis);
-
-          const results = await getMultipleFoodsFromImage(base64Image, mimeType);
-
-          if (results.length === 0) {
-            Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
-            setQuickAddItems([]);
-            setQuickAddLoading(false);
-            setModalMode("normal");
-          } else {
-            setQuickAddItems(results);
-            setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
-            results.forEach(qaItem => { if (qaItem.foodName) { resolveAndSetIcon(qaItem.foodName); } });
-            setQuickAddLoading(false);
-          }
-        } else {
-          throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
-        }
-      } catch (error: any) {
-        if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
-          Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
-        }
+      if (results.length === 0) {
+        Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
         setModalMode("normal");
-        setQuickAddItems([]);
-        setSelectedQuickAddIndices(new Set());
-        setQuickAddLoading(false);
+      } else {
+        setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+        results.forEach(item => resolveAndSetIcon(item.foodName));
       }
-    }, [isEditMode, resolveAndSetIcon, t]
-  );
+    } catch (error: any) {
+      if (error.message !== "User cancelled" && error.message !== "Permission denied" && !(error instanceof BackendError)) Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
+      setModalMode("normal");
+    } finally {
+      setQuickAddLoading(false);
+    }
+  }, [isEditMode, resolveAndSetIcon, t]);
 
-  const handleQuickAddImage = useCallback(async () => {
+  const handleQuickAddImage = useCallback(() => {
     Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
-    if (editingQuickAddItemIndex !== null) { Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel')); return; }
-    Alert.alert( t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessage'),
-      [ { text: t('addEntryModal.cancel'), style: "cancel" },
+    if (editingQuickAddItemIndex !== null) return Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
+    Alert.alert(t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessage'), [
+        { text: t('addEntryModal.cancel'), style: "cancel" },
         { text: t('addEntryModal.camera'), onPress: () => pickImageAndAnalyze("camera") },
-        { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") }, ]
-    );
-  }, [ isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze, t ]);
+        { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") },
+    ]);
+  }, [isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze, t]);
 
+  const handleQuickAddText = useCallback(() => {
+    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
+    setModalMode('quickAddText');
+    setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
+  }, [isEditMode, isActionDisabled]);
 
-  const handleToggleQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) return;
-      setSelectedQuickAddIndices((prev) => { const newSet = new Set(prev); if (newSet.has(index)) newSet.delete(index); else newSet.add(index); return newSet; });
-    }, [editingQuickAddItemIndex, isActionDisabled]
-  );
+  const handleAnalyzeText = async () => {
+    const textToAnalyze = quickAddTextInput.trim();
+    if (!textToAnalyze || quickAddLoading) return;
+    Keyboard.dismiss();
+    setQuickAddLoading(true); setIsTextQuickAddLoading(true);
+    try {
+        const results = await getMultipleFoodsFromText(textToAnalyze);
+        if (results.length === 0) {
+            Toast.show({ type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom' });
+        } else {
+            setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            results.forEach(item => { if (item.foodName) { resolveAndSetIcon(item.foodName); } });
+            setModalMode("quickAddSelect");
+        }
+    } catch (error) { /* Handled in util */ }
+    finally { setQuickAddLoading(false); setIsTextQuickAddLoading(false); }
+  };
 
-  const handleEditQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) {
-        if (editingQuickAddItemIndex !== null) Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
-        return;
-      }
-      const item = quickAddItems[index]; setEditingQuickAddItemIndex(index);
-      setEditedFoodName(item.foodName); setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
-    }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled, t]
-  );
+  const handleToggleQuickAddItem = useCallback((index: number) => {
+    if (editingQuickAddItemIndex !== null || isActionDisabled) return;
+    setSelectedQuickAddIndices(prev => { const newSet = new Set(prev); newSet.has(index) ? newSet.delete(index) : newSet.add(index); return newSet; });
+  }, [editingQuickAddItemIndex, isActionDisabled]);
+
+  const handleEditQuickAddItem = useCallback((index: number) => {
+    if (editingQuickAddItemIndex !== null || isActionDisabled) return;
+    const item = quickAddItems[index]; setEditingQuickAddItemIndex(index);
+    setEditedFoodName(item.foodName); setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
+  }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled]);
 
   const handleSaveQuickAddItemEdit = useCallback(() => {
     if (editingQuickAddItemIndex === null || isActionDisabled) return;
-    const trimmedName = editedFoodName.trim(); if (!trimmedName) { Alert.alert(t('addEntryModal.alertQuickAddInvalidName'), t('addEntryModal.alertQuickAddInvalidNameMessage')); return; }
-    const numericEditedGramsValue = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericEditedGramsValue <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
-    const roundedGrams = Math.round(numericEditedGramsValue);
-    setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
-    if (trimmedName) { resolveAndSetIcon(trimmedName); }
+    const trimmedName = editedFoodName.trim(); if (!trimmedName) return Alert.alert(t('addEntryModal.alertQuickAddInvalidName'), t('addEntryModal.alertQuickAddInvalidNameMessage'));
+    const numericGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericGrams <= 0) return Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage'));
+    setQuickAddItems(prev => prev.map((item, i) => i === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: Math.round(numericGrams) } : item));
+    if (trimmedName) resolveAndSetIcon(trimmedName);
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
   }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, resolveAndSetIcon, t]);
 
@@ -1339,185 +1185,72 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [isActionDisabled]);
 
   const handleConfirmQuickAdd = useCallback(() => {
-    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
-    if (editingQuickAddItemIndex !== null) { Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel')); return; }
-    if (selectedQuickAddIndices.size === 0) { Alert.alert(t('addEntryModal.alertQuickAddNoItemsSelected'), t('addEntryModal.alertQuickAddNoItemsSelectedMessage')); return; }
-    try {
-      const entriesToAdd: { food: Food; grams: number }[] = [];
-      const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
+    Keyboard.dismiss(); if (isEditMode || isActionDisabled || editingQuickAddItemIndex !== null || selectedQuickAddIndices.size === 0) return;
+    const entriesToAdd = Array.from(selectedQuickAddIndices).map(index => {
+        const item = quickAddItems[index];
+        const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
+        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0) };
+        return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
+    });
+    if (entriesToAdd.length > 0) {
+      parentHandleAddMultipleEntries(entriesToAdd);
+      const newPortions = { ...lastUsedPortions };
+      entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; });
+      setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions);
+    }
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions]);
 
-      Array.from(selectedQuickAddIndices).forEach((index) => {
-        if (index >= 0 && index < quickAddItems.length) {
-          const item = quickAddItems[index];
-          const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-          let foodToAdd: Food = existingFood ? existingFood : { id: uuidv4(), name: item.foodName, calories: Math.round(Number(item.calories_per_100g) || 0), protein: Math.round(Number(item.protein_per_100g) || 0), carbs: Math.round(Number(item.carbs_per_100g) || 0), fat: Math.round(Number(item.fat_per_100g) || 0), };
-          const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1));
-          entriesToAdd.push({ food: foodToAdd, grams: entryGrams });
+  const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 
-          if (foodToAdd.id) { newPortionsToSave[foodToAdd.id] = entryGrams; }
-        }
-      });
-
-      if (entriesToAdd.length > 0) {
-        parentHandleAddMultipleEntries(entriesToAdd);
-        setLastUsedPortions(newPortionsToSave);
-        saveLastUsedPortions(newPortionsToSave).catch(() => {});
-      } else { Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage')); }
-    } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
-  }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions, t ]);
-
-
-  const handleQuickAddGramsChange = useCallback((text: string) => {
-    const cleanedText = text.replace(/[^0-9]/g, "");
-    setEditedGrams(cleanedText);
-  }, []);
-
-  const handleSaveQuickAddItemToLibrary = useCallback(async (
-    item: EstimatedFoodItem,
-    setSavingState: (isSaving: boolean) => void
-  ) => {
+  const handleSaveQuickAddItemToLibrary = useCallback(async (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => {
     setSavingState(true);
     try {
-        const foodData: Omit<Food, 'id'> = {
-            name: item.foodName, calories: Math.round(item.calories_per_100g),
-            protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g),
-            fat: Math.round(item.fat_per_100g),
-        };
+        const foodData: Omit<Food, 'id'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-
         if (existingFood) {
-            Alert.alert( t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }),
-                [ { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
-                  { text: t('addEntryModal.overwrite'), onPress: async () => {
-                          const foodToUpdate: Food = { ...existingFood, ...foodData };
-                          const updatedFood = await onCommitFoodToLibrary(foodToUpdate, true);
-                          if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); resolveAndSetIcon(updatedFood.name); }
-                          setSavingState(false);
-                      },
-                  }, ]
-            );
+            Alert.alert(t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }), [
+                { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
+                { text: t('addEntryModal.overwrite'), onPress: async () => {
+                    const updatedFood = await onCommitFoodToLibrary({ ...existingFood, ...foodData }, true);
+                    if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); resolveAndSetIcon(updatedFood.name); }
+                    setSavingState(false);
+                }},
+            ]);
         } else {
             const newFood = await onCommitFoodToLibrary(foodData, false);
             if (newFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: newFood.name }), position: 'bottom' }); resolveAndSetIcon(newFood.name); }
             setSavingState(false);
         }
-    } catch (error) {
-        Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' });
-        setSavingState(false);
-    }
+    } catch (error) { Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' }); setSavingState(false); }
   }, [foods, onCommitFoodToLibrary, resolveAndSetIcon, t]);
 
+  const modalTitle = modalMode === "quickAddSelect" ? (editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit') : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing') : t('addEntryModal.titleQuickAddSelect'))
+                    : modalMode === "quickAddText" ? t('addEntryModal.titleQuickAddFromText')
+                    : isEditMode ? t('addEntryModal.titleEdit') : t('addEntryModal.titleAdd');
 
-  const modalTitle = modalMode === "quickAddSelect"
-    ? editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit')
-    : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing')
-    : t('addEntryModal.titleQuickAddSelect')
-    : isEditMode ? t('addEntryModal.titleEdit')
-    : t('addEntryModal.titleAdd');
-
-  const numericGramsValueForValidation = parseFloat(internalGrams);
-  const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || numericGramsValueForValidation <= 0 || isActionDisabled;
+  const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || parseFloat(internalGrams) <= 0 || isActionDisabled;
   const isMultiAddButtonDisabled = modalMode !== "normal" || selectedMultipleFoods.size === 0 || !!internalSelectedFood || isEditMode || isActionDisabled;
   const isAiButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !autoInput.trim() || isActionDisabled || isAiLoading;
   const isQuickAddConfirmDisabled = isEditMode || modalMode !== "quickAddSelect" || selectedQuickAddIndices.size === 0 || editingQuickAddItemIndex !== null || isActionDisabled || quickAddLoading;
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled || quickAddLoading;
-
-  const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
+  const isQuickAddTextButtonDisabled = isEditMode || isActionDisabled || quickAddLoading;
 
   return (
-    <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer} >
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
-        <View style={combinedOverlayStyle}>
-          <ModalHeader
-            title={modalTitle}
-            isEditMode={isEditMode}
-            modalMode={modalMode}
-            quickAddLoading={quickAddLoading}
-            selectedFood={internalSelectedFood}
-            selectedMultipleFoodsSize={selectedMultipleFoods.size}
-            selectedQuickAddIndicesSize={selectedQuickAddIndices.size}
-            editingQuickAddItemIndex={editingQuickAddItemIndex}
-            isActionDisabled={isActionDisabled}
-            isSingleAddButtonDisabled={isSingleAddButtonDisabled}
-            isMultiAddButtonDisabled={isMultiAddButtonDisabled}
-            isQuickAddConfirmDisabled={isQuickAddConfirmDisabled}
-            isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
-            isAiLoading={isAiLoading}
-            toggleOverlay={toggleOverlay}
-            onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
-            onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected}
-            onConfirmQuickAdd={handleConfirmQuickAdd}
-            onQuickAddImage={handleQuickAddImage}
-            onBackFromQuickAdd={() => {
-                setModalMode("normal");
-                setQuickAddItems([]);
-                setSelectedQuickAddIndices(new Set());
-                setEditingQuickAddItemIndex(null);
-            }}
+    <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
+        <View style={[styles.overlayStyle, { backgroundColor: theme.colors.background }]}>
+          <ModalHeader title={modalTitle} isEditMode={isEditMode} modalMode={modalMode} quickAddLoading={quickAddLoading} textQuickAddLoading={isTextQuickAddLoading}
+            selectedFood={internalSelectedFood} selectedMultipleFoodsSize={selectedMultipleFoods.size} selectedQuickAddIndicesSize={selectedQuickAddIndices.size}
+            editingQuickAddItemIndex={editingQuickAddItemIndex} isActionDisabled={isActionDisabled} isSingleAddButtonDisabled={isSingleAddButtonDisabled}
+            isMultiAddButtonDisabled={isMultiAddButtonDisabled} isQuickAddConfirmDisabled={isQuickAddConfirmDisabled} isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
+            isQuickAddTextButtonDisabled={isQuickAddTextButtonDisabled} isAiLoading={isAiLoading} toggleOverlay={toggleOverlay} onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
+            onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected} onConfirmQuickAdd={handleConfirmQuickAdd} onQuickAddImage={handleQuickAddImage} onQuickAddText={handleQuickAddText}
+            onBackFromQuickAdd={() => { setModalMode("normal"); setQuickAddTextInput(""); }}
           />
-
-          {modalMode === "normal" && (
-            <View style={styles.normalModeContentContainer}>
-              <FoodSelectionList
-                search={internalSearch}
-                updateSearch={setInternalSearch}
-                foods={foods}
-                recentFoods={recentFoods}
-                selectedFood={internalSelectedFood}
-                handleSelectFood={setInternalSelectedFood}
-                setGrams={setInternalGrams}
-                setSelectedMultipleFoods={setSelectedMultipleFoods}
-                selectedMultipleFoods={selectedMultipleFoods}
-                handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection}
-                foodIcons={foodIcons}
-                onAddNewFoodRequest={onAddNewFoodRequest}
-                isActionDisabled={isActionDisabled}
-                isEditMode={isEditMode}
-                lastUsedPortions={lastUsedPortions}
-                modalMode={modalMode}
-              />
-              {internalSelectedFood && (
-                <AmountInputSection
-                  selectedFood={internalSelectedFood}
-                  grams={internalGrams}
-                  setGrams={setInternalGrams}
-                  unitMode={unitMode}
-                  setUnitMode={setUnitMode}
-                  autoInput={autoInput}
-                  setAutoInput={setAutoInput}
-                  handleEstimateGrams={handleEstimateGrams}
-                  isAiLoading={isAiLoading}
-                  isAiButtonDisabled={isAiButtonDisabled}
-                  isEditMode={isEditMode}
-                  servingSizeSuggestions={servingSizeSuggestions}
-                  isActionDisabled={isActionDisabled}
-                  foodGradeResult={foodGradeResult}
-                />
-              )}
-            </View>
-          )}
-
-          {modalMode === "quickAddSelect" && (
-             <QuickAddList
-                items={quickAddItems}
-                selectedIndices={selectedQuickAddIndices}
-                editingIndex={editingQuickAddItemIndex}
-                editedName={editedFoodName}
-                editedGrams={editedGrams}
-                onToggleItem={handleToggleQuickAddItem}
-                onEditItem={handleEditQuickAddItem}
-                onSaveEdit={handleSaveQuickAddItemEdit}
-                onCancelEdit={handleCancelQuickAddItemEdit}
-                onNameChange={setEditedFoodName}
-                onGramsChange={handleQuickAddGramsChange}
-                isLoading={quickAddLoading}
-                foodIcons={foodIcons}
-                style={styles.quickAddListStyle}
-                onSaveItemToLibrary={handleSaveQuickAddItemToLibrary}
-                foods={foods}
-            />
-          )}
-           <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
+          {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} lastUsedPortions={lastUsedPortions} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
+          {modalMode === 'quickAddText' && <View style={styles.quickAddTextView}><Input placeholder={t('addEntryModal.textQuickAdd.placeholder')} multiline numberOfLines={6} value={quickAddTextInput} onChangeText={setQuickAddTextInput} inputStyle={styles.quickAddTextArea} inputContainerStyle={styles.quickAddTextAreaContainer} containerStyle={{ paddingHorizontal: 0 }} autoFocus /><Button title={t('addEntryModal.textQuickAdd.analyzeButton')} onPress={handleAnalyzeText} loading={isTextQuickAddLoading} disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} buttonStyle={styles.analyzeButton} /></View>}
+          {modalMode === 'quickAddSelect' && <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} />}
+          <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -1528,13 +1261,12 @@ const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: Dimensions.get("window").height * 0.85, },
     overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1, },
     keyboardAvoidingView: { width: "100%", height: "100%" },
-    normalModeContentContainer: {
-        flex: 1,
-        justifyContent: 'flex-start',
-    },
-    quickAddListStyle: {
-        flex: 1,
-    },
+    normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
+    quickAddListStyle: { flex: 1 },
+    quickAddTextView: { flex: 1, justifyContent: 'flex-start', paddingTop: 10 },
+    quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
+    quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
+    analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },
 }));
 
 export default AddEntryModal;
@@ -2249,13 +1981,14 @@ import { Text, Icon, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { t } from '../../localization/i18n';
 
-type ModalMode = 'normal' | 'quickAddSelect';
+type ModalMode = 'normal' | 'quickAddSelect' | 'quickAddText';
 
 interface ModalHeaderProps {
     title: string;
     isEditMode: boolean;
     modalMode: ModalMode;
     quickAddLoading: boolean;
+    textQuickAddLoading: boolean;
     selectedFood: Food | null;
     selectedMultipleFoodsSize: number;
     selectedQuickAddIndicesSize: number;
@@ -2265,36 +1998,23 @@ interface ModalHeaderProps {
     isMultiAddButtonDisabled: boolean;
     isQuickAddConfirmDisabled: boolean;
     isQuickAddImageButtonDisabled: boolean;
-    isAiLoading: boolean; // For loading state on single add/update
+    isQuickAddTextButtonDisabled: boolean;
+    isAiLoading: boolean;
     toggleOverlay: () => void;
     onAddOrUpdateSingleEntry: () => void;
     onConfirmAddMultipleSelected: () => void;
     onConfirmQuickAdd: () => void;
     onQuickAddImage: () => void;
+    onQuickAddText: () => void;
     onBackFromQuickAdd: () => void;
 }
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({
-    title,
-    isEditMode,
-    modalMode,
-    quickAddLoading,
-    selectedFood,
-    selectedMultipleFoodsSize,
-    selectedQuickAddIndicesSize,
-    editingQuickAddItemIndex,
-    isActionDisabled,
-    isSingleAddButtonDisabled,
-    isMultiAddButtonDisabled,
-    isQuickAddConfirmDisabled,
-    isQuickAddImageButtonDisabled,
-    isAiLoading,
-    toggleOverlay,
-    onAddOrUpdateSingleEntry,
-    onConfirmAddMultipleSelected,
-    onConfirmQuickAdd,
-    onQuickAddImage,
-    onBackFromQuickAdd,
+    title, isEditMode, modalMode, quickAddLoading, textQuickAddLoading, selectedFood, selectedMultipleFoodsSize,
+    selectedQuickAddIndicesSize, editingQuickAddItemIndex, isActionDisabled, isSingleAddButtonDisabled,
+    isMultiAddButtonDisabled, isQuickAddConfirmDisabled, isQuickAddImageButtonDisabled, isQuickAddTextButtonDisabled,
+    isAiLoading, toggleOverlay, onAddOrUpdateSingleEntry, onConfirmAddMultipleSelected,
+    onConfirmQuickAdd, onQuickAddImage, onQuickAddText, onBackFromQuickAdd,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -2304,9 +2024,11 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         toggleOverlay();
     };
 
+    const isBackButtonVisible = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
+
     return (
         <View style={styles.header}>
-            {modalMode === 'quickAddSelect' && editingQuickAddItemIndex === null ? (
+            {isBackButtonVisible ? (
                 <Button
                     type="clear"
                     onPress={() => { if (isActionDisabled) return; Keyboard.dismiss(); onBackFromQuickAdd(); }}
@@ -2315,12 +2037,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                     disabled={isActionDisabled}
                 />
             ) : (
-                <TouchableOpacity
-                    onPress={handleClose}
-                    style={styles.closeIconContainer}
-                    disabled={isActionDisabled}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
+                <TouchableOpacity onPress={handleClose} style={styles.closeIconContainer} disabled={isActionDisabled} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Icon name="close" type="material" size={28} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
                 </TouchableOpacity>
             )}
@@ -2333,13 +2050,22 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                 {modalMode === 'normal' && (
                     <>
                         {!isEditMode && !selectedFood && (
-                            <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
-                                {quickAddLoading ? (
-                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                ) : (
-                                    <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
-                                )}
-                            </TouchableOpacity>
+                            <View style={styles.quickAddIconsContainer}>
+                                <TouchableOpacity onPress={onQuickAddText} disabled={isQuickAddTextButtonDisabled} style={styles.headerIcon}>
+                                    {quickAddLoading && textQuickAddLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                                    ) : (
+                                        <Icon name="text-box-search-outline" type="material-community" size={26} color={isQuickAddTextButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon}>
+                                    {quickAddLoading && !textQuickAddLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                                    ) : (
+                                        <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         )}
                         {isEditMode ? (
                             <Button title={t('addEntryModal.buttonUpdate')} onPress={onAddOrUpdateSingleEntry} disabled={isSingleAddButtonDisabled} buttonStyle={[styles.actionButton, styles.updateButton]} titleStyle={styles.buttonTitle} loading={isAiLoading && !!selectedFood} />
@@ -2353,68 +2079,25 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                 {modalMode === 'quickAddSelect' && editingQuickAddItemIndex === null && (
                     <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', { count: selectedQuickAddIndicesSize })} onPress={onConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]} titleStyle={styles.buttonTitle} loading={quickAddLoading} />
                 )}
-                {modalMode === 'quickAddSelect' && editingQuickAddItemIndex !== null && (
-                     <View style={styles.placeholderActionView} /> // Keep layout consistent when editing in quick add
-                )}
+                {modalMode === 'quickAddText' && <View style={styles.placeholderActionView} />}
+                {modalMode === 'quickAddSelect' && editingQuickAddItemIndex !== null && <View style={styles.placeholderActionView} />}
             </View>
         </View>
     );
 };
 
 const useStyles = makeStyles((theme) => ({
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-        paddingHorizontal: 0,
-    },
-    closeIconContainer: {
-        padding: 5,
-        minWidth: 40, // Ensure touchable area
-        alignItems: 'flex-start',
-    },
-    overlayTitle: {
-        color: theme.colors.text,
-        fontWeight: 'bold',
-        fontSize: 20,
-        textAlign: 'center',
-        flex: 1,
-        marginHorizontal: 5,
-    },
-    editModeTitle: {
-        color: theme.colors.warning,
-    },
-    headerActionsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        minWidth: 80, // Ensure space for buttons or icons
-        justifyContent: 'flex-end',
-    },
-    headerIcon: {
-        paddingHorizontal: 8, // Combined padding for the icon itself
-        marginRight: 5,
-    },
-    actionButton: {
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        minWidth: 70,
-        marginLeft: 5, // Spacing between icon and button if both present
-        backgroundColor: theme.colors.primary,
-    },
-    updateButton: {
-        backgroundColor: theme.colors.warning,
-    },
-    buttonTitle: {
-        color: theme.colors.white,
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    placeholderActionView: { // Used to balance header when no action button is on the right in quick add edit
-        width: 70,
-        marginLeft: 5,
-    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 0 },
+    closeIconContainer: { padding: 5, minWidth: 40, alignItems: 'flex-start' },
+    overlayTitle: { color: theme.colors.text, fontWeight: 'bold', fontSize: 20, textAlign: 'center', flex: 1, marginHorizontal: 5 },
+    editModeTitle: { color: theme.colors.warning },
+    headerActionsContainer: { flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'flex-end' },
+    quickAddIconsContainer: { flexDirection: 'row-reverse', alignItems: 'center' },
+    headerIcon: { paddingHorizontal: 6, marginHorizontal: 2 },
+    actionButton: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, minWidth: 70, marginLeft: 5, backgroundColor: theme.colors.primary },
+    updateButton: { backgroundColor: theme.colors.warning },
+    buttonTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 14 },
+    placeholderActionView: { width: 70, marginLeft: 5 },
 }));
 
 export default ModalHeader;
@@ -2547,11 +2230,26 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setAiTextLoading(true);
             try {
                 const macros = await getMacrosFromText(currentFoodName, ingredients);
-                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate); handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
-                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate); handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-                setMode("normal"); Toast.show({ type: 'info', text1: t('addFoodModal.macrosEstimatedText'), position: 'bottom' });
-            } catch (error) { console.error("AI Macro fetch error (recipe - modal):", error); }
-            finally { setAiTextLoading(false); }
+                // The 'macros' object now includes 'foodName'
+                if (macros.foodName) {
+                    handleInputChange("name", macros.foodName, isUpdate);
+                }
+                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
+                handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
+                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
+                handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
+                setMode("normal");
+                Toast.show({
+                    type: 'info',
+                    text1: currentFoodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
+                    text2: currentFoodName ? undefined : t('addFoodModal.foodIdentifiedMessage', { foodName: macros.foodName }),
+                    position: 'bottom'
+                });
+            } catch (error) {
+                console.error("AI Macro fetch error (recipe - modal):", error);
+            } finally {
+                setAiTextLoading(false);
+            }
         }
     };
 
@@ -2567,7 +2265,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      const result = await getMacrosForImageFile(assetForAnalysis);
                      const isUpdate = !!editFood;
                      handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
-                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate); handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
+                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
+                     handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
                      setMode("normal"); setIngredients("");
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
@@ -4895,11 +4594,12 @@ export default i18n;
     "titleQuickAddSelect": "Select Items to Add",
     "titleQuickAddEdit": "Edit Item",
     "titleQuickAddAnalyzing": "Analyzing...",
+    "titleQuickAddFromText": "Quick Add from Text",
     "searchPlaceholder": "Search Foods...",
     "recent": "Recent",
     "noResults": "No foods found matching \"%{searchTerm}\".",
     "emptyLibraryMessage": "Your food library is empty. Tap below to add your first food item!",
-    "noQuickAddResults": "No food items found in the image.",
+    "noQuickAddResults": "No food items found.",
     "amount": "Amount",
     "grams": "Grams",
     "autoAi": "Auto (AI)",
@@ -4954,7 +4654,13 @@ export default i18n;
     "overwrite": "Overwrite",
     "toastFoodSavedToLibrary": "\"%{foodName}\" saved to library.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" updated in library.",
-    "toastErrorSavingToLibrary": "Error saving food to library."
+    "toastErrorSavingToLibrary": "Error saving food to library.",
+    "textQuickAdd": {
+      "placeholder": "Describe your meal...\ne.g., '150g chicken breast, a side salad with tomatoes, and one apple'",
+      "analyzeButton": "Analyze Text",
+      "alertInputEmpty": "Input Empty",
+      "alertInputEmptyMessage": "Please type or say what you ate to analyze."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Add New Food",
@@ -5358,11 +5064,12 @@ export default i18n;
     "titleQuickAddSelect": "בחר פריטים להוספה",
     "titleQuickAddEdit": "ערוך פריט",
     "titleQuickAddAnalyzing": "מנתח...",
+    "titleQuickAddFromText": "הוספה מהירה מטקסט",
     "searchPlaceholder": "חפש מאכלים...",
     "recent": "אחרונים",
     "noResults": "לא נמצאו מאכלים התואמים ל-\"%{searchTerm}\".",
     "emptyLibraryMessage": "ספריית המאכלים שלך ריקה. לחץ למטה להוספת המאכל הראשון שלך!",
-    "noQuickAddResults": "לא נמצאו פריטי מזון בתמונה.",
+    "noQuickAddResults": "לא נמצאו פריטי מזון.",
     "amount": "כמות",
     "grams": "גרם",
     "autoAi": "אוטומטי (AI)",
@@ -5417,7 +5124,13 @@ export default i18n;
     "overwrite": "החלף",
     "toastFoodSavedToLibrary": "\"%{foodName}\" נשמר לספרייה.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" עודכן בספרייה.",
-    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה."
+    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה.",
+    "textQuickAdd": {
+      "placeholder": "תאר את הארוחה שלך...\nלמשל, '150ג חזה עוף, סלט קטן עם עגבניות, ותפוח אחד'",
+      "analyzeButton": "נתח טקסט",
+      "alertInputEmpty": "קלט ריק",
+      "alertInputEmptyMessage": "אנא הקלד או אמור מה אכלת לצורך הניתוח."
+    }
   },
   "addFoodModal": {
     "titleAdd": "הוסף מאכל חדש",
@@ -5821,11 +5534,12 @@ export default i18n;
     "titleQuickAddSelect": "Выберите элементы для добавления",
     "titleQuickAddEdit": "Изменить элемент",
     "titleQuickAddAnalyzing": "Анализ...",
+    "titleQuickAddFromText": "Быстрое добавление по тексту",
     "searchPlaceholder": "Поиск продуктов...",
     "recent": "Недавние",
     "noResults": "Продукты, соответствующие \"%{searchTerm}\", не найдены.",
     "emptyLibraryMessage": "Ваша библиотека продуктов пуста. Нажмите ниже, чтобы добавить первый продукт!",
-    "noQuickAddResults": "На изображении не найдено пищевых продуктов.",
+    "noQuickAddResults": "Продукты не найдены.",
     "amount": "Количество",
     "grams": "Граммы",
     "autoAi": "Авто (ИИ)",
@@ -5880,7 +5594,13 @@ export default i18n;
     "overwrite": "Перезаписать",
     "toastFoodSavedToLibrary": "\"%{foodName}\" сохранено в библиотеку.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" обновлено в библиотеке.",
-    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку."
+    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку.",
+    "textQuickAdd": {
+      "placeholder": "Опишите ваш прием пищи...\nнапример, '150г куриной грудки, небольшой салат с помидорами и одно яблоко'",
+      "analyzeButton": "Анализировать текст",
+      "alertInputEmpty": "Пустое поле",
+      "alertInputEmptyMessage": "Пожалуйста, напишите или произнесите, что вы съели, для анализа."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Добавить новый продукт",
@@ -7101,7 +6821,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [t]);
 
-    const handleInputChange = useCallback((key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
+    const handleInputChange = (key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
         const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
     
@@ -7134,8 +6854,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } else {
             setNewFood(updateState);
         }
-    }, []);
-
+    };
 
     const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
 
@@ -8031,28 +7750,23 @@ export default SettingsScreen;
 
 ---------- backendService.ts ----------
 // src/services/backendService.ts
-// ---------- src/services/backendService.ts ----------
 import Constants from 'expo-constants';
 import { getClientId } from './clientIDService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
 import uuid from 'react-native-uuid';
-import i18n, { t } from '../localization/i18n'; // Import t and i18n
+import i18n, { t } from '../localization/i18n';
 
 const getBackendUrl = (): string => {
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
     if (envUrl) {
-        console.log("Using Backend URL from EXPO_PUBLIC_BACKEND_URL:", envUrl);
         return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
     }
     const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    console.log(envUrl, configUrl);
-    
     if (configUrl) {
-        console.warn("Using Backend URL from app.json extra.env. Consider using build-time environment variables (EXPO_PUBLIC_*) for production.");
         return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
     }
-    console.error("BACKEND_URL not found in environment variables or app.json extra.env. Using default DEVELOPMENT URL. THIS IS NOT FOR PRODUCTION.");
+    console.error("BACKEND_URL not found. Using default DEVELOPMENT URL.");
     const DEV_URL = 'http://192.168.1.15:8000';
     return `${DEV_URL}/api/v1`;
 };
@@ -8061,7 +7775,6 @@ const BASE_URL = getBackendUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-// IconResponse removed as icons are handled locally
 export interface UserStatus { client_id: string; coins: number; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
@@ -8074,158 +7787,71 @@ export class BackendError extends Error {
 }
 
 async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, needsAuth: boolean = true ): Promise<T> {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${BASE_URL}${cleanEndpoint}`;
-    const method = options.method || 'GET';
-    let response: Response | null = null; let requestId: string | null = null;
-
-    console.log(`[API Request] ${method} ${url} - Starting (Auth: ${needsAuth}, Locale: ${i18n.locale})`);
-
-    const defaultHeaders: HeadersInit = {
-        'Content-Type': 'application/json', 'Accept': 'application/json',
-        'X-Platform': Platform.OS, 'Accept-Language': i18n.locale,
-    };
-    let authHeaders: HeadersInit = {};
-    if (needsAuth) {
-        const clientId = await getClientId();
-        if (!uuid.validate(clientId)) {
-             console.error(`[API Request] Invalid Client ID format detected: ${clientId}. Aborting request.`);
-             throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-        }
-        authHeaders = { 'X-Client-ID': clientId };
-        console.log(`[API Request] Adding X-Client-ID header.`);
-    }
-    const config: RequestInit = { ...options, headers: { ...defaultHeaders, ...authHeaders, ...options.headers, } };
-
-     if (config.body && typeof config.body === 'string') {
-          try {
-              const bodyObj = JSON.parse(config.body);
-              const bodyKeys = Object.keys(bodyObj);
-              const bodyPreview = bodyKeys.length > 0 ? `{ keys: [${bodyKeys.join(', ')}] }` : '{}';
-              console.log(`[API Request] ${method} ${url} - Body Preview: ${bodyPreview}`);
-          } catch {
-              console.log(`[API Request] ${method} ${url} - Body: (non-JSON or failed parse)`);
-          }
-     }
-
+    const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    let response: Response | null = null;
+    let requestId: string | null = null;
     try {
-        response = await fetch(url, config);
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Platform': Platform.OS,
+            'Accept-Language': i18n.locale,
+            ...(options.headers as Record<string, string> || {})
+        };
+
+        if (needsAuth) {
+            const clientId = await getClientId();
+            if (!uuid.validate(clientId)) throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
+            headers['X-Client-ID'] = clientId;
+        }
+        
+        response = await fetch(url, { ...options, headers });
         requestId = response.headers.get("X-Request-ID");
-        const status = response.status; const contentType = response.headers.get("content-type");
 
-        console.log(`[API Response] ${method} ${url} - Status: ${status}, Content-Type: ${contentType}, RequestID: ${requestId || 'N/A'}`);
+        if (response.status === 204) return null as T;
 
-        if (status === 204) {
-             console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
-             return null as T;
-        }
-
-        let responseBody: any; let isJson = false;
-        try {
-            if (contentType && contentType.includes("application/json")) {
-                responseBody = await response.json();
-                isJson = true;
-            } else {
-                responseBody = await response.text();
-                console.log(`[API Response] ${method} ${url} - Received Text: ${responseBody.substring(0, 200)}...`);
-            }
-        } catch (parseError) {
-            console.error(`[API Error] ${method} ${url} - Failed to parse response body (Status: ${status}):`, parseError);
-            const rawText = await response.text().catch(() => '(Could not get raw text)');
-            if (!response.ok) {
-                throw new BackendError(t('backendService.errorRequestFailedParse', {status}), status, rawText, requestId);
-            } else {
-                console.warn(`[API Warning] ${method} ${url} - Status ${status} OK, but failed to parse response body.`);
-                 return null as T;
-            }
-        }
+        const contentType = response.headers.get("content-type");
+        const isJson = contentType && contentType.includes("application/json");
+        const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', {status}); 
-            let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
-
-            if (isJson && responseBody) {
-                 const errorData = responseBody as BackendErrorResponse;
-                 if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail; 
-                    errorDetail = errorMessage;
-                 } else if (Array.isArray(errorData.detail)) {
-                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); 
-                     errorDetail = errorData.detail;
-                     console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
-                 } else {
-                      errorMessage = t('backendService.errorRequestFailedDetailFormat', {status});
-                      errorDetail = JSON.stringify(responseBody);
-                 }
+            let errorMessage = t('backendService.errorRequestFailedParse', { status: response.status });
+            if (isJson && responseBody?.detail) {
+                errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
             } else if (!isJson) {
-                 errorMessage = t('backendService.errorRequestFailedWithServerMsg', {status, response: responseBody.substring(0,100)});
-                 errorDetail = responseBody;
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status, response: responseBody.substring(0, 100) });
             }
-
-            if (status === 401 && needsAuth) errorMessage = t('backendService.errorAuthFailed');
-            if (status === 403) errorMessage = t('backendService.errorPermissionDenied');
-            if (status === 404) errorMessage = t('backendService.errorNotFound');
-            if (status === 429) errorMessage = t('backendService.errorTooManyRequests');
-            if (status === 402) errorMessage = t('backendService.errorInsufficientCoins');
-
-            console.error(`[API Error] ${method} ${url} - Status: ${status}, Message: "${errorMessage}", Detail:`, errorDetail);
-            throw new BackendError(errorMessage, status, errorDetail, requestId);
+            if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
+            if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
-
-        console.log(`[API Response] ${method} ${url} - Success (Status: ${status})`);
         return responseBody as T;
 
     } catch (error) {
-        const logRequestId = requestId ? ` (RequestID: ${requestId})` : '';
         if (error instanceof BackendError) throw error;
-
-        console.error(`[API Network Error] ${method} ${url}${logRequestId} - Error:`, error);
         let networkErrorMessage = t('backendService.errorNetwork');
-         if (error instanceof Error) {
-             if (error.name === 'AbortError' || error.message.includes('timed out')) networkErrorMessage = t('backendService.errorNetworkTimeout');
-             else if (error.message.includes('Network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
-             else networkErrorMessage += t('backendService.errorNetworkDetails', {error: error.message});
-         } else networkErrorMessage += t('backendService.errorNetworkUnknown');
+        if (error instanceof Error && error.name === 'AbortError') {
+            networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error) {
+            networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+        }
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    return fetchBackend<UserStatus>(`/users/status/${clientId}`, {}, true);
-};
-
-export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
-    const body = { food_name: foodName, ingredients };
-    return fetchBackend<Macros>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
+export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForTextMultiple = async (text: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
-    const body = { food_name: foodName, quantity_description: quantityDescription };
-    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify(body), }, true);
-    if (response === null || typeof response.grams !== 'number') {
-        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
-    }
+    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
+    if (response === null || typeof response.grams !== 'number') throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
     return response.grams;
 };
-
-// getFoodIcon function removed as icons are now handled locally
-
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    const body = { amount };
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, { method: 'POST', body: JSON.stringify(body), }, true);
+    return fetchBackend<UserStatus>(`/users/add_coins/${await getClientId()}`, { method: 'POST', body: JSON.stringify({ amount }) });
 };
 ---------- END backendService.ts ----------
 
@@ -9318,118 +8944,66 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
 
 ---------- macros.ts ----------
 // src/utils/macros.ts
-// src/utils/macros.ts
-import * as FileSystem from 'expo-file-system';
-import {
-    getMacrosForRecipe,
-    getMacrosForImageSingle,
-    getMacrosForImageMultiple,
-    BackendError
-} from '../services/backendService';
 import { Alert } from 'react-native';
+import { getMacrosForRecipe, getMacrosForImageSingle, getMacrosForImageMultiple, getMacrosForTextMultiple, BackendError } from '../services/backendService';
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { ImagePickerAsset } from 'expo-image-picker';
-import { getBase64FromUri } from './imageUtils'; // Corrected import path check
+import { getBase64FromUri } from './imageUtils';
 import { t } from '../localization/i18n';
 
-// --- Helper function to determine MIME type ---
-export function determineMimeType(asset: {
-    uri: string;
-    mimeType?: string | null;
-    fileName?: string | null;
-}): string {
-    // 1. Prioritize asset.mimeType
-    if (asset.mimeType && asset.mimeType.includes('/')) {
-        console.log(`MIME Type: Using provided type: ${asset.mimeType}`);
-        return asset.mimeType;
-    }
-
-    // 2. Infer from URI extension (fallback)
-    const uriParts = asset.uri.split('.');
-    const extension = uriParts.pop()?.toLowerCase();
-    console.log(`MIME Type: Inferring from extension: .${extension}`);
+export function determineMimeType(asset: { uri: string; mimeType?: string | null; fileName?: string | null; }): string {
+    if (asset.mimeType && asset.mimeType.includes('/')) return asset.mimeType;
+    const extension = asset.uri.split('.').pop()?.toLowerCase();
     switch (extension) {
         case 'jpg': case 'jpeg': return 'image/jpeg';
         case 'png': return 'image/png';
-        case 'gif': return 'image/gif';
-        case 'webp': return 'image/webp';
-        case 'bmp': return 'image/bmp';
-        default:
-            console.warn(`MIME Type: Could not determine specific type for URI: ${asset.uri}. Defaulting to image/jpeg.`);
-            return 'image/jpeg'; // Default
+        default: return 'image/jpeg';
     }
 }
 
-
-// --- Service Interaction Functions (with improved error handling context) ---
-
-// Get macros from recipe text
-export async function getMacrosFromText(
-    foodName: string,
-    ingredients: string
-): Promise<Macros> {
+export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
     try {
-        console.log(`Util: Requesting macros for recipe: "${foodName}"`);
-        const macros = await getMacrosForRecipe(foodName, ingredients);
-        console.log(`Util: Received macros for recipe: "${foodName}"`);
-        return macros;
+        return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        console.error(`Util: Error getting macros for recipe "${foodName}":`, error);
-        const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorGetMacrosRecipe', { error: error instanceof Error ? error.message : String(error) });
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorGetMacrosRecipe', { error: String(error) });
         Alert.alert(t('utils.macros.alertAiErrorRecipe'), message);
-        throw error; // Re-throw to allow caller to handle
+        throw error;
     }
 }
 
-// Get macros for a single food item from an image asset
 export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<MacrosWithFoodName> {
-    let base64File: string;
     try {
-        // Use shared utility for base64 conversion
-        base64File = await getBase64FromUri(asset.uri);
-    } catch (err) {
-        Alert.alert(t('utils.macros.alertImageReadError'), err instanceof Error ? err.message : t('utils.macros.alertImageReadErrorMessage'));
-        throw err; // Re-throw error for caller to handle
-    }
-
-    const mimeType = determineMimeType(asset);
-    console.log(`Util: Requesting single food analysis. MIME: ${mimeType}, Asset URI: ${asset.uri}`);
-
-    try {
-        const result = await getMacrosForImageSingle(base64File, mimeType);
-        console.log(`Util: Received single food analysis: ${result.foodName}`);
-        return result;
+        const base64File = await getBase64FromUri(asset.uri);
+        const mimeType = determineMimeType(asset);
+        return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        console.error(`Util: Error getting single food macros for image ${asset.uri}:`, error);
-        const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorImageAnalysis', { error: error instanceof Error ? error.message : String(error) });
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorImageAnalysis', { error: String(error) });
         Alert.alert(t('utils.macros.alertAnalysisFailedSingle'), message);
-        throw error; // Re-throw error
+        throw error;
     }
 }
 
-// Get multiple estimated food items from an image asset
 export async function getMultipleFoodsFromImage(base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> {
-    console.log(`Util: Requesting multi-food analysis. MIME: ${mimeType}`);
-
     try {
         const results = await getMacrosForImageMultiple(base64Image, mimeType);
-        console.log(`Util: Received ${results.length} estimated items from backend.`);
-        if (!Array.isArray(results)) {
-            console.error("Util: Backend returned non-array for multiple food items:", results);
-            throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
-        }
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
         return results;
     } catch (error) {
-        console.error(`Util: Error getting multiple food macros from image:`, error);
-         const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorCouldNotAnalyze', { error: error instanceof Error ? error.message : String(error) });
+        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
         Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
-        throw error; // Re-throw error
+        throw error;
+    }
+}
+
+export async function getMultipleFoodsFromText(text: string): Promise<EstimatedFoodItem[]> {
+    try {
+        const results = await getMacrosForTextMultiple(text);
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
+        return results;
+    } catch (error) {
+        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
+        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
+        throw error;
     }
 }
 
