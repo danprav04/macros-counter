@@ -1,138 +1,223 @@
-// src/navigation/AppNavigator.tsx
-// navigation/AppNavigator.tsx
-import React, { useState, useCallback } from 'react';
-import { Platform, I18nManager } from 'react-native';
-import { createBottomTabNavigator, BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Icon, useTheme } from '@rneui/themed';
+import React from 'react';
+import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
+import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
+import * as Localization from 'expo-localization';
+
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import QuestionnaireScreen from '../screens/QuestionnaireScreen'; // Import new screen
-import { LanguageCode, Settings } from '../types/settings';
-import i18n, { t } from '../localization/i18n';
-import { Food, SharedFoodData } from '../types/food'; // Import Food and SharedFoodData types
+import QuestionnaireScreen from '../screens/QuestionnaireScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 
-// Define ParamList for the Tab Navigator
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { LanguageCode } from '../types/settings';
+import i18n, { setLocale, t } from '../localization/i18n';
+import { Food } from '../types/food';
+
+// Define ParamLists
 export type MainTabParamList = {
-  DailyEntryRoute: { quickAddFood?: Food }; // For DailyEntryScreen, can receive quickAddFood
-  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };   // For FoodListScreen, can receive foodData string from deep link
-  SettingsStackRoute: undefined;             // For the Settings Stack
+  DailyEntryRoute: { quickAddFood?: Food };
+  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };
+  SettingsStackRoute: undefined;
 };
 
-// Define ParamList for the Settings Stack
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
 };
 
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
 
+export type RootStackParamList = {
+  Auth: undefined;
+  Main: undefined;
+};
+
+// Create Navigators
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const SettingsStackNav = createNativeStackNavigator<SettingsStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
-interface AppNavigatorProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  // No longer needs onDataOperation here, as handleFoodChange serves this purpose internally
+// Linking configuration
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      Main: {
+          path: '', // Root path maps to main tabs
+          screens: {
+              FoodListRoute: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+          }
+      },
+    }
+  },
+};
+
+// Theming
+declare module "@rneui/themed" {
+  export interface Colors { text: string; card: string; successLight: string; }
 }
+const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", };
+const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
 
-// Props for the SettingsStackNavigatorComponent
-interface SettingsStackProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // This will be handleFoodChange from AppNavigator
-}
-
-
-// Settings Stack Navigator
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: SettingsStackProps) {
+// Settings Stack Navigator Component
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; }) {
   const { theme } = useTheme();
   return (
-    <SettingsStackNav.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTitleStyle: { color: theme.colors.text },
-        headerTintColor: theme.colors.primary,
-        headerTitleAlign: Platform.OS === 'ios' ? 'center' : 'center',
-      }}
-    >
+    <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
+        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
       </SettingsStackNav.Screen>
-      <SettingsStackNav.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
-        {() => <QuestionnaireScreen />}
-      </SettingsStackNav.Screen>
+      <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
   );
 }
 
-
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChange }) => {
+// Main Tab Navigator Component
+function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; }) {
   const { theme } = useTheme();
-  const [foodListRefresh, setFoodListRefresh] = useState(false);
-
-  const handleFoodChange = useCallback(() => {
-    setFoodListRefresh(prev => !prev);
-  }, []);
-
-  // Use static route names for consistency
-  const dailyEntryRouteName: keyof MainTabParamList = 'DailyEntryRoute';
-  const foodListRouteName: keyof MainTabParamList = 'FoodListRoute';
-  const settingsStackRouteName: keyof MainTabParamList = 'SettingsStackRoute';
-
+  const [foodListRefresh, setFoodListRefresh] = React.useState(false);
+  const handleFoodChange = React.useCallback(() => setFoodListRefresh(prev => !prev), []);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string = '';
-          let type: string = 'ionicon'; // Default type
-
-          if (route.name === dailyEntryRouteName) {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === foodListRouteName) {
-            iconName = focused ? 'fast-food' : 'fast-food-outline';
-          } else if (route.name === settingsStackRouteName) { 
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-          return <Icon name={iconName} type={type} size={size} color={color} />;
+          if (route.name === 'DailyEntryRoute') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'FoodListRoute') iconName = focused ? 'fast-food' : 'fast-food-outline';
+          else if (route.name === 'SettingsStackRoute') iconName = focused ? 'settings' : 'settings-outline';
+          return <Icon name={iconName} type='ionicon' size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.secondary,
-        headerShown: false, 
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.divider,
-        },
-        tabBarLabelStyle: {
-          fontWeight: 'bold',
-        }
+        headerShown: false,
+        tabBarStyle: { backgroundColor: theme.colors.background, borderTopColor: theme.colors.divider },
+        tabBarLabelStyle: { fontWeight: 'bold' }
       })}
     >
-      <Tab.Screen
-        name={dailyEntryRouteName}
-        options={{ title: t('dailyEntryScreen.tabTitle') }}
-      >
+      <Tab.Screen name="DailyEntryRoute" options={{ title: t('dailyEntryScreen.tabTitle') }}>
         {() => <DailyEntryScreen key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={foodListRouteName}
-        options={{ title: t('foodListScreen.tabTitle') }}
-      >
+      <Tab.Screen name="FoodListRoute" options={{ title: t('foodListScreen.tabTitle') }}>
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={settingsStackRouteName} 
-        options={{ title: t('settingsScreen.title') }} 
-      >
-        {() => <SettingsStackNavigatorComponent 
-                  onThemeChange={onThemeChange} 
-                  onLocaleChange={onLocaleChange} 
-                  onDataOperation={handleFoodChange} // Pass handleFoodChange here
-                />}
+      <Tab.Screen name="SettingsStackRoute" options={{ title: t('settingsScreen.title') }}>
+        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
-};
+}
 
-export default AppNavigator;
+// Auth Stack Navigator Component
+function AuthNavigator() {
+    const { theme } = useTheme();
+    // Corrected: `cardStyle` is deprecated, use `contentStyle` for Native Stack Navigator
+    const screenOptions: NativeStackNavigationOptions = {
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.background }
+    };
+    return (
+        <AuthStack.Navigator screenOptions={screenOptions}>
+            <AuthStack.Screen name="Login" component={LoginScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+        </AuthStack.Navigator>
+    )
+}
+
+// App Content - Determines which stack to show
+function AppContent() {
+  const { authState, settings, changeTheme, changeLocale } = useAuth() as AuthContextType;
+  const colorScheme = useColorScheme();
+
+  const themeMode = settings.theme;
+  const currentThemeConfig = React.useMemo(() => {
+    const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+    return isDark ? { mode: 'dark' as const, colors: darkThemeColors } : { mode: 'light' as const, colors: lightThemeColors };
+  }, [themeMode, colorScheme]);
+
+  const navigationTheme = React.useMemo(() => ({
+    dark: { ...DarkTheme, colors: { ...DarkTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.successLight, }, },
+    light: { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.success, }, },
+  }), [currentThemeConfig]);
+  
+  const handleLocaleChange = (newLocale: LanguageCode) => {
+    const oldLocale = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : settings.language;
+    changeLocale(newLocale);
+    const newEffectiveLocale = newLocale === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : newLocale;
+
+    const oldIsRTL = oldLocale === 'he';
+    const newIsRTL = newEffectiveLocale === 'he';
+
+    if (oldIsRTL !== newIsRTL && Platform.OS !== 'web') {
+        Alert.alert( t('confirmationModal.restartRequiredTitle'), t('settingsScreen.language.restartMessage'),
+            [ { text: t('app.alertButtons.later'), style: "cancel" },
+              { text: t('app.alertButtons.restartNow'), onPress: () => DevSettings.reload() } ]
+        );
+    } else if (Platform.OS === 'web' && oldIsRTL !== newIsRTL) {
+        window.location.reload();
+    }
+  };
+
+  const LoadingFallback = () => (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <Text>Loading...</Text>
+      </View>
+  )
+
+  return (
+    <ThemeProvider theme={createTheme(currentThemeConfig)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
+            <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
+            <NavigationContainer 
+                linking={linking} 
+                theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light} 
+                fallback={<LoadingFallback />}
+            >
+                <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                    {authState.authenticated ? (
+                         <RootStack.Screen name="Main">
+                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} />}
+                         </RootStack.Screen>
+                    ) : (
+                        <RootStack.Screen name="Auth" component={AuthNavigator} />
+                    )}
+                </RootStack.Navigator>
+            </NavigationContainer>
+        </SafeAreaView>
+    </ThemeProvider>
+  );
+}
+
+// Main AppNavigator export
+export default function AppNavigator() {
+    const { isLoading, settings } = useAuth() as AuthContextType;
+    
+    React.useEffect(() => {
+        if (settings) {
+            const lang = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US') : settings.language;
+            setLocale(lang);
+        }
+    }, [settings]);
+
+    if (isLoading) {
+        return (
+            <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                <Text>Initializing App...</Text>
+            </SafeAreaView>
+        )
+    }
+
+    return <AppContent />;
+}

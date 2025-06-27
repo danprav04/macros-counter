@@ -35,6 +35,8 @@ src/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
+  context/
+    AuthContext.tsx
   localization/
     i18n.ts
     languages/
@@ -46,9 +48,12 @@ src/
   screens/
     DailyEntryScreen.tsx
     FoodListScreen.tsx
+    LoginScreen.tsx
     QuestionnaireScreen.tsx
+    RegisterScreen.tsx
     SettingsScreen.tsx
   services/
+    authService.ts
     backendService.ts
     clientIDService.ts
     foodService.ts
@@ -60,6 +65,7 @@ src/
     openRouterTypes.ts
     questionnaire.ts
     settings.ts
+    token.ts
   utils/
     dateUtils.ts
     foodIconMatcher.ts
@@ -198,7 +204,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+         "BACKEND_URL_PRODUCTION": "http://192.168.1.15:8000",
          "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
       }
     }
@@ -209,299 +215,29 @@ yarn-error.*
 
 ---------- App.tsx ----------
 // App.tsx
-// App.tsx
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import AppNavigator from "./src/navigation/AppNavigator";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { ThemeProvider, createTheme } from "@rneui/themed";
-import { loadSettings, saveSettings } from "./src/services/storageService";
-import {
-  useColorScheme,
-  AppState,
-  AppStateStatus,
-  Platform,
-  I18nManager,
-  Alert,
-  DevSettings,
-  LogBox,
-  View,
-  Text,
-  TextInput,
-} from "react-native";
-import * as Localization from 'expo-localization';
-import * as Linking from 'expo-linking'; // Import expo-linking
-import {
-  NavigationContainer,
-  DefaultTheme,
-  DarkTheme,
-  LinkingOptions, // Import LinkingOptions
-} from "@react-navigation/native";
-import { Colors } from "@rneui/base";
-import { Settings, LanguageCode } from "./src/types/settings";
-import { StatusBar } from "expo-status-bar";
-import { getClientId } from "./src/services/clientIDService";
-import i18n, { setLocale, t } from './src/localization/i18n'; // Import i18n setup
-import { MainTabParamList } from "./src/navigation/AppNavigator"; // For linking config
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Text, TextInput } from "react-native";
+import { AuthProvider } from "./src/context/AuthContext";
 
 // --- FONT SCALING PATCH ---
-// Disable font scaling for all Text and TextInput components globally
-// to ensure a consistent UI across different device accessibility settings.
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
 (Text as any).defaultProps.allowFontScaling = false;
 if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
 (TextInput as any).defaultProps.allowFontScaling = false;
 // --- END FONT SCALING PATCH ---
 
-LogBox.ignoreLogs(["Function components cannot be given refs"]);
-
-declare module "@rneui/themed" {
-  export interface Colors {
-    text: string;
-    card: string;
-    successLight: string;
-  }
-}
-
-interface MyTheme {
-  mode: "light" | "dark";
-  colors: Colors;
-}
-
-const lightTheme: MyTheme = {
-  mode: "light",
-  colors: {
-    primary: "#2e86de",
-    secondary: "#6c757d",
-    background: "#f8f9fa",
-    grey5: "#e9ecef",
-    white: "#ffffff",
-    grey4: "#ced4da",
-    success: "#28a745",
-    successLight: "#d4edda",
-    black: "#000000",
-    text: "#212529",
-    card: "#ffffff",
-    error: "#dc3545",
-    warning: "#ffc107",
-    disabled: "#6c757d",
-    divider: "#ced4da",
-    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
-    grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da",
-    greyOutline: "#adb5bd", searchBg: "#ffffff",
-  },
-};
-
-const darkTheme: MyTheme = {
-  mode: "dark",
-  colors: {
-    primary: "#2e86de", secondary: "#adb5bd", background: "#121212",
-    grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40",
-    success: "#28a745", successLight: "#1f5139", black: "#000000",
-    text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545",
-    warning: "#ffc107", disabled: "#6c757d", divider: "#343a40",
-    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
-    grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40",
-    grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e",
-  },
-};
-
-// Linking configuration
-const linking: LinkingOptions<MainTabParamList> = { // Explicitly type the linking object
-  prefixes: [Linking.createURL('/')], // Handles macrosvisionai://
-  config: {
-    screens: {
-      // Define how paths map to your MainTabParamList screens
-      FoodListRoute: {
-        path: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
-        // foodData query param will be passed to FoodListScreen route.params
-      },
-      // Add other deep linkable routes here if needed
-      // Example:
-      // DailyEntryRoute: 'daily/:date',
-    } // REMOVED "satisfies MainTabParamList" from here
-  },
-};
-
-
 const App = () => {
-  const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">(
-    "system"
-  );
-  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>('system');
-  const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
-  const colorScheme = useColorScheme();
-  const [appState, setAppState] = useState(AppState.currentState);
-  const [isClientIdReady, setIsClientIdReady] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false); // New state for overall initialization
-
-  // Initialize Client ID, Load initial settings, and set up i18n
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        await getClientId();
-        setIsClientIdReady(true);
-        console.log('Client ID is ready.');
-
-        const settings = await loadSettings();
-        setThemeMode(settings.theme);
-        setCurrentLanguage(settings.language);
-
-        if (settings.language === 'system') {
-          const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
-          setLocale(deviceLocale);
-        } else {
-          setLocale(settings.language);
-        }
-        setLoadedSettings(settings);
-        console.log('Settings loaded and locale set:', i18n.locale);
-        setIsInitialized(true); // Mark initialization as complete
-      } catch (error) {
-        console.error("Initialization Error:", error);
-        setIsInitialized(true); // Still mark as initialized to show app, even with error
-      }
-    };
-    initializeApp();
-  }, []);
-
-  // AppState Listener
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      setAppState(nextAppState);
-    };
-    const subscription = AppState.addEventListener("change", handleAppStateChange);
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  const updateTheme = (newThemeMode: "light" | "dark" | "system") => {
-    const isDark =
-      newThemeMode === "system"
-        ? colorScheme === "dark"
-        : newThemeMode === "dark";
-    return isDark ? darkTheme : lightTheme;
-  };
-
-  const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
-    setThemeMode(newTheme);
-    if (loadedSettings) {
-      const updatedSettings: Settings = {
-        ...loadedSettings,
-        theme: newTheme,
-      };
-      await saveSettings(updatedSettings);
-      setLoadedSettings(updatedSettings);
-    }
-  };
-
-  const handleLocaleChange = async (newLocale: LanguageCode) => {
-    const oldLocale = currentLanguage === 'system'
-        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
-        : currentLanguage;
-    
-    setCurrentLanguage(newLocale);
-    if (newLocale === 'system') {
-        const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
-        setLocale(deviceLocale);
-    } else {
-        setLocale(newLocale);
-    }
-
-    if (loadedSettings) {
-        const updatedSettings: Settings = { ...loadedSettings, language: newLocale };
-        await saveSettings(updatedSettings);
-        setLoadedSettings(updatedSettings);
-    }
-
-    const newEffectiveLocale = newLocale === 'system'
-        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
-        : newLocale;
-
-    // Prompt for restart if RTL/LTR direction changes
-    const oldIsRTL = oldLocale === 'he';
-    const newIsRTL = newEffectiveLocale === 'he';
-
-    if (oldIsRTL !== newIsRTL) {
-        Alert.alert(
-            t('confirmationModal.restartRequiredTitle'),
-            t('settingsScreen.language.restartMessage'),
-            [
-                {
-                    text: t('app.alertButtons.later'),
-                    style: "cancel"
-                },
-                {
-                    text: t('app.alertButtons.restartNow'),
-                    onPress: () => {
-                        // In a real build, you'd use Updates.reloadAsync()
-                        // For development in Expo Go, this reloads the JS bundle
-                        DevSettings.reload();
-                    }
-                }
-            ]
-        );
-    }
-  };
-
-
-  const currentTheme = updateTheme(themeMode);
-
-  const navigationTheme = {
-    dark: {
-      ...DarkTheme,
-      colors: {
-        ...DarkTheme.colors,
-        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
-        card: currentTheme.colors.card, text: currentTheme.colors.text,
-        border: currentTheme.colors.divider, notification: currentTheme.colors.successLight,
-      },
-    },
-    light: {
-      ...DefaultTheme,
-      colors: {
-        ...DefaultTheme.colors,
-        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
-        card: currentTheme.colors.card, text: currentTheme.colors.text,
-        border: currentTheme.colors.divider, notification: currentTheme.colors.success,
-      },
-    },
-  };
-
-  const statusBarTheme = themeMode === "system" ? colorScheme : themeMode;
-  const backgroundColor = currentTheme.colors.background;
-
-  if (!isInitialized) { // Check overall initialization
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: backgroundColor }}>
-        <Text style={{ color: currentTheme.colors.text }}>{t('app.initializing')}</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <ThemeProvider theme={createTheme(currentTheme)}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}>
-        <StatusBar
-          style={statusBarTheme === "dark" ? "light" : "dark"}
-          backgroundColor={backgroundColor}
-          translucent={false}
-        />
-        <NavigationContainer
-          theme={
-            currentTheme.mode === "dark"
-              ? navigationTheme.dark
-              : navigationTheme.light
-          }
-          linking={linking}
-          fallback={<Text style={{color: currentTheme.colors.text, textAlign: 'center', marginTop: 50}}>{t('app.initializing')}</Text>} // Fallback for deep linking
-        >
-          <AppNavigator onThemeChange={handleThemeChange} onLocaleChange={handleLocaleChange} />
-        </NavigationContainer>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <AppNavigator />
         <Toast />
-      </SafeAreaView>
-    </ThemeProvider>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 };
 
@@ -933,7 +669,7 @@ export default AccountSettings;
 
 ---------- AddEntryModal.tsx ----------
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
@@ -964,7 +700,7 @@ interface AddEntryModalProps {
   initialGrams?: string;
   initialSelectedFoodForEdit?: Food | null;
   onAddNewFoodRequest: () => void;
-  onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
+  onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
 }
 
@@ -1003,6 +739,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
   const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
 
+  const prevIsVisible = useRef(isVisible);
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
@@ -1020,32 +757,59 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    if (isVisible) loadLastUsedPortions().then(setLastUsedPortions);
-  }, [isVisible]);
+    // --- Modal Opening Logic ---
+    if (isVisible && !prevIsVisible.current) {
+        loadLastUsedPortions().then(setLastUsedPortions);
 
-  useEffect(() => {
-    if (isVisible) {
-      const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
-      if (actuallyEditingDailyItem) {
-        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams);
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      } else if (initialSelectedFoodForEdit) {
-        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams || "");
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      }
-      if (!actuallyEditingDailyItem && !initialSelectedFoodForEdit && modalMode !== "quickAddSelect" && modalMode !== "quickAddText") {
-          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch(""); setUnitMode("grams"); setAutoInput("");
-      }
-    } else {
-      const timer = setTimeout(() => {
-        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams(""); setUnitMode("grams"); setAutoInput("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
-        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); setIsAiLoading(false); setQuickAddLoading(false);
-        setQuickAddTextInput(""); setIsTextQuickAddLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
+        const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
+        if (actuallyEditingDailyItem) {
+            // Setup for editing an existing daily item
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams);
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+        } else if (initialSelectedFoodForEdit) {
+            // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams || "");
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+        }
+        // Note: For a completely fresh modal, no specific setup is needed here
+        // because the closing logic already resets everything.
+    } 
+    // --- Modal Closing Logic ---
+    else if (!isVisible && prevIsVisible.current) {
+        // Use a timer to delay the state reset, allowing the closing animation to complete.
+        const timer = setTimeout(() => {
+            // Full reset of all modal-specific state
+            setInternalSelectedFood(null);
+            setInternalGrams("");
+            setInternalSearch("");
+            setUnitMode("grams");
+            setAutoInput("");
+            setSelectedMultipleFoods(new Map());
+            setModalMode("normal");
+            setQuickAddItems([]);
+            setSelectedQuickAddIndices(new Set());
+            setEditingQuickAddItemIndex(null);
+            setEditedFoodName("");
+            setEditedGrams("");
+            setIsAiLoading(false);
+            setQuickAddLoading(false);
+            setQuickAddTextInput("");
+            setIsTextQuickAddLoading(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon, modalMode]);
+
+    // Update the ref at the end of the effect to track the current state for the next render.
+    prevIsVisible.current = isVisible;
+
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
   useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
   useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
@@ -1201,7 +965,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const entriesToAdd = Array.from(selectedQuickAddIndices).map(index => {
         const item = quickAddItems[index];
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0) };
+        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0), createdAt: new Date().toISOString() };
         return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
     });
     if (entriesToAdd.length > 0) {
@@ -1217,7 +981,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleSaveQuickAddItemToLibrary = useCallback(async (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => {
     setSavingState(true);
     try {
-        const foodData: Omit<Food, 'id'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
+        const foodData: Omit<Food, 'id' | 'createdAt'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
         if (existingFood) {
             Alert.alert(t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }), [
@@ -4371,6 +4135,100 @@ export default ThemeSwitch;
 ---------- END ThemeSwitch.tsx ----------
 
 
+---------- AuthContext.tsx ----------
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { loadSettings, saveSettings } from '../services/storageService';
+import { getAuthToken, removeAuthToken, setAuthToken } from '../services/authService';
+import { Settings, LanguageCode } from '../types/settings';
+
+export interface AuthState {
+  authenticated: boolean;
+  token: string | null;
+}
+
+export interface AuthContextType {
+  authState: AuthState;
+  settings: Settings;
+  isLoading: boolean;
+  login: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
+  changeTheme: (theme: 'light' | 'dark' | 'system') => void;
+  changeLocale: (locale: LanguageCode) => void;
+}
+
+const AuthContext = createContext<Partial<AuthContextType>>({});
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const [authState, setAuthState] = useState<AuthState>({ authenticated: false, token: null });
+  const [settings, setSettings] = useState<Settings>({
+    theme: 'system',
+    language: 'system',
+    dailyGoals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAuthData = async () => {
+      try {
+        const token = await getAuthToken();
+        const loadedSettings = await loadSettings();
+        setSettings(loadedSettings);
+
+        if (token) {
+          setAuthState({ authenticated: true, token });
+        }
+      } catch (e) {
+        console.error("Failed to load auth data", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAuthData();
+  }, []);
+
+  const login = async (token: string) => {
+    await setAuthToken(token);
+    setAuthState({ authenticated: true, token });
+  };
+
+  const logout = async () => {
+    await removeAuthToken();
+    setAuthState({ authenticated: false, token: null });
+  };
+
+  const changeTheme = useCallback(async (theme: 'light' | 'dark' | 'system') => {
+    const newSettings = { ...settings, theme };
+    setSettings(newSettings);
+    await saveSettings(newSettings);
+  }, [settings]);
+
+  const changeLocale = useCallback(async (locale: LanguageCode) => {
+    const newSettings = { ...settings, language: locale };
+    setSettings(newSettings);
+    await saveSettings(newSettings);
+  }, [settings]);
+
+
+  const value: AuthContextType = {
+    authState,
+    settings,
+    isLoading,
+    login,
+    logout,
+    changeTheme,
+    changeLocale,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+---------- END AuthContext.tsx ----------
+
+
 ---------- i18n.ts ----------
 // src/localization/i18n.ts
 import * as Localization from 'expo-localization';
@@ -4462,6 +4320,12 @@ export default i18n;
       "later": "Later",
       "restartNow": "Restart Now"
     }
+  },
+  "errors": {
+    "estimationFailedTitle": "Estimation Failed",
+    "analysisFailedTitle": "Analysis Failed",
+    "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
+    "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "settingsScreen": {
     "title": "Settings",
@@ -4738,19 +4602,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "AI Error (Recipe)",
-      "alertAnalysisFailedSingle": "Analysis Failed (Single Item)",
-      "alertQuickAddFailedMulti": "Quick Add Failed (Multi-Item)",
-      "alertImageReadError": "Image Read Error",
-      "alertImageReadErrorMessage": "Failed to read image file.",
-      "errorGetMacrosRecipe": "Failed to get macros for recipe: %{error}",
-      "errorImageAnalysis": "Image analysis failed: %{error}",
-      "errorCouldNotAnalyze": "Could not analyze image: %{error}",
-      "errorInvalidResponseMultiple": "Invalid response format from server for multiple items."
+      "errorTitle": "AI Analysis Failed",
+      "multiItemErrorTitle": "Quick Add Failed",
+      "errorMessage": "Could not get a response from the AI. Please try again.",
+      "invalidResponse": "The AI gave a response in an unexpected format. Please try again or rephrase your request."
     },
     "units": {
-      "alertAiEstimationFailed": "AI Estimation Failed",
-      "errorCouldNotEstimateGrams": "Could not estimate grams: %{error}"
+      "errorTitle": "AI Estimation Failed"
     },
     "image": {
       "alertCompressionError": "Compression Error",
@@ -4759,21 +4617,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Invalid client ID format.",
-    "errorRequestFailedParse": "Backend request failed (Status %{status}), failed to parse response.",
-    "errorRequestFailedDetailFormat": "Backend error (Status %{status}), unexpected detail format.",
-    "errorRequestFailedWithServerMsg": "Backend request failed (Status %{status}). Server response: %{response}",
-    "errorAuthFailed": "Authentication failed. Invalid Client ID.",
-    "errorPermissionDenied": "Permission denied.",
-    "errorNotFound": "Resource not found.",
-    "errorTooManyRequests": "Too many requests. Please try again later.",
-    "errorInsufficientCoins": "Insufficient coins for this action.",
-    "errorNetwork": "Failed to communicate with the backend.",
-    "errorNetworkTimeout": "The request timed out. Please try again.",
-    "errorNetworkConnection": " Please check your network connection.",
+    "errorInvalidClientId": "Invalid client ID. Please restart the app.",
+    "errorRequestFailedParse": "The server sent an unreadable response (Status %{status}).",
+    "errorRequestFailedDetailFormat": "The server sent a response with an unexpected format (Status %{status}).",
+    "errorRequestFailedWithServerMsg": "The server returned an error (Status %{status}).",
+    "errorAuthFailed": "Authentication with the server failed. Please restart the app.",
+    "errorPermissionDenied": "Permission denied by server.",
+    "errorNotFound": "The requested resource was not found on the server.",
+    "errorTooManyRequests": "You're doing that too fast! Please wait a moment and try again.",
+    "errorInsufficientCoins": "You don't have enough AI coins for this action. More will be available soon!",
+    "errorNetwork": "Could not connect to the server.",
+    "errorNetworkTimeout": "The server is taking too long to respond. Please try again in a few moments.",
+    "errorNetworkConnection": " Please check your internet connection.",
     "errorNetworkDetails": " Details: %{error}",
     "errorNetworkUnknown": " An unknown network error occurred.",
-    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to unexpected response.",
+    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
     "errorAddCoinsPositive": "Amount to add must be positive."
   },
   "statisticsChart": {
@@ -4936,6 +4794,12 @@ export default i18n;
       "later": "אחר כך",
       "restartNow": "הפעל מחדש כעת"
     }
+  },
+  "errors": {
+    "estimationFailedTitle": "ההערכה נכשלה",
+    "analysisFailedTitle": "הניתוח נכשל",
+    "aiGramsProcessingError": "הבינה המלאכותית לא הצליחה לעבד את הכמות. אנא נסה לנסח זאת אחרת (למשל, 'כוס אחת' במקום 'כוס').",
+    "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
   "settingsScreen": {
     "title": "הגדרות",
@@ -5212,19 +5076,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "שגיאת AI (מתכון)",
-      "alertAnalysisFailedSingle": "ניתוח נכשל (פריט יחיד)",
-      "alertQuickAddFailedMulti": "הוספה מהירה נכשלה (מספר פריטים)",
-      "alertImageReadError": "שגיאת קריאת תמונה",
-      "alertImageReadErrorMessage": "קריאת קובץ התמונה נכשלה.",
-      "errorGetMacrosRecipe": "קבלת מאקרואים למתכון נכשלה: %{error}",
-      "errorImageAnalysis": "ניתוח התמונה נכשל: %{error}",
-      "errorCouldNotAnalyze": "לא ניתן היה לנתח את התמונה: %{error}",
-      "errorInvalidResponseMultiple": "פורמט תגובה לא חוקי מהשרת עבור מספר פריטים."
+      "errorTitle": "ניתוח AI נכשל",
+      "multiItemErrorTitle": "הוספה מהירה נכשלה",
+      "errorMessage": "לא ניתן היה לקבל תגובה מה-AI. אנא נסה שוב.",
+      "invalidResponse": "ה-AI נתן תגובה בפורמט לא צפוי. אנא נסה שוב או נסח מחדש את בקשתך."
     },
     "units": {
-      "alertAiEstimationFailed": "הערכת AI נכשלה",
-      "errorCouldNotEstimateGrams": "לא ניתן היה להעריך גרמים: %{error}"
+      "errorTitle": "הערכת AI נכשלה"
     },
     "image": {
       "alertCompressionError": "שגיאת דחיסה",
@@ -5233,21 +5091,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "פורמט מזהה לקוח לא חוקי.",
-    "errorRequestFailedParse": "בקשה לשרת נכשלה (סטטוס %{status}), פענוח התגובה נכשל.",
-    "errorRequestFailedDetailFormat": "שגיאת שרת (סטטוס %{status}), פורמט פרטים לא צפוי.",
-    "errorRequestFailedWithServerMsg": "בקשה לשרת נכשלה (סטטוס %{status}). תגובת השרת: %{response}",
-    "errorAuthFailed": "האימות נכשל. מזהה לקוח לא חוקי.",
-    "errorPermissionDenied": "הגישה נדחתה.",
-    "errorNotFound": "המשאב לא נמצא.",
-    "errorTooManyRequests": "יותר מדי בקשות. אנא נסה שוב מאוחר יותר.",
-    "errorInsufficientCoins": "אין מספיק מטבעות לפעולה זו.",
-    "errorNetwork": "התקשורת עם השרת נכשלה.",
-    "errorNetworkTimeout": "זמן הבקשה פג. אנא נסה שוב.",
+    "errorInvalidClientId": "מזהה לקוח לא חוקי. אנא הפעל מחדש את האפליקציה.",
+    "errorRequestFailedParse": "השרת שלח תגובה לא קריאה (סטטוס %{status}).",
+    "errorRequestFailedDetailFormat": "השרת שלח תגובה בפורמט לא צפוי (סטטוס %{status}).",
+    "errorRequestFailedWithServerMsg": "השרת החזיר שגיאה (סטטוס %{status}).",
+    "errorAuthFailed": "האימות מול השרת נכשל. אנא הפעל מחדש את האפליקציה.",
+    "errorPermissionDenied": "הגישה נדחתה על ידי השרת.",
+    "errorNotFound": "המשאב המבוקש לא נמצא בשרת.",
+    "errorTooManyRequests": "אתה מבצע זאת מהר מדי! אנא המתן רגע ונסה שוב.",
+    "errorInsufficientCoins": "אין לך מספיק מטבעות AI לפעולה זו. עוד יהיו זמינים בקרוב!",
+    "errorNetwork": "לא ניתן להתחבר לשרת.",
+    "errorNetworkTimeout": "לשרת לוקח יותר מדי זמן להגיב. אנא נסה שוב בעוד מספר רגעים.",
     "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
     "errorNetworkDetails": " פרטים: %{error}",
     "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
-    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב פורמט תגובה לא צפוי.",
+    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב תגובת שרת לא צפויה.",
     "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
   },
   "statisticsChart": {
@@ -5410,6 +5268,12 @@ export default i18n;
       "later": "Позже",
       "restartNow": "Перезапустить сейчас"
     }
+  },
+  "errors": {
+    "estimationFailedTitle": "Ошибка оценки",
+    "analysisFailedTitle": "Ошибка анализа",
+    "aiGramsProcessingError": "ИИ не смог обработать количество. Попробуйте перефразировать (например, '1 чашка' вместо 'чашка').",
+    "unexpectedError": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   },
   "settingsScreen": {
     "title": "Настройки",
@@ -5686,19 +5550,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "Ошибка ИИ (Рецепт)",
-      "alertAnalysisFailedSingle": "Ошибка анализа (Один элемент)",
-      "alertQuickAddFailedMulti": "Ошибка быстрого добавления (Несколько элементов)",
-      "alertImageReadError": "Ошибка чтения изображения",
-      "alertImageReadErrorMessage": "Не удалось прочитать файл изображения.",
-      "errorGetMacrosRecipe": "Не удалось получить макросы для рецепта: %{error}",
-      "errorImageAnalysis": "Ошибка анализа изображения: %{error}",
-      "errorCouldNotAnalyze": "Не удалось проанализировать изображение: %{error}",
-      "errorInvalidResponseMultiple": "Неверный формат ответа от сервера для нескольких элементов."
+      "errorTitle": "Ошибка анализа ИИ",
+      "multiItemErrorTitle": "Ошибка быстрого добавления",
+      "errorMessage": "Не удалось получить ответ от ИИ. Пожалуйста, попробуйте еще раз.",
+      "invalidResponse": "ИИ дал ответ в неожиданном формате. Пожалуйста, попробуйте еще раз или перефразируйте свой запрос."
     },
     "units": {
-      "alertAiEstimationFailed": "Ошибка оценки ИИ",
-      "errorCouldNotEstimateGrams": "Не удалось оценить граммы: %{error}"
+      "errorTitle": "Ошибка оценки ИИ"
     },
     "image": {
       "alertCompressionError": "Ошибка сжатия",
@@ -5707,21 +5565,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Неверный формат идентификатора клиента.",
-    "errorRequestFailedParse": "Запрос к бэкенду не удался (Статус %{status}), не удалось разобрать ответ.",
-    "errorRequestFailedDetailFormat": "Ошибка бэкенда (Статус %{status}), неожиданный формат деталей.",
-    "errorRequestFailedWithServerMsg": "Запрос к бэкенду не удался (Статус %{status}). Ответ сервера: %{response}",
-    "errorAuthFailed": "Аутентификация не удалась. Неверный идентификатор клиента.",
-    "errorPermissionDenied": "Доступ запрещен.",
-    "errorNotFound": "Ресурс не найден.",
-    "errorTooManyRequests": "Слишком много запросов. Пожалуйста, повторите попытку позже.",
-    "errorInsufficientCoins": "Недостаточно монет для этого действия.",
-    "errorNetwork": "Не удалось связаться с бэкендом.",
-    "errorNetworkTimeout": "Время ожидания запроса истекло. Пожалуйста, попробуйте еще раз.",
-    "errorNetworkConnection": " Пожалуйста, проверьте ваше сетевое соединение.",
+    "errorInvalidClientId": "Неверный идентификатор клиента. Пожалуйста, перезапустите приложение.",
+    "errorRequestFailedParse": "Сервер отправил нечитаемый ответ (Статус %{status}).",
+    "errorRequestFailedDetailFormat": "Сервер отправил ответ в неожиданном формате (Статус %{status}).",
+    "errorRequestFailedWithServerMsg": "Сервер вернул ошибку (Статус %{status}).",
+    "errorAuthFailed": "Ошибка аутентификации на сервере. Пожалуйста, перезапустите приложение.",
+    "errorPermissionDenied": "Доступ запрещен сервером.",
+    "errorNotFound": "Запрошенный ресурс не найден на сервере.",
+    "errorTooManyRequests": "Вы делаете это слишком быстро! Пожалуйста, подождите немного и попробуйте снова.",
+    "errorInsufficientCoins": "У вас недостаточно монет ИИ для этого действия. Скоро будет больше!",
+    "errorNetwork": "Не удалось подключиться к серверу.",
+    "errorNetworkTimeout": "Сервер слишком долго отвечает. Пожалуйста, повторите попытку через несколько секунд.",
+    "errorNetworkConnection": " Пожалуйста, проверьте ваше интернет-соединение.",
     "errorNetworkDetails": " Детали: %{error}",
     "errorNetworkUnknown": " Произошла неизвестная сетевая ошибка.",
-    "errorEstimateGramsUnexpectedResponse": "Не удалось получить оценку граммов из-за неожиданного формата ответа.",
+    "errorEstimateGramsUnexpectedResponse": "Не удалось оценить граммы из-за неожиданного ответа сервера.",
     "errorAddCoinsPositive": "Сумма для добавления должна быть положительной."
   },
   "statisticsChart": {
@@ -5876,145 +5734,229 @@ export default i18n;
 
 
 ---------- AppNavigator.tsx ----------
-// src/navigation/AppNavigator.tsx
-// navigation/AppNavigator.tsx
-import React, { useState, useCallback } from 'react';
-import { Platform, I18nManager } from 'react-native';
-import { createBottomTabNavigator, BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Icon, useTheme } from '@rneui/themed';
+import React from 'react';
+import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
+import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
+import * as Localization from 'expo-localization';
+
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import QuestionnaireScreen from '../screens/QuestionnaireScreen'; // Import new screen
-import { LanguageCode, Settings } from '../types/settings';
-import i18n, { t } from '../localization/i18n';
-import { Food, SharedFoodData } from '../types/food'; // Import Food and SharedFoodData types
+import QuestionnaireScreen from '../screens/QuestionnaireScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 
-// Define ParamList for the Tab Navigator
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { LanguageCode } from '../types/settings';
+import i18n, { setLocale, t } from '../localization/i18n';
+import { Food } from '../types/food';
+
+// Define ParamLists
 export type MainTabParamList = {
-  DailyEntryRoute: { quickAddFood?: Food }; // For DailyEntryScreen, can receive quickAddFood
-  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };   // For FoodListScreen, can receive foodData string from deep link
-  SettingsStackRoute: undefined;             // For the Settings Stack
+  DailyEntryRoute: { quickAddFood?: Food };
+  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };
+  SettingsStackRoute: undefined;
 };
 
-// Define ParamList for the Settings Stack
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
 };
 
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
 
+export type RootStackParamList = {
+  Auth: undefined;
+  Main: undefined;
+};
+
+// Create Navigators
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const SettingsStackNav = createNativeStackNavigator<SettingsStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
-interface AppNavigatorProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  // No longer needs onDataOperation here, as handleFoodChange serves this purpose internally
+// Linking configuration
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      Main: {
+          path: '', // Root path maps to main tabs
+          screens: {
+              FoodListRoute: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+          }
+      },
+    }
+  },
+};
+
+// Theming
+declare module "@rneui/themed" {
+  export interface Colors { text: string; card: string; successLight: string; }
 }
+const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", };
+const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
 
-// Props for the SettingsStackNavigatorComponent
-interface SettingsStackProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // This will be handleFoodChange from AppNavigator
-}
-
-
-// Settings Stack Navigator
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: SettingsStackProps) {
+// Settings Stack Navigator Component
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; }) {
   const { theme } = useTheme();
   return (
-    <SettingsStackNav.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTitleStyle: { color: theme.colors.text },
-        headerTintColor: theme.colors.primary,
-        headerTitleAlign: Platform.OS === 'ios' ? 'center' : 'center',
-      }}
-    >
+    <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
+        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
       </SettingsStackNav.Screen>
-      <SettingsStackNav.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
-        {() => <QuestionnaireScreen />}
-      </SettingsStackNav.Screen>
+      <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
   );
 }
 
-
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChange }) => {
+// Main Tab Navigator Component
+function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; }) {
   const { theme } = useTheme();
-  const [foodListRefresh, setFoodListRefresh] = useState(false);
-
-  const handleFoodChange = useCallback(() => {
-    setFoodListRefresh(prev => !prev);
-  }, []);
-
-  // Use static route names for consistency
-  const dailyEntryRouteName: keyof MainTabParamList = 'DailyEntryRoute';
-  const foodListRouteName: keyof MainTabParamList = 'FoodListRoute';
-  const settingsStackRouteName: keyof MainTabParamList = 'SettingsStackRoute';
-
+  const [foodListRefresh, setFoodListRefresh] = React.useState(false);
+  const handleFoodChange = React.useCallback(() => setFoodListRefresh(prev => !prev), []);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string = '';
-          let type: string = 'ionicon'; // Default type
-
-          if (route.name === dailyEntryRouteName) {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === foodListRouteName) {
-            iconName = focused ? 'fast-food' : 'fast-food-outline';
-          } else if (route.name === settingsStackRouteName) { 
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-          return <Icon name={iconName} type={type} size={size} color={color} />;
+          if (route.name === 'DailyEntryRoute') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'FoodListRoute') iconName = focused ? 'fast-food' : 'fast-food-outline';
+          else if (route.name === 'SettingsStackRoute') iconName = focused ? 'settings' : 'settings-outline';
+          return <Icon name={iconName} type='ionicon' size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.secondary,
-        headerShown: false, 
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.divider,
-        },
-        tabBarLabelStyle: {
-          fontWeight: 'bold',
-        }
+        headerShown: false,
+        tabBarStyle: { backgroundColor: theme.colors.background, borderTopColor: theme.colors.divider },
+        tabBarLabelStyle: { fontWeight: 'bold' }
       })}
     >
-      <Tab.Screen
-        name={dailyEntryRouteName}
-        options={{ title: t('dailyEntryScreen.tabTitle') }}
-      >
+      <Tab.Screen name="DailyEntryRoute" options={{ title: t('dailyEntryScreen.tabTitle') }}>
         {() => <DailyEntryScreen key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={foodListRouteName}
-        options={{ title: t('foodListScreen.tabTitle') }}
-      >
+      <Tab.Screen name="FoodListRoute" options={{ title: t('foodListScreen.tabTitle') }}>
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={settingsStackRouteName} 
-        options={{ title: t('settingsScreen.title') }} 
-      >
-        {() => <SettingsStackNavigatorComponent 
-                  onThemeChange={onThemeChange} 
-                  onLocaleChange={onLocaleChange} 
-                  onDataOperation={handleFoodChange} // Pass handleFoodChange here
-                />}
+      <Tab.Screen name="SettingsStackRoute" options={{ title: t('settingsScreen.title') }}>
+        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
-};
+}
 
-export default AppNavigator;
+// Auth Stack Navigator Component
+function AuthNavigator() {
+    const { theme } = useTheme();
+    // Corrected: `cardStyle` is deprecated, use `contentStyle` for Native Stack Navigator
+    const screenOptions: NativeStackNavigationOptions = {
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.background }
+    };
+    return (
+        <AuthStack.Navigator screenOptions={screenOptions}>
+            <AuthStack.Screen name="Login" component={LoginScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+        </AuthStack.Navigator>
+    )
+}
 
+// App Content - Determines which stack to show
+function AppContent() {
+  const { authState, settings, changeTheme, changeLocale } = useAuth() as AuthContextType;
+  const colorScheme = useColorScheme();
+
+  const themeMode = settings.theme;
+  const currentThemeConfig = React.useMemo(() => {
+    const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+    return isDark ? { mode: 'dark' as const, colors: darkThemeColors } : { mode: 'light' as const, colors: lightThemeColors };
+  }, [themeMode, colorScheme]);
+
+  const navigationTheme = React.useMemo(() => ({
+    dark: { ...DarkTheme, colors: { ...DarkTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.successLight, }, },
+    light: { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.success, }, },
+  }), [currentThemeConfig]);
+  
+  const handleLocaleChange = (newLocale: LanguageCode) => {
+    const oldLocale = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : settings.language;
+    changeLocale(newLocale);
+    const newEffectiveLocale = newLocale === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : newLocale;
+
+    const oldIsRTL = oldLocale === 'he';
+    const newIsRTL = newEffectiveLocale === 'he';
+
+    if (oldIsRTL !== newIsRTL && Platform.OS !== 'web') {
+        Alert.alert( t('confirmationModal.restartRequiredTitle'), t('settingsScreen.language.restartMessage'),
+            [ { text: t('app.alertButtons.later'), style: "cancel" },
+              { text: t('app.alertButtons.restartNow'), onPress: () => DevSettings.reload() } ]
+        );
+    } else if (Platform.OS === 'web' && oldIsRTL !== newIsRTL) {
+        window.location.reload();
+    }
+  };
+
+  const LoadingFallback = () => (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <Text>Loading...</Text>
+      </View>
+  )
+
+  return (
+    <ThemeProvider theme={createTheme(currentThemeConfig)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
+            <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
+            <NavigationContainer 
+                linking={linking} 
+                theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light} 
+                fallback={<LoadingFallback />}
+            >
+                <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                    {authState.authenticated ? (
+                         <RootStack.Screen name="Main">
+                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} />}
+                         </RootStack.Screen>
+                    ) : (
+                        <RootStack.Screen name="Auth" component={AuthNavigator} />
+                    )}
+                </RootStack.Navigator>
+            </NavigationContainer>
+        </SafeAreaView>
+    </ThemeProvider>
+  );
+}
+
+// Main AppNavigator export
+export default function AppNavigator() {
+    const { isLoading, settings } = useAuth() as AuthContextType;
+    
+    React.useEffect(() => {
+        if (settings) {
+            const lang = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US') : settings.language;
+            setLocale(lang);
+        }
+    }, [settings]);
+
+    if (isLoading) {
+        return (
+            <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                <Text>Initializing App...</Text>
+            </SafeAreaView>
+        )
+    }
+
+    return <AppContent />;
+}
 ---------- END AppNavigator.tsx ----------
 
 
@@ -7088,6 +7030,119 @@ export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
 
 
+---------- LoginScreen.tsx ----------
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { loginUser } from '../services/authService';
+
+type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+
+const LoginScreen: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const navigation = useNavigation<LoginScreenNavigationProp>();
+    const { login } = useAuth() as AuthContextType;
+    const { theme } = useTheme();
+
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Missing Fields', 'Please enter both email and password.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const response = await loginUser(email, password);
+            await login(response.access_token);
+        } catch (error: any) {
+            // The error message is now handled inside authService, so we just show it.
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            <Text h2 style={[styles.title, { color: theme.colors.text }]}>Welcome Back</Text>
+            <Input
+                placeholder="Email"
+                leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                onChangeText={setEmail}
+                value={email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Input
+                placeholder="Password"
+                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                rightIcon={
+                    <Icon 
+                        name={isPasswordVisible ? 'eye-slash' : 'eye'} 
+                        type="font-awesome" 
+                        color={theme.colors.grey3}
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                    />
+                }
+                onChangeText={setPassword}
+                value={password}
+                secureTextEntry={!isPasswordVisible}
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Button
+                title="Login"
+                onPress={handleLogin}
+                loading={isLoading}
+                buttonStyle={styles.button}
+                containerStyle={styles.buttonContainer}
+            />
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        marginBottom: 30,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    button: {
+        height: 50,
+        borderRadius: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        marginTop: 20,
+    },
+    switchText: {
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    },
+});
+
+export default LoginScreen;
+---------- END LoginScreen.tsx ----------
+
+
 ---------- QuestionnaireScreen.tsx ----------
 // src/screens/QuestionnaireScreen.tsx
 import React, { useState, useCallback, useMemo } from 'react';
@@ -7444,6 +7499,112 @@ const useStyles = makeStyles((theme) => ({
 
 export default QuestionnaireScreen;
 ---------- END QuestionnaireScreen.tsx ----------
+
+
+---------- RegisterScreen.tsx ----------
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { registerUser } from '../services/authService';
+
+type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
+
+const RegisterScreen: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const navigation = useNavigation<RegisterScreenNavigationProp>();
+    const { theme } = useTheme();
+
+    const handleRegister = async () => {
+        if (!email || !password) {
+            Alert.alert('Missing Fields', 'Please fill in all fields.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await registerUser(email, password);
+            Alert.alert(
+                'Registration Successful',
+                'A verification email has been sent to your address. Please check your inbox to activate your account.',
+                [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+            );
+        } catch (error: any) {
+            // The service now handles the alert, so we just catch to stop the loader
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            <Text h2 style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
+            <Input
+                placeholder="Email"
+                leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                onChangeText={setEmail}
+                value={email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Input
+                placeholder="Password (min 8 characters)"
+                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                onChangeText={setPassword}
+                value={password}
+                secureTextEntry
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Button
+                title="Register"
+                onPress={handleRegister}
+                loading={isLoading}
+                buttonStyle={styles.button}
+                containerStyle={styles.buttonContainer}
+            />
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={[styles.switchText, { color: theme.colors.primary }]}>Already have an account? Log In</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        marginBottom: 30,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    button: {
+        height: 50,
+        borderRadius: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        marginTop: 20,
+    },
+    switchText: {
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    },
+});
+
+export default RegisterScreen;
+---------- END RegisterScreen.tsx ----------
 
 
 ---------- SettingsScreen.tsx ----------
@@ -7817,6 +7978,100 @@ export default SettingsScreen;
 ---------- END SettingsScreen.tsx ----------
 
 
+---------- authService.ts ----------
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { Alert } from 'react-native';
+
+const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
+
+const getBackendUrl = (): string => {
+    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
+    const url = envUrl || configUrl || 'http://192.168.1.15:8000';
+    return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
+};
+
+const API_URL = getBackendUrl();
+
+// --- Token Management ---
+export const getAuthToken = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+};
+
+export const setAuthToken = async (token: string): Promise<void> => {
+  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+};
+
+export const removeAuthToken = async (): Promise<void> => {
+  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+};
+
+
+// --- API Calls ---
+async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_URL}/auth${endpoint}`;
+    
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(options.headers as Record<string, string> || {})
+    };
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const responseBody = await response.json();
+
+        if (!response.ok) {
+            const errorMessage = responseBody.detail || 'An unknown error occurred.';
+            const detailMessage = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+            throw new Error(detailMessage);
+        }
+        return responseBody as T;
+    } catch (error: any) {
+        Alert.alert('Authentication Error', error.message || 'Could not connect to the server.');
+        throw error;
+    }
+}
+
+export const registerUser = async (email: string, password: string): Promise<any> => {
+    return fetchAuthApi('/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+    });
+};
+
+export const loginUser = async (email: string, password: string): Promise<{access_token: string}> => {
+    const details = { 'username': email, 'password': password };
+    
+    // Corrected: Use Object.entries for a type-safe way to build form data
+    const formBody = Object.entries(details)
+        .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
+        .join('&');
+
+    const url = `${API_URL}/auth/login`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: formBody,
+        });
+        
+        const responseBody = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseBody.detail || 'Login failed');
+        }
+        return responseBody;
+    } catch (error: any) {
+        Alert.alert('Login Error', error.message || 'Could not connect to the server.');
+        throw error;
+    }
+};
+---------- END authService.ts ----------
+
+
 ---------- backendService.ts ----------
 // src/services/backendService.ts
 import Constants from 'expo-constants';
@@ -7884,26 +8139,34 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', { status: response.status });
+            let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             if (isJson && responseBody?.detail) {
                 errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
-            } else if (!isJson) {
-                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status, response: responseBody.substring(0, 100) });
+            } else if (!isJson && responseBody) {
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
             if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
+
             throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
         return responseBody as T;
 
     } catch (error) {
         if (error instanceof BackendError) throw error;
-        let networkErrorMessage = t('backendService.errorNetwork');
+        
+        let networkErrorMessage: string;
         if (error instanceof Error && error.name === 'AbortError') {
             networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error && (error.message.includes('Network request failed') || error.message.includes('Failed to fetch'))) {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkConnection');
         } else if (error instanceof Error) {
-            networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkDetails', { error: error.message });
+        } else {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
         }
+        
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
@@ -8465,6 +8728,14 @@ export interface SettingsScreenProps {
   onLocaleChange: (locale: LanguageCode) => void; // Added for language change
 }
 ---------- END settings.ts ----------
+
+
+---------- token.ts ----------
+export interface Token {
+    access_token: string;
+    token_type: string;
+}
+---------- END token.ts ----------
 
 
 ---------- dateUtils.ts ----------
@@ -9041,8 +9312,8 @@ export async function getMacrosFromText(foodName: string, ingredients: string): 
     try {
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorGetMacrosRecipe', { error: String(error) });
-        Alert.alert(t('utils.macros.alertAiErrorRecipe'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
         throw error;
     }
 }
@@ -9053,8 +9324,8 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         const mimeType = determineMimeType(asset);
         return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorImageAnalysis', { error: String(error) });
-        Alert.alert(t('utils.macros.alertAnalysisFailedSingle'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
         throw error;
     }
 }
@@ -9062,11 +9333,11 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
 export async function getMultipleFoodsFromImage(base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> {
     try {
         const results = await getMacrosForImageMultiple(base64Image, mimeType);
-        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
-        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
         throw error;
     }
 }
@@ -9074,11 +9345,11 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
 export async function getMultipleFoodsFromText(text: string): Promise<EstimatedFoodItem[]> {
     try {
         const results = await getMacrosForTextMultiple(text);
-        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
-        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
         throw error;
     }
 }
@@ -9089,10 +9360,9 @@ export { BackendError, EstimatedFoodItem, Macros, MacrosWithFoodName };
 
 ---------- units.ts ----------
 // src/utils/units.ts
-// src/utils/units.ts
 import { Alert } from 'react-native';
 import { estimateGramsNaturalLanguage, BackendError } from '../services/backendService';
-import { t } from '../localization/i18n'; // Import t
+import { t } from '../localization/i18n';
 
 export async function getGramsFromNaturalLanguage(
     foodName: string,
@@ -9104,8 +9374,8 @@ export async function getGramsFromNaturalLanguage(
     } catch (error) {
         const message = error instanceof BackendError
             ? error.message
-            : t('utils.units.errorCouldNotEstimateGrams', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.units.alertAiEstimationFailed'), message);
+            : t('errors.unexpectedError');
+        Alert.alert(t('errors.estimationFailedTitle'), message);
         throw error;
     }
 }

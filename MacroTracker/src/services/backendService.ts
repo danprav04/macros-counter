@@ -1,9 +1,8 @@
 // src/services/backendService.ts
 import Constants from 'expo-constants';
-import { getClientId } from './clientIDService';
+import { getAuthToken } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
-import uuid from 'react-native-uuid';
 import i18n, { t } from '../localization/i18n';
 
 const getBackendUrl = (): string => {
@@ -49,9 +48,13 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         };
 
         if (needsAuth) {
-            const clientId = await getClientId();
-            if (!uuid.validate(clientId)) throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-            headers['X-Client-ID'] = clientId;
+            const token = await getAuthToken();
+            if (!token) {
+                // If a screen needs auth and there's no token, this will prevent the call.
+                // The user should be redirected to login by the navigation logic.
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+            }
+            headers['Authorization'] = `Bearer ${token}`;
         }
         
         response = await fetch(url, { ...options, headers });
@@ -96,7 +99,7 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>('/users/status');
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
@@ -108,5 +111,5 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
 };
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${await getClientId()}`, { method: 'POST', body: JSON.stringify({ amount }) });
+    return fetchBackend<UserStatus>('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };
