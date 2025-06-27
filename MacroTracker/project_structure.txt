@@ -2152,20 +2152,23 @@ import { compressImageIfNeeded } from '../utils/imageUtils';
 import FoodFormFields from "./FoodFormFields";
 import { t } from '../localization/i18n';
 
+// Use a specific type for the form data
+type FoodFormData = Omit<Food, "id" | "createdAt">;
+
 interface AddFoodModalProps {
     isVisible: boolean;
     toggleOverlay: () => void;
-    newFood: Omit<Food, "id">;
+    newFood: FoodFormData;
     editFood: Food | null;
     errors: { [key: string]: string };
     handleInputChange: (
-        key: keyof Omit<Food, "id">,
+        key: keyof FoodFormData,
         value: string,
         isEdit: boolean
     ) => void;
     handleCreateFood: () => Promise<void>;
     handleUpdateFood: () => Promise<void>;
-    validateFood: (food: Omit<Food, "id"> | Food) => { [key: string]: string } | null;
+    validateFood: (food: FoodFormData | Food) => { [key: string]: string } | null;
     setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
@@ -2198,17 +2201,19 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         }
     }, [isVisible, setErrors]);
 
-    const getCurrentFoodData = (): Partial<Omit<Food, 'id'>> => {
+    const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
     };
 
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
-        const currentData = getCurrentFoodData();
-        const dataToValidate = {
-            name: (currentData.name ?? "").trim(), calories: currentData.calories ?? 0,
-            protein: currentData.protein ?? 0, carbs: currentData.carbs ?? 0, fat: currentData.fat ?? 0,
+        const currentData = isUpdate ? editFood : newFood;
+        
+        const dataToValidate: Food | FoodFormData = {
+            ...currentData,
+            name: (currentData.name ?? "").trim(),
         };
+
         const validationErrors = validateFood(dataToValidate);
         if (validationErrors) {
             setErrors(validationErrors);
@@ -3576,12 +3581,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Food } from '../types/food';
 import { t } from '../localization/i18n';
 
-type FoodFormValues = Partial<Omit<Food, 'id'>>;
+// The form deals with data that doesn't include id or createdAt
+type FoodFormData = Omit<Food, 'id' | 'createdAt'>;
+type FoodFormValues = Partial<FoodFormData>;
 
 interface FoodFormFieldsProps {
     values: FoodFormValues;
     errors: { [key: string]: string };
-    onInputChange: (key: keyof Omit<Food, 'id'>, value: string, isEdit: boolean) => void;
+    onInputChange: (key: keyof FoodFormData, value: string, isEdit: boolean) => void;
     isEditing: boolean;
     disabled: boolean;
 }
@@ -3596,7 +3603,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
 
-    const getValue = (key: keyof Omit<Food, 'id'>): string => {
+    const getValue = (key: keyof FoodFormData): string => {
          const val = values[key];
          if (typeof val === 'number') {
               if (val === 0 && !isEditing) return "";
@@ -3605,7 +3612,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
          return String(val ?? "");
     };
 
-    const getErrorText = (fieldKey: keyof Omit<Food, 'id'>) => {
+    const getErrorText = (fieldKey: keyof FoodFormData) => {
         const errorKey = errors[fieldKey];
         if (!errorKey) return "";
         // Assuming error keys in en.json map to field names + specific error type
@@ -4598,7 +4605,11 @@ export default i18n;
     "shareErrorMessage": "Could not share food item.",
     "deepLinkErrorTitle": "Error Opening Link",
     "deepLinkInvalidData": "The food data from the link is invalid.",
-    "deepLinkParseError": "Could not read food data from the link."
+    "deepLinkParseError": "Could not read food data from the link.",
+    "sortBy": "Sort by",
+    "sortByName": "Name",
+    "sortByNewest": "Newest",
+    "sortByOldest": "Oldest"
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",
@@ -5068,7 +5079,11 @@ export default i18n;
     "shareErrorMessage": "לא ניתן היה לשתף את פריט המזון.",
     "deepLinkErrorTitle": "שגיאה בפתיחת הקישור",
     "deepLinkInvalidData": "נתוני המזון מהקישור אינם חוקיים.",
-    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור."
+    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור.",
+    "sortBy": "מיין לפי",
+    "sortByName": "שם",
+    "sortByNewest": "החדש ביותר",
+    "sortByOldest": "הישן ביותר"
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",
@@ -5538,7 +5553,11 @@ export default i18n;
     "shareErrorMessage": "Не удалось поделиться продуктом.",
     "deepLinkErrorTitle": "Ошибка открытия ссылки",
     "deepLinkInvalidData": "Данные о продукте из ссылки недействительны.",
-    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки."
+    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки.",
+    "sortBy": "Сортировать по",
+    "sortByName": "Имени",
+    "sortByNewest": "Новые",
+    "sortByOldest": "Старые"
   },
   "addEntryModal": {
     "titleAdd": "Добавить запись",
@@ -6370,7 +6389,7 @@ const DailyEntryScreen: React.FC = () => {
 
 
   const handleCommitFoodItemToMainLibrary = useCallback(async (
-    foodData: Omit<Food, 'id'> | Food,
+    foodData: Omit<Food, 'id' | 'createdAt'> | Food,
     isUpdate: boolean
   ): Promise<Food | null> => {
     if (isSaving) return null;
@@ -6383,7 +6402,7 @@ const DailyEntryScreen: React.FC = () => {
           prevFoods.map(f => (f.id === committedFood.id ? committedFood : f)).sort((a, b) => a.name.localeCompare(b.name))
         );
       } else if (!isUpdate && !('id' in foodData)) { // Ensure it's Omit<Food, 'id'> for create
-        committedFood = await createFood(foodData as Omit<Food, 'id'>);
+        committedFood = await createFood(foodData as Omit<Food, 'id' | 'createdAt'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         throw new Error("Invalid data for commitFoodItemToMainLibrary");
@@ -6546,13 +6565,13 @@ import { createFood, getFoods, updateFood, deleteFood } from "../services/foodSe
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
+import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Removed clearLocalIconCache
+import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
@@ -6567,6 +6586,7 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
+type SortOption = 'name' | 'newest' | 'oldest';
 const PAGE_SIZE = 20;
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
@@ -6599,7 +6619,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [newFood, setNewFood] = useState<Omit<Food, "id">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
+    const [sortOption, setSortOption] = useState<SortOption>('name');
+    const [sortIndex, setSortIndex] = useState(0);
+    const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
@@ -6607,45 +6629,55 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const flatListRef = useRef<FlatList<Food>>(null);
-    const prevSearchTermRef = useRef<string>(search.trim());
-    const isFirstRunRef = useRef(true);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const resolveAndSetFoodIcon = useCallback((foodName: string) => {
-        if (foodName && foodIcons[foodName] === undefined) { 
-            const icon = getFoodIconUrl(foodName);
-            setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
-        }
-    }, [foodIcons]);
+    const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
+
+    const handleSortChange = (index: number) => {
+        if (isLoading || isLoadingMore) return;
+        setSortIndex(index);
+        setSortOption(sortOptions[index]);
+    };
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        const newIcons: { [key: string]: string | null } = {};
+        
+        const iconsToResolve: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name && foodIcons[food.name] === undefined) {
-                newIcons[food.name] = getFoodIconUrl(food.name);
+            if (food.name) {
+                iconsToResolve[food.name] = getFoodIconUrl(food.name);
             }
         });
-        if (Object.keys(newIcons).length > 0) {
-            setFoodIcons(prev => ({ ...prev, ...newIcons }));
-        }
-    }, [foodIcons]);
 
+        if (Object.keys(iconsToResolve).length > 0) {
+            setFoodIcons(prevIcons => {
+                const updatedIcons = { ...prevIcons };
+                let hasChanged = false;
+                for (const foodName in iconsToResolve) {
+                    if (updatedIcons[foodName] === undefined) {
+                        updatedIcons[foodName] = iconsToResolve[foodName];
+                        hasChanged = true;
+                    }
+                }
+                return hasChanged ? updatedIcons : prevIcons;
+            });
+        }
+    }, []);
 
     const doFetchFoods = useCallback(async (
-        isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
-        currentFoodsLength: number, currentTotalFoods: number, currentIsLoadingMore: boolean
+        isInitialOrNewSearch: boolean, termToFetch: string, sortToUse: SortOption
     ) => {
-        if (!isInitialOrNewSearch && (currentIsLoadingMore || (currentFoodsLength >= currentTotalFoods && currentTotalFoods > 0))) {
+        const currentIsLoadingMore = isLoadingMore;
+        if (!isInitialOrNewSearch && (currentIsLoadingMore || (foods.length >= totalFoods && totalFoods > 0))) {
             return;
         }
-        const offsetForThisFetch = isInitialOrNewSearch ? 0 : currentOffset;
+        const offsetForThisFetch = isInitialOrNewSearch ? 0 : offset;
         if (isInitialOrNewSearch) setIsLoading(true); else setIsLoadingMore(true);
 
         try {
-            const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch);
+            const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch, sortToUse);
             if (isInitialOrNewSearch) {
                 flatListRef.current?.scrollToOffset({ animated: false, offset: 0 });
                 setFoods(newItemsFromApi);
@@ -6665,7 +6697,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } finally {
             if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
         }
-    }, [triggerIconPrefetch, t]);
+    }, [t, offset, totalFoods, foods.length, isLoadingMore, triggerIconPrefetch]);
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -6679,19 +6711,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsOverlayVisible(prev => !prev);
     }, [isSaving]);
+    
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            doFetchFoods(true, search.trim(), sortOption);
+        }, 300); // Debounce search term changes
+        return () => clearTimeout(handler);
+    }, [search, sortOption, doFetchFoods]);
 
     useFocusEffect(
         useCallback(() => {
-            // Cache clearing removed from here for production
-            // console.log("FoodListScreen useFocusEffect: Icon cache is now active.");
-
-            const currentTrimmedSearch = search.trim();
-            if (isFirstRunRef.current || prevSearchTermRef.current !== currentTrimmedSearch) {
-                doFetchFoods(true, currentTrimmedSearch, offset, foods.length, totalFoods, isLoadingMore);
-                isFirstRunRef.current = false;
-                prevSearchTermRef.current = currentTrimmedSearch;
-            }
-
             const params = route.params;
             if (params) {
                 if (params.openAddFoodModal && !isOverlayVisible) {
@@ -6728,23 +6757,21 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     }
                 }
             }
-        }, [search, route.params, isOverlayVisible, offset, foods.length, totalFoods, isLoadingMore, doFetchFoods, toggleOverlay, navigation, t])
+        }, [route.params, isOverlayVisible, toggleOverlay, navigation, t])
     );
 
     const updateSearch = useCallback((text: string) => setSearch(text), []);
     const handleClearSearch = useCallback(() => setSearch(''), []);
 
     const handleLoadMore = () => {
-        if (!isLoading && !isLoadingMore && (foods.length < totalFoods)) {
-            doFetchFoods(false, search.trim(), offset, foods.length, totalFoods, isLoadingMore);
-        }
+        doFetchFoods(false, search.trim(), sortOption);
     };
     
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
     }, [navigation]);
 
-    const validateFood = (foodToValidate: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
+    const validateFood = (foodToValidate: Omit<Food, "id" | "createdAt"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
         if (!isNotEmpty(foodToValidate.name)) newErrors.name = "Name is required";
         if (isNaN(foodToValidate.calories) || foodToValidate.calories < 0) newErrors.calories = "Must be a non-negative number";
@@ -6763,7 +6790,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            doFetchFoods(true, search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -6780,7 +6807,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            doFetchFoods(true, search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -6795,18 +6822,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            doFetchFoods(true, search.trim(), sortOption); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            doFetchFoods(true, search.trim(), sortOption); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+        await doFetchFoods(true, search.trim(), sortOption); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-    }, [search, doFetchFoods, t]); 
+    }, [search, sortOption, doFetchFoods, t]); 
 
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
@@ -6833,8 +6860,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [t]);
 
-    const handleInputChange = (key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
-        const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
+    const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string, isEdit: boolean) => {
+        const numericKeys: (keyof Omit<Food, "id" | "createdAt">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
     
         if (numericKeys.includes(key)) {
@@ -6894,6 +6921,22 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 cancelButtonProps={{ color: theme.colors.primary }}
                 showLoading={isLoading && search.trim().length > 0} 
             />
+            <View style={styles.controlsContainer}>
+                <Text style={styles.sortLabel}>{t('foodListScreen.sortBy')}:</Text>
+                <ButtonGroup
+                    buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
+                    selectedIndex={sortIndex}
+                    onPress={handleSortChange}
+                    containerStyle={styles.sortButtonGroup}
+                    buttonStyle={styles.sortButton}
+                    selectedButtonStyle={styles.selectedSortButton}
+                    textStyle={styles.sortButtonText}
+                    selectedTextStyle={styles.selectedSortButtonText}
+                    disabled={isLoading || isLoadingMore}
+                    disabledStyle={styles.disabledSortButtonGroup}
+                    disabledTextStyle={styles.disabledSortButtonText}
+                />
+            </View>
             <FlatList
                 ref={flatListRef}
                 data={foods}
@@ -6907,7 +6950,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]} 
-                        setFoodIconForName={resolveAndSetFoodIcon}
+                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
                         />
                 )}
                 ListEmptyComponent={
@@ -6990,11 +7033,11 @@ const useStyles = makeStyles((theme) => ({
     },
     searchBarContainer: {
         backgroundColor: theme.colors.background,
-        borderBottomColor: theme.colors.divider,
-        borderTopColor: theme.colors.background,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'transparent',
+        borderTopColor: 'transparent',
         paddingHorizontal: 10,
-        paddingVertical: 8,
+        paddingTop: 8,
+        paddingBottom: 0,
         marginBottom: 0,
     },
     searchBarInputContainer: {
@@ -7006,6 +7049,51 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.text,
         fontSize: 15,
         textAlign: I18nManager.isRTL ? 'right' : 'left',
+    },
+    controlsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingBottom: 10,
+        paddingTop: 5,
+        backgroundColor: theme.colors.background,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+    },
+    sortLabel: {
+        color: theme.colors.grey2,
+        fontWeight: 'bold',
+        marginRight: 10,
+        fontSize: 14,
+    },
+    sortButtonGroup: {
+        flex: 1,
+        height: 35,
+        borderRadius: 8,
+        borderColor: theme.colors.primary,
+        borderWidth: 1,
+        backgroundColor: 'transparent',
+        marginHorizontal: 0,
+    },
+    sortButton: {
+        backgroundColor: theme.colors.background,
+    },
+    selectedSortButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    sortButtonText: {
+        fontSize: 13,
+        color: theme.colors.text,
+    },
+    selectedSortButtonText: {
+        color: theme.colors.white,
+    },
+    disabledSortButtonGroup: {
+        backgroundColor: theme.colors.grey5,
+        borderColor: theme.colors.grey4,
+    },
+    disabledSortButtonText: {
+        color: theme.colors.grey3,
     },
     listContentContainer: {
         paddingBottom: 80,
@@ -7921,10 +8009,11 @@ import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
+export const createFood = async (foodData: Omit<Food, 'id' | 'createdAt'>): Promise<Food> => {
   const newFood: Food = {
     id: uuidv4(),
     ...foodData,
+    createdAt: new Date().toISOString(),
   };
   const { items: currentFoods } = await loadFoods(); // Load all foods to append
   currentFoods.push(newFood);
@@ -7935,7 +8024,8 @@ export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
 export const getFoods = async (
   offset: number = 0,
   limit?: number,
-  searchTerm?: string // New parameter for searching
+  searchTerm?: string,
+  sortOption: 'name' | 'newest' | 'oldest' = 'name' // New parameter for sorting
 ): Promise<{ items: Food[], total: number }> => {
   // Load all foods first. For a real backend, the backend would handle filtering and pagination.
   const { items: allFoodsFromStorage } = await loadFoods(); // This loads all items
@@ -7949,7 +8039,19 @@ export const getFoods = async (
     );
   }
 
-  // After filtering (if any), then apply pagination
+  // Sorting logic
+  if (sortOption === 'name') {
+      filteredFoods.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+      const fallbackDate = '2020-01-01T00:00:00.000Z'; // For items without a creation date
+      filteredFoods.sort((a, b) => {
+          const dateA = new Date(a.createdAt || fallbackDate).getTime();
+          const dateB = new Date(b.createdAt || fallbackDate).getTime();
+          return sortOption === 'newest' ? dateB - dateA : dateA - dateB;
+      });
+  }
+
+  // After filtering and sorting, then apply pagination
   const totalFiltered = filteredFoods.length;
 
   if (limit === undefined) {
@@ -8196,10 +8298,11 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
+  createdAt: string; // ISO 8601 date string
 }
 
-// Data structure for sharing food items. ID is omitted.
-export type SharedFoodData = Omit<Food, 'id'>;
+// Data structure for sharing food items. ID and createdAt are omitted.
+export type SharedFoodData = Omit<Food, 'id' | 'createdAt'>;
 ---------- END food.ts ----------
 
 

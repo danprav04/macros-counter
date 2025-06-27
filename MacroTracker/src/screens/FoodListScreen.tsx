@@ -27,7 +27,6 @@ if (typeof btoa === 'undefined') {
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
 type SortOption = 'name' | 'newest' | 'oldest';
-const PAGE_SIZE = 20;
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
@@ -53,10 +52,7 @@ const getBackendShareBaseUrl = (): string => {
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
-    const [offset, setOffset] = useState(0);
-    const [totalFoods, setTotalFoods] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
     const [sortOption, setSortOption] = useState<SortOption>('name');
@@ -68,7 +64,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const { theme } = useTheme();
     const styles = useStyles();
-    const flatListRef = useRef<FlatList<Food>>(null);
+    const isFetching = useRef(false);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
@@ -76,7 +72,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
 
     const handleSortChange = (index: number) => {
-        if (isLoading || isLoadingMore) return;
+        if (isLoading) return;
         setSortIndex(index);
         setSortOption(sortOptions[index]);
     };
@@ -105,39 +101,26 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             });
         }
     }, []);
-
-    const doFetchFoods = useCallback(async (
-        isInitialOrNewSearch: boolean, termToFetch: string, sortToUse: SortOption
-    ) => {
-        const currentIsLoadingMore = isLoadingMore;
-        if (!isInitialOrNewSearch && (currentIsLoadingMore || (foods.length >= totalFoods && totalFoods > 0))) {
-            return;
-        }
-        const offsetForThisFetch = isInitialOrNewSearch ? 0 : offset;
-        if (isInitialOrNewSearch) setIsLoading(true); else setIsLoadingMore(true);
+    
+    const fetchFoods = useCallback(async (termToFetch: string, sortToUse: SortOption) => {
+        if (isFetching.current) return;
+        
+        isFetching.current = true;
+        setIsLoading(true);
 
         try {
-            const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch, sortToUse);
-            if (isInitialOrNewSearch) {
-                flatListRef.current?.scrollToOffset({ animated: false, offset: 0 });
-                setFoods(newItemsFromApi);
-            } else {
-                setFoods(prevFoods => {
-                    const existingIds = new Set(prevFoods.map(f => f.id));
-                    const uniqueNewItems = newItemsFromApi.filter(item => !existingIds.has(item.id));
-                    return [...prevFoods, ...uniqueNewItems];
-                });
-            }
-            setTotalFoods(totalFromApi);
-            setOffset(offsetForThisFetch + newItemsFromApi.length);
+            const { items: newItemsFromApi } = await getFoods(termToFetch, sortToUse);
+            setFoods(newItemsFromApi);
             triggerIconPrefetch(newItemsFromApi);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            if (isInitialOrNewSearch) { setFoods([]); setTotalFoods(0); setOffset(0); }
+            setFoods([]); 
         } finally {
-            if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
+            setIsLoading(false);
+            isFetching.current = false;
         }
-    }, [t, offset, totalFoods, foods.length, isLoadingMore, triggerIconPrefetch]);
+    }, [t, triggerIconPrefetch]);
+
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -154,10 +137,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     
     useEffect(() => {
         const handler = setTimeout(() => {
-            doFetchFoods(true, search.trim(), sortOption);
-        }, 300); // Debounce search term changes
+            fetchFoods(search.trim(), sortOption);
+        }, 300);
         return () => clearTimeout(handler);
-    }, [search, sortOption, doFetchFoods]);
+    }, [search, sortOption, fetchFoods]);
 
     useFocusEffect(
         useCallback(() => {
@@ -202,10 +185,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const updateSearch = useCallback((text: string) => setSearch(text), []);
     const handleClearSearch = useCallback(() => setSearch(''), []);
-
-    const handleLoadMore = () => {
-        doFetchFoods(false, search.trim(), sortOption);
-    };
     
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
@@ -230,7 +209,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), sortOption); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -247,7 +226,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), sortOption); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -262,18 +241,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), sortOption); 
+            fetchFoods(search.trim(), sortOption); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), sortOption); 
+            fetchFoods(search.trim(), sortOption); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        await doFetchFoods(true, search.trim(), sortOption); 
+        await fetchFoods(search.trim(), sortOption); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-    }, [search, sortOption, doFetchFoods, t]); 
+    }, [search, sortOption, fetchFoods, t]); 
 
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
@@ -335,8 +314,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     };
 
-    const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
-
     if (isLoading && foods.length === 0 && !isOverlayVisible) {
         return (
             <SafeAreaView style={styles.centeredLoader} edges={['top', 'left', 'right']}>
@@ -372,13 +349,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     selectedButtonStyle={styles.selectedSortButton}
                     textStyle={styles.sortButtonText}
                     selectedTextStyle={styles.selectedSortButtonText}
-                    disabled={isLoading || isLoadingMore}
+                    disabled={isLoading}
                     disabledStyle={styles.disabledSortButtonGroup}
                     disabledTextStyle={styles.disabledSortButtonText}
                 />
             </View>
             <FlatList
-                ref={flatListRef}
                 data={foods}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -405,11 +381,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     ) : null
                 }
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
+                extraData={{ foodIcons, isLoading, search, foodsLength: foods.length }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -548,10 +521,6 @@ const useStyles = makeStyles((theme) => ({
         right: I18nManager.isRTL ? undefined : 10,
         left: I18nManager.isRTL ? 10 : undefined,
         bottom: 10,
-    },
-    footerLoader: {
-        paddingVertical: 20,
-        alignItems: 'center',
     },
 }));
 

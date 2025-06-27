@@ -1,5 +1,4 @@
 // src/services/foodService.ts
-// services/foodService.ts
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
@@ -18,13 +17,11 @@ export const createFood = async (foodData: Omit<Food, 'id' | 'createdAt'>): Prom
 };
 
 export const getFoods = async (
-  offset: number = 0,
-  limit?: number,
   searchTerm?: string,
-  sortOption: 'name' | 'newest' | 'oldest' = 'name' // New parameter for sorting
+  sortOption: 'name' | 'newest' | 'oldest' = 'name'
 ): Promise<{ items: Food[], total: number }> => {
-  // Load all foods first. For a real backend, the backend would handle filtering and pagination.
-  const { items: allFoodsFromStorage } = await loadFoods(); // This loads all items
+  // Load all foods first.
+  const { items: allFoodsFromStorage } = await loadFoods();
 
   let filteredFoods = allFoodsFromStorage;
 
@@ -47,15 +44,10 @@ export const getFoods = async (
       });
   }
 
-  // After filtering and sorting, then apply pagination
   const totalFiltered = filteredFoods.length;
 
-  if (limit === undefined) {
-    return { items: filteredFoods, total: totalFiltered };
-  }
-
-  const paginatedFoods = filteredFoods.slice(offset, offset + limit);
-  return { items: paginatedFoods, total: totalFiltered };
+  // Return all filtered and sorted items without pagination
+  return { items: filteredFoods, total: totalFiltered };
 };
 
 export const updateFood = async (updatedFood: Food): Promise<Food> => {
