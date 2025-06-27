@@ -16,7 +16,11 @@
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
-      "title": "חשבון"
+      "title": "חשבון",
+      "actions": "פעולות חשבון",
+      "logout": "התנתק",
+      "logoutConfirmTitle": "אישור התנתקות",
+      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?"
     },
     "general": {
       "title": "כללי"

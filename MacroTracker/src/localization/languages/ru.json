@@ -16,7 +16,11 @@
   "settingsScreen": {
     "title": "Настройки",
     "account": {
-      "title": "Аккаунт"
+      "title": "Аккаунт",
+      "actions": "Действия с аккаунтом",
+      "logout": "Выйти",
+      "logoutConfirmTitle": "Подтвердите выход",
+      "logoutConfirmMessage": "Вы уверены, что хотите выйти?"
     },
     "general": {
       "title": "Общие"

@@ -72,12 +72,12 @@ const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background:
 const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
 
 // Settings Stack Navigator Component
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; }) {
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
   const { theme } = useTheme();
   return (
     <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
+        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
@@ -85,7 +85,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
 }
 
 // Main Tab Navigator Component
-function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; }) {
+function MainTabNavigator({ onThemeChange, onLocaleChange, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onLogout: () => void; }) {
   const { theme } = useTheme();
   const [foodListRefresh, setFoodListRefresh] = React.useState(false);
   const handleFoodChange = React.useCallback(() => setFoodListRefresh(prev => !prev), []);
@@ -114,7 +114,7 @@ function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (t
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
       <Tab.Screen name="SettingsStackRoute" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} />}
+        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -123,7 +123,6 @@ function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (t
 // Auth Stack Navigator Component
 function AuthNavigator() {
     const { theme } = useTheme();
-    // Corrected: `cardStyle` is deprecated, use `contentStyle` for Native Stack Navigator
     const screenOptions: NativeStackNavigationOptions = {
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background }
@@ -138,7 +137,7 @@ function AuthNavigator() {
 
 // App Content - Determines which stack to show
 function AppContent() {
-  const { authState, settings, changeTheme, changeLocale } = useAuth() as AuthContextType;
+  const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
 
   const themeMode = settings.theme;
@@ -188,7 +187,7 @@ function AppContent() {
                 <RootStack.Navigator screenOptions={{ headerShown: false }}>
                     {authState.authenticated ? (
                          <RootStack.Screen name="Main">
-                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} />}
+                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
                          </RootStack.Screen>
                     ) : (
                         <RootStack.Screen name="Auth" component={AuthNavigator} />
