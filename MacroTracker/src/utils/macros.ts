@@ -20,8 +20,8 @@ export async function getMacrosFromText(foodName: string, ingredients: string): 
     try {
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorGetMacrosRecipe', { error: String(error) });
-        Alert.alert(t('utils.macros.alertAiErrorRecipe'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
         throw error;
     }
 }
@@ -32,8 +32,8 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         const mimeType = determineMimeType(asset);
         return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorImageAnalysis', { error: String(error) });
-        Alert.alert(t('utils.macros.alertAnalysisFailedSingle'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
         throw error;
     }
 }
@@ -41,11 +41,11 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
 export async function getMultipleFoodsFromImage(base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> {
     try {
         const results = await getMacrosForImageMultiple(base64Image, mimeType);
-        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
-        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
         throw error;
     }
 }
@@ -53,11 +53,11 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
 export async function getMultipleFoodsFromText(text: string): Promise<EstimatedFoodItem[]> {
     try {
         const results = await getMacrosForTextMultiple(text);
-        if (!Array.isArray(results)) throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.alertQuickAddFailedMulti');
-        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
         throw error;
     }
 }

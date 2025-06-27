@@ -64,26 +64,34 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', { status: response.status });
+            let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             if (isJson && responseBody?.detail) {
                 errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
-            } else if (!isJson) {
-                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status, response: responseBody.substring(0, 100) });
+            } else if (!isJson && responseBody) {
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
             if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
+
             throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
         return responseBody as T;
 
     } catch (error) {
         if (error instanceof BackendError) throw error;
-        let networkErrorMessage = t('backendService.errorNetwork');
+        
+        let networkErrorMessage: string;
         if (error instanceof Error && error.name === 'AbortError') {
             networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error && (error.message.includes('Network request failed') || error.message.includes('Failed to fetch'))) {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkConnection');
         } else if (error instanceof Error) {
-            networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkDetails', { error: error.message });
+        } else {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
         }
+        
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }

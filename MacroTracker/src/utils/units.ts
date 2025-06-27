@@ -1,8 +1,7 @@
 // src/utils/units.ts
-// src/utils/units.ts
 import { Alert } from 'react-native';
 import { estimateGramsNaturalLanguage, BackendError } from '../services/backendService';
-import { t } from '../localization/i18n'; // Import t
+import { t } from '../localization/i18n';
 
 export async function getGramsFromNaturalLanguage(
     foodName: string,
@@ -14,8 +13,8 @@ export async function getGramsFromNaturalLanguage(
     } catch (error) {
         const message = error instanceof BackendError
             ? error.message
-            : t('utils.units.errorCouldNotEstimateGrams', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.units.alertAiEstimationFailed'), message);
+            : t('errors.unexpectedError');
+        Alert.alert(t('errors.estimationFailedTitle'), message);
         throw error;
     }
 }

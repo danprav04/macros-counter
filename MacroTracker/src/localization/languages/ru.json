@@ -7,6 +7,12 @@
       "restartNow": "Перезапустить сейчас"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "Ошибка оценки",
+    "analysisFailedTitle": "Ошибка анализа",
+    "aiGramsProcessingError": "ИИ не смог обработать количество. Попробуйте перефразировать (например, '1 чашка' вместо 'чашка').",
+    "unexpectedError": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
+  },
   "settingsScreen": {
     "title": "Настройки",
     "account": {
@@ -282,19 +288,13 @@
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "Ошибка ИИ (Рецепт)",
-      "alertAnalysisFailedSingle": "Ошибка анализа (Один элемент)",
-      "alertQuickAddFailedMulti": "Ошибка быстрого добавления (Несколько элементов)",
-      "alertImageReadError": "Ошибка чтения изображения",
-      "alertImageReadErrorMessage": "Не удалось прочитать файл изображения.",
-      "errorGetMacrosRecipe": "Не удалось получить макросы для рецепта: %{error}",
-      "errorImageAnalysis": "Ошибка анализа изображения: %{error}",
-      "errorCouldNotAnalyze": "Не удалось проанализировать изображение: %{error}",
-      "errorInvalidResponseMultiple": "Неверный формат ответа от сервера для нескольких элементов."
+      "errorTitle": "Ошибка анализа ИИ",
+      "multiItemErrorTitle": "Ошибка быстрого добавления",
+      "errorMessage": "Не удалось получить ответ от ИИ. Пожалуйста, попробуйте еще раз.",
+      "invalidResponse": "ИИ дал ответ в неожиданном формате. Пожалуйста, попробуйте еще раз или перефразируйте свой запрос."
     },
     "units": {
-      "alertAiEstimationFailed": "Ошибка оценки ИИ",
-      "errorCouldNotEstimateGrams": "Не удалось оценить граммы: %{error}"
+      "errorTitle": "Ошибка оценки ИИ"
     },
     "image": {
       "alertCompressionError": "Ошибка сжатия",
@@ -303,21 +303,21 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Неверный формат идентификатора клиента.",
-    "errorRequestFailedParse": "Запрос к бэкенду не удался (Статус %{status}), не удалось разобрать ответ.",
-    "errorRequestFailedDetailFormat": "Ошибка бэкенда (Статус %{status}), неожиданный формат деталей.",
-    "errorRequestFailedWithServerMsg": "Запрос к бэкенду не удался (Статус %{status}). Ответ сервера: %{response}",
-    "errorAuthFailed": "Аутентификация не удалась. Неверный идентификатор клиента.",
-    "errorPermissionDenied": "Доступ запрещен.",
-    "errorNotFound": "Ресурс не найден.",
-    "errorTooManyRequests": "Слишком много запросов. Пожалуйста, повторите попытку позже.",
-    "errorInsufficientCoins": "Недостаточно монет для этого действия.",
-    "errorNetwork": "Не удалось связаться с бэкендом.",
-    "errorNetworkTimeout": "Время ожидания запроса истекло. Пожалуйста, попробуйте еще раз.",
-    "errorNetworkConnection": " Пожалуйста, проверьте ваше сетевое соединение.",
+    "errorInvalidClientId": "Неверный идентификатор клиента. Пожалуйста, перезапустите приложение.",
+    "errorRequestFailedParse": "Сервер отправил нечитаемый ответ (Статус %{status}).",
+    "errorRequestFailedDetailFormat": "Сервер отправил ответ в неожиданном формате (Статус %{status}).",
+    "errorRequestFailedWithServerMsg": "Сервер вернул ошибку (Статус %{status}).",
+    "errorAuthFailed": "Ошибка аутентификации на сервере. Пожалуйста, перезапустите приложение.",
+    "errorPermissionDenied": "Доступ запрещен сервером.",
+    "errorNotFound": "Запрошенный ресурс не найден на сервере.",
+    "errorTooManyRequests": "Вы делаете это слишком быстро! Пожалуйста, подождите немного и попробуйте снова.",
+    "errorInsufficientCoins": "У вас недостаточно монет ИИ для этого действия. Скоро будет больше!",
+    "errorNetwork": "Не удалось подключиться к серверу.",
+    "errorNetworkTimeout": "Сервер слишком долго отвечает. Пожалуйста, повторите попытку через несколько секунд.",
+    "errorNetworkConnection": " Пожалуйста, проверьте ваше интернет-соединение.",
     "errorNetworkDetails": " Детали: %{error}",
     "errorNetworkUnknown": " Произошла неизвестная сетевая ошибка.",
-    "errorEstimateGramsUnexpectedResponse": "Не удалось получить оценку граммов из-за неожиданного формата ответа.",
+    "errorEstimateGramsUnexpectedResponse": "Не удалось оценить граммы из-за неожиданного ответа сервера.",
     "errorAddCoinsPositive": "Сумма для добавления должна быть положительной."
   },
   "statisticsChart": {
