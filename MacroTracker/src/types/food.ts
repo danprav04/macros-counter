@@ -6,7 +6,8 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
+  createdAt: string; // ISO 8601 date string
 }
 
-// Data structure for sharing food items. ID is omitted.
-export type SharedFoodData = Omit<Food, 'id'>;
+// Data structure for sharing food items. ID and createdAt are omitted.
+export type SharedFoodData = Omit<Food, 'id' | 'createdAt'>;

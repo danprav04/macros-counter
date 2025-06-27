@@ -149,7 +149,11 @@
     "shareErrorMessage": "Could not share food item.",
     "deepLinkErrorTitle": "Error Opening Link",
     "deepLinkInvalidData": "The food data from the link is invalid.",
-    "deepLinkParseError": "Could not read food data from the link."
+    "deepLinkParseError": "Could not read food data from the link.",
+    "sortBy": "Sort by",
+    "sortByName": "Name",
+    "sortByNewest": "Newest",
+    "sortByOldest": "Oldest"
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",

@@ -368,7 +368,7 @@ const DailyEntryScreen: React.FC = () => {
 
 
   const handleCommitFoodItemToMainLibrary = useCallback(async (
-    foodData: Omit<Food, 'id'> | Food,
+    foodData: Omit<Food, 'id' | 'createdAt'> | Food,
     isUpdate: boolean
   ): Promise<Food | null> => {
     if (isSaving) return null;
@@ -381,7 +381,7 @@ const DailyEntryScreen: React.FC = () => {
           prevFoods.map(f => (f.id === committedFood.id ? committedFood : f)).sort((a, b) => a.name.localeCompare(b.name))
         );
       } else if (!isUpdate && !('id' in foodData)) { // Ensure it's Omit<Food, 'id'> for create
-        committedFood = await createFood(foodData as Omit<Food, 'id'>);
+        committedFood = await createFood(foodData as Omit<Food, 'id' | 'createdAt'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         throw new Error("Invalid data for commitFoodItemToMainLibrary");

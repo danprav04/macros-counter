@@ -149,7 +149,11 @@
     "shareErrorMessage": "לא ניתן היה לשתף את פריט המזון.",
     "deepLinkErrorTitle": "שגיאה בפתיחת הקישור",
     "deepLinkInvalidData": "נתוני המזון מהקישור אינם חוקיים.",
-    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור."
+    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור.",
+    "sortBy": "מיין לפי",
+    "sortByName": "שם",
+    "sortByNewest": "החדש ביותר",
+    "sortByOldest": "הישן ביותר"
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",

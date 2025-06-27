@@ -149,7 +149,11 @@
     "shareErrorMessage": "Не удалось поделиться продуктом.",
     "deepLinkErrorTitle": "Ошибка открытия ссылки",
     "deepLinkInvalidData": "Данные о продукте из ссылки недействительны.",
-    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки."
+    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки.",
+    "sortBy": "Сортировать по",
+    "sortByName": "Имени",
+    "sortByNewest": "Новые",
+    "sortByOldest": "Старые"
   },
   "addEntryModal": {
     "titleAdd": "Добавить запись",

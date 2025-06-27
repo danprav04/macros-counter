@@ -33,20 +33,23 @@ import { compressImageIfNeeded } from '../utils/imageUtils';
 import FoodFormFields from "./FoodFormFields";
 import { t } from '../localization/i18n';
 
+// Use a specific type for the form data
+type FoodFormData = Omit<Food, "id" | "createdAt">;
+
 interface AddFoodModalProps {
     isVisible: boolean;
     toggleOverlay: () => void;
-    newFood: Omit<Food, "id">;
+    newFood: FoodFormData;
     editFood: Food | null;
     errors: { [key: string]: string };
     handleInputChange: (
-        key: keyof Omit<Food, "id">,
+        key: keyof FoodFormData,
         value: string,
         isEdit: boolean
     ) => void;
     handleCreateFood: () => Promise<void>;
     handleUpdateFood: () => Promise<void>;
-    validateFood: (food: Omit<Food, "id"> | Food) => { [key: string]: string } | null;
+    validateFood: (food: FoodFormData | Food) => { [key: string]: string } | null;
     setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
@@ -79,17 +82,19 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         }
     }, [isVisible, setErrors]);
 
-    const getCurrentFoodData = (): Partial<Omit<Food, 'id'>> => {
+    const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
     };
 
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
-        const currentData = getCurrentFoodData();
-        const dataToValidate = {
-            name: (currentData.name ?? "").trim(), calories: currentData.calories ?? 0,
-            protein: currentData.protein ?? 0, carbs: currentData.carbs ?? 0, fat: currentData.fat ?? 0,
+        const currentData = isUpdate ? editFood : newFood;
+        
+        const dataToValidate: Food | FoodFormData = {
+            ...currentData,
+            name: (currentData.name ?? "").trim(),
         };
+
         const validationErrors = validateFood(dataToValidate);
         if (validationErrors) {
             setErrors(validationErrors);
