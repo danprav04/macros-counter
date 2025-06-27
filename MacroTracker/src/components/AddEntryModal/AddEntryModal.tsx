@@ -30,7 +30,7 @@ interface AddEntryModalProps {
   initialGrams?: string;
   initialSelectedFoodForEdit?: Food | null;
   onAddNewFoodRequest: () => void;
-  onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
+  onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
 }
 
@@ -111,7 +111,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon, modalMode]);
+  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
   useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
   useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
@@ -267,7 +267,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const entriesToAdd = Array.from(selectedQuickAddIndices).map(index => {
         const item = quickAddItems[index];
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0) };
+        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0), createdAt: new Date().toISOString() };
         return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
     });
     if (entriesToAdd.length > 0) {
@@ -283,7 +283,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleSaveQuickAddItemToLibrary = useCallback(async (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => {
     setSavingState(true);
     try {
-        const foodData: Omit<Food, 'id'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
+        const foodData: Omit<Food, 'id' | 'createdAt'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
         if (existingFood) {
             Alert.alert(t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }), [
