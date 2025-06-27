@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
@@ -69,6 +69,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
   const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
 
+  const prevIsVisible = useRef(isVisible);
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
@@ -86,31 +87,58 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    if (isVisible) loadLastUsedPortions().then(setLastUsedPortions);
-  }, [isVisible]);
+    // --- Modal Opening Logic ---
+    if (isVisible && !prevIsVisible.current) {
+        loadLastUsedPortions().then(setLastUsedPortions);
 
-  useEffect(() => {
-    if (isVisible) {
-      const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
-      if (actuallyEditingDailyItem) {
-        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams);
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      } else if (initialSelectedFoodForEdit) {
-        setInternalSelectedFood(initialSelectedFoodForEdit); setInternalGrams(initialGrams || "");
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      }
-      if (!actuallyEditingDailyItem && !initialSelectedFoodForEdit && modalMode !== "quickAddSelect" && modalMode !== "quickAddText") {
-          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch(""); setUnitMode("grams"); setAutoInput("");
-      }
-    } else {
-      const timer = setTimeout(() => {
-        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams(""); setUnitMode("grams"); setAutoInput("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
-        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); setIsAiLoading(false); setQuickAddLoading(false);
-        setQuickAddTextInput(""); setIsTextQuickAddLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
+        const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
+        if (actuallyEditingDailyItem) {
+            // Setup for editing an existing daily item
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams);
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+        } else if (initialSelectedFoodForEdit) {
+            // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams || "");
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+        }
+        // Note: For a completely fresh modal, no specific setup is needed here
+        // because the closing logic already resets everything.
+    } 
+    // --- Modal Closing Logic ---
+    else if (!isVisible && prevIsVisible.current) {
+        // Use a timer to delay the state reset, allowing the closing animation to complete.
+        const timer = setTimeout(() => {
+            // Full reset of all modal-specific state
+            setInternalSelectedFood(null);
+            setInternalGrams("");
+            setInternalSearch("");
+            setUnitMode("grams");
+            setAutoInput("");
+            setSelectedMultipleFoods(new Map());
+            setModalMode("normal");
+            setQuickAddItems([]);
+            setSelectedQuickAddIndices(new Set());
+            setEditingQuickAddItemIndex(null);
+            setEditedFoodName("");
+            setEditedGrams("");
+            setIsAiLoading(false);
+            setQuickAddLoading(false);
+            setQuickAddTextInput("");
+            setIsTextQuickAddLoading(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
     }
+
+    // Update the ref at the end of the effect to track the current state for the next render.
+    prevIsVisible.current = isVisible;
+
   }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
   useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
