@@ -1,19 +1,56 @@
+// src/services/authService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
-
+// --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
+    // EAS Build's process.env takes precedence
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    if (envUrl) {
+        return envUrl;
+    }
+    // Fallback for older expo-constants approach or local dev without .env
     const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    const url = envUrl || configUrl || 'http://192.168.1.15:8000';
-    return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
+    if (configUrl) {
+        return configUrl;
+    }
+    // Final fallback to a default development URL
+    console.warn(
+        "Production backend URL not found in process.env or app.json. Falling back to default development URL."
+    );
+    return 'http://192.168.1.15:8000'; // Default dev URL
 };
 
-const API_URL = getBackendUrl();
+export const getApiUrl = (): string => {
+    const baseUrl = getBackendUrl();
+    return baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/api/v1`;
+};
+
+const API_URL = getApiUrl();
+
+// --- Auth Event Emitter for 401 Handling ---
+type LogoutListener = () => void;
+let onLogout: LogoutListener | null = null;
+
+export const setLogoutListener = (listener: LogoutListener) => {
+    onLogout = listener;
+};
+
+export const triggerLogout = () => {
+    if (onLogout) {
+        onLogout();
+    } else {
+        console.warn('Logout triggered, but no listener was set. A full app reload might be required.');
+        // Fallback behavior if the listener isn't set for some reason
+        removeAuthToken();
+    }
+};
+
 
 // --- Token Management ---
+const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
+
 export const getAuthToken = async (): Promise<string | null> => {
   return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
 };

@@ -617,18 +617,22 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 )}
             </ListItem>
 
-            {/* REMOVE OR PROTECT THIS BUTTON IN PRODUCTION */}
-            <Button
-                title={t('accountSettings.addTestCoins')}
-                onPress={onAddTestCoins}
-                buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
-                loading={isAddingCoins}
-                disabled={isAddingCoins || isLoadingCoins}
-            />
-            <Text style={styles.testButtonWarning}>
-                {t('accountSettings.testButtonWarning')}
-            </Text>
+            {/* This button and its warning are only available in development builds */}
+            {__DEV__ && (
+                <>
+                    <Button
+                        title={t('accountSettings.addTestCoins')}
+                        onPress={onAddTestCoins}
+                        buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
+                        icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+                        loading={isAddingCoins}
+                        disabled={isAddingCoins || isLoadingCoins}
+                    />
+                    <Text style={styles.testButtonWarning}>
+                        {t('accountSettings.testButtonWarning')}
+                    </Text>
+                </>
+            )}
         </View>
     );
 };
@@ -4330,7 +4334,11 @@ export default i18n;
   "settingsScreen": {
     "title": "Settings",
     "account": {
-      "title": "Account"
+      "title": "Account",
+      "actions": "Account Actions",
+      "logout": "Logout",
+      "logoutConfirmTitle": "Confirm Logout",
+      "logoutConfirmMessage": "Are you sure you want to log out?"
     },
     "general": {
       "title": "General"
@@ -4804,7 +4812,11 @@ export default i18n;
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
-      "title": "חשבון"
+      "title": "חשבון",
+      "actions": "פעולות חשבון",
+      "logout": "התנתק",
+      "logoutConfirmTitle": "אישור התנתקות",
+      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?"
     },
     "general": {
       "title": "כללי"
@@ -5278,7 +5290,11 @@ export default i18n;
   "settingsScreen": {
     "title": "Настройки",
     "account": {
-      "title": "Аккаунт"
+      "title": "Аккаунт",
+      "actions": "Действия с аккаунтом",
+      "logout": "Выйти",
+      "logoutConfirmTitle": "Подтвердите выход",
+      "logoutConfirmMessage": "Вы уверены, что хотите выйти?"
     },
     "general": {
       "title": "Общие"
@@ -5734,6 +5750,7 @@ export default i18n;
 
 
 ---------- AppNavigator.tsx ----------
+// src/navigation/AppNavigator.tsx
 import React from 'react';
 import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -5756,6 +5773,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
+import { setLogoutListener } from '../services/authService'; // Import the listener setter
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -5808,12 +5826,12 @@ const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background:
 const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
 
 // Settings Stack Navigator Component
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; }) {
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
   const { theme } = useTheme();
   return (
     <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
+        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
@@ -5821,7 +5839,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
 }
 
 // Main Tab Navigator Component
-function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; }) {
+function MainTabNavigator({ onThemeChange, onLocaleChange, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onLogout: () => void; }) {
   const { theme } = useTheme();
   const [foodListRefresh, setFoodListRefresh] = React.useState(false);
   const handleFoodChange = React.useCallback(() => setFoodListRefresh(prev => !prev), []);
@@ -5850,7 +5868,7 @@ function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (t
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
       <Tab.Screen name="SettingsStackRoute" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} />}
+        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -5859,7 +5877,6 @@ function MainTabNavigator({ onThemeChange, onLocaleChange }: { onThemeChange: (t
 // Auth Stack Navigator Component
 function AuthNavigator() {
     const { theme } = useTheme();
-    // Corrected: `cardStyle` is deprecated, use `contentStyle` for Native Stack Navigator
     const screenOptions: NativeStackNavigationOptions = {
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background }
@@ -5874,8 +5891,15 @@ function AuthNavigator() {
 
 // App Content - Determines which stack to show
 function AppContent() {
-  const { authState, settings, changeTheme, changeLocale } = useAuth() as AuthContextType;
+  const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
+
+  // Set up the global logout listener
+  React.useEffect(() => {
+    if (logout) {
+      setLogoutListener(logout);
+    }
+  }, [logout]);
 
   const themeMode = settings.theme;
   const currentThemeConfig = React.useMemo(() => {
@@ -5924,7 +5948,7 @@ function AppContent() {
                 <RootStack.Navigator screenOptions={{ headerShown: false }}>
                     {authState.authenticated ? (
                          <RootStack.Screen name="Main">
-                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} />}
+                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
                          </RootStack.Screen>
                     ) : (
                         <RootStack.Screen name="Auth" component={AuthNavigator} />
@@ -7623,8 +7647,7 @@ import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as mac
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
-// Removed: import { clearIconCache } from "../utils/iconUtils"; 
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
@@ -7634,6 +7657,7 @@ interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
   onDataOperation: () => void; 
+  onLogout: () => void;
 }
 
 type SettingsStackParamList = {
@@ -7644,7 +7668,7 @@ type SettingsStackParamList = {
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation, onLogout }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
     language: "system",
@@ -7656,7 +7680,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  // Removed: const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
@@ -7829,6 +7852,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     navigation.navigate('Questionnaire');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+        t('settingsScreen.account.logoutConfirmTitle'),
+        t('settingsScreen.account.logoutConfirmMessage'),
+        [
+            { text: t('confirmationModal.cancel'), style: 'cancel' },
+            { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout },
+        ],
+        { cancelable: true }
+    );
+  };
+
   if (isDataLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -7847,6 +7882,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
              isAddingCoins={isAddingCoins}
              onAddTestCoins={handleAddTestCoins}
         />
+
+        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
+        <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
+            <Icon name="logout" type="material-community" color={theme.colors.error} />
+            <ListItem.Content>
+                <ListItem.Title style={styles.logoutTitle}>
+                    {t('settingsScreen.account.logout')}
+                </ListItem.Title>
+            </ListItem.Content>
+            <ListItem.Chevron color={theme.colors.error} />
+        </ListItem>
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
         <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
@@ -7951,6 +7997,17 @@ const useStyles = makeStyles((theme) => ({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontWeight: '500',
   },
+  logoutItem: {
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+  },
+  logoutTitle: {
+      color: theme.colors.error,
+      textAlign: I18nManager.isRTL ? 'right' : 'left',
+      fontWeight: 'bold',
+  },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
@@ -7979,22 +8036,59 @@ export default SettingsScreen;
 
 
 ---------- authService.ts ----------
+// src/services/authService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
-
+// --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
+    // EAS Build's process.env takes precedence
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
+    if (envUrl) {
+        return envUrl;
+    }
+    // Fallback for older expo-constants approach or local dev without .env
     const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    const url = envUrl || configUrl || 'http://192.168.1.15:8000';
-    return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
+    if (configUrl) {
+        return configUrl;
+    }
+    // Final fallback to a default development URL
+    console.warn(
+        "Production backend URL not found in process.env or app.json. Falling back to default development URL."
+    );
+    return 'http://192.168.1.15:8000'; // Default dev URL
 };
 
-const API_URL = getBackendUrl();
+export const getApiUrl = (): string => {
+    const baseUrl = getBackendUrl();
+    return baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/api/v1`;
+};
+
+const API_URL = getApiUrl();
+
+// --- Auth Event Emitter for 401 Handling ---
+type LogoutListener = () => void;
+let onLogout: LogoutListener | null = null;
+
+export const setLogoutListener = (listener: LogoutListener) => {
+    onLogout = listener;
+};
+
+export const triggerLogout = () => {
+    if (onLogout) {
+        onLogout();
+    } else {
+        console.warn('Logout triggered, but no listener was set. A full app reload might be required.');
+        // Fallback behavior if the listener isn't set for some reason
+        removeAuthToken();
+    }
+};
+
 
 // --- Token Management ---
+const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
+
 export const getAuthToken = async (): Promise<string | null> => {
   return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
 };
@@ -8074,28 +8168,12 @@ export const loginUser = async (email: string, password: string): Promise<{acces
 
 ---------- backendService.ts ----------
 // src/services/backendService.ts
-import Constants from 'expo-constants';
-import { getClientId } from './clientIDService';
+import { getApiUrl, getAuthToken, triggerLogout } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
-import uuid from 'react-native-uuid';
 import i18n, { t } from '../localization/i18n';
 
-const getBackendUrl = (): string => {
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
-    if (envUrl) {
-        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    if (configUrl) {
-        return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    console.error("BACKEND_URL not found. Using default DEVELOPMENT URL.");
-    const DEV_URL = 'http://192.168.1.15:8000';
-    return `${DEV_URL}/api/v1`;
-};
-
-const BASE_URL = getBackendUrl();
+const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
@@ -8124,9 +8202,13 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         };
 
         if (needsAuth) {
-            const clientId = await getClientId();
-            if (!uuid.validate(clientId)) throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-            headers['X-Client-ID'] = clientId;
+            const token = await getAuthToken();
+            if (!token) {
+                // If a screen needs auth and there's no token, this will prevent the call.
+                // The user should be redirected to login by the navigation logic.
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+            }
+            headers['Authorization'] = `Bearer ${token}`;
         }
         
         response = await fetch(url, { ...options, headers });
@@ -8145,7 +8227,12 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             } else if (!isJson && responseBody) {
                 errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
-            if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
+            
+            if (response.status === 401) {
+                errorMessage = t('backendService.errorAuthFailed');
+                // Trigger global logout handler
+                triggerLogout();
+            }
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
             if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
 
@@ -8171,7 +8258,7 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>('/users/status');
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
@@ -8183,7 +8270,7 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
 };
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${await getClientId()}`, { method: 'POST', body: JSON.stringify({ amount }) });
+    return fetchBackend<UserStatus>('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };
 ---------- END backendService.ts ----------
 
@@ -9396,13 +9483,11 @@ export const isValidNumberInput = (value: string): boolean => {
 
 
 ---------- tsconfig.json ----------
-// tsconfig.json
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "esModuleInterop": true,
-    "module": "commonjs"
+    "esModuleInterop": true
   }
 }
 ---------- END tsconfig.json ----------

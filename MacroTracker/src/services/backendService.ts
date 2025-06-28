@@ -1,25 +1,10 @@
 // src/services/backendService.ts
-import Constants from 'expo-constants';
-import { getAuthToken } from './authService';
+import { getApiUrl, getAuthToken, triggerLogout } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
 import i18n, { t } from '../localization/i18n';
 
-const getBackendUrl = (): string => {
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
-    if (envUrl) {
-        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    if (configUrl) {
-        return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    console.error("BACKEND_URL not found. Using default DEVELOPMENT URL.");
-    const DEV_URL = 'http://192.168.1.15:8000';
-    return `${DEV_URL}/api/v1`;
-};
-
-const BASE_URL = getBackendUrl();
+const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
@@ -73,7 +58,12 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             } else if (!isJson && responseBody) {
                 errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
-            if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
+            
+            if (response.status === 401) {
+                errorMessage = t('backendService.errorAuthFailed');
+                // Trigger global logout handler
+                triggerLogout();
+            }
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
             if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
 

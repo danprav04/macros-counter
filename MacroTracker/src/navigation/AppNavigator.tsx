@@ -1,3 +1,4 @@
+// src/navigation/AppNavigator.tsx
 import React from 'react';
 import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -20,6 +21,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
+import { setLogoutListener } from '../services/authService'; // Import the listener setter
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -139,6 +141,13 @@ function AuthNavigator() {
 function AppContent() {
   const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
+
+  // Set up the global logout listener
+  React.useEffect(() => {
+    if (logout) {
+      setLogoutListener(logout);
+    }
+  }, [logout]);
 
   const themeMode = settings.theme;
   const currentThemeConfig = React.useMemo(() => {
