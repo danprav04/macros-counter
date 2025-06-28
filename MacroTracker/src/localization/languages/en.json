@@ -13,6 +13,15 @@
     "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
+  "forgotPasswordScreen": {
+    "title": "Reset Password",
+    "instructions": "Enter your account's email address and we will send you a link to reset your password.",
+    "emailPlaceholder": "Email Address",
+    "buttonText": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "alertSuccessTitle": "Check Your Email",
+    "forgotPasswordLink": "Forgot Password?"
+  },
   "settingsScreen": {
     "title": "Settings",
     "account": {

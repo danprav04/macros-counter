@@ -1,3 +1,4 @@
+// src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
@@ -6,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
+import { t } from '../localization/i18n';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -71,6 +73,11 @@ const LoginScreen: React.FC = () => {
                 buttonStyle={styles.button}
                 containerStyle={styles.buttonContainer}
             />
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                <Text style={[styles.forgotPassword, { color: theme.colors.secondary }]}>
+                    {t('forgotPasswordScreen.forgotPasswordLink')}
+                </Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
             </TouchableOpacity>
@@ -99,6 +106,10 @@ const styles = StyleSheet.create({
     buttonContainer: {
         width: '100%',
         marginTop: 20,
+    },
+    forgotPassword: {
+        marginTop: 15,
+        textAlign: 'center'
     },
     switchText: {
         marginTop: 20,

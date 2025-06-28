@@ -16,6 +16,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import QuestionnaireScreen from '../screens/QuestionnaireScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
@@ -38,6 +39,7 @@ export type SettingsStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined; // Add the new screen here
 };
 
 export type RootStackParamList = {
@@ -133,6 +135,7 @@ function AuthNavigator() {
         <AuthStack.Navigator screenOptions={screenOptions}>
             <AuthStack.Screen name="Login" component={LoginScreen} />
             <AuthStack.Screen name="Register" component={RegisterScreen} />
+            <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         </AuthStack.Navigator>
     )
 }

@@ -76,6 +76,13 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
 
     try {
         const response = await fetch(url, { ...options, headers });
+
+        // For 202 Accepted, the body might be empty or contain a message.
+        // We handle it as a success case.
+        if (response.status === 202) {
+            return (await response.json()) as T;
+        }
+
         const responseBody = await response.json();
 
         if (!response.ok) {
@@ -124,4 +131,11 @@ export const loginUser = async (email: string, password: string): Promise<{acces
         Alert.alert('Login Error', error.message || 'Could not connect to the server.');
         throw error;
     }
+};
+
+export const requestPasswordReset = async (email: string): Promise<{message: string}> => {
+    return fetchAuthApi<{message: string}>('/request-password-reset', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    });
 };

@@ -13,6 +13,15 @@
     "aiGramsProcessingError": "הבינה המלאכותית לא הצליחה לעבד את הכמות. אנא נסה לנסח זאת אחרת (למשל, 'כוס אחת' במקום 'כוס').",
     "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
+  "forgotPasswordScreen": {
+    "title": "איפוס סיסמה",
+    "instructions": "הזן את כתובת האימייל של חשבונך ונשלח לך קישור לאיפוס הסיסמה.",
+    "emailPlaceholder": "כתובת אימייל",
+    "buttonText": "שלח קישור לאיפוס",
+    "backToLogin": "חזרה להתחברות",
+    "alertSuccessTitle": "בדוק את האימייל שלך",
+    "forgotPasswordLink": "שכחת סיסמה?"
+  },
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
