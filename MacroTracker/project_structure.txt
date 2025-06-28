@@ -35,6 +35,8 @@ src/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
+  context/
+    AuthContext.tsx
   localization/
     i18n.ts
     languages/
@@ -46,9 +48,12 @@ src/
   screens/
     DailyEntryScreen.tsx
     FoodListScreen.tsx
+    LoginScreen.tsx
     QuestionnaireScreen.tsx
+    RegisterScreen.tsx
     SettingsScreen.tsx
   services/
+    authService.ts
     backendService.ts
     clientIDService.ts
     foodService.ts
@@ -60,6 +65,7 @@ src/
     openRouterTypes.ts
     questionnaire.ts
     settings.ts
+    token.ts
   utils/
     dateUtils.ts
     foodIconMatcher.ts
@@ -198,8 +204,8 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+         "BACKEND_URL_PRODUCTION": "http://192.168.1.15:8000",
+         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
       }
     }
   }
@@ -209,287 +215,29 @@ yarn-error.*
 
 ---------- App.tsx ----------
 // App.tsx
-// App.tsx
 import "react-native-get-random-values"; // MUST BE FIRST
 import Toast from "react-native-toast-message";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import AppNavigator from "./src/navigation/AppNavigator";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { ThemeProvider, createTheme } from "@rneui/themed";
-import { loadSettings, saveSettings } from "./src/services/storageService";
-import {
-  useColorScheme,
-  AppState,
-  AppStateStatus,
-  Platform,
-  I18nManager, // Import I18nManager
-  Alert, // For restart prompt
-  DevSettings // For dev reload
-} from "react-native";
-import * as Localization from 'expo-localization';
-import * as Linking from 'expo-linking'; // Import expo-linking
-import {
-  NavigationContainer,
-  DefaultTheme,
-  DarkTheme,
-  LinkingOptions, // Import LinkingOptions
-} from "@react-navigation/native";
-import { Colors } from "@rneui/base";
-import { Settings, LanguageCode } from "./src/types/settings";
-import { LogBox, View, Text } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import { getClientId } from "./src/services/clientIDService";
-import i18n, { setLocale, t } from './src/localization/i18n'; // Import i18n setup
-import { MainTabParamList } from "./src/navigation/AppNavigator"; // For linking config
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Text, TextInput } from "react-native";
+import { AuthProvider } from "./src/context/AuthContext";
 
-LogBox.ignoreLogs(["Function components cannot be given refs"]);
-
-declare module "@rneui/themed" {
-  export interface Colors {
-    text: string;
-    card: string;
-    successLight: string;
-  }
-}
-
-interface MyTheme {
-  mode: "light" | "dark";
-  colors: Colors;
-}
-
-const lightTheme: MyTheme = {
-  mode: "light",
-  colors: {
-    primary: "#2e86de",
-    secondary: "#6c757d",
-    background: "#f8f9fa",
-    grey5: "#e9ecef",
-    white: "#ffffff",
-    grey4: "#ced4da",
-    success: "#28a745",
-    successLight: "#d4edda",
-    black: "#000000",
-    text: "#212529",
-    card: "#ffffff",
-    error: "#dc3545",
-    warning: "#ffc107",
-    disabled: "#6c757d",
-    divider: "#ced4da",
-    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
-    grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da",
-    greyOutline: "#adb5bd", searchBg: "#ffffff",
-  },
-};
-
-const darkTheme: MyTheme = {
-  mode: "dark",
-  colors: {
-    primary: "#2e86de", secondary: "#adb5bd", background: "#121212",
-    grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40",
-    success: "#28a745", successLight: "#1f5139", black: "#000000",
-    text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545",
-    warning: "#ffc107", disabled: "#6c757d", divider: "#343a40",
-    platform: { ios: {}, android: {}, web: {}, default: {} } as any,
-    grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40",
-    grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e",
-  },
-};
-
-// Linking configuration
-const linking: LinkingOptions<MainTabParamList> = { // Explicitly type the linking object
-  prefixes: [Linking.createURL('/')], // Handles macrosvisionai://
-  config: {
-    screens: {
-      // Define how paths map to your MainTabParamList screens
-      FoodListRoute: {
-        path: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
-        // foodData query param will be passed to FoodListScreen route.params
-      },
-      // Add other deep linkable routes here if needed
-      // Example:
-      // DailyEntryRoute: 'daily/:date',
-    } // REMOVED "satisfies MainTabParamList" from here
-  },
-};
-
+// --- FONT SCALING PATCH ---
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.allowFontScaling = false;
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.allowFontScaling = false;
+// --- END FONT SCALING PATCH ---
 
 const App = () => {
-  const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">(
-    "system"
-  );
-  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>('system');
-  const [loadedSettings, setLoadedSettings] = useState<Settings | null>(null);
-  const colorScheme = useColorScheme();
-  const [appState, setAppState] = useState(AppState.currentState);
-  const [isClientIdReady, setIsClientIdReady] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false); // New state for overall initialization
-
-  // Initialize Client ID, Load initial settings, and set up i18n
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        await getClientId();
-        setIsClientIdReady(true);
-        console.log('Client ID is ready.');
-
-        const settings = await loadSettings();
-        setThemeMode(settings.theme);
-        setCurrentLanguage(settings.language);
-
-        if (settings.language === 'system') {
-          const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
-          setLocale(deviceLocale);
-        } else {
-          setLocale(settings.language);
-        }
-        setLoadedSettings(settings);
-        console.log('Settings loaded and locale set:', i18n.locale);
-        setIsInitialized(true); // Mark initialization as complete
-      } catch (error) {
-        console.error("Initialization Error:", error);
-        setIsInitialized(true); // Still mark as initialized to show app, even with error
-      }
-    };
-    initializeApp();
-  }, []);
-
-  // AppState Listener
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      setAppState(nextAppState);
-    };
-    const subscription = AppState.addEventListener("change", handleAppStateChange);
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  const updateTheme = (newThemeMode: "light" | "dark" | "system") => {
-    const isDark =
-      newThemeMode === "system"
-        ? colorScheme === "dark"
-        : newThemeMode === "dark";
-    return isDark ? darkTheme : lightTheme;
-  };
-
-  const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
-    setThemeMode(newTheme);
-    if (loadedSettings) {
-      const updatedSettings: Settings = {
-        ...loadedSettings,
-        theme: newTheme,
-      };
-      await saveSettings(updatedSettings);
-      setLoadedSettings(updatedSettings);
-    }
-  };
-
-  const handleLocaleChange = async (newLocale: LanguageCode) => {
-    const oldLocale = currentLanguage === 'system'
-        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
-        : currentLanguage;
-    
-    setCurrentLanguage(newLocale);
-    if (newLocale === 'system') {
-        const deviceLocale = Localization.getLocales()?.[0]?.languageTag || 'en-US';
-        setLocale(deviceLocale);
-    } else {
-        setLocale(newLocale);
-    }
-
-    if (loadedSettings) {
-        const updatedSettings: Settings = { ...loadedSettings, language: newLocale };
-        await saveSettings(updatedSettings);
-        setLoadedSettings(updatedSettings);
-    }
-
-    const newEffectiveLocale = newLocale === 'system'
-        ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0]
-        : newLocale;
-
-    // Prompt for restart if RTL/LTR direction changes
-    const oldIsRTL = oldLocale === 'he';
-    const newIsRTL = newEffectiveLocale === 'he';
-
-    if (oldIsRTL !== newIsRTL) {
-        Alert.alert(
-            t('confirmationModal.restartRequiredTitle'),
-            t('settingsScreen.language.restartMessage'),
-            [
-                {
-                    text: t('app.alertButtons.later'),
-                    style: "cancel"
-                },
-                {
-                    text: t('app.alertButtons.restartNow'),
-                    onPress: () => {
-                        // In a real build, you'd use Updates.reloadAsync()
-                        // For development in Expo Go, this reloads the JS bundle
-                        DevSettings.reload();
-                    }
-                }
-            ]
-        );
-    }
-  };
-
-
-  const currentTheme = updateTheme(themeMode);
-
-  const navigationTheme = {
-    dark: {
-      ...DarkTheme,
-      colors: {
-        ...DarkTheme.colors,
-        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
-        card: currentTheme.colors.card, text: currentTheme.colors.text,
-        border: currentTheme.colors.divider, notification: currentTheme.colors.successLight,
-      },
-    },
-    light: {
-      ...DefaultTheme,
-      colors: {
-        ...DefaultTheme.colors,
-        primary: currentTheme.colors.primary, background: currentTheme.colors.background,
-        card: currentTheme.colors.card, text: currentTheme.colors.text,
-        border: currentTheme.colors.divider, notification: currentTheme.colors.success,
-      },
-    },
-  };
-
-  const statusBarTheme = themeMode === "system" ? colorScheme : themeMode;
-  const backgroundColor = currentTheme.colors.background;
-
-  if (!isInitialized) { // Check overall initialization
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: backgroundColor }}>
-        <Text style={{ color: currentTheme.colors.text }}>{t('app.initializing')}</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <ThemeProvider theme={createTheme(currentTheme)}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: backgroundColor }}>
-        <StatusBar
-          style={statusBarTheme === "dark" ? "light" : "dark"}
-          backgroundColor={backgroundColor}
-          translucent={false}
-        />
-        <NavigationContainer
-          theme={
-            currentTheme.mode === "dark"
-              ? navigationTheme.dark
-              : navigationTheme.light
-          }
-          linking={linking}
-          fallback={<Text style={{color: currentTheme.colors.text, textAlign: 'center', marginTop: 50}}>{t('app.initializing')}</Text>} // Fallback for deep linking
-        >
-          <AppNavigator onThemeChange={handleThemeChange} onLocaleChange={handleLocaleChange} />
-        </NavigationContainer>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <AppNavigator />
         <Toast />
-      </SafeAreaView>
-    </ThemeProvider>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 };
 
@@ -869,18 +617,22 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 )}
             </ListItem>
 
-            {/* REMOVE OR PROTECT THIS BUTTON IN PRODUCTION */}
-            <Button
-                title={t('accountSettings.addTestCoins')}
-                onPress={onAddTestCoins}
-                buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
-                loading={isAddingCoins}
-                disabled={isAddingCoins || isLoadingCoins}
-            />
-            <Text style={styles.testButtonWarning}>
-                {t('accountSettings.testButtonWarning')}
-            </Text>
+            {/* This button and its warning are only available in development builds */}
+            {__DEV__ && (
+                <>
+                    <Button
+                        title={t('accountSettings.addTestCoins')}
+                        onPress={onAddTestCoins}
+                        buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
+                        icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+                        loading={isAddingCoins}
+                        disabled={isAddingCoins || isLoadingCoins}
+                    />
+                    <Text style={styles.testButtonWarning}>
+                        {t('accountSettings.testButtonWarning')}
+                    </Text>
+                </>
+            )}
         </View>
     );
 };
@@ -921,53 +673,23 @@ export default AccountSettings;
 
 ---------- AddEntryModal.tsx ----------
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  // useRef, // No longer needed here if list scrolling isn't an issue
-} from "react";
-import {
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-  StyleSheet,
-  Alert,
-  Keyboard,
-} from "react-native";
-import {
-  Overlay,
-  makeStyles,
-  useTheme,
-} from "@rneui/themed";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
+import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import {
-  loadRecentFoods,
-  saveRecentFoods,
-  loadLastUsedPortions,
-  saveLastUsedPortions,
-  LastUsedPortions,
-} from "../../services/storageService";
-import { getFoodIconUrl } from "../../utils/iconUtils"; // Correct
+import { loadRecentFoods, saveRecentFoods, loadLastUsedPortions, saveLastUsedPortions, LastUsedPortions } from "../../services/storageService";
+import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
-import {
-  EstimatedFoodItem,
-  getMultipleFoodsFromImage,
-  BackendError,
-  determineMimeType,
-} from "../../utils/macros";
+import { EstimatedFoodItem, getMultipleFoodsFromImage, getMultipleFoodsFromText, BackendError, determineMimeType } from "../../utils/macros";
 import { compressImageIfNeeded, getBase64FromUri } from "../../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "../QuickAddList";
-import { t } from '../../localization/i18n'; // No i18n instance needed directly for locale here
+import { t } from '../../localization/i18n';
 import { calculateDailyEntryGrade, FoodGradeResult } from "../../utils/gradingUtils";
 import { Settings } from '../../types/settings';
-
 import ModalHeader from './ModalHeader';
 import FoodSelectionList from './FoodSelectionList';
 import AmountInputSection from './AmountInputSection';
@@ -982,7 +704,7 @@ interface AddEntryModalProps {
   initialGrams?: string;
   initialSelectedFoodForEdit?: Food | null;
   onAddNewFoodRequest: () => void;
-  onCommitFoodToLibrary: (foodData: Omit<Food, 'id'> | Food, isUpdate: boolean) => Promise<Food | null>;
+  onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
 }
 
@@ -990,20 +712,11 @@ const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
 const MAX_RECENT_FOODS = 5;
 
 type UnitMode = "grams" | "auto";
-type ModalMode = "normal" | "quickAddSelect";
+type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
 
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
-  isVisible,
-  toggleOverlay,
-  handleAddEntry: parentHandleAddEntry,
-  handleAddMultipleEntries: parentHandleAddMultipleEntries,
-  foods,
-  isEditMode,
-  initialGrams,
-  initialSelectedFoodForEdit,
-  onAddNewFoodRequest,
-  onCommitFoodToLibrary,
-  dailyGoals,
+  isVisible, toggleOverlay, handleAddEntry: parentHandleAddEntry, handleAddMultipleEntries: parentHandleAddMultipleEntries,
+  foods, isEditMode, initialGrams, initialSelectedFoodForEdit, onAddNewFoodRequest, onCommitFoodToLibrary, dailyGoals,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -1011,12 +724,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [internalSelectedFood, setInternalSelectedFood] = useState<Food | null>(null);
   const [internalGrams, setInternalGrams] = useState("");
   const [internalSearch, setInternalSearch] = useState("");
-
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
-  const [foodIcons, setFoodIcons] = useState<{
-    [foodName: string]: string | null;
-  }>({});
-
+  const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({});
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -1024,25 +733,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [modalMode, setModalMode] = useState<ModalMode>("normal");
   const [quickAddLoading, setQuickAddLoading] = useState(false);
   const [quickAddItems, setQuickAddItems] = useState<EstimatedFoodItem[]>([]);
-  const [selectedQuickAddIndices, setSelectedQuickAddIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<
-    number | null
-  >(null);
+  const [selectedQuickAddIndices, setSelectedQuickAddIndices] = useState<Set<number>>(new Set());
+  const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-
   const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
+  
+  const [quickAddTextInput, setQuickAddTextInput] = useState("");
+  const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
 
+  const prevIsVisible = useRef(isVisible);
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName || foodIcons[foodName] !== undefined) return;
-    const icon = getFoodIconUrl(foodName); // No locale needed
+    const icon = getFoodIconUrl(foodName);
     setFoodIcons(prevIcons => ({ ...prevIcons, [foodName]: icon }));
-  }, [foodIcons]); // Removed i18n.locale
+  }, [foodIcons]);
 
   const foodGradeResult = useMemo((): FoodGradeResult | null => {
     const numericGramsValue = parseFloat(internalGrams);
@@ -1053,283 +761,201 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    if (isVisible) {
-        loadLastUsedPortions().then(setLastUsedPortions).catch(err => {
-            // console.warn("Failed to load last used portions:", err)
-        });
-    }
-  }, [isVisible]);
+    // --- Modal Opening Logic ---
+    if (isVisible && !prevIsVisible.current) {
+        loadLastUsedPortions().then(setLastUsedPortions);
 
-  useEffect(() => {
-    if (isVisible) {
-      const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
-
-      if (actuallyEditingDailyItem) {
-        setInternalSelectedFood(initialSelectedFoodForEdit);
-        setInternalGrams(initialGrams);
-        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal");
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      } else if (initialSelectedFoodForEdit) {
-        setInternalSelectedFood(initialSelectedFoodForEdit);
-        setInternalGrams(initialGrams || "");
-        setUnitMode("grams"); setAutoInput(""); setInternalSearch("");
-        setSelectedMultipleFoods(new Map()); setModalMode("normal");
-        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-      } else {
-        if (modalMode !== "quickAddSelect") {
-          setInternalSelectedFood(null); setInternalGrams(""); setInternalSearch("");
-          setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
-          setModalMode("normal");
+        const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
+        if (actuallyEditingDailyItem) {
+            // Setup for editing an existing daily item
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams);
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+        } else if (initialSelectedFoodForEdit) {
+            // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
+            setModalMode("normal");
+            setUnitMode("grams");
+            setInternalSelectedFood(initialSelectedFoodForEdit);
+            setInternalGrams(initialGrams || "");
+            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
         }
-      }
-    } else {
-      const timer = setTimeout(() => {
-        setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
-        setUnitMode("grams"); setAutoInput(""); setSelectedMultipleFoods(new Map());
-        setModalMode("normal"); setQuickAddItems([]); setSelectedQuickAddIndices(new Set());
-        setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams("");
-        setIsAiLoading(false); setQuickAddLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
+        // Note: For a completely fresh modal, no specific setup is needed here
+        // because the closing logic already resets everything.
+    } 
+    // --- Modal Closing Logic ---
+    else if (!isVisible && prevIsVisible.current) {
+        // Use a timer to delay the state reset, allowing the closing animation to complete.
+        const timer = setTimeout(() => {
+            // Full reset of all modal-specific state
+            setInternalSelectedFood(null);
+            setInternalGrams("");
+            setInternalSearch("");
+            setUnitMode("grams");
+            setAutoInput("");
+            setSelectedMultipleFoods(new Map());
+            setModalMode("normal");
+            setQuickAddItems([]);
+            setSelectedQuickAddIndices(new Set());
+            setEditingQuickAddItemIndex(null);
+            setEditedFoodName("");
+            setEditedGrams("");
+            setIsAiLoading(false);
+            setQuickAddLoading(false);
+            setQuickAddTextInput("");
+            setIsTextQuickAddLoading(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
     }
+
+    // Update the ref at the end of the effect to track the current state for the next render.
+    prevIsVisible.current = isVisible;
+
   }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
-  useEffect(() => {
-    if (isVisible && modalMode === "normal") {
-       loadRecentFoods().then(loadedRecent => {
-           setRecentFoods(loadedRecent);
-           loadedRecent.forEach(food => resolveAndSetIcon(food.name));
-       }).catch(err => {
-            // console.warn("Failed to load recent foods:", err);
-       });
-    }
-  }, [isVisible, modalMode, resolveAndSetIcon]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-
-    let itemsToCheckNames: string[] = [];
-    if (modalMode === "normal") {
-        const currentDisplayItems: Food[] = [];
-        if (!internalSearch) {
-            currentDisplayItems.push(...recentFoods);
-            const recentIds = new Set(recentFoods.map(f => f.id));
-            currentDisplayItems.push(...foods.filter(f => !recentIds.has(f.id)).slice(0,10));
-        } else {
-            currentDisplayItems.push(...foods.filter(f => f.name.toLowerCase().includes(internalSearch.toLowerCase())).slice(0,10));
-        }
-        itemsToCheckNames = currentDisplayItems.map(item => item.name).filter(Boolean);
-    } else if (modalMode === "quickAddSelect" && quickAddItems.length > 0) {
-        itemsToCheckNames = quickAddItems.map(item => item.foodName).filter(Boolean);
-    }
-
-    if (itemsToCheckNames.length > 0) {
-        itemsToCheckNames.forEach(name => resolveAndSetIcon(name));
-    }
-  }, [isVisible, modalMode, internalSearch, recentFoods, foods, quickAddItems, resolveAndSetIcon]);
-
+  useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
+  useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
 
   const addToRecentFoods = useCallback(async (food: Food) => {
     if (!food || !food.id) return;
-    setRecentFoods((prevRecent) => {
-      if (prevRecent.length > 0 && prevRecent[0].id === food.id) return prevRecent;
-      const updated = prevRecent.filter((rf) => rf.id !== food.id);
-      updated.unshift(food);
-      const trimmed = updated.slice(0, MAX_RECENT_FOODS);
-      saveRecentFoods(trimmed).catch(() => {});
-      return trimmed;
+    setRecentFoods(prev => {
+      const updated = [food, ...prev.filter(f => f.id !== food.id)].slice(0, MAX_RECENT_FOODS);
+      saveRecentFoods(updated).catch(() => {}); return updated;
     });
   }, []);
 
   const servingSizeSuggestions = useMemo(() => {
-    if (!internalSelectedFood || !internalSelectedFood.id) return [];
+    if (!internalSelectedFood?.id) return [];
     const suggestions = [];
     const lastUsed = lastUsedPortions[internalSelectedFood.id];
-
-    if (lastUsed) {
-      suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
-    }
-    const defaultSuggestions = [
-        { label: "50g", value: "50" }, { label: "100g", value: "100" },
-        { label: "150g", value: "150" }, { label: "200g", value: "200" }
-    ];
-    defaultSuggestions.forEach(sugg => {
-        if (!lastUsed || String(lastUsed) !== sugg.value) {
-            suggestions.push(sugg);
-        }
-    });
+    if (lastUsed) suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
+    ["50", "100", "150", "200"].forEach(val => { if (String(lastUsed) !== val) suggestions.push({ label: `${val}g`, value: val }); });
     return suggestions;
-    // Removed i18n.locale from dependency array as t() will use current global locale
   }, [internalSelectedFood, lastUsedPortions, t]);
 
-
   const handleEstimateGrams = useCallback(async () => {
-    Keyboard.dismiss();
-    if (!internalSelectedFood || !autoInput.trim()) {
-      Alert.alert(t('addEntryModal.alertInputMissing'), t('addEntryModal.alertInputMissingMessage')); return;
-    }
-    if (isAiLoading) return; setIsAiLoading(true);
+    Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
+    setIsAiLoading(true);
     try {
       const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput);
-      const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams);
-      setUnitMode("grams"); setAutoInput("");
-      Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom", });
-    } catch (error: any) { /* Error already handled by getGramsFromNaturalLanguage with an Alert */ }
-    finally { setIsAiLoading(false); }
+      const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams); setUnitMode("grams"); setAutoInput("");
+      Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom" });
+    } catch (error) { /* Handled by getGramsFromNaturalLanguage */ } finally { setIsAiLoading(false); }
   }, [internalSelectedFood, autoInput, isAiLoading, t]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
-    Keyboard.dismiss();
-    if (!internalSelectedFood || !internalSelectedFood.id) {
-        Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
-        return;
-    }
+    Keyboard.dismiss(); if (!internalSelectedFood?.id) return Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
     const numericGramsValue = parseFloat(internalGrams);
-    if (!isValidNumberInput(internalGrams) || numericGramsValue <= 0) {
-        Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
-        return;
-    }
+    if (!isValidNumberInput(internalGrams) || numericGramsValue <= 0) return Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
     if (isActionDisabled) return;
-
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
-
-    if (!isEditMode) {
-        addToRecentFoods(internalSelectedFood);
-        const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-        setLastUsedPortions(updatedPortions);
-        saveLastUsedPortions(updatedPortions).catch(() => {});
-    } else if (isEditMode && internalSelectedFood.id) {
-        const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-        setLastUsedPortions(updatedPortions);
-        saveLastUsedPortions(updatedPortions).catch(() => {});
-    }
-  }, [ internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t ]);
+    if (!isEditMode) addToRecentFoods(internalSelectedFood);
+    const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
+    setLastUsedPortions(updatedPortions); saveLastUsedPortions(updatedPortions);
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
-    setSelectedMultipleFoods(prev => {
-        const newSelection = new Map(prev);
-        if (newSelection.has(food.id)) {
-            newSelection.delete(food.id);
-        } else {
-            newSelection.set(food.id, { food, grams: displayGrams });
-        }
-        return newSelection;
-    });
+    setSelectedMultipleFoods(prev => { const newMap = new Map(prev); newMap.has(food.id) ? newMap.delete(food.id) : newMap.set(food.id, { food, grams: displayGrams }); return newMap; });
   }, [isEditMode, internalSelectedFood]);
 
   const handleConfirmAddMultipleSelected = useCallback(async () => {
     if (isEditMode || internalSelectedFood || selectedMultipleFoods.size === 0 || isActionDisabled) return;
     Keyboard.dismiss();
-    const entriesToAdd: { food: Food; grams: number }[] = Array.from(selectedMultipleFoods.values());
-    if (entriesToAdd.length === 0) return;
-
+    const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
+    const newPortions = { ...lastUsedPortions };
+    entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; addToRecentFoods(entry.food); });
+    setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions); setSelectedMultipleFoods(new Map());
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods]);
 
-    const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
-    entriesToAdd.forEach(entry => {
-        if (entry.food.id) { newPortionsToSave[entry.food.id] = entry.grams; }
-        addToRecentFoods(entry.food);
-    });
-    setLastUsedPortions(newPortionsToSave);
-    saveLastUsedPortions(newPortionsToSave).catch(() => {});
-    setSelectedMultipleFoods(new Map());
-  }, [ isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods ]);
+  const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
+    if (isEditMode) return;
+    setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
+    setModalMode("quickAddSelect"); setQuickAddLoading(true); setIsTextQuickAddLoading(false);
+    
+    let permissionResult, pickerResult: ImagePicker.ImagePickerResult;
+    try {
+      permissionResult = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) throw new Error("Permission denied");
+      pickerResult = source === "camera" ? await ImagePicker.launchCameraAsync({ quality: 1 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+      if (pickerResult.canceled) throw new Error("User cancelled");
 
+      const asset = pickerResult.assets?.[0]; if (!asset) throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
+      const compressed = await compressImageIfNeeded(asset);
+      const assetForAnalysis = compressed ? { ...asset, uri: compressed.uri, mimeType: 'image/jpeg' } : asset;
+      const base64 = await getBase64FromUri(assetForAnalysis.uri);
+      const mimeType = determineMimeType(assetForAnalysis);
+      const results = await getMultipleFoodsFromImage(base64, mimeType);
 
-  const pickImageAndAnalyze = useCallback( async (source: "camera" | "gallery") => {
-      if (isEditMode) return;
-
-      setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
-      setModalMode("quickAddSelect");
-      setQuickAddLoading(true);
-      setSelectedMultipleFoods(new Map());
-      setInternalSelectedFood(null); setInternalSearch(""); setInternalGrams("");
-
-      let permissionResult; let pickerResult: ImagePicker.ImagePickerResult;
-      try {
-        if (source === "camera") {
-          permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-          if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddCameraPermission')); throw new Error("Permission denied"); }
-          pickerResult = await ImagePicker.launchCameraAsync({ quality: 1, exif: false });
-        } else {
-          permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!permissionResult.granted) { Alert.alert(t('addEntryModal.alertQuickAddPermission'), t('addEntryModal.alertQuickAddGalleryPermission')); throw new Error("Permission denied"); }
-          pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
-        }
-
-        if (pickerResult.canceled) throw new Error(t('addEntryModal.alertQuickAddUserCancelled'));
-
-        if (pickerResult.assets && pickerResult.assets.length > 0) {
-          const originalAsset = pickerResult.assets[0];
-          const compressedResult = await compressImageIfNeeded(originalAsset);
-          const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
-          const base64Image = await getBase64FromUri(assetForAnalysis.uri);
-          const mimeType = determineMimeType(assetForAnalysis);
-
-          const results = await getMultipleFoodsFromImage(base64Image, mimeType);
-
-          if (results.length === 0) {
-            Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
-            setQuickAddItems([]);
-            setQuickAddLoading(false);
-            setModalMode("normal");
-          } else {
-            setQuickAddItems(results);
-            setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
-            results.forEach(qaItem => { if (qaItem.foodName) { resolveAndSetIcon(qaItem.foodName); } });
-            setQuickAddLoading(false);
-          }
-        } else {
-          throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
-        }
-      } catch (error: any) {
-        if ( error.message !== t('addEntryModal.alertQuickAddUserCancelled') && error.message !== "Permission denied" && !(error instanceof BackendError) ) {
-          Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
-        }
+      if (results.length === 0) {
+        Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
         setModalMode("normal");
-        setQuickAddItems([]);
-        setSelectedQuickAddIndices(new Set());
-        setQuickAddLoading(false);
+      } else {
+        setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+        results.forEach(item => resolveAndSetIcon(item.foodName));
       }
-    }, [isEditMode, resolveAndSetIcon, t]
-  );
+    } catch (error: any) {
+      if (error.message !== "User cancelled" && error.message !== "Permission denied" && !(error instanceof BackendError)) Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
+      setModalMode("normal");
+    } finally {
+      setQuickAddLoading(false);
+    }
+  }, [isEditMode, resolveAndSetIcon, t]);
 
-  const handleQuickAddImage = useCallback(async () => {
+  const handleQuickAddImage = useCallback(() => {
     Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
-    if (editingQuickAddItemIndex !== null) { Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel')); return; }
-    Alert.alert( t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessage'),
-      [ { text: t('addEntryModal.cancel'), style: "cancel" },
+    if (editingQuickAddItemIndex !== null) return Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
+    Alert.alert(t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessage'), [
+        { text: t('addEntryModal.cancel'), style: "cancel" },
         { text: t('addEntryModal.camera'), onPress: () => pickImageAndAnalyze("camera") },
-        { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") }, ]
-    );
-  }, [ isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze, t ]);
+        { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") },
+    ]);
+  }, [isEditMode, editingQuickAddItemIndex, isActionDisabled, pickImageAndAnalyze, t]);
 
+  const handleQuickAddText = useCallback(() => {
+    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
+    setModalMode('quickAddText');
+    setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
+  }, [isEditMode, isActionDisabled]);
 
-  const handleToggleQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) return;
-      setSelectedQuickAddIndices((prev) => { const newSet = new Set(prev); if (newSet.has(index)) newSet.delete(index); else newSet.add(index); return newSet; });
-    }, [editingQuickAddItemIndex, isActionDisabled]
-  );
+  const handleAnalyzeText = async () => {
+    const textToAnalyze = quickAddTextInput.trim();
+    if (!textToAnalyze || quickAddLoading) return;
+    Keyboard.dismiss();
+    setQuickAddLoading(true); setIsTextQuickAddLoading(true);
+    try {
+        const results = await getMultipleFoodsFromText(textToAnalyze);
+        if (results.length === 0) {
+            Toast.show({ type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom' });
+        } else {
+            setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
+            results.forEach(item => { if (item.foodName) { resolveAndSetIcon(item.foodName); } });
+            setModalMode("quickAddSelect");
+        }
+    } catch (error) { /* Handled in util */ }
+    finally { setQuickAddLoading(false); setIsTextQuickAddLoading(false); }
+  };
 
-  const handleEditQuickAddItem = useCallback( (index: number) => {
-      if (editingQuickAddItemIndex !== null || isActionDisabled) {
-        if (editingQuickAddItemIndex !== null) Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
-        return;
-      }
-      const item = quickAddItems[index]; setEditingQuickAddItemIndex(index);
-      setEditedFoodName(item.foodName); setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
-    }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled, t]
-  );
+  const handleToggleQuickAddItem = useCallback((index: number) => {
+    if (editingQuickAddItemIndex !== null || isActionDisabled) return;
+    setSelectedQuickAddIndices(prev => { const newSet = new Set(prev); newSet.has(index) ? newSet.delete(index) : newSet.add(index); return newSet; });
+  }, [editingQuickAddItemIndex, isActionDisabled]);
+
+  const handleEditQuickAddItem = useCallback((index: number) => {
+    if (editingQuickAddItemIndex !== null || isActionDisabled) return;
+    const item = quickAddItems[index]; setEditingQuickAddItemIndex(index);
+    setEditedFoodName(item.foodName); setEditedGrams(String(Math.round(item.estimatedWeightGrams)));
+  }, [editingQuickAddItemIndex, quickAddItems, isActionDisabled]);
 
   const handleSaveQuickAddItemEdit = useCallback(() => {
     if (editingQuickAddItemIndex === null || isActionDisabled) return;
-    const trimmedName = editedFoodName.trim(); if (!trimmedName) { Alert.alert(t('addEntryModal.alertQuickAddInvalidName'), t('addEntryModal.alertQuickAddInvalidNameMessage')); return; }
-    const numericEditedGramsValue = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericEditedGramsValue <= 0) { Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage')); return; }
-    const roundedGrams = Math.round(numericEditedGramsValue);
-    setQuickAddItems((prevItems) => prevItems.map((item, index) => index === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: roundedGrams, } : item ));
-    if (trimmedName) { resolveAndSetIcon(trimmedName); }
+    const trimmedName = editedFoodName.trim(); if (!trimmedName) return Alert.alert(t('addEntryModal.alertQuickAddInvalidName'), t('addEntryModal.alertQuickAddInvalidNameMessage'));
+    const numericGrams = parseFloat(editedGrams); if (!isValidNumberInput(editedGrams) || numericGrams <= 0) return Alert.alert(t('addEntryModal.alertQuickAddInvalidGrams'), t('addEntryModal.alertQuickAddInvalidGramsMessage'));
+    setQuickAddItems(prev => prev.map((item, i) => i === editingQuickAddItemIndex ? { ...item, foodName: trimmedName, estimatedWeightGrams: Math.round(numericGrams) } : item));
+    if (trimmedName) resolveAndSetIcon(trimmedName);
     setEditingQuickAddItemIndex(null); setEditedFoodName(""); setEditedGrams(""); Keyboard.dismiss();
   }, [editingQuickAddItemIndex, editedFoodName, editedGrams, isActionDisabled, resolveAndSetIcon, t]);
 
@@ -1339,185 +965,72 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [isActionDisabled]);
 
   const handleConfirmQuickAdd = useCallback(() => {
-    Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
-    if (editingQuickAddItemIndex !== null) { Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel')); return; }
-    if (selectedQuickAddIndices.size === 0) { Alert.alert(t('addEntryModal.alertQuickAddNoItemsSelected'), t('addEntryModal.alertQuickAddNoItemsSelectedMessage')); return; }
-    try {
-      const entriesToAdd: { food: Food; grams: number }[] = [];
-      const newPortionsToSave: LastUsedPortions = { ...lastUsedPortions };
+    Keyboard.dismiss(); if (isEditMode || isActionDisabled || editingQuickAddItemIndex !== null || selectedQuickAddIndices.size === 0) return;
+    const entriesToAdd = Array.from(selectedQuickAddIndices).map(index => {
+        const item = quickAddItems[index];
+        const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
+        const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0), createdAt: new Date().toISOString() };
+        return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
+    });
+    if (entriesToAdd.length > 0) {
+      parentHandleAddMultipleEntries(entriesToAdd);
+      const newPortions = { ...lastUsedPortions };
+      entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; });
+      setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions);
+    }
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions]);
 
-      Array.from(selectedQuickAddIndices).forEach((index) => {
-        if (index >= 0 && index < quickAddItems.length) {
-          const item = quickAddItems[index];
-          const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-          let foodToAdd: Food = existingFood ? existingFood : { id: uuidv4(), name: item.foodName, calories: Math.round(Number(item.calories_per_100g) || 0), protein: Math.round(Number(item.protein_per_100g) || 0), carbs: Math.round(Number(item.carbs_per_100g) || 0), fat: Math.round(Number(item.fat_per_100g) || 0), };
-          const entryGrams = Math.max(1, Math.round(Number(item.estimatedWeightGrams) || 1));
-          entriesToAdd.push({ food: foodToAdd, grams: entryGrams });
+  const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 
-          if (foodToAdd.id) { newPortionsToSave[foodToAdd.id] = entryGrams; }
-        }
-      });
-
-      if (entriesToAdd.length > 0) {
-        parentHandleAddMultipleEntries(entriesToAdd);
-        setLastUsedPortions(newPortionsToSave);
-        saveLastUsedPortions(newPortionsToSave).catch(() => {});
-      } else { Alert.alert(t('addEntryModal.alertQuickAddNothingToAdd'), t('addEntryModal.alertQuickAddNothingToAddMessage')); }
-    } catch (error) { Alert.alert(t('addEntryModal.alertQuickAddErrorPreparing'), t('addEntryModal.alertQuickAddErrorPreparingMessage')); }
-  }, [ foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions, t ]);
-
-
-  const handleQuickAddGramsChange = useCallback((text: string) => {
-    const cleanedText = text.replace(/[^0-9]/g, "");
-    setEditedGrams(cleanedText);
-  }, []);
-
-  const handleSaveQuickAddItemToLibrary = useCallback(async (
-    item: EstimatedFoodItem,
-    setSavingState: (isSaving: boolean) => void
-  ) => {
+  const handleSaveQuickAddItemToLibrary = useCallback(async (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => {
     setSavingState(true);
     try {
-        const foodData: Omit<Food, 'id'> = {
-            name: item.foodName, calories: Math.round(item.calories_per_100g),
-            protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g),
-            fat: Math.round(item.fat_per_100g),
-        };
+        const foodData: Omit<Food, 'id' | 'createdAt'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
         const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
-
         if (existingFood) {
-            Alert.alert( t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }),
-                [ { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
-                  { text: t('addEntryModal.overwrite'), onPress: async () => {
-                          const foodToUpdate: Food = { ...existingFood, ...foodData };
-                          const updatedFood = await onCommitFoodToLibrary(foodToUpdate, true);
-                          if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); resolveAndSetIcon(updatedFood.name); }
-                          setSavingState(false);
-                      },
-                  }, ]
-            );
+            Alert.alert(t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }), [
+                { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
+                { text: t('addEntryModal.overwrite'), onPress: async () => {
+                    const updatedFood = await onCommitFoodToLibrary({ ...existingFood, ...foodData }, true);
+                    if (updatedFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: updatedFood.name }), position: 'bottom' }); resolveAndSetIcon(updatedFood.name); }
+                    setSavingState(false);
+                }},
+            ]);
         } else {
             const newFood = await onCommitFoodToLibrary(foodData, false);
             if (newFood) { Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: newFood.name }), position: 'bottom' }); resolveAndSetIcon(newFood.name); }
             setSavingState(false);
         }
-    } catch (error) {
-        Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' });
-        setSavingState(false);
-    }
+    } catch (error) { Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' }); setSavingState(false); }
   }, [foods, onCommitFoodToLibrary, resolveAndSetIcon, t]);
 
+  const modalTitle = modalMode === "quickAddSelect" ? (editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit') : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing') : t('addEntryModal.titleQuickAddSelect'))
+                    : modalMode === "quickAddText" ? t('addEntryModal.titleQuickAddFromText')
+                    : isEditMode ? t('addEntryModal.titleEdit') : t('addEntryModal.titleAdd');
 
-  const modalTitle = modalMode === "quickAddSelect"
-    ? editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit')
-    : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing')
-    : t('addEntryModal.titleQuickAddSelect')
-    : isEditMode ? t('addEntryModal.titleEdit')
-    : t('addEntryModal.titleAdd');
-
-  const numericGramsValueForValidation = parseFloat(internalGrams);
-  const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || numericGramsValueForValidation <= 0 || isActionDisabled;
+  const isSingleAddButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !isValidNumberInput(internalGrams) || parseFloat(internalGrams) <= 0 || isActionDisabled;
   const isMultiAddButtonDisabled = modalMode !== "normal" || selectedMultipleFoods.size === 0 || !!internalSelectedFood || isEditMode || isActionDisabled;
   const isAiButtonDisabled = modalMode !== "normal" || !internalSelectedFood || !autoInput.trim() || isActionDisabled || isAiLoading;
   const isQuickAddConfirmDisabled = isEditMode || modalMode !== "quickAddSelect" || selectedQuickAddIndices.size === 0 || editingQuickAddItemIndex !== null || isActionDisabled || quickAddLoading;
   const isQuickAddImageButtonDisabled = isEditMode || isActionDisabled || quickAddLoading;
-
-  const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background }, ]);
+  const isQuickAddTextButtonDisabled = isEditMode || isActionDisabled || quickAddLoading;
 
   return (
-    <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer} >
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
-        <View style={combinedOverlayStyle}>
-          <ModalHeader
-            title={modalTitle}
-            isEditMode={isEditMode}
-            modalMode={modalMode}
-            quickAddLoading={quickAddLoading}
-            selectedFood={internalSelectedFood}
-            selectedMultipleFoodsSize={selectedMultipleFoods.size}
-            selectedQuickAddIndicesSize={selectedQuickAddIndices.size}
-            editingQuickAddItemIndex={editingQuickAddItemIndex}
-            isActionDisabled={isActionDisabled}
-            isSingleAddButtonDisabled={isSingleAddButtonDisabled}
-            isMultiAddButtonDisabled={isMultiAddButtonDisabled}
-            isQuickAddConfirmDisabled={isQuickAddConfirmDisabled}
-            isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
-            isAiLoading={isAiLoading}
-            toggleOverlay={toggleOverlay}
-            onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
-            onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected}
-            onConfirmQuickAdd={handleConfirmQuickAdd}
-            onQuickAddImage={handleQuickAddImage}
-            onBackFromQuickAdd={() => {
-                setModalMode("normal");
-                setQuickAddItems([]);
-                setSelectedQuickAddIndices(new Set());
-                setEditingQuickAddItemIndex(null);
-            }}
+    <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
+        <View style={[styles.overlayStyle, { backgroundColor: theme.colors.background }]}>
+          <ModalHeader title={modalTitle} isEditMode={isEditMode} modalMode={modalMode} quickAddLoading={quickAddLoading} textQuickAddLoading={isTextQuickAddLoading}
+            selectedFood={internalSelectedFood} selectedMultipleFoodsSize={selectedMultipleFoods.size} selectedQuickAddIndicesSize={selectedQuickAddIndices.size}
+            editingQuickAddItemIndex={editingQuickAddItemIndex} isActionDisabled={isActionDisabled} isSingleAddButtonDisabled={isSingleAddButtonDisabled}
+            isMultiAddButtonDisabled={isMultiAddButtonDisabled} isQuickAddConfirmDisabled={isQuickAddConfirmDisabled} isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
+            isQuickAddTextButtonDisabled={isQuickAddTextButtonDisabled} isAiLoading={isAiLoading} toggleOverlay={toggleOverlay} onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
+            onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected} onConfirmQuickAdd={handleConfirmQuickAdd} onQuickAddImage={handleQuickAddImage} onQuickAddText={handleQuickAddText}
+            onBackFromQuickAdd={() => { setModalMode("normal"); setQuickAddTextInput(""); }}
           />
-
-          {modalMode === "normal" && (
-            <View style={styles.normalModeContentContainer}>
-              <FoodSelectionList
-                search={internalSearch}
-                updateSearch={setInternalSearch}
-                foods={foods}
-                recentFoods={recentFoods}
-                selectedFood={internalSelectedFood}
-                handleSelectFood={setInternalSelectedFood}
-                setGrams={setInternalGrams}
-                setSelectedMultipleFoods={setSelectedMultipleFoods}
-                selectedMultipleFoods={selectedMultipleFoods}
-                handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection}
-                foodIcons={foodIcons}
-                onAddNewFoodRequest={onAddNewFoodRequest}
-                isActionDisabled={isActionDisabled}
-                isEditMode={isEditMode}
-                lastUsedPortions={lastUsedPortions}
-                modalMode={modalMode}
-              />
-              {internalSelectedFood && (
-                <AmountInputSection
-                  selectedFood={internalSelectedFood}
-                  grams={internalGrams}
-                  setGrams={setInternalGrams}
-                  unitMode={unitMode}
-                  setUnitMode={setUnitMode}
-                  autoInput={autoInput}
-                  setAutoInput={setAutoInput}
-                  handleEstimateGrams={handleEstimateGrams}
-                  isAiLoading={isAiLoading}
-                  isAiButtonDisabled={isAiButtonDisabled}
-                  isEditMode={isEditMode}
-                  servingSizeSuggestions={servingSizeSuggestions}
-                  isActionDisabled={isActionDisabled}
-                  foodGradeResult={foodGradeResult}
-                />
-              )}
-            </View>
-          )}
-
-          {modalMode === "quickAddSelect" && (
-             <QuickAddList
-                items={quickAddItems}
-                selectedIndices={selectedQuickAddIndices}
-                editingIndex={editingQuickAddItemIndex}
-                editedName={editedFoodName}
-                editedGrams={editedGrams}
-                onToggleItem={handleToggleQuickAddItem}
-                onEditItem={handleEditQuickAddItem}
-                onSaveEdit={handleSaveQuickAddItemEdit}
-                onCancelEdit={handleCancelQuickAddItemEdit}
-                onNameChange={setEditedFoodName}
-                onGramsChange={handleQuickAddGramsChange}
-                isLoading={quickAddLoading}
-                foodIcons={foodIcons}
-                style={styles.quickAddListStyle}
-                onSaveItemToLibrary={handleSaveQuickAddItemToLibrary}
-                foods={foods}
-            />
-          )}
-           <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
+          {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} lastUsedPortions={lastUsedPortions} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
+          {modalMode === 'quickAddText' && <View style={styles.quickAddTextView}><Input placeholder={t('addEntryModal.textQuickAdd.placeholder')} multiline numberOfLines={6} value={quickAddTextInput} onChangeText={setQuickAddTextInput} inputStyle={styles.quickAddTextArea} inputContainerStyle={styles.quickAddTextAreaContainer} containerStyle={{ paddingHorizontal: 0 }} autoFocus /><Button title={t('addEntryModal.textQuickAdd.analyzeButton')} onPress={handleAnalyzeText} loading={isTextQuickAddLoading} disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} buttonStyle={styles.analyzeButton} /></View>}
+          {modalMode === 'quickAddSelect' && <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} />}
+          <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -1528,13 +1041,12 @@ const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: Dimensions.get("window").height * 0.85, },
     overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1, },
     keyboardAvoidingView: { width: "100%", height: "100%" },
-    normalModeContentContainer: {
-        flex: 1,
-        justifyContent: 'flex-start',
-    },
-    quickAddListStyle: {
-        flex: 1,
-    },
+    normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
+    quickAddListStyle: { flex: 1 },
+    quickAddTextView: { flex: 1, justifyContent: 'flex-start', paddingTop: 10 },
+    quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
+    quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
+    analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },
 }));
 
 export default AddEntryModal;
@@ -2249,13 +1761,14 @@ import { Text, Icon, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { t } from '../../localization/i18n';
 
-type ModalMode = 'normal' | 'quickAddSelect';
+type ModalMode = 'normal' | 'quickAddSelect' | 'quickAddText';
 
 interface ModalHeaderProps {
     title: string;
     isEditMode: boolean;
     modalMode: ModalMode;
     quickAddLoading: boolean;
+    textQuickAddLoading: boolean;
     selectedFood: Food | null;
     selectedMultipleFoodsSize: number;
     selectedQuickAddIndicesSize: number;
@@ -2265,36 +1778,23 @@ interface ModalHeaderProps {
     isMultiAddButtonDisabled: boolean;
     isQuickAddConfirmDisabled: boolean;
     isQuickAddImageButtonDisabled: boolean;
-    isAiLoading: boolean; // For loading state on single add/update
+    isQuickAddTextButtonDisabled: boolean;
+    isAiLoading: boolean;
     toggleOverlay: () => void;
     onAddOrUpdateSingleEntry: () => void;
     onConfirmAddMultipleSelected: () => void;
     onConfirmQuickAdd: () => void;
     onQuickAddImage: () => void;
+    onQuickAddText: () => void;
     onBackFromQuickAdd: () => void;
 }
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({
-    title,
-    isEditMode,
-    modalMode,
-    quickAddLoading,
-    selectedFood,
-    selectedMultipleFoodsSize,
-    selectedQuickAddIndicesSize,
-    editingQuickAddItemIndex,
-    isActionDisabled,
-    isSingleAddButtonDisabled,
-    isMultiAddButtonDisabled,
-    isQuickAddConfirmDisabled,
-    isQuickAddImageButtonDisabled,
-    isAiLoading,
-    toggleOverlay,
-    onAddOrUpdateSingleEntry,
-    onConfirmAddMultipleSelected,
-    onConfirmQuickAdd,
-    onQuickAddImage,
-    onBackFromQuickAdd,
+    title, isEditMode, modalMode, quickAddLoading, textQuickAddLoading, selectedFood, selectedMultipleFoodsSize,
+    selectedQuickAddIndicesSize, editingQuickAddItemIndex, isActionDisabled, isSingleAddButtonDisabled,
+    isMultiAddButtonDisabled, isQuickAddConfirmDisabled, isQuickAddImageButtonDisabled, isQuickAddTextButtonDisabled,
+    isAiLoading, toggleOverlay, onAddOrUpdateSingleEntry, onConfirmAddMultipleSelected,
+    onConfirmQuickAdd, onQuickAddImage, onQuickAddText, onBackFromQuickAdd,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -2304,9 +1804,11 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         toggleOverlay();
     };
 
+    const isBackButtonVisible = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
+
     return (
         <View style={styles.header}>
-            {modalMode === 'quickAddSelect' && editingQuickAddItemIndex === null ? (
+            {isBackButtonVisible ? (
                 <Button
                     type="clear"
                     onPress={() => { if (isActionDisabled) return; Keyboard.dismiss(); onBackFromQuickAdd(); }}
@@ -2315,12 +1817,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                     disabled={isActionDisabled}
                 />
             ) : (
-                <TouchableOpacity
-                    onPress={handleClose}
-                    style={styles.closeIconContainer}
-                    disabled={isActionDisabled}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
+                <TouchableOpacity onPress={handleClose} style={styles.closeIconContainer} disabled={isActionDisabled} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Icon name="close" type="material" size={28} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
                 </TouchableOpacity>
             )}
@@ -2333,13 +1830,22 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                 {modalMode === 'normal' && (
                     <>
                         {!isEditMode && !selectedFood && (
-                            <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
-                                {quickAddLoading ? (
-                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                ) : (
-                                    <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
-                                )}
-                            </TouchableOpacity>
+                            <View style={styles.quickAddIconsContainer}>
+                                <TouchableOpacity onPress={onQuickAddText} disabled={isQuickAddTextButtonDisabled} style={styles.headerIcon}>
+                                    {quickAddLoading && textQuickAddLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                                    ) : (
+                                        <Icon name="text-box-search-outline" type="material-community" size={26} color={isQuickAddTextButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon}>
+                                    {quickAddLoading && !textQuickAddLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                                    ) : (
+                                        <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         )}
                         {isEditMode ? (
                             <Button title={t('addEntryModal.buttonUpdate')} onPress={onAddOrUpdateSingleEntry} disabled={isSingleAddButtonDisabled} buttonStyle={[styles.actionButton, styles.updateButton]} titleStyle={styles.buttonTitle} loading={isAiLoading && !!selectedFood} />
@@ -2353,68 +1859,25 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                 {modalMode === 'quickAddSelect' && editingQuickAddItemIndex === null && (
                     <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', { count: selectedQuickAddIndicesSize })} onPress={onConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]} titleStyle={styles.buttonTitle} loading={quickAddLoading} />
                 )}
-                {modalMode === 'quickAddSelect' && editingQuickAddItemIndex !== null && (
-                     <View style={styles.placeholderActionView} /> // Keep layout consistent when editing in quick add
-                )}
+                {modalMode === 'quickAddText' && <View style={styles.placeholderActionView} />}
+                {modalMode === 'quickAddSelect' && editingQuickAddItemIndex !== null && <View style={styles.placeholderActionView} />}
             </View>
         </View>
     );
 };
 
 const useStyles = makeStyles((theme) => ({
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-        paddingHorizontal: 0,
-    },
-    closeIconContainer: {
-        padding: 5,
-        minWidth: 40, // Ensure touchable area
-        alignItems: 'flex-start',
-    },
-    overlayTitle: {
-        color: theme.colors.text,
-        fontWeight: 'bold',
-        fontSize: 20,
-        textAlign: 'center',
-        flex: 1,
-        marginHorizontal: 5,
-    },
-    editModeTitle: {
-        color: theme.colors.warning,
-    },
-    headerActionsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        minWidth: 80, // Ensure space for buttons or icons
-        justifyContent: 'flex-end',
-    },
-    headerIcon: {
-        paddingHorizontal: 8, // Combined padding for the icon itself
-        marginRight: 5,
-    },
-    actionButton: {
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        minWidth: 70,
-        marginLeft: 5, // Spacing between icon and button if both present
-        backgroundColor: theme.colors.primary,
-    },
-    updateButton: {
-        backgroundColor: theme.colors.warning,
-    },
-    buttonTitle: {
-        color: theme.colors.white,
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    placeholderActionView: { // Used to balance header when no action button is on the right in quick add edit
-        width: 70,
-        marginLeft: 5,
-    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 0 },
+    closeIconContainer: { padding: 5, minWidth: 40, alignItems: 'flex-start' },
+    overlayTitle: { color: theme.colors.text, fontWeight: 'bold', fontSize: 20, textAlign: 'center', flex: 1, marginHorizontal: 5 },
+    editModeTitle: { color: theme.colors.warning },
+    headerActionsContainer: { flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'flex-end' },
+    quickAddIconsContainer: { flexDirection: 'row-reverse', alignItems: 'center' },
+    headerIcon: { paddingHorizontal: 6, marginHorizontal: 2 },
+    actionButton: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, minWidth: 70, marginLeft: 5, backgroundColor: theme.colors.primary },
+    updateButton: { backgroundColor: theme.colors.warning },
+    buttonTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 14 },
+    placeholderActionView: { width: 70, marginLeft: 5 },
 }));
 
 export default ModalHeader;
@@ -2457,20 +1920,23 @@ import { compressImageIfNeeded } from '../utils/imageUtils';
 import FoodFormFields from "./FoodFormFields";
 import { t } from '../localization/i18n';
 
+// Use a specific type for the form data
+type FoodFormData = Omit<Food, "id" | "createdAt">;
+
 interface AddFoodModalProps {
     isVisible: boolean;
     toggleOverlay: () => void;
-    newFood: Omit<Food, "id">;
+    newFood: FoodFormData;
     editFood: Food | null;
     errors: { [key: string]: string };
     handleInputChange: (
-        key: keyof Omit<Food, "id">,
+        key: keyof FoodFormData,
         value: string,
         isEdit: boolean
     ) => void;
     handleCreateFood: () => Promise<void>;
     handleUpdateFood: () => Promise<void>;
-    validateFood: (food: Omit<Food, "id"> | Food) => { [key: string]: string } | null;
+    validateFood: (food: FoodFormData | Food) => { [key: string]: string } | null;
     setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
@@ -2503,17 +1969,19 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         }
     }, [isVisible, setErrors]);
 
-    const getCurrentFoodData = (): Partial<Omit<Food, 'id'>> => {
+    const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
     };
 
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
-        const currentData = getCurrentFoodData();
-        const dataToValidate = {
-            name: (currentData.name ?? "").trim(), calories: currentData.calories ?? 0,
-            protein: currentData.protein ?? 0, carbs: currentData.carbs ?? 0, fat: currentData.fat ?? 0,
+        const currentData = isUpdate ? editFood : newFood;
+        
+        const dataToValidate: Food | FoodFormData = {
+            ...currentData,
+            name: (currentData.name ?? "").trim(),
         };
+
         const validationErrors = validateFood(dataToValidate);
         if (validationErrors) {
             setErrors(validationErrors);
@@ -2547,11 +2015,26 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setAiTextLoading(true);
             try {
                 const macros = await getMacrosFromText(currentFoodName, ingredients);
-                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate); handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
-                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate); handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-                setMode("normal"); Toast.show({ type: 'info', text1: t('addFoodModal.macrosEstimatedText'), position: 'bottom' });
-            } catch (error) { console.error("AI Macro fetch error (recipe - modal):", error); }
-            finally { setAiTextLoading(false); }
+                // The 'macros' object now includes 'foodName'
+                if (macros.foodName) {
+                    handleInputChange("name", macros.foodName, isUpdate);
+                }
+                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
+                handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
+                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
+                handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
+                setMode("normal");
+                Toast.show({
+                    type: 'info',
+                    text1: currentFoodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
+                    text2: currentFoodName ? undefined : t('addFoodModal.foodIdentifiedMessage', { foodName: macros.foodName }),
+                    position: 'bottom'
+                });
+            } catch (error) {
+                console.error("AI Macro fetch error (recipe - modal):", error);
+            } finally {
+                setAiTextLoading(false);
+            }
         }
     };
 
@@ -2567,7 +2050,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      const result = await getMacrosForImageFile(assetForAnalysis);
                      const isUpdate = !!editFood;
                      handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
-                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate); handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
+                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
+                     handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
                      setMode("normal"); setIngredients("");
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
@@ -3865,12 +3349,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Food } from '../types/food';
 import { t } from '../localization/i18n';
 
-type FoodFormValues = Partial<Omit<Food, 'id'>>;
+// The form deals with data that doesn't include id or createdAt
+type FoodFormData = Omit<Food, 'id' | 'createdAt'>;
+type FoodFormValues = Partial<FoodFormData>;
 
 interface FoodFormFieldsProps {
     values: FoodFormValues;
     errors: { [key: string]: string };
-    onInputChange: (key: keyof Omit<Food, 'id'>, value: string, isEdit: boolean) => void;
+    onInputChange: (key: keyof FoodFormData, value: string, isEdit: boolean) => void;
     isEditing: boolean;
     disabled: boolean;
 }
@@ -3885,7 +3371,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
 
-    const getValue = (key: keyof Omit<Food, 'id'>): string => {
+    const getValue = (key: keyof FoodFormData): string => {
          const val = values[key];
          if (typeof val === 'number') {
               if (val === 0 && !isEditing) return "";
@@ -3894,7 +3380,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
          return String(val ?? "");
     };
 
-    const getErrorText = (fieldKey: keyof Omit<Food, 'id'>) => {
+    const getErrorText = (fieldKey: keyof FoodFormData) => {
         const errorKey = errors[fieldKey];
         if (!errorKey) return "";
         // Assuming error keys in en.json map to field names + specific error type
@@ -4653,6 +4139,100 @@ export default ThemeSwitch;
 ---------- END ThemeSwitch.tsx ----------
 
 
+---------- AuthContext.tsx ----------
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { loadSettings, saveSettings } from '../services/storageService';
+import { getAuthToken, removeAuthToken, setAuthToken } from '../services/authService';
+import { Settings, LanguageCode } from '../types/settings';
+
+export interface AuthState {
+  authenticated: boolean;
+  token: string | null;
+}
+
+export interface AuthContextType {
+  authState: AuthState;
+  settings: Settings;
+  isLoading: boolean;
+  login: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
+  changeTheme: (theme: 'light' | 'dark' | 'system') => void;
+  changeLocale: (locale: LanguageCode) => void;
+}
+
+const AuthContext = createContext<Partial<AuthContextType>>({});
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const [authState, setAuthState] = useState<AuthState>({ authenticated: false, token: null });
+  const [settings, setSettings] = useState<Settings>({
+    theme: 'system',
+    language: 'system',
+    dailyGoals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAuthData = async () => {
+      try {
+        const token = await getAuthToken();
+        const loadedSettings = await loadSettings();
+        setSettings(loadedSettings);
+
+        if (token) {
+          setAuthState({ authenticated: true, token });
+        }
+      } catch (e) {
+        console.error("Failed to load auth data", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAuthData();
+  }, []);
+
+  const login = async (token: string) => {
+    await setAuthToken(token);
+    setAuthState({ authenticated: true, token });
+  };
+
+  const logout = async () => {
+    await removeAuthToken();
+    setAuthState({ authenticated: false, token: null });
+  };
+
+  const changeTheme = useCallback(async (theme: 'light' | 'dark' | 'system') => {
+    const newSettings = { ...settings, theme };
+    setSettings(newSettings);
+    await saveSettings(newSettings);
+  }, [settings]);
+
+  const changeLocale = useCallback(async (locale: LanguageCode) => {
+    const newSettings = { ...settings, language: locale };
+    setSettings(newSettings);
+    await saveSettings(newSettings);
+  }, [settings]);
+
+
+  const value: AuthContextType = {
+    authState,
+    settings,
+    isLoading,
+    login,
+    logout,
+    changeTheme,
+    changeLocale,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+---------- END AuthContext.tsx ----------
+
+
 ---------- i18n.ts ----------
 // src/localization/i18n.ts
 import * as Localization from 'expo-localization';
@@ -4745,10 +4325,20 @@ export default i18n;
       "restartNow": "Restart Now"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "Estimation Failed",
+    "analysisFailedTitle": "Analysis Failed",
+    "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
+    "unexpectedError": "An unexpected error occurred. Please try again."
+  },
   "settingsScreen": {
     "title": "Settings",
     "account": {
-      "title": "Account"
+      "title": "Account",
+      "actions": "Account Actions",
+      "logout": "Logout",
+      "logoutConfirmTitle": "Confirm Logout",
+      "logoutConfirmMessage": "Are you sure you want to log out?"
     },
     "general": {
       "title": "General"
@@ -4887,7 +4477,11 @@ export default i18n;
     "shareErrorMessage": "Could not share food item.",
     "deepLinkErrorTitle": "Error Opening Link",
     "deepLinkInvalidData": "The food data from the link is invalid.",
-    "deepLinkParseError": "Could not read food data from the link."
+    "deepLinkParseError": "Could not read food data from the link.",
+    "sortBy": "Sort by",
+    "sortByName": "Name",
+    "sortByNewest": "Newest",
+    "sortByOldest": "Oldest"
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",
@@ -4895,11 +4489,12 @@ export default i18n;
     "titleQuickAddSelect": "Select Items to Add",
     "titleQuickAddEdit": "Edit Item",
     "titleQuickAddAnalyzing": "Analyzing...",
+    "titleQuickAddFromText": "Quick Add from Text",
     "searchPlaceholder": "Search Foods...",
     "recent": "Recent",
     "noResults": "No foods found matching \"%{searchTerm}\".",
     "emptyLibraryMessage": "Your food library is empty. Tap below to add your first food item!",
-    "noQuickAddResults": "No food items found in the image.",
+    "noQuickAddResults": "No food items found.",
     "amount": "Amount",
     "grams": "Grams",
     "autoAi": "Auto (AI)",
@@ -4954,7 +4549,13 @@ export default i18n;
     "overwrite": "Overwrite",
     "toastFoodSavedToLibrary": "\"%{foodName}\" saved to library.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" updated in library.",
-    "toastErrorSavingToLibrary": "Error saving food to library."
+    "toastErrorSavingToLibrary": "Error saving food to library.",
+    "textQuickAdd": {
+      "placeholder": "Describe your meal...\ne.g., '150g chicken breast, a side salad with tomatoes, and one apple'",
+      "analyzeButton": "Analyze Text",
+      "alertInputEmpty": "Input Empty",
+      "alertInputEmptyMessage": "Please type or say what you ate to analyze."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Add New Food",
@@ -5009,19 +4610,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "AI Error (Recipe)",
-      "alertAnalysisFailedSingle": "Analysis Failed (Single Item)",
-      "alertQuickAddFailedMulti": "Quick Add Failed (Multi-Item)",
-      "alertImageReadError": "Image Read Error",
-      "alertImageReadErrorMessage": "Failed to read image file.",
-      "errorGetMacrosRecipe": "Failed to get macros for recipe: %{error}",
-      "errorImageAnalysis": "Image analysis failed: %{error}",
-      "errorCouldNotAnalyze": "Could not analyze image: %{error}",
-      "errorInvalidResponseMultiple": "Invalid response format from server for multiple items."
+      "errorTitle": "AI Analysis Failed",
+      "multiItemErrorTitle": "Quick Add Failed",
+      "errorMessage": "Could not get a response from the AI. Please try again.",
+      "invalidResponse": "The AI gave a response in an unexpected format. Please try again or rephrase your request."
     },
     "units": {
-      "alertAiEstimationFailed": "AI Estimation Failed",
-      "errorCouldNotEstimateGrams": "Could not estimate grams: %{error}"
+      "errorTitle": "AI Estimation Failed"
     },
     "image": {
       "alertCompressionError": "Compression Error",
@@ -5030,21 +4625,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Invalid client ID format.",
-    "errorRequestFailedParse": "Backend request failed (Status %{status}), failed to parse response.",
-    "errorRequestFailedDetailFormat": "Backend error (Status %{status}), unexpected detail format.",
-    "errorRequestFailedWithServerMsg": "Backend request failed (Status %{status}). Server response: %{response}",
-    "errorAuthFailed": "Authentication failed. Invalid Client ID.",
-    "errorPermissionDenied": "Permission denied.",
-    "errorNotFound": "Resource not found.",
-    "errorTooManyRequests": "Too many requests. Please try again later.",
-    "errorInsufficientCoins": "Insufficient coins for this action.",
-    "errorNetwork": "Failed to communicate with the backend.",
-    "errorNetworkTimeout": "The request timed out. Please try again.",
-    "errorNetworkConnection": " Please check your network connection.",
+    "errorInvalidClientId": "Invalid client ID. Please restart the app.",
+    "errorRequestFailedParse": "The server sent an unreadable response (Status %{status}).",
+    "errorRequestFailedDetailFormat": "The server sent a response with an unexpected format (Status %{status}).",
+    "errorRequestFailedWithServerMsg": "The server returned an error (Status %{status}).",
+    "errorAuthFailed": "Authentication with the server failed. Please restart the app.",
+    "errorPermissionDenied": "Permission denied by server.",
+    "errorNotFound": "The requested resource was not found on the server.",
+    "errorTooManyRequests": "You're doing that too fast! Please wait a moment and try again.",
+    "errorInsufficientCoins": "You don't have enough AI coins for this action. More will be available soon!",
+    "errorNetwork": "Could not connect to the server.",
+    "errorNetworkTimeout": "The server is taking too long to respond. Please try again in a few moments.",
+    "errorNetworkConnection": " Please check your internet connection.",
     "errorNetworkDetails": " Details: %{error}",
     "errorNetworkUnknown": " An unknown network error occurred.",
-    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to unexpected response.",
+    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
     "errorAddCoinsPositive": "Amount to add must be positive."
   },
   "statisticsChart": {
@@ -5208,10 +4803,20 @@ export default i18n;
       "restartNow": "הפעל מחדש כעת"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "ההערכה נכשלה",
+    "analysisFailedTitle": "הניתוח נכשל",
+    "aiGramsProcessingError": "הבינה המלאכותית לא הצליחה לעבד את הכמות. אנא נסה לנסח זאת אחרת (למשל, 'כוס אחת' במקום 'כוס').",
+    "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
+  },
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
-      "title": "חשבון"
+      "title": "חשבון",
+      "actions": "פעולות חשבון",
+      "logout": "התנתק",
+      "logoutConfirmTitle": "אישור התנתקות",
+      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?"
     },
     "general": {
       "title": "כללי"
@@ -5350,7 +4955,11 @@ export default i18n;
     "shareErrorMessage": "לא ניתן היה לשתף את פריט המזון.",
     "deepLinkErrorTitle": "שגיאה בפתיחת הקישור",
     "deepLinkInvalidData": "נתוני המזון מהקישור אינם חוקיים.",
-    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור."
+    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור.",
+    "sortBy": "מיין לפי",
+    "sortByName": "שם",
+    "sortByNewest": "החדש ביותר",
+    "sortByOldest": "הישן ביותר"
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",
@@ -5358,11 +4967,12 @@ export default i18n;
     "titleQuickAddSelect": "בחר פריטים להוספה",
     "titleQuickAddEdit": "ערוך פריט",
     "titleQuickAddAnalyzing": "מנתח...",
+    "titleQuickAddFromText": "הוספה מהירה מטקסט",
     "searchPlaceholder": "חפש מאכלים...",
     "recent": "אחרונים",
     "noResults": "לא נמצאו מאכלים התואמים ל-\"%{searchTerm}\".",
     "emptyLibraryMessage": "ספריית המאכלים שלך ריקה. לחץ למטה להוספת המאכל הראשון שלך!",
-    "noQuickAddResults": "לא נמצאו פריטי מזון בתמונה.",
+    "noQuickAddResults": "לא נמצאו פריטי מזון.",
     "amount": "כמות",
     "grams": "גרם",
     "autoAi": "אוטומטי (AI)",
@@ -5417,7 +5027,13 @@ export default i18n;
     "overwrite": "החלף",
     "toastFoodSavedToLibrary": "\"%{foodName}\" נשמר לספרייה.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" עודכן בספרייה.",
-    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה."
+    "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה.",
+    "textQuickAdd": {
+      "placeholder": "תאר את הארוחה שלך...\nלמשל, '150ג חזה עוף, סלט קטן עם עגבניות, ותפוח אחד'",
+      "analyzeButton": "נתח טקסט",
+      "alertInputEmpty": "קלט ריק",
+      "alertInputEmptyMessage": "אנא הקלד או אמור מה אכלת לצורך הניתוח."
+    }
   },
   "addFoodModal": {
     "titleAdd": "הוסף מאכל חדש",
@@ -5472,19 +5088,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "שגיאת AI (מתכון)",
-      "alertAnalysisFailedSingle": "ניתוח נכשל (פריט יחיד)",
-      "alertQuickAddFailedMulti": "הוספה מהירה נכשלה (מספר פריטים)",
-      "alertImageReadError": "שגיאת קריאת תמונה",
-      "alertImageReadErrorMessage": "קריאת קובץ התמונה נכשלה.",
-      "errorGetMacrosRecipe": "קבלת מאקרואים למתכון נכשלה: %{error}",
-      "errorImageAnalysis": "ניתוח התמונה נכשל: %{error}",
-      "errorCouldNotAnalyze": "לא ניתן היה לנתח את התמונה: %{error}",
-      "errorInvalidResponseMultiple": "פורמט תגובה לא חוקי מהשרת עבור מספר פריטים."
+      "errorTitle": "ניתוח AI נכשל",
+      "multiItemErrorTitle": "הוספה מהירה נכשלה",
+      "errorMessage": "לא ניתן היה לקבל תגובה מה-AI. אנא נסה שוב.",
+      "invalidResponse": "ה-AI נתן תגובה בפורמט לא צפוי. אנא נסה שוב או נסח מחדש את בקשתך."
     },
     "units": {
-      "alertAiEstimationFailed": "הערכת AI נכשלה",
-      "errorCouldNotEstimateGrams": "לא ניתן היה להעריך גרמים: %{error}"
+      "errorTitle": "הערכת AI נכשלה"
     },
     "image": {
       "alertCompressionError": "שגיאת דחיסה",
@@ -5493,21 +5103,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "פורמט מזהה לקוח לא חוקי.",
-    "errorRequestFailedParse": "בקשה לשרת נכשלה (סטטוס %{status}), פענוח התגובה נכשל.",
-    "errorRequestFailedDetailFormat": "שגיאת שרת (סטטוס %{status}), פורמט פרטים לא צפוי.",
-    "errorRequestFailedWithServerMsg": "בקשה לשרת נכשלה (סטטוס %{status}). תגובת השרת: %{response}",
-    "errorAuthFailed": "האימות נכשל. מזהה לקוח לא חוקי.",
-    "errorPermissionDenied": "הגישה נדחתה.",
-    "errorNotFound": "המשאב לא נמצא.",
-    "errorTooManyRequests": "יותר מדי בקשות. אנא נסה שוב מאוחר יותר.",
-    "errorInsufficientCoins": "אין מספיק מטבעות לפעולה זו.",
-    "errorNetwork": "התקשורת עם השרת נכשלה.",
-    "errorNetworkTimeout": "זמן הבקשה פג. אנא נסה שוב.",
+    "errorInvalidClientId": "מזהה לקוח לא חוקי. אנא הפעל מחדש את האפליקציה.",
+    "errorRequestFailedParse": "השרת שלח תגובה לא קריאה (סטטוס %{status}).",
+    "errorRequestFailedDetailFormat": "השרת שלח תגובה בפורמט לא צפוי (סטטוס %{status}).",
+    "errorRequestFailedWithServerMsg": "השרת החזיר שגיאה (סטטוס %{status}).",
+    "errorAuthFailed": "האימות מול השרת נכשל. אנא הפעל מחדש את האפליקציה.",
+    "errorPermissionDenied": "הגישה נדחתה על ידי השרת.",
+    "errorNotFound": "המשאב המבוקש לא נמצא בשרת.",
+    "errorTooManyRequests": "אתה מבצע זאת מהר מדי! אנא המתן רגע ונסה שוב.",
+    "errorInsufficientCoins": "אין לך מספיק מטבעות AI לפעולה זו. עוד יהיו זמינים בקרוב!",
+    "errorNetwork": "לא ניתן להתחבר לשרת.",
+    "errorNetworkTimeout": "לשרת לוקח יותר מדי זמן להגיב. אנא נסה שוב בעוד מספר רגעים.",
     "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
     "errorNetworkDetails": " פרטים: %{error}",
     "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
-    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב פורמט תגובה לא צפוי.",
+    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב תגובת שרת לא צפויה.",
     "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
   },
   "statisticsChart": {
@@ -5671,10 +5281,20 @@ export default i18n;
       "restartNow": "Перезапустить сейчас"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "Ошибка оценки",
+    "analysisFailedTitle": "Ошибка анализа",
+    "aiGramsProcessingError": "ИИ не смог обработать количество. Попробуйте перефразировать (например, '1 чашка' вместо 'чашка').",
+    "unexpectedError": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
+  },
   "settingsScreen": {
     "title": "Настройки",
     "account": {
-      "title": "Аккаунт"
+      "title": "Аккаунт",
+      "actions": "Действия с аккаунтом",
+      "logout": "Выйти",
+      "logoutConfirmTitle": "Подтвердите выход",
+      "logoutConfirmMessage": "Вы уверены, что хотите выйти?"
     },
     "general": {
       "title": "Общие"
@@ -5813,7 +5433,11 @@ export default i18n;
     "shareErrorMessage": "Не удалось поделиться продуктом.",
     "deepLinkErrorTitle": "Ошибка открытия ссылки",
     "deepLinkInvalidData": "Данные о продукте из ссылки недействительны.",
-    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки."
+    "deepLinkParseError": "Не удалось прочитать данные о продукте из ссылки.",
+    "sortBy": "Сортировать по",
+    "sortByName": "Имени",
+    "sortByNewest": "Новые",
+    "sortByOldest": "Старые"
   },
   "addEntryModal": {
     "titleAdd": "Добавить запись",
@@ -5821,11 +5445,12 @@ export default i18n;
     "titleQuickAddSelect": "Выберите элементы для добавления",
     "titleQuickAddEdit": "Изменить элемент",
     "titleQuickAddAnalyzing": "Анализ...",
+    "titleQuickAddFromText": "Быстрое добавление по тексту",
     "searchPlaceholder": "Поиск продуктов...",
     "recent": "Недавние",
     "noResults": "Продукты, соответствующие \"%{searchTerm}\", не найдены.",
     "emptyLibraryMessage": "Ваша библиотека продуктов пуста. Нажмите ниже, чтобы добавить первый продукт!",
-    "noQuickAddResults": "На изображении не найдено пищевых продуктов.",
+    "noQuickAddResults": "Продукты не найдены.",
     "amount": "Количество",
     "grams": "Граммы",
     "autoAi": "Авто (ИИ)",
@@ -5880,7 +5505,13 @@ export default i18n;
     "overwrite": "Перезаписать",
     "toastFoodSavedToLibrary": "\"%{foodName}\" сохранено в библиотеку.",
     "toastFoodUpdatedInLibrary": "\"%{foodName}\" обновлено в библиотеке.",
-    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку."
+    "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку.",
+    "textQuickAdd": {
+      "placeholder": "Опишите ваш прием пищи...\nнапример, '150г куриной грудки, небольшой салат с помидорами и одно яблоко'",
+      "analyzeButton": "Анализировать текст",
+      "alertInputEmpty": "Пустое поле",
+      "alertInputEmptyMessage": "Пожалуйста, напишите или произнесите, что вы съели, для анализа."
+    }
   },
   "addFoodModal": {
     "titleAdd": "Добавить новый продукт",
@@ -5935,19 +5566,13 @@ export default i18n;
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "Ошибка ИИ (Рецепт)",
-      "alertAnalysisFailedSingle": "Ошибка анализа (Один элемент)",
-      "alertQuickAddFailedMulti": "Ошибка быстрого добавления (Несколько элементов)",
-      "alertImageReadError": "Ошибка чтения изображения",
-      "alertImageReadErrorMessage": "Не удалось прочитать файл изображения.",
-      "errorGetMacrosRecipe": "Не удалось получить макросы для рецепта: %{error}",
-      "errorImageAnalysis": "Ошибка анализа изображения: %{error}",
-      "errorCouldNotAnalyze": "Не удалось проанализировать изображение: %{error}",
-      "errorInvalidResponseMultiple": "Неверный формат ответа от сервера для нескольких элементов."
+      "errorTitle": "Ошибка анализа ИИ",
+      "multiItemErrorTitle": "Ошибка быстрого добавления",
+      "errorMessage": "Не удалось получить ответ от ИИ. Пожалуйста, попробуйте еще раз.",
+      "invalidResponse": "ИИ дал ответ в неожиданном формате. Пожалуйста, попробуйте еще раз или перефразируйте свой запрос."
     },
     "units": {
-      "alertAiEstimationFailed": "Ошибка оценки ИИ",
-      "errorCouldNotEstimateGrams": "Не удалось оценить граммы: %{error}"
+      "errorTitle": "Ошибка оценки ИИ"
     },
     "image": {
       "alertCompressionError": "Ошибка сжатия",
@@ -5956,21 +5581,21 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Неверный формат идентификатора клиента.",
-    "errorRequestFailedParse": "Запрос к бэкенду не удался (Статус %{status}), не удалось разобрать ответ.",
-    "errorRequestFailedDetailFormat": "Ошибка бэкенда (Статус %{status}), неожиданный формат деталей.",
-    "errorRequestFailedWithServerMsg": "Запрос к бэкенду не удался (Статус %{status}). Ответ сервера: %{response}",
-    "errorAuthFailed": "Аутентификация не удалась. Неверный идентификатор клиента.",
-    "errorPermissionDenied": "Доступ запрещен.",
-    "errorNotFound": "Ресурс не найден.",
-    "errorTooManyRequests": "Слишком много запросов. Пожалуйста, повторите попытку позже.",
-    "errorInsufficientCoins": "Недостаточно монет для этого действия.",
-    "errorNetwork": "Не удалось связаться с бэкендом.",
-    "errorNetworkTimeout": "Время ожидания запроса истекло. Пожалуйста, попробуйте еще раз.",
-    "errorNetworkConnection": " Пожалуйста, проверьте ваше сетевое соединение.",
+    "errorInvalidClientId": "Неверный идентификатор клиента. Пожалуйста, перезапустите приложение.",
+    "errorRequestFailedParse": "Сервер отправил нечитаемый ответ (Статус %{status}).",
+    "errorRequestFailedDetailFormat": "Сервер отправил ответ в неожиданном формате (Статус %{status}).",
+    "errorRequestFailedWithServerMsg": "Сервер вернул ошибку (Статус %{status}).",
+    "errorAuthFailed": "Ошибка аутентификации на сервере. Пожалуйста, перезапустите приложение.",
+    "errorPermissionDenied": "Доступ запрещен сервером.",
+    "errorNotFound": "Запрошенный ресурс не найден на сервере.",
+    "errorTooManyRequests": "Вы делаете это слишком быстро! Пожалуйста, подождите немного и попробуйте снова.",
+    "errorInsufficientCoins": "У вас недостаточно монет ИИ для этого действия. Скоро будет больше!",
+    "errorNetwork": "Не удалось подключиться к серверу.",
+    "errorNetworkTimeout": "Сервер слишком долго отвечает. Пожалуйста, повторите попытку через несколько секунд.",
+    "errorNetworkConnection": " Пожалуйста, проверьте ваше интернет-соединение.",
     "errorNetworkDetails": " Детали: %{error}",
     "errorNetworkUnknown": " Произошла неизвестная сетевая ошибка.",
-    "errorEstimateGramsUnexpectedResponse": "Не удалось получить оценку граммов из-за неожиданного формата ответа.",
+    "errorEstimateGramsUnexpectedResponse": "Не удалось оценить граммы из-за неожиданного ответа сервера.",
     "errorAddCoinsPositive": "Сумма для добавления должна быть положительной."
   },
   "statisticsChart": {
@@ -6126,144 +5751,236 @@ export default i18n;
 
 ---------- AppNavigator.tsx ----------
 // src/navigation/AppNavigator.tsx
-// navigation/AppNavigator.tsx
-import React, { useState, useCallback } from 'react';
-import { Platform, I18nManager } from 'react-native';
-import { createBottomTabNavigator, BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Icon, useTheme } from '@rneui/themed';
+import React from 'react';
+import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
+import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
+import * as Localization from 'expo-localization';
+
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import QuestionnaireScreen from '../screens/QuestionnaireScreen'; // Import new screen
-import { LanguageCode, Settings } from '../types/settings';
-import i18n, { t } from '../localization/i18n';
-import { Food, SharedFoodData } from '../types/food'; // Import Food and SharedFoodData types
+import QuestionnaireScreen from '../screens/QuestionnaireScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 
-// Define ParamList for the Tab Navigator
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { LanguageCode } from '../types/settings';
+import i18n, { setLocale, t } from '../localization/i18n';
+import { Food } from '../types/food';
+import { setLogoutListener } from '../services/authService'; // Import the listener setter
+
+// Define ParamLists
 export type MainTabParamList = {
-  DailyEntryRoute: { quickAddFood?: Food }; // For DailyEntryScreen, can receive quickAddFood
-  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };   // For FoodListScreen, can receive foodData string from deep link
-  SettingsStackRoute: undefined;             // For the Settings Stack
+  DailyEntryRoute: { quickAddFood?: Food };
+  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };
+  SettingsStackRoute: undefined;
 };
 
-// Define ParamList for the Settings Stack
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
 };
 
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
 
+export type RootStackParamList = {
+  Auth: undefined;
+  Main: undefined;
+};
+
+// Create Navigators
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const SettingsStackNav = createNativeStackNavigator<SettingsStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
-interface AppNavigatorProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  // No longer needs onDataOperation here, as handleFoodChange serves this purpose internally
+// Linking configuration
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      Main: {
+          path: '', // Root path maps to main tabs
+          screens: {
+              FoodListRoute: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+          }
+      },
+    }
+  },
+};
+
+// Theming
+declare module "@rneui/themed" {
+  export interface Colors { text: string; card: string; successLight: string; }
 }
+const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", };
+const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
 
-// Props for the SettingsStackNavigatorComponent
-interface SettingsStackProps {
-  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
-  onLocaleChange: (locale: LanguageCode) => void;
-  onDataOperation: () => void; // This will be handleFoodChange from AppNavigator
-}
-
-
-// Settings Stack Navigator
-function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation }: SettingsStackProps) {
+// Settings Stack Navigator Component
+function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
   const { theme } = useTheme();
   return (
-    <SettingsStackNav.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTitleStyle: { color: theme.colors.text },
-        headerTintColor: theme.colors.primary,
-        headerTitleAlign: Platform.OS === 'ios' ? 'center' : 'center',
-      }}
-    >
+    <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {() => <SettingsScreen onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} />}
+        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
-      <SettingsStackNav.Screen name="Questionnaire" options={{ title: t('questionnaireScreen.title') }}>
-        {() => <QuestionnaireScreen />}
-      </SettingsStackNav.Screen>
+      <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
   );
 }
 
-
-const AppNavigator: React.FC<AppNavigatorProps> = ({ onThemeChange, onLocaleChange }) => {
+// Main Tab Navigator Component
+function MainTabNavigator({ onThemeChange, onLocaleChange, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onLogout: () => void; }) {
   const { theme } = useTheme();
-  const [foodListRefresh, setFoodListRefresh] = useState(false);
-
-  const handleFoodChange = useCallback(() => {
-    setFoodListRefresh(prev => !prev);
-  }, []);
-
-  // Use static route names for consistency
-  const dailyEntryRouteName: keyof MainTabParamList = 'DailyEntryRoute';
-  const foodListRouteName: keyof MainTabParamList = 'FoodListRoute';
-  const settingsStackRouteName: keyof MainTabParamList = 'SettingsStackRoute';
-
+  const [foodListRefresh, setFoodListRefresh] = React.useState(false);
+  const handleFoodChange = React.useCallback(() => setFoodListRefresh(prev => !prev), []);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string = '';
-          let type: string = 'ionicon'; // Default type
-
-          if (route.name === dailyEntryRouteName) {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === foodListRouteName) {
-            iconName = focused ? 'fast-food' : 'fast-food-outline';
-          } else if (route.name === settingsStackRouteName) { 
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-          return <Icon name={iconName} type={type} size={size} color={color} />;
+          if (route.name === 'DailyEntryRoute') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'FoodListRoute') iconName = focused ? 'fast-food' : 'fast-food-outline';
+          else if (route.name === 'SettingsStackRoute') iconName = focused ? 'settings' : 'settings-outline';
+          return <Icon name={iconName} type='ionicon' size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.secondary,
-        headerShown: false, 
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.divider,
-        },
-        tabBarLabelStyle: {
-          fontWeight: 'bold',
-        }
+        headerShown: false,
+        tabBarStyle: { backgroundColor: theme.colors.background, borderTopColor: theme.colors.divider },
+        tabBarLabelStyle: { fontWeight: 'bold' }
       })}
     >
-      <Tab.Screen
-        name={dailyEntryRouteName}
-        options={{ title: t('dailyEntryScreen.tabTitle') }}
-      >
+      <Tab.Screen name="DailyEntryRoute" options={{ title: t('dailyEntryScreen.tabTitle') }}>
         {() => <DailyEntryScreen key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={foodListRouteName}
-        options={{ title: t('foodListScreen.tabTitle') }}
-      >
+      <Tab.Screen name="FoodListRoute" options={{ title: t('foodListScreen.tabTitle') }}>
         {() => <FoodListScreen onFoodChange={handleFoodChange} key={`${foodListRefresh}-${i18n.locale}`} />}
       </Tab.Screen>
-      <Tab.Screen
-        name={settingsStackRouteName} 
-        options={{ title: t('settingsScreen.title') }} 
-      >
-        {() => <SettingsStackNavigatorComponent 
-                  onThemeChange={onThemeChange} 
-                  onLocaleChange={onLocaleChange} 
-                  onDataOperation={handleFoodChange} // Pass handleFoodChange here
-                />}
+      <Tab.Screen name="SettingsStackRoute" options={{ title: t('settingsScreen.title') }}>
+        {() => <SettingsStackNavigatorComponent onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={handleFoodChange} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
-};
+}
 
-export default AppNavigator;
+// Auth Stack Navigator Component
+function AuthNavigator() {
+    const { theme } = useTheme();
+    const screenOptions: NativeStackNavigationOptions = {
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.background }
+    };
+    return (
+        <AuthStack.Navigator screenOptions={screenOptions}>
+            <AuthStack.Screen name="Login" component={LoginScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+        </AuthStack.Navigator>
+    )
+}
 
+// App Content - Determines which stack to show
+function AppContent() {
+  const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
+  const colorScheme = useColorScheme();
+
+  // Set up the global logout listener
+  React.useEffect(() => {
+    if (logout) {
+      setLogoutListener(logout);
+    }
+  }, [logout]);
+
+  const themeMode = settings.theme;
+  const currentThemeConfig = React.useMemo(() => {
+    const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+    return isDark ? { mode: 'dark' as const, colors: darkThemeColors } : { mode: 'light' as const, colors: lightThemeColors };
+  }, [themeMode, colorScheme]);
+
+  const navigationTheme = React.useMemo(() => ({
+    dark: { ...DarkTheme, colors: { ...DarkTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.successLight, }, },
+    light: { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: currentThemeConfig.colors.primary, background: currentThemeConfig.colors.background, card: currentThemeConfig.colors.card, text: currentThemeConfig.colors.text, border: currentThemeConfig.colors.divider, notification: currentThemeConfig.colors.success, }, },
+  }), [currentThemeConfig]);
+  
+  const handleLocaleChange = (newLocale: LanguageCode) => {
+    const oldLocale = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : settings.language;
+    changeLocale(newLocale);
+    const newEffectiveLocale = newLocale === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : newLocale;
+
+    const oldIsRTL = oldLocale === 'he';
+    const newIsRTL = newEffectiveLocale === 'he';
+
+    if (oldIsRTL !== newIsRTL && Platform.OS !== 'web') {
+        Alert.alert( t('confirmationModal.restartRequiredTitle'), t('settingsScreen.language.restartMessage'),
+            [ { text: t('app.alertButtons.later'), style: "cancel" },
+              { text: t('app.alertButtons.restartNow'), onPress: () => DevSettings.reload() } ]
+        );
+    } else if (Platform.OS === 'web' && oldIsRTL !== newIsRTL) {
+        window.location.reload();
+    }
+  };
+
+  const LoadingFallback = () => (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <Text>Loading...</Text>
+      </View>
+  )
+
+  return (
+    <ThemeProvider theme={createTheme(currentThemeConfig)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
+            <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
+            <NavigationContainer 
+                linking={linking} 
+                theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light} 
+                fallback={<LoadingFallback />}
+            >
+                <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                    {authState.authenticated ? (
+                         <RootStack.Screen name="Main">
+                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
+                         </RootStack.Screen>
+                    ) : (
+                        <RootStack.Screen name="Auth" component={AuthNavigator} />
+                    )}
+                </RootStack.Navigator>
+            </NavigationContainer>
+        </SafeAreaView>
+    </ThemeProvider>
+  );
+}
+
+// Main AppNavigator export
+export default function AppNavigator() {
+    const { isLoading, settings } = useAuth() as AuthContextType;
+    
+    React.useEffect(() => {
+        if (settings) {
+            const lang = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US') : settings.language;
+            setLocale(lang);
+        }
+    }, [settings]);
+
+    if (isLoading) {
+        return (
+            <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                <Text>Initializing App...</Text>
+            </SafeAreaView>
+        )
+    }
+
+    return <AppContent />;
+}
 ---------- END AppNavigator.tsx ----------
 
 
@@ -6638,7 +6355,7 @@ const DailyEntryScreen: React.FC = () => {
 
 
   const handleCommitFoodItemToMainLibrary = useCallback(async (
-    foodData: Omit<Food, 'id'> | Food,
+    foodData: Omit<Food, 'id' | 'createdAt'> | Food,
     isUpdate: boolean
   ): Promise<Food | null> => {
     if (isSaving) return null;
@@ -6651,7 +6368,7 @@ const DailyEntryScreen: React.FC = () => {
           prevFoods.map(f => (f.id === committedFood.id ? committedFood : f)).sort((a, b) => a.name.localeCompare(b.name))
         );
       } else if (!isUpdate && !('id' in foodData)) { // Ensure it's Omit<Food, 'id'> for create
-        committedFood = await createFood(foodData as Omit<Food, 'id'>);
+        committedFood = await createFood(foodData as Omit<Food, 'id' | 'createdAt'>);
         setFoods(prevFoods => [...prevFoods, committedFood].sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         throw new Error("Invalid data for commitFoodItemToMainLibrary");
@@ -6814,13 +6531,13 @@ import { createFood, getFoods, updateFood, deleteFood } from "../services/foodSe
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
+import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Removed clearLocalIconCache
+import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
@@ -6835,7 +6552,7 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-const PAGE_SIZE = 20;
+type SortOption = 'name' | 'newest' | 'oldest';
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
@@ -6861,79 +6578,75 @@ const getBackendShareBaseUrl = (): string => {
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
-    const [offset, setOffset] = useState(0);
-    const [totalFoods, setTotalFoods] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [newFood, setNewFood] = useState<Omit<Food, "id">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
+    const [sortOption, setSortOption] = useState<SortOption>('name');
+    const [sortIndex, setSortIndex] = useState(0);
+    const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
 
     const { theme } = useTheme();
     const styles = useStyles();
-    const flatListRef = useRef<FlatList<Food>>(null);
-    const prevSearchTermRef = useRef<string>(search.trim());
-    const isFirstRunRef = useRef(true);
+    const isFetching = useRef(false);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const resolveAndSetFoodIcon = useCallback((foodName: string) => {
-        if (foodName && foodIcons[foodName] === undefined) { 
-            const icon = getFoodIconUrl(foodName);
-            setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
-        }
-    }, [foodIcons]);
+    const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
+
+    const handleSortChange = (index: number) => {
+        if (isLoading) return;
+        setSortIndex(index);
+        setSortOption(sortOptions[index]);
+    };
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        const newIcons: { [key: string]: string | null } = {};
+        
+        const iconsToResolve: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name && foodIcons[food.name] === undefined) {
-                newIcons[food.name] = getFoodIconUrl(food.name);
+            if (food.name) {
+                iconsToResolve[food.name] = getFoodIconUrl(food.name);
             }
         });
-        if (Object.keys(newIcons).length > 0) {
-            setFoodIcons(prev => ({ ...prev, ...newIcons }));
-        }
-    }, [foodIcons]);
 
-
-    const doFetchFoods = useCallback(async (
-        isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
-        currentFoodsLength: number, currentTotalFoods: number, currentIsLoadingMore: boolean
-    ) => {
-        if (!isInitialOrNewSearch && (currentIsLoadingMore || (currentFoodsLength >= currentTotalFoods && currentTotalFoods > 0))) {
-            return;
+        if (Object.keys(iconsToResolve).length > 0) {
+            setFoodIcons(prevIcons => {
+                const updatedIcons = { ...prevIcons };
+                let hasChanged = false;
+                for (const foodName in iconsToResolve) {
+                    if (updatedIcons[foodName] === undefined) {
+                        updatedIcons[foodName] = iconsToResolve[foodName];
+                        hasChanged = true;
+                    }
+                }
+                return hasChanged ? updatedIcons : prevIcons;
+            });
         }
-        const offsetForThisFetch = isInitialOrNewSearch ? 0 : currentOffset;
-        if (isInitialOrNewSearch) setIsLoading(true); else setIsLoadingMore(true);
+    }, []);
+    
+    const fetchFoods = useCallback(async (termToFetch: string, sortToUse: SortOption) => {
+        if (isFetching.current) return;
+        
+        isFetching.current = true;
+        setIsLoading(true);
 
         try {
-            const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch);
-            if (isInitialOrNewSearch) {
-                flatListRef.current?.scrollToOffset({ animated: false, offset: 0 });
-                setFoods(newItemsFromApi);
-            } else {
-                setFoods(prevFoods => {
-                    const existingIds = new Set(prevFoods.map(f => f.id));
-                    const uniqueNewItems = newItemsFromApi.filter(item => !existingIds.has(item.id));
-                    return [...prevFoods, ...uniqueNewItems];
-                });
-            }
-            setTotalFoods(totalFromApi);
-            setOffset(offsetForThisFetch + newItemsFromApi.length);
+            const { items: newItemsFromApi } = await getFoods(termToFetch, sortToUse);
+            setFoods(newItemsFromApi);
             triggerIconPrefetch(newItemsFromApi);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            if (isInitialOrNewSearch) { setFoods([]); setTotalFoods(0); setOffset(0); }
+            setFoods([]); 
         } finally {
-            if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
+            setIsLoading(false);
+            isFetching.current = false;
         }
-    }, [triggerIconPrefetch, t]);
+    }, [t, triggerIconPrefetch]);
+
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -6947,19 +6660,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsOverlayVisible(prev => !prev);
     }, [isSaving]);
+    
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            fetchFoods(search.trim(), sortOption);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [search, sortOption, fetchFoods]);
 
     useFocusEffect(
         useCallback(() => {
-            // Cache clearing removed from here for production
-            // console.log("FoodListScreen useFocusEffect: Icon cache is now active.");
-
-            const currentTrimmedSearch = search.trim();
-            if (isFirstRunRef.current || prevSearchTermRef.current !== currentTrimmedSearch) {
-                doFetchFoods(true, currentTrimmedSearch, offset, foods.length, totalFoods, isLoadingMore);
-                isFirstRunRef.current = false;
-                prevSearchTermRef.current = currentTrimmedSearch;
-            }
-
             const params = route.params;
             if (params) {
                 if (params.openAddFoodModal && !isOverlayVisible) {
@@ -6996,23 +6706,17 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     }
                 }
             }
-        }, [search, route.params, isOverlayVisible, offset, foods.length, totalFoods, isLoadingMore, doFetchFoods, toggleOverlay, navigation, t])
+        }, [route.params, isOverlayVisible, toggleOverlay, navigation, t])
     );
 
     const updateSearch = useCallback((text: string) => setSearch(text), []);
     const handleClearSearch = useCallback(() => setSearch(''), []);
-
-    const handleLoadMore = () => {
-        if (!isLoading && !isLoadingMore && (foods.length < totalFoods)) {
-            doFetchFoods(false, search.trim(), offset, foods.length, totalFoods, isLoadingMore);
-        }
-    };
     
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
     }, [navigation]);
 
-    const validateFood = (foodToValidate: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
+    const validateFood = (foodToValidate: Omit<Food, "id" | "createdAt"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
         if (!isNotEmpty(foodToValidate.name)) newErrors.name = "Name is required";
         if (isNaN(foodToValidate.calories) || foodToValidate.calories < 0) newErrors.calories = "Must be a non-negative number";
@@ -7031,7 +6735,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -7048,7 +6752,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -7063,18 +6767,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+        await fetchFoods(search.trim(), sortOption); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-    }, [search, doFetchFoods, t]); 
+    }, [search, sortOption, fetchFoods, t]); 
 
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
@@ -7101,8 +6805,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [t]);
 
-    const handleInputChange = useCallback((key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
-        const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
+    const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string, isEdit: boolean) => {
+        const numericKeys: (keyof Omit<Food, "id" | "createdAt">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
     
         if (numericKeys.includes(key)) {
@@ -7134,10 +6838,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } else {
             setNewFood(updateState);
         }
-    }, []);
-
-
-    const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
+    };
 
     if (isLoading && foods.length === 0 && !isOverlayVisible) {
         return (
@@ -7163,8 +6864,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 cancelButtonProps={{ color: theme.colors.primary }}
                 showLoading={isLoading && search.trim().length > 0} 
             />
+            <View style={styles.controlsContainer}>
+                <Text style={styles.sortLabel}>{t('foodListScreen.sortBy')}:</Text>
+                <ButtonGroup
+                    buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
+                    selectedIndex={sortIndex}
+                    onPress={handleSortChange}
+                    containerStyle={styles.sortButtonGroup}
+                    buttonStyle={styles.sortButton}
+                    selectedButtonStyle={styles.selectedSortButton}
+                    textStyle={styles.sortButtonText}
+                    selectedTextStyle={styles.selectedSortButtonText}
+                    disabled={isLoading}
+                    disabledStyle={styles.disabledSortButtonGroup}
+                    disabledTextStyle={styles.disabledSortButtonText}
+                />
+            </View>
             <FlatList
-                ref={flatListRef}
                 data={foods}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -7176,7 +6892,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]} 
-                        setFoodIconForName={resolveAndSetFoodIcon}
+                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
                         />
                 )}
                 ListEmptyComponent={
@@ -7191,11 +6907,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     ) : null
                 }
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
+                extraData={{ foodIcons, isLoading, search, foodsLength: foods.length }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -7259,11 +6972,11 @@ const useStyles = makeStyles((theme) => ({
     },
     searchBarContainer: {
         backgroundColor: theme.colors.background,
-        borderBottomColor: theme.colors.divider,
-        borderTopColor: theme.colors.background,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'transparent',
+        borderTopColor: 'transparent',
         paddingHorizontal: 10,
-        paddingVertical: 8,
+        paddingTop: 8,
+        paddingBottom: 0,
         marginBottom: 0,
     },
     searchBarInputContainer: {
@@ -7275,6 +6988,51 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.text,
         fontSize: 15,
         textAlign: I18nManager.isRTL ? 'right' : 'left',
+    },
+    controlsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingBottom: 10,
+        paddingTop: 5,
+        backgroundColor: theme.colors.background,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+    },
+    sortLabel: {
+        color: theme.colors.grey2,
+        fontWeight: 'bold',
+        marginRight: 10,
+        fontSize: 14,
+    },
+    sortButtonGroup: {
+        flex: 1,
+        height: 35,
+        borderRadius: 8,
+        borderColor: theme.colors.primary,
+        borderWidth: 1,
+        backgroundColor: 'transparent',
+        marginHorizontal: 0,
+    },
+    sortButton: {
+        backgroundColor: theme.colors.background,
+    },
+    selectedSortButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    sortButtonText: {
+        fontSize: 13,
+        color: theme.colors.text,
+    },
+    selectedSortButtonText: {
+        color: theme.colors.white,
+    },
+    disabledSortButtonGroup: {
+        backgroundColor: theme.colors.grey5,
+        borderColor: theme.colors.grey4,
+    },
+    disabledSortButtonText: {
+        color: theme.colors.grey3,
     },
     listContentContainer: {
         paddingBottom: 80,
@@ -7290,14 +7048,123 @@ const useStyles = makeStyles((theme) => ({
         left: I18nManager.isRTL ? 10 : undefined,
         bottom: 10,
     },
-    footerLoader: {
-        paddingVertical: 20,
-        alignItems: 'center',
-    },
 }));
 
 export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
+
+
+---------- LoginScreen.tsx ----------
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { loginUser } from '../services/authService';
+
+type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+
+const LoginScreen: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const navigation = useNavigation<LoginScreenNavigationProp>();
+    const { login } = useAuth() as AuthContextType;
+    const { theme } = useTheme();
+
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Missing Fields', 'Please enter both email and password.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const response = await loginUser(email, password);
+            await login(response.access_token);
+        } catch (error: any) {
+            // The error message is now handled inside authService, so we just show it.
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            <Text h2 style={[styles.title, { color: theme.colors.text }]}>Welcome Back</Text>
+            <Input
+                placeholder="Email"
+                leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                onChangeText={setEmail}
+                value={email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Input
+                placeholder="Password"
+                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                rightIcon={
+                    <Icon 
+                        name={isPasswordVisible ? 'eye-slash' : 'eye'} 
+                        type="font-awesome" 
+                        color={theme.colors.grey3}
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                    />
+                }
+                onChangeText={setPassword}
+                value={password}
+                secureTextEntry={!isPasswordVisible}
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Button
+                title="Login"
+                onPress={handleLogin}
+                loading={isLoading}
+                buttonStyle={styles.button}
+                containerStyle={styles.buttonContainer}
+            />
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        marginBottom: 30,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    button: {
+        height: 50,
+        borderRadius: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        marginTop: 20,
+    },
+    switchText: {
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    },
+});
+
+export default LoginScreen;
+---------- END LoginScreen.tsx ----------
 
 
 ---------- QuestionnaireScreen.tsx ----------
@@ -7658,6 +7525,112 @@ export default QuestionnaireScreen;
 ---------- END QuestionnaireScreen.tsx ----------
 
 
+---------- RegisterScreen.tsx ----------
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { registerUser } from '../services/authService';
+
+type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
+
+const RegisterScreen: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const navigation = useNavigation<RegisterScreenNavigationProp>();
+    const { theme } = useTheme();
+
+    const handleRegister = async () => {
+        if (!email || !password) {
+            Alert.alert('Missing Fields', 'Please fill in all fields.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await registerUser(email, password);
+            Alert.alert(
+                'Registration Successful',
+                'A verification email has been sent to your address. Please check your inbox to activate your account.',
+                [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+            );
+        } catch (error: any) {
+            // The service now handles the alert, so we just catch to stop the loader
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            <Text h2 style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
+            <Input
+                placeholder="Email"
+                leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                onChangeText={setEmail}
+                value={email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Input
+                placeholder="Password (min 8 characters)"
+                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                onChangeText={setPassword}
+                value={password}
+                secureTextEntry
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Button
+                title="Register"
+                onPress={handleRegister}
+                loading={isLoading}
+                buttonStyle={styles.button}
+                containerStyle={styles.buttonContainer}
+            />
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={[styles.switchText, { color: theme.colors.primary }]}>Already have an account? Log In</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        marginBottom: 30,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    button: {
+        height: 50,
+        borderRadius: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        marginTop: 20,
+    },
+    switchText: {
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    },
+});
+
+export default RegisterScreen;
+---------- END RegisterScreen.tsx ----------
+
+
 ---------- SettingsScreen.tsx ----------
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
@@ -7674,8 +7647,7 @@ import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as mac
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
-// Removed: import { clearIconCache } from "../utils/iconUtils"; 
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
@@ -7685,6 +7657,7 @@ interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
   onDataOperation: () => void; 
+  onLogout: () => void;
 }
 
 type SettingsStackParamList = {
@@ -7695,7 +7668,7 @@ type SettingsStackParamList = {
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation, onLogout }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
     language: "system",
@@ -7707,7 +7680,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  // Removed: const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
@@ -7880,6 +7852,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     navigation.navigate('Questionnaire');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+        t('settingsScreen.account.logoutConfirmTitle'),
+        t('settingsScreen.account.logoutConfirmMessage'),
+        [
+            { text: t('confirmationModal.cancel'), style: 'cancel' },
+            { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout },
+        ],
+        { cancelable: true }
+    );
+  };
+
   if (isDataLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -7898,6 +7882,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
              isAddingCoins={isAddingCoins}
              onAddTestCoins={handleAddTestCoins}
         />
+
+        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
+        <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
+            <Icon name="logout" type="material-community" color={theme.colors.error} />
+            <ListItem.Content>
+                <ListItem.Title style={styles.logoutTitle}>
+                    {t('settingsScreen.account.logout')}
+                </ListItem.Title>
+            </ListItem.Content>
+            <ListItem.Chevron color={theme.colors.error} />
+        </ListItem>
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
         <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
@@ -8002,6 +7997,17 @@ const useStyles = makeStyles((theme) => ({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontWeight: '500',
   },
+  logoutItem: {
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+  },
+  logoutTitle: {
+      color: theme.colors.error,
+      textAlign: I18nManager.isRTL ? 'right' : 'left',
+      fontWeight: 'bold',
+  },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   button: { marginBottom: 10, borderRadius: 8, },
@@ -8029,39 +8035,148 @@ export default SettingsScreen;
 ---------- END SettingsScreen.tsx ----------
 
 
----------- backendService.ts ----------
-// src/services/backendService.ts
-// ---------- src/services/backendService.ts ----------
+---------- authService.ts ----------
+// src/services/authService.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { getClientId } from './clientIDService';
-import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
-import { Platform } from 'react-native';
-import uuid from 'react-native-uuid';
-import i18n, { t } from '../localization/i18n'; // Import t and i18n
+import { Alert } from 'react-native';
 
+// --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
+    // EAS Build's process.env takes precedence
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
     if (envUrl) {
-        console.log("Using Backend URL from EXPO_PUBLIC_BACKEND_URL:", envUrl);
-        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
+        return envUrl;
     }
+    // Fallback for older expo-constants approach or local dev without .env
     const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    console.log(envUrl, configUrl);
-    
     if (configUrl) {
-        console.warn("Using Backend URL from app.json extra.env. Consider using build-time environment variables (EXPO_PUBLIC_*) for production.");
-        return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
+        return configUrl;
     }
-    console.error("BACKEND_URL not found in environment variables or app.json extra.env. Using default DEVELOPMENT URL. THIS IS NOT FOR PRODUCTION.");
-    const DEV_URL = 'http://192.168.1.15:8000';
-    return `${DEV_URL}/api/v1`;
+    // Final fallback to a default development URL
+    console.warn(
+        "Production backend URL not found in process.env or app.json. Falling back to default development URL."
+    );
+    return 'http://192.168.1.15:8000'; // Default dev URL
 };
 
-const BASE_URL = getBackendUrl();
+export const getApiUrl = (): string => {
+    const baseUrl = getBackendUrl();
+    return baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/api/v1`;
+};
+
+const API_URL = getApiUrl();
+
+// --- Auth Event Emitter for 401 Handling ---
+type LogoutListener = () => void;
+let onLogout: LogoutListener | null = null;
+
+export const setLogoutListener = (listener: LogoutListener) => {
+    onLogout = listener;
+};
+
+export const triggerLogout = () => {
+    if (onLogout) {
+        onLogout();
+    } else {
+        console.warn('Logout triggered, but no listener was set. A full app reload might be required.');
+        // Fallback behavior if the listener isn't set for some reason
+        removeAuthToken();
+    }
+};
+
+
+// --- Token Management ---
+const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
+
+export const getAuthToken = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+};
+
+export const setAuthToken = async (token: string): Promise<void> => {
+  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+};
+
+export const removeAuthToken = async (): Promise<void> => {
+  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+};
+
+
+// --- API Calls ---
+async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_URL}/auth${endpoint}`;
+    
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(options.headers as Record<string, string> || {})
+    };
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const responseBody = await response.json();
+
+        if (!response.ok) {
+            const errorMessage = responseBody.detail || 'An unknown error occurred.';
+            const detailMessage = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+            throw new Error(detailMessage);
+        }
+        return responseBody as T;
+    } catch (error: any) {
+        Alert.alert('Authentication Error', error.message || 'Could not connect to the server.');
+        throw error;
+    }
+}
+
+export const registerUser = async (email: string, password: string): Promise<any> => {
+    return fetchAuthApi('/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+    });
+};
+
+export const loginUser = async (email: string, password: string): Promise<{access_token: string}> => {
+    const details = { 'username': email, 'password': password };
+    
+    // Corrected: Use Object.entries for a type-safe way to build form data
+    const formBody = Object.entries(details)
+        .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
+        .join('&');
+
+    const url = `${API_URL}/auth/login`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: formBody,
+        });
+        
+        const responseBody = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseBody.detail || 'Login failed');
+        }
+        return responseBody;
+    } catch (error: any) {
+        Alert.alert('Login Error', error.message || 'Could not connect to the server.');
+        throw error;
+    }
+};
+---------- END authService.ts ----------
+
+
+---------- backendService.ts ----------
+// src/services/backendService.ts
+import { getApiUrl, getAuthToken, triggerLogout } from './authService';
+import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
+import { Platform } from 'react-native';
+import i18n, { t } from '../localization/i18n';
+
+const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-// IconResponse removed as icons are handled locally
 export interface UserStatus { client_id: string; coins: number; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
@@ -8074,158 +8189,88 @@ export class BackendError extends Error {
 }
 
 async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, needsAuth: boolean = true ): Promise<T> {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${BASE_URL}${cleanEndpoint}`;
-    const method = options.method || 'GET';
-    let response: Response | null = null; let requestId: string | null = null;
-
-    console.log(`[API Request] ${method} ${url} - Starting (Auth: ${needsAuth}, Locale: ${i18n.locale})`);
-
-    const defaultHeaders: HeadersInit = {
-        'Content-Type': 'application/json', 'Accept': 'application/json',
-        'X-Platform': Platform.OS, 'Accept-Language': i18n.locale,
-    };
-    let authHeaders: HeadersInit = {};
-    if (needsAuth) {
-        const clientId = await getClientId();
-        if (!uuid.validate(clientId)) {
-             console.error(`[API Request] Invalid Client ID format detected: ${clientId}. Aborting request.`);
-             throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-        }
-        authHeaders = { 'X-Client-ID': clientId };
-        console.log(`[API Request] Adding X-Client-ID header.`);
-    }
-    const config: RequestInit = { ...options, headers: { ...defaultHeaders, ...authHeaders, ...options.headers, } };
-
-     if (config.body && typeof config.body === 'string') {
-          try {
-              const bodyObj = JSON.parse(config.body);
-              const bodyKeys = Object.keys(bodyObj);
-              const bodyPreview = bodyKeys.length > 0 ? `{ keys: [${bodyKeys.join(', ')}] }` : '{}';
-              console.log(`[API Request] ${method} ${url} - Body Preview: ${bodyPreview}`);
-          } catch {
-              console.log(`[API Request] ${method} ${url} - Body: (non-JSON or failed parse)`);
-          }
-     }
-
+    const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    let response: Response | null = null;
+    let requestId: string | null = null;
     try {
-        response = await fetch(url, config);
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Platform': Platform.OS,
+            'Accept-Language': i18n.locale,
+            ...(options.headers as Record<string, string> || {})
+        };
+
+        if (needsAuth) {
+            const token = await getAuthToken();
+            if (!token) {
+                // If a screen needs auth and there's no token, this will prevent the call.
+                // The user should be redirected to login by the navigation logic.
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+            }
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        response = await fetch(url, { ...options, headers });
         requestId = response.headers.get("X-Request-ID");
-        const status = response.status; const contentType = response.headers.get("content-type");
 
-        console.log(`[API Response] ${method} ${url} - Status: ${status}, Content-Type: ${contentType}, RequestID: ${requestId || 'N/A'}`);
+        if (response.status === 204) return null as T;
 
-        if (status === 204) {
-             console.log(`[API Response] ${method} ${url} - Success (204 No Content)`);
-             return null as T;
-        }
-
-        let responseBody: any; let isJson = false;
-        try {
-            if (contentType && contentType.includes("application/json")) {
-                responseBody = await response.json();
-                isJson = true;
-            } else {
-                responseBody = await response.text();
-                console.log(`[API Response] ${method} ${url} - Received Text: ${responseBody.substring(0, 200)}...`);
-            }
-        } catch (parseError) {
-            console.error(`[API Error] ${method} ${url} - Failed to parse response body (Status: ${status}):`, parseError);
-            const rawText = await response.text().catch(() => '(Could not get raw text)');
-            if (!response.ok) {
-                throw new BackendError(t('backendService.errorRequestFailedParse', {status}), status, rawText, requestId);
-            } else {
-                console.warn(`[API Warning] ${method} ${url} - Status ${status} OK, but failed to parse response body.`);
-                 return null as T;
-            }
-        }
+        const contentType = response.headers.get("content-type");
+        const isJson = contentType && contentType.includes("application/json");
+        const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', {status}); 
-            let errorDetail: string | BackendErrorDetail[] | undefined = undefined;
-
-            if (isJson && responseBody) {
-                 const errorData = responseBody as BackendErrorResponse;
-                 if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail; 
-                    errorDetail = errorMessage;
-                 } else if (Array.isArray(errorData.detail)) {
-                     errorMessage = t('backendService.errorRequestFailedDetailFormat', {status}); 
-                     errorDetail = errorData.detail;
-                     console.warn(`[API Validation Error] ${method} ${url} - Details:`, JSON.stringify(errorDetail));
-                 } else {
-                      errorMessage = t('backendService.errorRequestFailedDetailFormat', {status});
-                      errorDetail = JSON.stringify(responseBody);
-                 }
-            } else if (!isJson) {
-                 errorMessage = t('backendService.errorRequestFailedWithServerMsg', {status, response: responseBody.substring(0,100)});
-                 errorDetail = responseBody;
+            let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
+            if (isJson && responseBody?.detail) {
+                errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
+            } else if (!isJson && responseBody) {
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
+            
+            if (response.status === 401) {
+                errorMessage = t('backendService.errorAuthFailed');
+                // Trigger global logout handler
+                triggerLogout();
+            }
+            if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
 
-            if (status === 401 && needsAuth) errorMessage = t('backendService.errorAuthFailed');
-            if (status === 403) errorMessage = t('backendService.errorPermissionDenied');
-            if (status === 404) errorMessage = t('backendService.errorNotFound');
-            if (status === 429) errorMessage = t('backendService.errorTooManyRequests');
-            if (status === 402) errorMessage = t('backendService.errorInsufficientCoins');
-
-            console.error(`[API Error] ${method} ${url} - Status: ${status}, Message: "${errorMessage}", Detail:`, errorDetail);
-            throw new BackendError(errorMessage, status, errorDetail, requestId);
+            throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
-
-        console.log(`[API Response] ${method} ${url} - Success (Status: ${status})`);
         return responseBody as T;
 
     } catch (error) {
-        const logRequestId = requestId ? ` (RequestID: ${requestId})` : '';
         if (error instanceof BackendError) throw error;
-
-        console.error(`[API Network Error] ${method} ${url}${logRequestId} - Error:`, error);
-        let networkErrorMessage = t('backendService.errorNetwork');
-         if (error instanceof Error) {
-             if (error.name === 'AbortError' || error.message.includes('timed out')) networkErrorMessage = t('backendService.errorNetworkTimeout');
-             else if (error.message.includes('Network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
-             else networkErrorMessage += t('backendService.errorNetworkDetails', {error: error.message});
-         } else networkErrorMessage += t('backendService.errorNetworkUnknown');
+        
+        let networkErrorMessage: string;
+        if (error instanceof Error && error.name === 'AbortError') {
+            networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error && (error.message.includes('Network request failed') || error.message.includes('Failed to fetch'))) {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkConnection');
+        } else if (error instanceof Error) {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkDetails', { error: error.message });
+        } else {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
+        }
+        
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    return fetchBackend<UserStatus>(`/users/status/${clientId}`, {}, true);
-};
-
-export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<Macros> => {
-    const body = { food_name: foodName, ingredients };
-    return fetchBackend<Macros>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
-export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => {
-    const body = { image_base64, mime_type };
-    return fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify(body), }, true);
-};
-
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>('/users/status');
+export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
+export const getMacrosForTextMultiple = async (text: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
-    const body = { food_name: foodName, quantity_description: quantityDescription };
-    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify(body), }, true);
-    if (response === null || typeof response.grams !== 'number') {
-        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
-    }
+    const response = await fetchBackend<GramsResponse>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
+    if (response === null || typeof response.grams !== 'number') throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500, "Invalid response format");
     return response.grams;
 };
-
-// getFoodIcon function removed as icons are now handled locally
-
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
-    const clientId = await getClientId();
-    const body = { amount };
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${clientId}`, { method: 'POST', body: JSON.stringify(body), }, true);
+    return fetchBackend<UserStatus>('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };
 ---------- END backendService.ts ----------
 
@@ -8277,16 +8322,16 @@ export const clearClientId = async (): Promise<void> => {
 
 ---------- foodService.ts ----------
 // src/services/foodService.ts
-// services/foodService.ts
 import { Food } from '../types/food';
 import { saveFoods, loadFoods } from './storageService';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
+export const createFood = async (foodData: Omit<Food, 'id' | 'createdAt'>): Promise<Food> => {
   const newFood: Food = {
     id: uuidv4(),
     ...foodData,
+    createdAt: new Date().toISOString(),
   };
   const { items: currentFoods } = await loadFoods(); // Load all foods to append
   currentFoods.push(newFood);
@@ -8295,12 +8340,11 @@ export const createFood = async (foodData: Omit<Food, 'id'>): Promise<Food> => {
 };
 
 export const getFoods = async (
-  offset: number = 0,
-  limit?: number,
-  searchTerm?: string // New parameter for searching
+  searchTerm?: string,
+  sortOption: 'name' | 'newest' | 'oldest' = 'name'
 ): Promise<{ items: Food[], total: number }> => {
-  // Load all foods first. For a real backend, the backend would handle filtering and pagination.
-  const { items: allFoodsFromStorage } = await loadFoods(); // This loads all items
+  // Load all foods first.
+  const { items: allFoodsFromStorage } = await loadFoods();
 
   let filteredFoods = allFoodsFromStorage;
 
@@ -8311,15 +8355,22 @@ export const getFoods = async (
     );
   }
 
-  // After filtering (if any), then apply pagination
-  const totalFiltered = filteredFoods.length;
-
-  if (limit === undefined) {
-    return { items: filteredFoods, total: totalFiltered };
+  // Sorting logic
+  if (sortOption === 'name') {
+      filteredFoods.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+      const fallbackDate = '2020-01-01T00:00:00.000Z'; // For items without a creation date
+      filteredFoods.sort((a, b) => {
+          const dateA = new Date(a.createdAt || fallbackDate).getTime();
+          const dateB = new Date(b.createdAt || fallbackDate).getTime();
+          return sortOption === 'newest' ? dateB - dateA : dateA - dateB;
+      });
   }
 
-  const paginatedFoods = filteredFoods.slice(offset, offset + limit);
-  return { items: paginatedFoods, total: totalFiltered };
+  const totalFiltered = filteredFoods.length;
+
+  // Return all filtered and sorted items without pagination
+  return { items: filteredFoods, total: totalFiltered };
 };
 
 export const updateFood = async (updatedFood: Food): Promise<Food> => {
@@ -8558,10 +8609,11 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
+  createdAt: string; // ISO 8601 date string
 }
 
-// Data structure for sharing food items. ID is omitted.
-export type SharedFoodData = Omit<Food, 'id'>;
+// Data structure for sharing food items. ID and createdAt are omitted.
+export type SharedFoodData = Omit<Food, 'id' | 'createdAt'>;
 ---------- END food.ts ----------
 
 
@@ -8763,6 +8815,14 @@ export interface SettingsScreenProps {
   onLocaleChange: (locale: LanguageCode) => void; // Added for language change
 }
 ---------- END settings.ts ----------
+
+
+---------- token.ts ----------
+export interface Token {
+    access_token: string;
+    token_type: string;
+}
+---------- END token.ts ----------
 
 
 ---------- dateUtils.ts ----------
@@ -9318,118 +9378,66 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
 
 ---------- macros.ts ----------
 // src/utils/macros.ts
-// src/utils/macros.ts
-import * as FileSystem from 'expo-file-system';
-import {
-    getMacrosForRecipe,
-    getMacrosForImageSingle,
-    getMacrosForImageMultiple,
-    BackendError
-} from '../services/backendService';
 import { Alert } from 'react-native';
+import { getMacrosForRecipe, getMacrosForImageSingle, getMacrosForImageMultiple, getMacrosForTextMultiple, BackendError } from '../services/backendService';
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { ImagePickerAsset } from 'expo-image-picker';
-import { getBase64FromUri } from './imageUtils'; // Corrected import path check
+import { getBase64FromUri } from './imageUtils';
 import { t } from '../localization/i18n';
 
-// --- Helper function to determine MIME type ---
-export function determineMimeType(asset: {
-    uri: string;
-    mimeType?: string | null;
-    fileName?: string | null;
-}): string {
-    // 1. Prioritize asset.mimeType
-    if (asset.mimeType && asset.mimeType.includes('/')) {
-        console.log(`MIME Type: Using provided type: ${asset.mimeType}`);
-        return asset.mimeType;
-    }
-
-    // 2. Infer from URI extension (fallback)
-    const uriParts = asset.uri.split('.');
-    const extension = uriParts.pop()?.toLowerCase();
-    console.log(`MIME Type: Inferring from extension: .${extension}`);
+export function determineMimeType(asset: { uri: string; mimeType?: string | null; fileName?: string | null; }): string {
+    if (asset.mimeType && asset.mimeType.includes('/')) return asset.mimeType;
+    const extension = asset.uri.split('.').pop()?.toLowerCase();
     switch (extension) {
         case 'jpg': case 'jpeg': return 'image/jpeg';
         case 'png': return 'image/png';
-        case 'gif': return 'image/gif';
-        case 'webp': return 'image/webp';
-        case 'bmp': return 'image/bmp';
-        default:
-            console.warn(`MIME Type: Could not determine specific type for URI: ${asset.uri}. Defaulting to image/jpeg.`);
-            return 'image/jpeg'; // Default
+        default: return 'image/jpeg';
     }
 }
 
-
-// --- Service Interaction Functions (with improved error handling context) ---
-
-// Get macros from recipe text
-export async function getMacrosFromText(
-    foodName: string,
-    ingredients: string
-): Promise<Macros> {
+export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
     try {
-        console.log(`Util: Requesting macros for recipe: "${foodName}"`);
-        const macros = await getMacrosForRecipe(foodName, ingredients);
-        console.log(`Util: Received macros for recipe: "${foodName}"`);
-        return macros;
+        return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        console.error(`Util: Error getting macros for recipe "${foodName}":`, error);
-        const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorGetMacrosRecipe', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.macros.alertAiErrorRecipe'), message);
-        throw error; // Re-throw to allow caller to handle
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
+        throw error;
     }
 }
 
-// Get macros for a single food item from an image asset
 export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<MacrosWithFoodName> {
-    let base64File: string;
     try {
-        // Use shared utility for base64 conversion
-        base64File = await getBase64FromUri(asset.uri);
-    } catch (err) {
-        Alert.alert(t('utils.macros.alertImageReadError'), err instanceof Error ? err.message : t('utils.macros.alertImageReadErrorMessage'));
-        throw err; // Re-throw error for caller to handle
-    }
-
-    const mimeType = determineMimeType(asset);
-    console.log(`Util: Requesting single food analysis. MIME: ${mimeType}, Asset URI: ${asset.uri}`);
-
-    try {
-        const result = await getMacrosForImageSingle(base64File, mimeType);
-        console.log(`Util: Received single food analysis: ${result.foodName}`);
-        return result;
+        const base64File = await getBase64FromUri(asset.uri);
+        const mimeType = determineMimeType(asset);
+        return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        console.error(`Util: Error getting single food macros for image ${asset.uri}:`, error);
-        const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorImageAnalysis', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.macros.alertAnalysisFailedSingle'), message);
-        throw error; // Re-throw error
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.errorTitle'), message);
+        throw error;
     }
 }
 
-// Get multiple estimated food items from an image asset
 export async function getMultipleFoodsFromImage(base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> {
-    console.log(`Util: Requesting multi-food analysis. MIME: ${mimeType}`);
-
     try {
         const results = await getMacrosForImageMultiple(base64Image, mimeType);
-        console.log(`Util: Received ${results.length} estimated items from backend.`);
-        if (!Array.isArray(results)) {
-            console.error("Util: Backend returned non-array for multiple food items:", results);
-            throw new Error(t('utils.macros.errorInvalidResponseMultiple'));
-        }
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        console.error(`Util: Error getting multiple food macros from image:`, error);
-         const message = error instanceof BackendError
-            ? error.message
-            : t('utils.macros.errorCouldNotAnalyze', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.macros.alertQuickAddFailedMulti'), message);
-        throw error; // Re-throw error
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        throw error;
+    }
+}
+
+export async function getMultipleFoodsFromText(text: string): Promise<EstimatedFoodItem[]> {
+    try {
+        const results = await getMacrosForTextMultiple(text);
+        if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
+        return results;
+    } catch (error) {
+        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        throw error;
     }
 }
 
@@ -9439,10 +9447,9 @@ export { BackendError, EstimatedFoodItem, Macros, MacrosWithFoodName };
 
 ---------- units.ts ----------
 // src/utils/units.ts
-// src/utils/units.ts
 import { Alert } from 'react-native';
 import { estimateGramsNaturalLanguage, BackendError } from '../services/backendService';
-import { t } from '../localization/i18n'; // Import t
+import { t } from '../localization/i18n';
 
 export async function getGramsFromNaturalLanguage(
     foodName: string,
@@ -9454,8 +9461,8 @@ export async function getGramsFromNaturalLanguage(
     } catch (error) {
         const message = error instanceof BackendError
             ? error.message
-            : t('utils.units.errorCouldNotEstimateGrams', { error: error instanceof Error ? error.message : String(error) });
-        Alert.alert(t('utils.units.alertAiEstimationFailed'), message);
+            : t('errors.unexpectedError');
+        Alert.alert(t('errors.estimationFailedTitle'), message);
         throw error;
     }
 }
@@ -9476,13 +9483,11 @@ export const isValidNumberInput = (value: string): boolean => {
 
 
 ---------- tsconfig.json ----------
-// tsconfig.json
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "esModuleInterop": true,
-    "module": "commonjs"
+    "esModuleInterop": true
   }
 }
 ---------- END tsconfig.json ----------

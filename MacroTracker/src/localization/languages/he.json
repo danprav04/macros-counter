@@ -7,10 +7,29 @@
       "restartNow": "הפעל מחדש כעת"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "ההערכה נכשלה",
+    "analysisFailedTitle": "הניתוח נכשל",
+    "aiGramsProcessingError": "הבינה המלאכותית לא הצליחה לעבד את הכמות. אנא נסה לנסח זאת אחרת (למשל, 'כוס אחת' במקום 'כוס').",
+    "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
+  },
+  "forgotPasswordScreen": {
+    "title": "איפוס סיסמה",
+    "instructions": "הזן את כתובת האימייל של חשבונך ונשלח לך קישור לאיפוס הסיסמה.",
+    "emailPlaceholder": "כתובת אימייל",
+    "buttonText": "שלח קישור לאיפוס",
+    "backToLogin": "חזרה להתחברות",
+    "alertSuccessTitle": "בדוק את האימייל שלך",
+    "forgotPasswordLink": "שכחת סיסמה?"
+  },
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
-      "title": "חשבון"
+      "title": "חשבון",
+      "actions": "פעולות חשבון",
+      "logout": "התנתק",
+      "logoutConfirmTitle": "אישור התנתקות",
+      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?"
     },
     "general": {
       "title": "כללי"
@@ -149,7 +168,11 @@
     "shareErrorMessage": "לא ניתן היה לשתף את פריט המזון.",
     "deepLinkErrorTitle": "שגיאה בפתיחת הקישור",
     "deepLinkInvalidData": "נתוני המזון מהקישור אינם חוקיים.",
-    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור."
+    "deepLinkParseError": "לא ניתן היה לקרוא את נתוני המזון מהקישור.",
+    "sortBy": "מיין לפי",
+    "sortByName": "שם",
+    "sortByNewest": "החדש ביותר",
+    "sortByOldest": "הישן ביותר"
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",
@@ -278,19 +301,13 @@
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "שגיאת AI (מתכון)",
-      "alertAnalysisFailedSingle": "ניתוח נכשל (פריט יחיד)",
-      "alertQuickAddFailedMulti": "הוספה מהירה נכשלה (מספר פריטים)",
-      "alertImageReadError": "שגיאת קריאת תמונה",
-      "alertImageReadErrorMessage": "קריאת קובץ התמונה נכשלה.",
-      "errorGetMacrosRecipe": "קבלת מאקרואים למתכון נכשלה: %{error}",
-      "errorImageAnalysis": "ניתוח התמונה נכשל: %{error}",
-      "errorCouldNotAnalyze": "לא ניתן היה לנתח את התמונה: %{error}",
-      "errorInvalidResponseMultiple": "פורמט תגובה לא חוקי מהשרת עבור מספר פריטים."
+      "errorTitle": "ניתוח AI נכשל",
+      "multiItemErrorTitle": "הוספה מהירה נכשלה",
+      "errorMessage": "לא ניתן היה לקבל תגובה מה-AI. אנא נסה שוב.",
+      "invalidResponse": "ה-AI נתן תגובה בפורמט לא צפוי. אנא נסה שוב או נסח מחדש את בקשתך."
     },
     "units": {
-      "alertAiEstimationFailed": "הערכת AI נכשלה",
-      "errorCouldNotEstimateGrams": "לא ניתן היה להעריך גרמים: %{error}"
+      "errorTitle": "הערכת AI נכשלה"
     },
     "image": {
       "alertCompressionError": "שגיאת דחיסה",
@@ -299,21 +316,21 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "פורמט מזהה לקוח לא חוקי.",
-    "errorRequestFailedParse": "בקשה לשרת נכשלה (סטטוס %{status}), פענוח התגובה נכשל.",
-    "errorRequestFailedDetailFormat": "שגיאת שרת (סטטוס %{status}), פורמט פרטים לא צפוי.",
-    "errorRequestFailedWithServerMsg": "בקשה לשרת נכשלה (סטטוס %{status}). תגובת השרת: %{response}",
-    "errorAuthFailed": "האימות נכשל. מזהה לקוח לא חוקי.",
-    "errorPermissionDenied": "הגישה נדחתה.",
-    "errorNotFound": "המשאב לא נמצא.",
-    "errorTooManyRequests": "יותר מדי בקשות. אנא נסה שוב מאוחר יותר.",
-    "errorInsufficientCoins": "אין מספיק מטבעות לפעולה זו.",
-    "errorNetwork": "התקשורת עם השרת נכשלה.",
-    "errorNetworkTimeout": "זמן הבקשה פג. אנא נסה שוב.",
+    "errorInvalidClientId": "מזהה לקוח לא חוקי. אנא הפעל מחדש את האפליקציה.",
+    "errorRequestFailedParse": "השרת שלח תגובה לא קריאה (סטטוס %{status}).",
+    "errorRequestFailedDetailFormat": "השרת שלח תגובה בפורמט לא צפוי (סטטוס %{status}).",
+    "errorRequestFailedWithServerMsg": "השרת החזיר שגיאה (סטטוס %{status}).",
+    "errorAuthFailed": "האימות מול השרת נכשל. אנא הפעל מחדש את האפליקציה.",
+    "errorPermissionDenied": "הגישה נדחתה על ידי השרת.",
+    "errorNotFound": "המשאב המבוקש לא נמצא בשרת.",
+    "errorTooManyRequests": "אתה מבצע זאת מהר מדי! אנא המתן רגע ונסה שוב.",
+    "errorInsufficientCoins": "אין לך מספיק מטבעות AI לפעולה זו. עוד יהיו זמינים בקרוב!",
+    "errorNetwork": "לא ניתן להתחבר לשרת.",
+    "errorNetworkTimeout": "לשרת לוקח יותר מדי זמן להגיב. אנא נסה שוב בעוד מספר רגעים.",
     "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
     "errorNetworkDetails": " פרטים: %{error}",
     "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
-    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב פורמט תגובה לא צפוי.",
+    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב תגובת שרת לא צפויה.",
     "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
   },
   "statisticsChart": {

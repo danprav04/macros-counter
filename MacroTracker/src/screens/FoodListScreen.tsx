@@ -5,13 +5,13 @@ import { createFood, getFoods, updateFood, deleteFood } from "../services/foodSe
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon } from "@rneui/themed";
+import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { getFoodIconUrl } from "../utils/iconUtils"; // Removed clearLocalIconCache
+import { getFoodIconUrl } from "../utils/iconUtils";
 import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
@@ -26,7 +26,7 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-const PAGE_SIZE = 20;
+type SortOption = 'name' | 'newest' | 'oldest';
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
@@ -52,79 +52,75 @@ const getBackendShareBaseUrl = (): string => {
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foods, setFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
-    const [offset, setOffset] = useState(0);
-    const [totalFoods, setTotalFoods] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [newFood, setNewFood] = useState<Omit<Food, "id">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
+    const [sortOption, setSortOption] = useState<SortOption>('name');
+    const [sortIndex, setSortIndex] = useState(0);
+    const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
 
     const { theme } = useTheme();
     const styles = useStyles();
-    const flatListRef = useRef<FlatList<Food>>(null);
-    const prevSearchTermRef = useRef<string>(search.trim());
-    const isFirstRunRef = useRef(true);
+    const isFetching = useRef(false);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const resolveAndSetFoodIcon = useCallback((foodName: string) => {
-        if (foodName && foodIcons[foodName] === undefined) { 
-            const icon = getFoodIconUrl(foodName);
-            setFoodIcons(prev => ({ ...prev, [foodName]: icon }));
-        }
-    }, [foodIcons]);
+    const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
+
+    const handleSortChange = (index: number) => {
+        if (isLoading) return;
+        setSortIndex(index);
+        setSortOption(sortOptions[index]);
+    };
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        const newIcons: { [key: string]: string | null } = {};
+        
+        const iconsToResolve: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name && foodIcons[food.name] === undefined) {
-                newIcons[food.name] = getFoodIconUrl(food.name);
+            if (food.name) {
+                iconsToResolve[food.name] = getFoodIconUrl(food.name);
             }
         });
-        if (Object.keys(newIcons).length > 0) {
-            setFoodIcons(prev => ({ ...prev, ...newIcons }));
-        }
-    }, [foodIcons]);
 
-
-    const doFetchFoods = useCallback(async (
-        isInitialOrNewSearch: boolean, termToFetch: string, currentOffset: number,
-        currentFoodsLength: number, currentTotalFoods: number, currentIsLoadingMore: boolean
-    ) => {
-        if (!isInitialOrNewSearch && (currentIsLoadingMore || (currentFoodsLength >= currentTotalFoods && currentTotalFoods > 0))) {
-            return;
+        if (Object.keys(iconsToResolve).length > 0) {
+            setFoodIcons(prevIcons => {
+                const updatedIcons = { ...prevIcons };
+                let hasChanged = false;
+                for (const foodName in iconsToResolve) {
+                    if (updatedIcons[foodName] === undefined) {
+                        updatedIcons[foodName] = iconsToResolve[foodName];
+                        hasChanged = true;
+                    }
+                }
+                return hasChanged ? updatedIcons : prevIcons;
+            });
         }
-        const offsetForThisFetch = isInitialOrNewSearch ? 0 : currentOffset;
-        if (isInitialOrNewSearch) setIsLoading(true); else setIsLoadingMore(true);
+    }, []);
+    
+    const fetchFoods = useCallback(async (termToFetch: string, sortToUse: SortOption) => {
+        if (isFetching.current) return;
+        
+        isFetching.current = true;
+        setIsLoading(true);
 
         try {
-            const { items: newItemsFromApi, total: totalFromApi } = await getFoods(offsetForThisFetch, PAGE_SIZE, termToFetch);
-            if (isInitialOrNewSearch) {
-                flatListRef.current?.scrollToOffset({ animated: false, offset: 0 });
-                setFoods(newItemsFromApi);
-            } else {
-                setFoods(prevFoods => {
-                    const existingIds = new Set(prevFoods.map(f => f.id));
-                    const uniqueNewItems = newItemsFromApi.filter(item => !existingIds.has(item.id));
-                    return [...prevFoods, ...uniqueNewItems];
-                });
-            }
-            setTotalFoods(totalFromApi);
-            setOffset(offsetForThisFetch + newItemsFromApi.length);
+            const { items: newItemsFromApi } = await getFoods(termToFetch, sortToUse);
+            setFoods(newItemsFromApi);
             triggerIconPrefetch(newItemsFromApi);
         } catch (error) {
             Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            if (isInitialOrNewSearch) { setFoods([]); setTotalFoods(0); setOffset(0); }
+            setFoods([]); 
         } finally {
-            if (isInitialOrNewSearch) setIsLoading(false); else setIsLoadingMore(false);
+            setIsLoading(false);
+            isFetching.current = false;
         }
-    }, [triggerIconPrefetch, t]);
+    }, [t, triggerIconPrefetch]);
+
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -138,19 +134,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsOverlayVisible(prev => !prev);
     }, [isSaving]);
+    
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            fetchFoods(search.trim(), sortOption);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [search, sortOption, fetchFoods]);
 
     useFocusEffect(
         useCallback(() => {
-            // Cache clearing removed from here for production
-            // console.log("FoodListScreen useFocusEffect: Icon cache is now active.");
-
-            const currentTrimmedSearch = search.trim();
-            if (isFirstRunRef.current || prevSearchTermRef.current !== currentTrimmedSearch) {
-                doFetchFoods(true, currentTrimmedSearch, offset, foods.length, totalFoods, isLoadingMore);
-                isFirstRunRef.current = false;
-                prevSearchTermRef.current = currentTrimmedSearch;
-            }
-
             const params = route.params;
             if (params) {
                 if (params.openAddFoodModal && !isOverlayVisible) {
@@ -187,23 +180,17 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     }
                 }
             }
-        }, [search, route.params, isOverlayVisible, offset, foods.length, totalFoods, isLoadingMore, doFetchFoods, toggleOverlay, navigation, t])
+        }, [route.params, isOverlayVisible, toggleOverlay, navigation, t])
     );
 
     const updateSearch = useCallback((text: string) => setSearch(text), []);
     const handleClearSearch = useCallback(() => setSearch(''), []);
-
-    const handleLoadMore = () => {
-        if (!isLoading && !isLoadingMore && (foods.length < totalFoods)) {
-            doFetchFoods(false, search.trim(), offset, foods.length, totalFoods, isLoadingMore);
-        }
-    };
     
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
     }, [navigation]);
 
-    const validateFood = (foodToValidate: Omit<Food, "id"> | Food): { [key: string]: string } | null => {
+    const validateFood = (foodToValidate: Omit<Food, "id" | "createdAt"> | Food): { [key: string]: string } | null => {
         const newErrors: { [key: string]: string } = {};
         if (!isNotEmpty(foodToValidate.name)) newErrors.name = "Name is required";
         if (isNaN(foodToValidate.calories) || foodToValidate.calories < 0) newErrors.calories = "Must be a non-negative number";
@@ -222,7 +209,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -239,7 +226,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const updated = await updateFood(trimmedFood);
             setIsOverlayVisible(false); 
             onFoodChange?.(); 
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
@@ -254,18 +241,18 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
                 setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
             }
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
         } catch (error) {
             Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+            fetchFoods(search.trim(), sortOption); 
         }
     };
 
     const handleUndoDeleteFood = useCallback(async (food: Food) => {
         Toast.hide();
-        doFetchFoods(true, search.trim(), 0, 0, 0, false); 
+        await fetchFoods(search.trim(), sortOption); 
         Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-    }, [search, doFetchFoods, t]); 
+    }, [search, sortOption, fetchFoods, t]); 
 
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
@@ -292,8 +279,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     }, [t]);
 
-    const handleInputChange = (key: keyof Omit<Food, "id">, value: string, isEdit: boolean) => {
-        const numericKeys: (keyof Omit<Food, "id">)[] = ['calories', 'protein', 'carbs', 'fat'];
+    const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string, isEdit: boolean) => {
+        const numericKeys: (keyof Omit<Food, "id" | "createdAt">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
     
         if (numericKeys.includes(key)) {
@@ -327,8 +314,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
     };
 
-    const renderFooter = () => isLoadingMore ? <View style={styles.footerLoader}><ActivityIndicator size="small" color={theme.colors.primary} /></View> : null;
-
     if (isLoading && foods.length === 0 && !isOverlayVisible) {
         return (
             <SafeAreaView style={styles.centeredLoader} edges={['top', 'left', 'right']}>
@@ -353,8 +338,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 cancelButtonProps={{ color: theme.colors.primary }}
                 showLoading={isLoading && search.trim().length > 0} 
             />
+            <View style={styles.controlsContainer}>
+                <Text style={styles.sortLabel}>{t('foodListScreen.sortBy')}:</Text>
+                <ButtonGroup
+                    buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
+                    selectedIndex={sortIndex}
+                    onPress={handleSortChange}
+                    containerStyle={styles.sortButtonGroup}
+                    buttonStyle={styles.sortButton}
+                    selectedButtonStyle={styles.selectedSortButton}
+                    textStyle={styles.sortButtonText}
+                    selectedTextStyle={styles.selectedSortButtonText}
+                    disabled={isLoading}
+                    disabledStyle={styles.disabledSortButtonGroup}
+                    disabledTextStyle={styles.disabledSortButtonText}
+                />
+            </View>
             <FlatList
-                ref={flatListRef}
                 data={foods}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -366,7 +366,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]} 
-                        setFoodIconForName={resolveAndSetFoodIcon}
+                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
                         />
                 )}
                 ListEmptyComponent={
@@ -381,11 +381,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     ) : null
                 }
                 contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, isLoadingMore, isLoading, search, foodsLength: foods.length, totalFoods }}
+                extraData={{ foodIcons, isLoading, search, foodsLength: foods.length }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -449,11 +446,11 @@ const useStyles = makeStyles((theme) => ({
     },
     searchBarContainer: {
         backgroundColor: theme.colors.background,
-        borderBottomColor: theme.colors.divider,
-        borderTopColor: theme.colors.background,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'transparent',
+        borderTopColor: 'transparent',
         paddingHorizontal: 10,
-        paddingVertical: 8,
+        paddingTop: 8,
+        paddingBottom: 0,
         marginBottom: 0,
     },
     searchBarInputContainer: {
@@ -465,6 +462,51 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.text,
         fontSize: 15,
         textAlign: I18nManager.isRTL ? 'right' : 'left',
+    },
+    controlsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingBottom: 10,
+        paddingTop: 5,
+        backgroundColor: theme.colors.background,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+    },
+    sortLabel: {
+        color: theme.colors.grey2,
+        fontWeight: 'bold',
+        marginRight: 10,
+        fontSize: 14,
+    },
+    sortButtonGroup: {
+        flex: 1,
+        height: 35,
+        borderRadius: 8,
+        borderColor: theme.colors.primary,
+        borderWidth: 1,
+        backgroundColor: 'transparent',
+        marginHorizontal: 0,
+    },
+    sortButton: {
+        backgroundColor: theme.colors.background,
+    },
+    selectedSortButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    sortButtonText: {
+        fontSize: 13,
+        color: theme.colors.text,
+    },
+    selectedSortButtonText: {
+        color: theme.colors.white,
+    },
+    disabledSortButtonGroup: {
+        backgroundColor: theme.colors.grey5,
+        borderColor: theme.colors.grey4,
+    },
+    disabledSortButtonText: {
+        color: theme.colors.grey3,
     },
     listContentContainer: {
         paddingBottom: 80,
@@ -479,10 +521,6 @@ const useStyles = makeStyles((theme) => ({
         right: I18nManager.isRTL ? undefined : 10,
         left: I18nManager.isRTL ? 10 : undefined,
         bottom: 10,
-    },
-    footerLoader: {
-        paddingVertical: 20,
-        alignItems: 'center',
     },
 }));
 

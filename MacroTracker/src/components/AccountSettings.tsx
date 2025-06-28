@@ -34,18 +34,22 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 )}
             </ListItem>
 
-            {/* REMOVE OR PROTECT THIS BUTTON IN PRODUCTION */}
-            <Button
-                title={t('accountSettings.addTestCoins')}
-                onPress={onAddTestCoins}
-                buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
-                loading={isAddingCoins}
-                disabled={isAddingCoins || isLoadingCoins}
-            />
-            <Text style={styles.testButtonWarning}>
-                {t('accountSettings.testButtonWarning')}
-            </Text>
+            {/* This button and its warning are only available in development builds */}
+            {__DEV__ && (
+                <>
+                    <Button
+                        title={t('accountSettings.addTestCoins')}
+                        onPress={onAddTestCoins}
+                        buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
+                        icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+                        loading={isAddingCoins}
+                        disabled={isAddingCoins || isLoadingCoins}
+                    />
+                    <Text style={styles.testButtonWarning}>
+                        {t('accountSettings.testButtonWarning')}
+                    </Text>
+                </>
+            )}
         </View>
     );
 };

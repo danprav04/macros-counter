@@ -5,12 +5,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Food } from '../types/food';
 import { t } from '../localization/i18n';
 
-type FoodFormValues = Partial<Omit<Food, 'id'>>;
+// The form deals with data that doesn't include id or createdAt
+type FoodFormData = Omit<Food, 'id' | 'createdAt'>;
+type FoodFormValues = Partial<FoodFormData>;
 
 interface FoodFormFieldsProps {
     values: FoodFormValues;
     errors: { [key: string]: string };
-    onInputChange: (key: keyof Omit<Food, 'id'>, value: string, isEdit: boolean) => void;
+    onInputChange: (key: keyof FoodFormData, value: string, isEdit: boolean) => void;
     isEditing: boolean;
     disabled: boolean;
 }
@@ -25,7 +27,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
 
-    const getValue = (key: keyof Omit<Food, 'id'>): string => {
+    const getValue = (key: keyof FoodFormData): string => {
          const val = values[key];
          if (typeof val === 'number') {
               if (val === 0 && !isEditing) return "";
@@ -34,7 +36,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
          return String(val ?? "");
     };
 
-    const getErrorText = (fieldKey: keyof Omit<Food, 'id'>) => {
+    const getErrorText = (fieldKey: keyof FoodFormData) => {
         const errorKey = errors[fieldKey];
         if (!errorKey) return "";
         // Assuming error keys in en.json map to field names + specific error type

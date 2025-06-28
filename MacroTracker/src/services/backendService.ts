@@ -1,26 +1,10 @@
 // src/services/backendService.ts
-import Constants from 'expo-constants';
-import { getClientId } from './clientIDService';
+import { getApiUrl, getAuthToken, triggerLogout } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
-import uuid from 'react-native-uuid';
 import i18n, { t } from '../localization/i18n';
 
-const getBackendUrl = (): string => {
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
-    if (envUrl) {
-        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    if (configUrl) {
-        return configUrl.endsWith('/api/v1') ? configUrl : `${configUrl.replace(/\/$/, '')}/api/v1`;
-    }
-    console.error("BACKEND_URL not found. Using default DEVELOPMENT URL.");
-    const DEV_URL = 'http://192.168.1.15:8000';
-    return `${DEV_URL}/api/v1`;
-};
-
-const BASE_URL = getBackendUrl();
+const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
@@ -49,9 +33,13 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         };
 
         if (needsAuth) {
-            const clientId = await getClientId();
-            if (!uuid.validate(clientId)) throw new BackendError(t('backendService.errorInvalidClientId'), 400, "Invalid client ID format.");
-            headers['X-Client-ID'] = clientId;
+            const token = await getAuthToken();
+            if (!token) {
+                // If a screen needs auth and there's no token, this will prevent the call.
+                // The user should be redirected to login by the navigation logic.
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+            }
+            headers['Authorization'] = `Bearer ${token}`;
         }
         
         response = await fetch(url, { ...options, headers });
@@ -64,31 +52,44 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
         const responseBody = isJson ? await response.json() : await response.text();
 
         if (!response.ok) {
-            let errorMessage = t('backendService.errorRequestFailedParse', { status: response.status });
+            let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             if (isJson && responseBody?.detail) {
                 errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
-            } else if (!isJson) {
-                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status, response: responseBody.substring(0, 100) });
+            } else if (!isJson && responseBody) {
+                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
-            if (response.status === 401) errorMessage = t('backendService.errorAuthFailed');
+            
+            if (response.status === 401) {
+                errorMessage = t('backendService.errorAuthFailed');
+                // Trigger global logout handler
+                triggerLogout();
+            }
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
+
             throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
         }
         return responseBody as T;
 
     } catch (error) {
         if (error instanceof BackendError) throw error;
-        let networkErrorMessage = t('backendService.errorNetwork');
+        
+        let networkErrorMessage: string;
         if (error instanceof Error && error.name === 'AbortError') {
             networkErrorMessage = t('backendService.errorNetworkTimeout');
+        } else if (error instanceof Error && (error.message.includes('Network request failed') || error.message.includes('Failed to fetch'))) {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkConnection');
         } else if (error instanceof Error) {
-            networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkDetails', { error: error.message });
+        } else {
+            networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
         }
+        
         throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
     }
 }
 
-export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>(`/users/status/${await getClientId()}`);
+export const getUserStatus = async (): Promise<UserStatus> => fetchBackend<UserStatus>('/users/status');
 export const getMacrosForRecipe = async (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 export const getMacrosForImageSingle = async (image_base64: string, mime_type: string): Promise<MacrosWithFoodName> => fetchBackend<MacrosWithFoodName>('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
 export const getMacrosForImageMultiple = async (image_base64: string, mime_type: string): Promise<EstimatedFoodItem[]> => fetchBackend<EstimatedFoodItem[]>('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) });
@@ -100,5 +101,5 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
 };
 export const addCoinsToUser = async (amount: number): Promise<UserStatus> => {
     if (amount <= 0) throw new BackendError(t('backendService.errorAddCoinsPositive'), 400, "Amount must be positive.");
-    return fetchBackend<UserStatus>(`/users/add_coins/${await getClientId()}`, { method: 'POST', body: JSON.stringify({ amount }) });
+    return fetchBackend<UserStatus>('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };

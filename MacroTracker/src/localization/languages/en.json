@@ -7,10 +7,29 @@
       "restartNow": "Restart Now"
     }
   },
+  "errors": {
+    "estimationFailedTitle": "Estimation Failed",
+    "analysisFailedTitle": "Analysis Failed",
+    "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
+    "unexpectedError": "An unexpected error occurred. Please try again."
+  },
+  "forgotPasswordScreen": {
+    "title": "Reset Password",
+    "instructions": "Enter your account's email address and we will send you a link to reset your password.",
+    "emailPlaceholder": "Email Address",
+    "buttonText": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "alertSuccessTitle": "Check Your Email",
+    "forgotPasswordLink": "Forgot Password?"
+  },
   "settingsScreen": {
     "title": "Settings",
     "account": {
-      "title": "Account"
+      "title": "Account",
+      "actions": "Account Actions",
+      "logout": "Logout",
+      "logoutConfirmTitle": "Confirm Logout",
+      "logoutConfirmMessage": "Are you sure you want to log out?"
     },
     "general": {
       "title": "General"
@@ -149,7 +168,11 @@
     "shareErrorMessage": "Could not share food item.",
     "deepLinkErrorTitle": "Error Opening Link",
     "deepLinkInvalidData": "The food data from the link is invalid.",
-    "deepLinkParseError": "Could not read food data from the link."
+    "deepLinkParseError": "Could not read food data from the link.",
+    "sortBy": "Sort by",
+    "sortByName": "Name",
+    "sortByNewest": "Newest",
+    "sortByOldest": "Oldest"
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",
@@ -278,19 +301,13 @@
   },
   "utils": {
     "macros": {
-      "alertAiErrorRecipe": "AI Error (Recipe)",
-      "alertAnalysisFailedSingle": "Analysis Failed (Single Item)",
-      "alertQuickAddFailedMulti": "Quick Add Failed (Multi-Item)",
-      "alertImageReadError": "Image Read Error",
-      "alertImageReadErrorMessage": "Failed to read image file.",
-      "errorGetMacrosRecipe": "Failed to get macros for recipe: %{error}",
-      "errorImageAnalysis": "Image analysis failed: %{error}",
-      "errorCouldNotAnalyze": "Could not analyze image: %{error}",
-      "errorInvalidResponseMultiple": "Invalid response format from server for multiple items."
+      "errorTitle": "AI Analysis Failed",
+      "multiItemErrorTitle": "Quick Add Failed",
+      "errorMessage": "Could not get a response from the AI. Please try again.",
+      "invalidResponse": "The AI gave a response in an unexpected format. Please try again or rephrase your request."
     },
     "units": {
-      "alertAiEstimationFailed": "AI Estimation Failed",
-      "errorCouldNotEstimateGrams": "Could not estimate grams: %{error}"
+      "errorTitle": "AI Estimation Failed"
     },
     "image": {
       "alertCompressionError": "Compression Error",
@@ -299,21 +316,21 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Invalid client ID format.",
-    "errorRequestFailedParse": "Backend request failed (Status %{status}), failed to parse response.",
-    "errorRequestFailedDetailFormat": "Backend error (Status %{status}), unexpected detail format.",
-    "errorRequestFailedWithServerMsg": "Backend request failed (Status %{status}). Server response: %{response}",
-    "errorAuthFailed": "Authentication failed. Invalid Client ID.",
-    "errorPermissionDenied": "Permission denied.",
-    "errorNotFound": "Resource not found.",
-    "errorTooManyRequests": "Too many requests. Please try again later.",
-    "errorInsufficientCoins": "Insufficient coins for this action.",
-    "errorNetwork": "Failed to communicate with the backend.",
-    "errorNetworkTimeout": "The request timed out. Please try again.",
-    "errorNetworkConnection": " Please check your network connection.",
+    "errorInvalidClientId": "Invalid client ID. Please restart the app.",
+    "errorRequestFailedParse": "The server sent an unreadable response (Status %{status}).",
+    "errorRequestFailedDetailFormat": "The server sent a response with an unexpected format (Status %{status}).",
+    "errorRequestFailedWithServerMsg": "The server returned an error (Status %{status}).",
+    "errorAuthFailed": "Authentication with the server failed. Please restart the app.",
+    "errorPermissionDenied": "Permission denied by server.",
+    "errorNotFound": "The requested resource was not found on the server.",
+    "errorTooManyRequests": "You're doing that too fast! Please wait a moment and try again.",
+    "errorInsufficientCoins": "You don't have enough AI coins for this action. More will be available soon!",
+    "errorNetwork": "Could not connect to the server.",
+    "errorNetworkTimeout": "The server is taking too long to respond. Please try again in a few moments.",
+    "errorNetworkConnection": " Please check your internet connection.",
     "errorNetworkDetails": " Details: %{error}",
     "errorNetworkUnknown": " An unknown network error occurred.",
-    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to unexpected response.",
+    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
     "errorAddCoinsPositive": "Amount to add must be positive."
   },
   "statisticsChart": {

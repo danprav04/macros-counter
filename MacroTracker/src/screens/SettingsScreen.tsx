@@ -13,8 +13,7 @@ import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as mac
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"; // For navigation
-// Removed: import { clearIconCache } from "../utils/iconUtils"; 
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
@@ -24,6 +23,7 @@ interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
   onLocaleChange: (locale: LanguageCode) => void;
   onDataOperation: () => void; 
+  onLogout: () => void;
 }
 
 type SettingsStackParamList = {
@@ -34,7 +34,7 @@ type SettingsStackParamList = {
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation, onLogout }) => {
   const [settings, setSettings] = useState<Settings>({
     theme: "system",
     language: "system",
@@ -46,7 +46,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  // Removed: const [isClearingCache, setIsClearingCache] = useState(false);
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [isLoadingCoins, setIsLoadingCoins] = useState(false);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
@@ -219,6 +218,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     navigation.navigate('Questionnaire');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+        t('settingsScreen.account.logoutConfirmTitle'),
+        t('settingsScreen.account.logoutConfirmMessage'),
+        [
+            { text: t('confirmationModal.cancel'), style: 'cancel' },
+            { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout },
+        ],
+        { cancelable: true }
+    );
+  };
+
   if (isDataLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -237,6 +248,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
              isAddingCoins={isAddingCoins}
              onAddTestCoins={handleAddTestCoins}
         />
+
+        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
+        <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
+            <Icon name="logout" type="material-community" color={theme.colors.error} />
+            <ListItem.Content>
+                <ListItem.Title style={styles.logoutTitle}>
+                    {t('settingsScreen.account.logout')}
+                </ListItem.Title>
+            </ListItem.Content>
+            <ListItem.Chevron color={theme.colors.error} />
+        </ListItem>
 
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
         <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
@@ -340,6 +362,17 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.text,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontWeight: '500',
+  },
+  logoutItem: {
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+  },
+  logoutTitle: {
+      color: theme.colors.error,
+      textAlign: I18nManager.isRTL ? 'right' : 'left',
+      fontWeight: 'bold',
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
