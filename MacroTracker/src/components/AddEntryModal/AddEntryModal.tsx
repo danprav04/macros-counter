@@ -4,7 +4,7 @@ import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Ke
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import { loadRecentFoods, saveRecentFoods, loadLastUsedPortions, saveLastUsedPortions, LastUsedPortions } from "../../services/storageService";
+import { loadRecentFoods, saveRecentFoods, LastUsedPortions } from "../../services/storageService";
 import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
@@ -32,6 +32,7 @@ interface AddEntryModalProps {
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
+  lastUsedPortions: LastUsedPortions;
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -43,6 +44,7 @@ type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
   isVisible, toggleOverlay, handleAddEntry: parentHandleAddEntry, handleAddMultipleEntries: parentHandleAddMultipleEntries,
   foods, isEditMode, initialGrams, initialSelectedFoodForEdit, onAddNewFoodRequest, onCommitFoodToLibrary, dailyGoals,
+  lastUsedPortions,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -63,7 +65,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-  const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
   
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
@@ -89,8 +90,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   useEffect(() => {
     // --- Modal Opening Logic ---
     if (isVisible && !prevIsVisible.current) {
-        loadLastUsedPortions().then(setLastUsedPortions);
-
         const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
         if (actuallyEditingDailyItem) {
             // Setup for editing an existing daily item
@@ -178,9 +177,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (isActionDisabled) return;
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
     if (!isEditMode) addToRecentFoods(internalSelectedFood);
-    const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-    setLastUsedPortions(updatedPortions); saveLastUsedPortions(updatedPortions);
-  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t]);
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
@@ -192,10 +189,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     Keyboard.dismiss();
     const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
-    const newPortions = { ...lastUsedPortions };
-    entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; addToRecentFoods(entry.food); });
-    setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions); setSelectedMultipleFoods(new Map());
-  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods]);
+    entriesToAdd.forEach(entry => addToRecentFoods(entry.food));
+    setSelectedMultipleFoods(new Map());
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods]);
 
   const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
     if (isEditMode) return;
@@ -300,11 +296,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
     if (entriesToAdd.length > 0) {
       parentHandleAddMultipleEntries(entriesToAdd);
-      const newPortions = { ...lastUsedPortions };
-      entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; });
-      setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions);
     }
-  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions]);
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 

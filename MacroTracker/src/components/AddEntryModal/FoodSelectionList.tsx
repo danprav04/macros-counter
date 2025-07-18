@@ -120,7 +120,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 if (lastPortion) {
                     setGrams(String(lastPortion));
                 } else {
-                    setGrams(""); 
+                    setGrams(String(DEFAULT_GRAMS_FOR_MULTI_ADD)); 
                 }
             }
         }
@@ -272,7 +272,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length }}
+                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}

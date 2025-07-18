@@ -4,7 +4,7 @@ import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nMan
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
-import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
+import { saveDailyEntries, loadDailyEntries, loadSettings, saveLastUsedPortions, loadLastUsedPortions, LastUsedPortions } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 // isValidNumberInput is not directly used in this file after changes
 import DailyProgress from "../components/DailyProgress";
@@ -46,6 +46,7 @@ const DailyEntryScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
+  const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -100,10 +101,11 @@ const DailyEntryScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [foodsResult, loadedEntries, loadedSettings] = await Promise.all([
+      const [foodsResult, loadedEntries, loadedSettings, loadedPortions] = await Promise.all([
         getFoods(),
         loadDailyEntries(),
         loadSettings(),
+        loadLastUsedPortions(),
       ]);
 
       const loadedFoodsArray = foodsResult.items;
@@ -112,6 +114,7 @@ const DailyEntryScreen: React.FC = () => {
       loadedFoodsArray.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(loadedFoodsArray);
       setDailyEntries(loadedEntries);
+      setLastUsedPortions(loadedPortions);
       triggerIconPrefetch(loadedEntries, selectedDate);
     } catch (error) {
       console.error("Error in DailyEntryScreen loadData:", error);
@@ -221,6 +224,12 @@ const DailyEntryScreen: React.FC = () => {
         return updatedEntriesArray;
     });
 
+    if (foodToAdd?.id) {
+        const updatedPortions = { ...lastUsedPortions, [foodToAdd.id]: gramsToAdd };
+        setLastUsedPortions(updatedPortions);
+        await saveLastUsedPortions(updatedPortions);
+    }
+
     if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
     
     setIsOverlayVisible(false);
@@ -229,7 +238,7 @@ const DailyEntryScreen: React.FC = () => {
     setFoodForEditModal(null);
 
     Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t ]);
+  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t, lastUsedPortions ]);
 
 
   const handleAddMultipleEntriesFinal = useCallback(async (entriesToAdd: { food: Food; grams: number }[]) => {
@@ -254,6 +263,13 @@ const DailyEntryScreen: React.FC = () => {
           return updatedEntriesArray;
       });
 
+      const newPortions = { ...lastUsedPortions };
+      entriesToAdd.forEach(entry => {
+        if (entry.food.id) newPortions[entry.food.id] = entry.grams;
+      });
+      setLastUsedPortions(newPortions);
+      await saveLastUsedPortions(newPortions);
+
       newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
       
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
@@ -263,7 +279,7 @@ const DailyEntryScreen: React.FC = () => {
       setInitialGramsForEdit(undefined);
       setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
-  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t]);
+  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t, lastUsedPortions]);
 
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
@@ -510,6 +526,7 @@ const DailyEntryScreen: React.FC = () => {
             onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
             onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
             dailyGoals={dailyGoals}
+            lastUsedPortions={lastUsedPortions}
           />
       )}
     </SafeAreaView>
