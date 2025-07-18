@@ -48,6 +48,7 @@ src/
   screens/
     DailyEntryScreen.tsx
     FoodListScreen.tsx
+    ForgotPasswordScreen.tsx
     LoginScreen.tsx
     QuestionnaireScreen.tsx
     RegisterScreen.tsx
@@ -204,7 +205,7 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "http://192.168.1.15:8000",
+         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
          "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
       }
     }
@@ -678,7 +679,7 @@ import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Ke
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import { loadRecentFoods, saveRecentFoods, loadLastUsedPortions, saveLastUsedPortions, LastUsedPortions } from "../../services/storageService";
+import { loadRecentFoods, saveRecentFoods, LastUsedPortions } from "../../services/storageService";
 import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
@@ -706,6 +707,7 @@ interface AddEntryModalProps {
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
+  lastUsedPortions: LastUsedPortions;
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
@@ -717,6 +719,7 @@ type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
   isVisible, toggleOverlay, handleAddEntry: parentHandleAddEntry, handleAddMultipleEntries: parentHandleAddMultipleEntries,
   foods, isEditMode, initialGrams, initialSelectedFoodForEdit, onAddNewFoodRequest, onCommitFoodToLibrary, dailyGoals,
+  lastUsedPortions,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -737,7 +740,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-  const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
   
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
@@ -763,8 +765,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   useEffect(() => {
     // --- Modal Opening Logic ---
     if (isVisible && !prevIsVisible.current) {
-        loadLastUsedPortions().then(setLastUsedPortions);
-
         const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
         if (actuallyEditingDailyItem) {
             // Setup for editing an existing daily item
@@ -852,9 +852,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (isActionDisabled) return;
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
     if (!isEditMode) addToRecentFoods(internalSelectedFood);
-    const updatedPortions = { ...lastUsedPortions, [internalSelectedFood.id]: numericGramsValue };
-    setLastUsedPortions(updatedPortions); saveLastUsedPortions(updatedPortions);
-  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, lastUsedPortions, t]);
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
@@ -866,10 +864,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     Keyboard.dismiss();
     const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
-    const newPortions = { ...lastUsedPortions };
-    entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; addToRecentFoods(entry.food); });
-    setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions); setSelectedMultipleFoods(new Map());
-  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, lastUsedPortions, addToRecentFoods]);
+    entriesToAdd.forEach(entry => addToRecentFoods(entry.food));
+    setSelectedMultipleFoods(new Map());
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods]);
 
   const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
     if (isEditMode) return;
@@ -974,11 +971,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
     if (entriesToAdd.length > 0) {
       parentHandleAddMultipleEntries(entriesToAdd);
-      const newPortions = { ...lastUsedPortions };
-      entriesToAdd.forEach(entry => { if (entry.food.id) newPortions[entry.food.id] = entry.grams; });
-      setLastUsedPortions(newPortions); saveLastUsedPortions(newPortions);
     }
-  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, lastUsedPortions]);
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 
@@ -1463,7 +1457,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 if (lastPortion) {
                     setGrams(String(lastPortion));
                 } else {
-                    setGrams(""); 
+                    setGrams(String(DEFAULT_GRAMS_FOR_MULTI_ADD)); 
                 }
             }
         }
@@ -1615,7 +1609,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length }}
+                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}
@@ -4331,6 +4325,15 @@ export default i18n;
     "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
+  "forgotPasswordScreen": {
+    "title": "Reset Password",
+    "instructions": "Enter your account's email address and we will send you a link to reset your password.",
+    "emailPlaceholder": "Email Address",
+    "buttonText": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "alertSuccessTitle": "Check Your Email",
+    "forgotPasswordLink": "Forgot Password?"
+  },
   "settingsScreen": {
     "title": "Settings",
     "account": {
@@ -4809,6 +4812,15 @@ export default i18n;
     "aiGramsProcessingError": "הבינה המלאכותית לא הצליחה לעבד את הכמות. אנא נסה לנסח זאת אחרת (למשל, 'כוס אחת' במקום 'כוס').",
     "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
+  "forgotPasswordScreen": {
+    "title": "איפוס סיסמה",
+    "instructions": "הזן את כתובת האימייל של חשבונך ונשלח לך קישור לאיפוס הסיסמה.",
+    "emailPlaceholder": "כתובת אימייל",
+    "buttonText": "שלח קישור לאיפוס",
+    "backToLogin": "חזרה להתחברות",
+    "alertSuccessTitle": "בדוק את האימייל שלך",
+    "forgotPasswordLink": "שכחת סיסמה?"
+  },
   "settingsScreen": {
     "title": "הגדרות",
     "account": {
@@ -5286,6 +5298,15 @@ export default i18n;
     "analysisFailedTitle": "Ошибка анализа",
     "aiGramsProcessingError": "ИИ не смог обработать количество. Попробуйте перефразировать (например, '1 чашка' вместо 'чашка').",
     "unexpectedError": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
+  },
+  "forgotPasswordScreen": {
+    "title": "Сброс пароля",
+    "instructions": "Введите адрес электронной почты вашей учетной записи, и мы вышлем вам ссылку для сброса пароля.",
+    "emailPlaceholder": "Адрес электронной почты",
+    "buttonText": "Отправить ссылку для сброса",
+    "backToLogin": "Назад ко входу",
+    "alertSuccessTitle": "Проверьте вашу почту",
+    "forgotPasswordLink": "Забыли пароль?"
   },
   "settingsScreen": {
     "title": "Настройки",
@@ -5768,6 +5789,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import QuestionnaireScreen from '../screens/QuestionnaireScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
@@ -5790,6 +5812,7 @@ export type SettingsStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined; // Add the new screen here
 };
 
 export type RootStackParamList = {
@@ -5885,6 +5908,7 @@ function AuthNavigator() {
         <AuthStack.Navigator screenOptions={screenOptions}>
             <AuthStack.Screen name="Login" component={LoginScreen} />
             <AuthStack.Screen name="Register" component={RegisterScreen} />
+            <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         </AuthStack.Navigator>
     )
 }
@@ -5991,7 +6015,7 @@ import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nMan
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
-import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
+import { saveDailyEntries, loadDailyEntries, loadSettings, saveLastUsedPortions, loadLastUsedPortions, LastUsedPortions } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 // isValidNumberInput is not directly used in this file after changes
 import DailyProgress from "../components/DailyProgress";
@@ -6033,6 +6057,7 @@ const DailyEntryScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
+  const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -6087,10 +6112,11 @@ const DailyEntryScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [foodsResult, loadedEntries, loadedSettings] = await Promise.all([
+      const [foodsResult, loadedEntries, loadedSettings, loadedPortions] = await Promise.all([
         getFoods(),
         loadDailyEntries(),
         loadSettings(),
+        loadLastUsedPortions(),
       ]);
 
       const loadedFoodsArray = foodsResult.items;
@@ -6099,6 +6125,7 @@ const DailyEntryScreen: React.FC = () => {
       loadedFoodsArray.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(loadedFoodsArray);
       setDailyEntries(loadedEntries);
+      setLastUsedPortions(loadedPortions);
       triggerIconPrefetch(loadedEntries, selectedDate);
     } catch (error) {
       console.error("Error in DailyEntryScreen loadData:", error);
@@ -6208,6 +6235,12 @@ const DailyEntryScreen: React.FC = () => {
         return updatedEntriesArray;
     });
 
+    if (foodToAdd?.id) {
+        const updatedPortions = { ...lastUsedPortions, [foodToAdd.id]: gramsToAdd };
+        setLastUsedPortions(updatedPortions);
+        await saveLastUsedPortions(updatedPortions);
+    }
+
     if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
     
     setIsOverlayVisible(false);
@@ -6216,7 +6249,7 @@ const DailyEntryScreen: React.FC = () => {
     setFoodForEditModal(null);
 
     Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t ]);
+  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t, lastUsedPortions ]);
 
 
   const handleAddMultipleEntriesFinal = useCallback(async (entriesToAdd: { food: Food; grams: number }[]) => {
@@ -6241,6 +6274,13 @@ const DailyEntryScreen: React.FC = () => {
           return updatedEntriesArray;
       });
 
+      const newPortions = { ...lastUsedPortions };
+      entriesToAdd.forEach(entry => {
+        if (entry.food.id) newPortions[entry.food.id] = entry.grams;
+      });
+      setLastUsedPortions(newPortions);
+      await saveLastUsedPortions(newPortions);
+
       newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
       
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
@@ -6250,7 +6290,7 @@ const DailyEntryScreen: React.FC = () => {
       setInitialGramsForEdit(undefined);
       setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
-  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t]);
+  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t, lastUsedPortions]);
 
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
@@ -6497,6 +6537,7 @@ const DailyEntryScreen: React.FC = () => {
             onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
             onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
             dailyGoals={dailyGoals}
+            lastUsedPortions={lastUsedPortions}
           />
       )}
     </SafeAreaView>
@@ -7054,7 +7095,136 @@ export default FoodListScreen;
 ---------- END FoodListScreen.tsx ----------
 
 
+---------- ForgotPasswordScreen.tsx ----------
+// src/screens/ForgotPasswordScreen.tsx
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
+import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { requestPasswordReset } from '../services/authService';
+import { t } from '../localization/i18n';
+
+type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
+
+const ForgotPasswordScreen: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
+    const { theme } = useTheme();
+
+    const handleSendLink = async () => {
+        if (!email.trim()) {
+            Alert.alert('Email Required', 'Please enter your email address.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const response = await requestPasswordReset(email);
+            Alert.alert(
+                t('forgotPasswordScreen.alertSuccessTitle'),
+                response.message,
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+        } catch (error: any) {
+            // The service shows a generic error, which is fine.
+            // No need to show another one here unless we want to be more specific.
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Icon name="arrow-left" type="material-community" color={theme.colors.text} size={28} />
+            </TouchableOpacity>
+            <View style={styles.content}>
+                <Text h3 style={[styles.title, { color: theme.colors.text }]}>
+                    {t('forgotPasswordScreen.title')}
+                </Text>
+                <Text style={[styles.instructions, { color: theme.colors.grey2 }]}>
+                    {t('forgotPasswordScreen.instructions')}
+                </Text>
+                <Input
+                    placeholder={t('forgotPasswordScreen.emailPlaceholder')}
+                    leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                    onChangeText={setEmail}
+                    value={email}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoFocus={true}
+                    containerStyle={styles.inputContainer}
+                    inputStyle={{ color: theme.colors.text }}
+                />
+                <Button
+                    title={t('forgotPasswordScreen.buttonText')}
+                    onPress={handleSendLink}
+                    loading={isLoading}
+                    buttonStyle={styles.button}
+                    containerStyle={styles.buttonContainer}
+                />
+                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                    <Text style={[styles.switchText, { color: theme.colors.primary }]}>
+                        {t('forgotPasswordScreen.backToLogin')}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    backButton: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        zIndex: 1,
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    instructions: {
+        marginBottom: 30,
+        textAlign: 'center',
+        fontSize: 16,
+        paddingHorizontal: 10,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    button: {
+        height: 50,
+        borderRadius: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        marginTop: 20,
+    },
+    switchText: {
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    },
+});
+
+export default ForgotPasswordScreen;
+---------- END ForgotPasswordScreen.tsx ----------
+
+
 ---------- LoginScreen.tsx ----------
+// src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
@@ -7063,6 +7233,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
+import { t } from '../localization/i18n';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -7128,6 +7299,11 @@ const LoginScreen: React.FC = () => {
                 buttonStyle={styles.button}
                 containerStyle={styles.buttonContainer}
             />
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                <Text style={[styles.forgotPassword, { color: theme.colors.secondary }]}>
+                    {t('forgotPasswordScreen.forgotPasswordLink')}
+                </Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
             </TouchableOpacity>
@@ -7156,6 +7332,10 @@ const styles = StyleSheet.create({
     buttonContainer: {
         width: '100%',
         marginTop: 20,
+    },
+    forgotPassword: {
+        marginTop: 15,
+        textAlign: 'center'
     },
     switchText: {
         marginTop: 20,
@@ -8114,6 +8294,13 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
 
     try {
         const response = await fetch(url, { ...options, headers });
+
+        // For 202 Accepted, the body might be empty or contain a message.
+        // We handle it as a success case.
+        if (response.status === 202) {
+            return (await response.json()) as T;
+        }
+
         const responseBody = await response.json();
 
         if (!response.ok) {
@@ -8162,6 +8349,13 @@ export const loginUser = async (email: string, password: string): Promise<{acces
         Alert.alert('Login Error', error.message || 'Could not connect to the server.');
         throw error;
     }
+};
+
+export const requestPasswordReset = async (email: string): Promise<{message: string}> => {
+    return fetchAuthApi<{message: string}>('/request-password-reset', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    });
 };
 ---------- END authService.ts ----------
 
