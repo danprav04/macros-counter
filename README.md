@@ -148,10 +148,3 @@ To get a local copy up and running, follow these simple steps.
 
 Distributed under the 0BSD License. See `package.json` for more information.
 
----
-
-## 📧 Contact
-
-Dan Prav - [danprav@gmail.com](mailto:danprav@gmail.com)
-
-Project Link: [https://github.com/your-username/macros-vision-ai](https://github.com/your-username/macros-vision-ai)
