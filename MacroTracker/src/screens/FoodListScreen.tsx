@@ -1,11 +1,11 @@
 // src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager } from "react-native";
+import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager, TouchableOpacity } from "react-native";
 import { createFood, getFoods, updateFood, deleteFood as deleteFoodService } from "../services/foodService";
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
+import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, Overlay } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
@@ -16,6 +16,7 @@ import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
+import { findFoodsByTagSearch } from "../utils/searchUtils";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -30,7 +31,7 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-type SortOption = 'name' | 'newest' | 'oldest';
+type SortOptionValue = 'name' | 'newest' | 'oldest';
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
@@ -59,26 +60,42 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [sortOption, setSortOption] = useState<SortOption>('name');
+    const [sortOption, setSortOption] = useState<SortOptionValue>('name');
     const [sortIndex, setSortIndex] = useState(0);
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
-
+    const [isSortMenuVisible, setIsSortMenuVisible] = useState(false);
+    
     const { theme } = useTheme();
     const styles = useStyles();
     const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const sortButtonRef = useRef<View | null>(null);
+    const [sortButtonPosition, setSortButtonPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
+    const sortOptions = useMemo<{label: string, value: SortOptionValue}[]>(() => [
+        { label: t('foodListScreen.sortByName'), value: 'name' },
+        { label: t('foodListScreen.sortByNewest'), value: 'newest' },
+        { label: t('foodListScreen.sortByOldest'), value: 'oldest' },
+    ], [t]);
 
     const handleSortChange = (index: number) => {
-        if (isLoading) return;
+        if (isLoading || isSaving) return;
         setSortIndex(index);
-        setSortOption(sortOptions[index]);
+        setSortOption(sortOptions[index].value);
+        setIsSortMenuVisible(false);
+    };
+    
+    const toggleSortMenu = () => {
+        sortButtonRef.current?.measure((_fx: number, _fy: number, width: number, height: number, px: number, py: number) => {
+            setSortButtonPosition({ x: px, y: py, width, height });
+            setIsSortMenuVisible(!isSortMenuVisible);
+        });
     };
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
@@ -117,11 +134,28 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     );
 
     const displayedFoods = useMemo(() => {
-        let items = [...masterFoods];
-        if (search.trim()) {
-            const lowercasedSearchTerm = search.toLowerCase().trim();
-            items = items.filter(food => food.name.toLowerCase().includes(lowercasedSearchTerm));
+        let items: Food[];
+        const lowercasedSearchTerm = search.toLowerCase().trim();
+    
+        if (lowercasedSearchTerm) {
+            const combined = new Map<string, Food>();
+    
+            // 1. Primary search: by name
+            const nameMatchedFoods = masterFoods.filter(food =>
+                food.name.toLowerCase().includes(lowercasedSearchTerm)
+            );
+            nameMatchedFoods.forEach(food => combined.set(food.id, food));
+    
+            // 2. Secondary search: by tags
+            const tagMatchedFoods = findFoodsByTagSearch(lowercasedSearchTerm, masterFoods);
+            tagMatchedFoods.forEach(food => combined.set(food.id, food));
+            
+            items = Array.from(combined.values());
+        } else {
+            items = [...masterFoods];
         }
+        
+        // Apply sorting to the final list
         if (sortOption === 'name') {
             items.sort((a, b) => a.name.localeCompare(b.name));
         } else {
@@ -173,9 +207,27 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
       }
     }, [route.params, isOverlayVisible, toggleOverlay, navigation, t]);
 
-    const handleDeleteFood = (foodId: string) => {
+    const handleUndoDelete = useCallback((foodToRestore: Food) => {
+        Toast.hide();
+        if (deleteTimeoutRef.current) { 
+            clearTimeout(deleteTimeoutRef.current); 
+            deleteTimeoutRef.current = null; 
+        }
+        
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setMasterFoods(prev => [...prev, foodToRestore]);
+        Toast.show({
+            type: 'success', 
+            text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
+            position: 'bottom', 
+            visibilityTime: 2000,
+        });
+    }, [t]);
+
+    const handleDeleteFood = useCallback((foodId: string) => {
         const foodToDelete = masterFoods.find(f => f.id === foodId);
         if (!foodToDelete) return;
+        
         if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
         
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -183,7 +235,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
         deleteTimeoutRef.current = setTimeout(() => {
             deleteFoodService(foodId)
-              .then(() => { onFoodChange?.(); console.log(`Permanently deleted ${foodId}`); })
+              .then(() => { 
+                  onFoodChange?.(); 
+                  console.log(`Permanently deleted ${foodId}`); 
+              })
               .catch(error => {
                   Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
                   setMasterFoods(prev => [...prev, foodToDelete]);
@@ -191,24 +246,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }, 4000);
 
         Toast.show({
-            type: 'info', text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
-            text2: t('dailyEntryScreen.undo'), position: 'bottom', visibilityTime: 4000,
-            onPress: () => handleUndoDelete(foodToDelete), bottomOffset: 80,
+            type: 'info', 
+            text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
+            text2: t('dailyEntryScreen.undo'), 
+            position: 'bottom', 
+            visibilityTime: 4000,
+            onPress: () => handleUndoDelete(foodToDelete), 
+            bottomOffset: 80,
         });
-    };
+    }, [masterFoods, onFoodChange, t, handleUndoDelete]);
 
-    const handleUndoDelete = (foodToRestore: Food) => {
-        Toast.hide();
-        if (deleteTimeoutRef.current) { clearTimeout(deleteTimeoutRef.current); deleteTimeoutRef.current = null; }
-        
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setMasterFoods(prev => [...prev, foodToRestore]);
-        Toast.show({
-            type: 'success', text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
-            position: 'bottom', visibilityTime: 2000,
-        });
-    };
-    
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
     }, [navigation]);
@@ -285,6 +332,13 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
         if (isEdit) setEditFood(updateState); else setNewFood(updateState);
     };
+    
+    const setFoodIconForName = useCallback((name: string, icon: string | null) => {
+        setFoodIcons(prev => {
+            if (prev[name] === icon) return prev;
+            return { ...prev, [name]: icon };
+        });
+    }, []);
 
     if (isLoading) {
         return (
@@ -311,17 +365,27 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             />
             <View style={styles.controlsContainer}>
                 <Text style={styles.resultsCount}>{`${displayedFoods.length} foods`}</Text>
-                <ButtonGroup
-                    buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
-                    selectedIndex={sortIndex}
-                    onPress={handleSortChange}
-                    containerStyle={styles.sortButtonGroup}
-                    buttonStyle={styles.sortButton}
-                    selectedButtonStyle={styles.selectedSortButton}
-                    textStyle={styles.sortButtonText}
-                    selectedTextStyle={styles.selectedSortButtonText}
-                    disabled={isSaving}
-                />
+                
+                <TouchableOpacity ref={sortButtonRef} style={styles.sortButton} onPress={toggleSortMenu}>
+                    <RNEIcon name="sort" type="material-community" size={18} color={theme.colors.primary} />
+                    <Text style={styles.sortButtonText}>{sortOptions[sortIndex].label}</Text>
+                </TouchableOpacity>
+
+                <Overlay
+                    isVisible={isSortMenuVisible}
+                    onBackdropPress={toggleSortMenu}
+                    overlayStyle={[styles.sortOverlay, { top: sortButtonPosition.y + sortButtonPosition.height, left: I18nManager.isRTL ? undefined : sortButtonPosition.x, right: I18nManager.isRTL ? (StyleSheet.absoluteFillObject.right || 0) + 15 : undefined }]}
+                >
+                    <View>
+                        {sortOptions.map((option, index) => (
+                            <TouchableOpacity key={option.value} style={styles.sortMenuItem} onPress={() => handleSortChange(index)}>
+                                <Text style={styles.sortMenuText}>{option.label}</Text>
+                                {sortIndex === index && <RNEIcon name="check" type="material-community" size={20} color={theme.colors.primary} />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </Overlay>
+
             </View>
             <FlatList
                 data={displayedFoods}
@@ -329,12 +393,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 renderItem={({ item }) => (
                     <FoodItem
                         food={item}
-                        onEdit={() => toggleOverlay(item)}
+                        onEdit={toggleOverlay}
                         onDelete={handleDeleteFood}
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]}
-                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
+                        setFoodIconForName={setFoodIconForName}
                     />
                 )}
                 ListEmptyComponent={
@@ -348,7 +412,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 }
                 contentContainerStyle={displayedFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, masterFoodsLength: masterFoods.length }}
+                extraData={{ foodIcons, masterFoodsLength: masterFoods.length, sortOption }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -393,14 +457,45 @@ const useStyles = makeStyles((theme) => ({
         paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider,
     },
     resultsCount: { color: theme.colors.grey2, fontWeight: '600', fontSize: 14, },
-    sortButtonGroup: {
-        flex: 0.7, height: 32, borderRadius: 8, borderWidth: 1,
-        borderColor: theme.colors.primary, marginHorizontal: 0,
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: theme.colors.grey5,
     },
-    sortButton: { backgroundColor: 'transparent', },
-    selectedSortButton: { backgroundColor: theme.colors.primary, },
-    sortButtonText: { fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' },
-    selectedSortButtonText: { color: theme.colors.white, fontWeight: 'bold' },
+    sortButtonText: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
+        fontSize: 14,
+        marginLeft: 6,
+    },
+    sortOverlay: {
+        position: 'absolute',
+        borderRadius: 8,
+        padding: 0,
+        backgroundColor: theme.colors.card,
+        elevation: 5,
+        shadowColor: theme.colors.black,
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+    },
+    sortMenuItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+        minWidth: 150,
+    },
+    sortMenuText: {
+        color: theme.colors.text,
+        fontSize: 16,
+    },
     listContentContainer: { paddingBottom: 80, },
     listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },
     fab: {

@@ -5,6 +5,8 @@ import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles
 import { Food } from '../../types/food';
 import { LastUsedPortions } from '../../services/storageService';
 import { t } from '../../localization/i18n';
+import { findFoodsByTagSearch } from '../../utils/searchUtils';
+import { getFoodIconUrl } from '../../utils/iconUtils';
 
 const DEFAULT_GRAMS_FOR_MULTI_ADD = 100;
 
@@ -52,11 +54,21 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     const flatListRef = useRef<FlatList<DisplayFoodItem>>(null);
 
     const filteredFoodsForSearch = useMemo(() => {
-        if (!search) return [];
-        const searchTerm = search.toLowerCase();
-        return foods.filter((food) =>
-            food.name.toLowerCase().includes(searchTerm)
+        const lowercasedSearchTerm = search.toLowerCase().trim();
+        if (!lowercasedSearchTerm) return [];
+    
+        // 1. Primary search: by name
+        const nameMatchedFoods = foods.filter((food) =>
+            food.name.toLowerCase().includes(lowercasedSearchTerm)
         );
+        const nameMatchIds = new Set(nameMatchedFoods.map(f => f.id));
+    
+        // 2. Secondary search: by tags, excluding items already found by name
+        const tagMatchedFoods = findFoodsByTagSearch(lowercasedSearchTerm, foods);
+        const tagMatchedFoodsOnly = tagMatchedFoods.filter(f => !nameMatchIds.has(f.id));
+    
+        // 3. Combine, with name matches first to ensure priority.
+        return [...nameMatchedFoods, ...tagMatchedFoodsOnly];
     }, [foods, search]);
 
     const listDisplayData = useMemo((): DisplayFoodItem[] => {
@@ -146,7 +158,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         const foodItem = item;
         const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
-        const iconIdentifier = foodIcons[foodItem.name];
+        const iconIdentifier = getFoodIconUrl(foodItem.name);
         const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
 
         const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
@@ -272,7 +284,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, foodIcons, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
+                extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}
