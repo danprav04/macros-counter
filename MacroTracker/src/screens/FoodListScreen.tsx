@@ -70,7 +70,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const sortButtonRef = useRef<TouchableOpacity>(null);
+    const sortButtonRef = useRef<View | null>(null);
     const [sortButtonPosition, setSortButtonPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
 
@@ -91,7 +91,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     };
     
     const toggleSortMenu = () => {
-        sortButtonRef.current?.measure((_fx, _fy, width, height, px, py) => {
+        sortButtonRef.current?.measure((_fx: number, _fy: number, width: number, height: number, px: number, py: number) => {
             setSortButtonPosition({ x: px, y: py, width, height });
             setIsSortMenuVisible(!isSortMenuVisible);
         });
@@ -189,9 +189,27 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
       }
     }, [route.params, isOverlayVisible, toggleOverlay, navigation, t]);
 
-    const handleDeleteFood = (foodId: string) => {
+    const handleUndoDelete = useCallback((foodToRestore: Food) => {
+        Toast.hide();
+        if (deleteTimeoutRef.current) { 
+            clearTimeout(deleteTimeoutRef.current); 
+            deleteTimeoutRef.current = null; 
+        }
+        
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setMasterFoods(prev => [...prev, foodToRestore]);
+        Toast.show({
+            type: 'success', 
+            text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
+            position: 'bottom', 
+            visibilityTime: 2000,
+        });
+    }, [t]);
+
+    const handleDeleteFood = useCallback((foodId: string) => {
         const foodToDelete = masterFoods.find(f => f.id === foodId);
         if (!foodToDelete) return;
+        
         if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
         
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -199,7 +217,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
         deleteTimeoutRef.current = setTimeout(() => {
             deleteFoodService(foodId)
-              .then(() => { onFoodChange?.(); console.log(`Permanently deleted ${foodId}`); })
+              .then(() => { 
+                  onFoodChange?.(); 
+                  console.log(`Permanently deleted ${foodId}`); 
+              })
               .catch(error => {
                   Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
                   setMasterFoods(prev => [...prev, foodToDelete]);
@@ -207,24 +228,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }, 4000);
 
         Toast.show({
-            type: 'info', text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
-            text2: t('dailyEntryScreen.undo'), position: 'bottom', visibilityTime: 4000,
-            onPress: () => handleUndoDelete(foodToDelete), bottomOffset: 80,
+            type: 'info', 
+            text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
+            text2: t('dailyEntryScreen.undo'), 
+            position: 'bottom', 
+            visibilityTime: 4000,
+            onPress: () => handleUndoDelete(foodToDelete), 
+            bottomOffset: 80,
         });
-    };
+    }, [masterFoods, onFoodChange, t, handleUndoDelete]);
 
-    const handleUndoDelete = (foodToRestore: Food) => {
-        Toast.hide();
-        if (deleteTimeoutRef.current) { clearTimeout(deleteTimeoutRef.current); deleteTimeoutRef.current = null; }
-        
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setMasterFoods(prev => [...prev, foodToRestore]);
-        Toast.show({
-            type: 'success', text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
-            position: 'bottom', visibilityTime: 2000,
-        });
-    };
-    
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
     }, [navigation]);
@@ -301,6 +314,13 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
         if (isEdit) setEditFood(updateState); else setNewFood(updateState);
     };
+    
+    const setFoodIconForName = useCallback((name: string, icon: string | null) => {
+        setFoodIcons(prev => {
+            if (prev[name] === icon) return prev;
+            return { ...prev, [name]: icon };
+        });
+    }, []);
 
     if (isLoading) {
         return (
@@ -355,12 +375,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 renderItem={({ item }) => (
                     <FoodItem
                         food={item}
-                        onEdit={() => toggleOverlay(item)}
+                        onEdit={toggleOverlay}
                         onDelete={handleDeleteFood}
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
                         foodIconUrl={foodIcons[item.name]}
-                        setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
+                        setFoodIconForName={setFoodIconForName}
                     />
                 )}
                 ListEmptyComponent={
@@ -374,7 +394,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 }
                 contentContainerStyle={displayedFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, masterFoodsLength: masterFoods.length }}
+                extraData={{ foodIcons, masterFoodsLength: masterFoods.length, sortOption }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -452,6 +472,7 @@ const useStyles = makeStyles((theme) => ({
         paddingHorizontal: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.colors.divider,
+        minWidth: 150,
     },
     sortMenuText: {
         color: theme.colors.text,
