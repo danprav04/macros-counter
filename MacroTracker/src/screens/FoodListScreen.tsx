@@ -1,11 +1,11 @@
 // src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager } from "react-native";
+import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager, TouchableOpacity } from "react-native";
 import { createFood, getFoods, updateFood, deleteFood as deleteFoodService } from "../services/foodService";
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
+import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, Overlay } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
@@ -30,7 +30,7 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-type SortOption = 'name' | 'newest' | 'oldest';
+type SortOptionValue = 'name' | 'newest' | 'oldest';
 
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
@@ -59,26 +59,42 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [sortOption, setSortOption] = useState<SortOption>('name');
+    const [sortOption, setSortOption] = useState<SortOptionValue>('name');
     const [sortIndex, setSortIndex] = useState(0);
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
-
+    const [isSortMenuVisible, setIsSortMenuVisible] = useState(false);
+    
     const { theme } = useTheme();
     const styles = useStyles();
     const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const sortButtonRef = useRef<TouchableOpacity>(null);
+    const [sortButtonPosition, setSortButtonPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const sortOptions = useMemo<SortOption[]>(() => ['name', 'newest', 'oldest'], []);
+    const sortOptions = useMemo<{label: string, value: SortOptionValue}[]>(() => [
+        { label: t('foodListScreen.sortByName'), value: 'name' },
+        { label: t('foodListScreen.sortByNewest'), value: 'newest' },
+        { label: t('foodListScreen.sortByOldest'), value: 'oldest' },
+    ], [t]);
 
     const handleSortChange = (index: number) => {
-        if (isLoading) return;
+        if (isLoading || isSaving) return;
         setSortIndex(index);
-        setSortOption(sortOptions[index]);
+        setSortOption(sortOptions[index].value);
+        setIsSortMenuVisible(false);
+    };
+    
+    const toggleSortMenu = () => {
+        sortButtonRef.current?.measure((_fx, _fy, width, height, px, py) => {
+            setSortButtonPosition({ x: px, y: py, width, height });
+            setIsSortMenuVisible(!isSortMenuVisible);
+        });
     };
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
@@ -311,17 +327,27 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             />
             <View style={styles.controlsContainer}>
                 <Text style={styles.resultsCount}>{`${displayedFoods.length} foods`}</Text>
-                <ButtonGroup
-                    buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
-                    selectedIndex={sortIndex}
-                    onPress={handleSortChange}
-                    containerStyle={styles.sortButtonGroup}
-                    buttonStyle={styles.sortButton}
-                    selectedButtonStyle={styles.selectedSortButton}
-                    textStyle={styles.sortButtonText}
-                    selectedTextStyle={styles.selectedSortButtonText}
-                    disabled={isSaving}
-                />
+                
+                <TouchableOpacity ref={sortButtonRef} style={styles.sortButton} onPress={toggleSortMenu}>
+                    <RNEIcon name="sort" type="material-community" size={18} color={theme.colors.primary} />
+                    <Text style={styles.sortButtonText}>{sortOptions[sortIndex].label}</Text>
+                </TouchableOpacity>
+
+                <Overlay
+                    isVisible={isSortMenuVisible}
+                    onBackdropPress={toggleSortMenu}
+                    overlayStyle={[styles.sortOverlay, { top: sortButtonPosition.y + sortButtonPosition.height, left: I18nManager.isRTL ? undefined : sortButtonPosition.x, right: I18nManager.isRTL ? (StyleSheet.absoluteFillObject.right || 0) + 15 : undefined }]}
+                >
+                    <View>
+                        {sortOptions.map((option, index) => (
+                            <TouchableOpacity key={option.value} style={styles.sortMenuItem} onPress={() => handleSortChange(index)}>
+                                <Text style={styles.sortMenuText}>{option.label}</Text>
+                                {sortIndex === index && <RNEIcon name="check" type="material-community" size={20} color={theme.colors.primary} />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </Overlay>
+
             </View>
             <FlatList
                 data={displayedFoods}
@@ -393,14 +419,44 @@ const useStyles = makeStyles((theme) => ({
         paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider,
     },
     resultsCount: { color: theme.colors.grey2, fontWeight: '600', fontSize: 14, },
-    sortButtonGroup: {
-        flex: 0.7, height: 32, borderRadius: 8, borderWidth: 1,
-        borderColor: theme.colors.primary, marginHorizontal: 0,
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: theme.colors.grey5,
     },
-    sortButton: { backgroundColor: 'transparent', },
-    selectedSortButton: { backgroundColor: theme.colors.primary, },
-    sortButtonText: { fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' },
-    selectedSortButtonText: { color: theme.colors.white, fontWeight: 'bold' },
+    sortButtonText: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
+        fontSize: 14,
+        marginLeft: 6,
+    },
+    sortOverlay: {
+        position: 'absolute',
+        borderRadius: 8,
+        padding: 0,
+        backgroundColor: theme.colors.card,
+        elevation: 5,
+        shadowColor: theme.colors.black,
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+    },
+    sortMenuItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+    },
+    sortMenuText: {
+        color: theme.colors.text,
+        fontSize: 16,
+    },
     listContentContainer: { paddingBottom: 80, },
     listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },
     fab: {
