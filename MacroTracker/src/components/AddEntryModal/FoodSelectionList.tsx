@@ -5,6 +5,7 @@ import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles
 import { Food } from '../../types/food';
 import { LastUsedPortions } from '../../services/storageService';
 import { t } from '../../localization/i18n';
+import { findFoodsByTagSearch } from '../../utils/searchUtils';
 
 const DEFAULT_GRAMS_FOR_MULTI_ADD = 100;
 
@@ -52,11 +53,21 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     const flatListRef = useRef<FlatList<DisplayFoodItem>>(null);
 
     const filteredFoodsForSearch = useMemo(() => {
-        if (!search) return [];
-        const searchTerm = search.toLowerCase();
-        return foods.filter((food) =>
-            food.name.toLowerCase().includes(searchTerm)
+        const lowercasedSearchTerm = search.toLowerCase().trim();
+        if (!lowercasedSearchTerm) return [];
+    
+        // 1. Primary search: by name
+        const nameMatchedFoods = foods.filter((food) =>
+            food.name.toLowerCase().includes(lowercasedSearchTerm)
         );
+        const nameMatchIds = new Set(nameMatchedFoods.map(f => f.id));
+    
+        // 2. Secondary search: by tags, excluding items already found by name
+        const tagMatchedFoods = findFoodsByTagSearch(lowercasedSearchTerm, foods);
+        const tagMatchedFoodsOnly = tagMatchedFoods.filter(f => !nameMatchIds.has(f.id));
+    
+        // 3. Combine, with name matches first to ensure priority.
+        return [...nameMatchedFoods, ...tagMatchedFoodsOnly];
     }, [foods, search]);
 
     const listDisplayData = useMemo((): DisplayFoodItem[] => {

@@ -16,6 +16,7 @@ import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
+import { findFoodsByTagSearch } from "../utils/searchUtils";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -133,11 +134,28 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     );
 
     const displayedFoods = useMemo(() => {
-        let items = [...masterFoods];
-        if (search.trim()) {
-            const lowercasedSearchTerm = search.toLowerCase().trim();
-            items = items.filter(food => food.name.toLowerCase().includes(lowercasedSearchTerm));
+        let items: Food[];
+        const lowercasedSearchTerm = search.toLowerCase().trim();
+    
+        if (lowercasedSearchTerm) {
+            const combined = new Map<string, Food>();
+    
+            // 1. Primary search: by name
+            const nameMatchedFoods = masterFoods.filter(food =>
+                food.name.toLowerCase().includes(lowercasedSearchTerm)
+            );
+            nameMatchedFoods.forEach(food => combined.set(food.id, food));
+    
+            // 2. Secondary search: by tags
+            const tagMatchedFoods = findFoodsByTagSearch(lowercasedSearchTerm, masterFoods);
+            tagMatchedFoods.forEach(food => combined.set(food.id, food));
+            
+            items = Array.from(combined.values());
+        } else {
+            items = [...masterFoods];
         }
+        
+        // Apply sorting to the final list
         if (sortOption === 'name') {
             items.sort((a, b) => a.name.localeCompare(b.name));
         } else {
