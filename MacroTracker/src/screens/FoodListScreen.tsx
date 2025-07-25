@@ -1,11 +1,11 @@
 // src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share } from "react-native";
-import { createFood, getFoods, updateFood, deleteFood } from "../services/foodService";
+import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager } from "react-native";
+import { createFood, getFoods, updateFood, deleteFood as deleteFoodService } from "../services/foodService";
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";
 import FoodItem from "../components/FoodItem";
-import { Button, SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
+import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, ButtonGroup } from "@rneui/themed";
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
@@ -16,6 +16,10 @@ import { t } from '../localization/i18n';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 if (typeof atob === 'undefined') {
   global.atob = (str: string): string => Buffer.from(str, 'base64').toString('binary');
@@ -50,7 +54,7 @@ const getBackendShareBaseUrl = (): string => {
 };
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
-    const [foods, setFoods] = useState<Food[]>([]);
+    const [masterFoods, setMasterFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
@@ -64,7 +68,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const { theme } = useTheme();
     const styles = useStyles();
-    const isFetching = useRef(false);
+    const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
@@ -79,48 +83,57 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        
         const iconsToResolve: { [key: string]: string | null } = {};
         foodsToFetch.forEach(food => {
-            if (food.name) {
+            if (food.name && foodIcons[food.name] === undefined) {
                 iconsToResolve[food.name] = getFoodIconUrl(food.name);
             }
         });
-
         if (Object.keys(iconsToResolve).length > 0) {
-            setFoodIcons(prevIcons => {
-                const updatedIcons = { ...prevIcons };
-                let hasChanged = false;
-                for (const foodName in iconsToResolve) {
-                    if (updatedIcons[foodName] === undefined) {
-                        updatedIcons[foodName] = iconsToResolve[foodName];
-                        hasChanged = true;
-                    }
-                }
-                return hasChanged ? updatedIcons : prevIcons;
+            setFoodIcons(prevIcons => ({ ...prevIcons, ...iconsToResolve }));
+        }
+    }, [foodIcons]);
+
+    useFocusEffect(
+      useCallback(() => {
+        let isActive = true;
+        const loadAllFoods = async () => {
+          setIsLoading(true);
+          try {
+            const { items } = await getFoods();
+            if (isActive) {
+              setMasterFoods(items);
+              triggerIconPrefetch(items);
+            }
+          } catch (error) {
+            if (isActive) Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
+          } finally {
+            if (isActive) setIsLoading(false);
+          }
+        };
+        loadAllFoods();
+        return () => { isActive = false; };
+      }, [triggerIconPrefetch, t])
+    );
+
+    const displayedFoods = useMemo(() => {
+        let items = [...masterFoods];
+        if (search.trim()) {
+            const lowercasedSearchTerm = search.toLowerCase().trim();
+            items = items.filter(food => food.name.toLowerCase().includes(lowercasedSearchTerm));
+        }
+        if (sortOption === 'name') {
+            items.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+            const fallbackDate = '2020-01-01T00:00:00.000Z';
+            items.sort((a, b) => {
+                const dateA = new Date(a.createdAt || fallbackDate).getTime();
+                const dateB = new Date(b.createdAt || fallbackDate).getTime();
+                return sortOption === 'newest' ? dateB - dateA : dateA - dateB;
             });
         }
-    }, []);
-    
-    const fetchFoods = useCallback(async (termToFetch: string, sortToUse: SortOption) => {
-        if (isFetching.current) return;
-        
-        isFetching.current = true;
-        setIsLoading(true);
-
-        try {
-            const { items: newItemsFromApi } = await getFoods(termToFetch, sortToUse);
-            setFoods(newItemsFromApi);
-            triggerIconPrefetch(newItemsFromApi);
-        } catch (error) {
-            Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-            setFoods([]); 
-        } finally {
-            setIsLoading(false);
-            isFetching.current = false;
-        }
-    }, [t, triggerIconPrefetch]);
-
+        return items;
+    }, [masterFoods, search, sortOption]);
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -134,57 +147,67 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         setErrors({});
         setIsOverlayVisible(prev => !prev);
     }, [isSaving]);
-    
+
     useEffect(() => {
-        const handler = setTimeout(() => {
-            fetchFoods(search.trim(), sortOption);
-        }, 300);
-        return () => clearTimeout(handler);
-    }, [search, sortOption, fetchFoods]);
+      const params = route.params;
+      if (params) {
+        if (params.openAddFoodModal && !isOverlayVisible) {
+          toggleOverlay();
+          navigation.setParams({ openAddFoodModal: undefined });
+        }
+        if (params.foodData && typeof params.foodData === 'string') {
+          try {
+            let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
+            const binaryString = atob(b64);
+            const utf8Bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
+            const decodedJson = new TextDecoder().decode(utf8Bytes);
+            const sharedFood: SharedFoodData = JSON.parse(decodedJson);
+            if (sharedFood && typeof sharedFood.name === 'string') {
+              setNewFood({ ...sharedFood });
+              setEditFood(null); setIsOverlayVisible(true);
+            } else { Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData')); }
+          } catch (e) { Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
+          } finally { navigation.setParams({ foodData: undefined }); }
+        }
+      }
+    }, [route.params, isOverlayVisible, toggleOverlay, navigation, t]);
 
-    useFocusEffect(
-        useCallback(() => {
-            const params = route.params;
-            if (params) {
-                if (params.openAddFoodModal && !isOverlayVisible) {
-                    toggleOverlay();
-                    navigation.setParams({ openAddFoodModal: undefined });
-                }
-                if (params.foodData && typeof params.foodData === 'string') {
-                    try {
-                        let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
-                        const binaryString = atob(b64);
-                        const utf8Bytes = new Uint8Array(binaryString.length);
-                        for (let i = 0; i < binaryString.length; i++) {
-                            utf8Bytes[i] = binaryString.charCodeAt(i);
-                        }
-                        const decodedJson = new TextDecoder().decode(utf8Bytes);
-                        const sharedFood: SharedFoodData = JSON.parse(decodedJson);
+    const handleDeleteFood = (foodId: string) => {
+        const foodToDelete = masterFoods.find(f => f.id === foodId);
+        if (!foodToDelete) return;
+        if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+        
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setMasterFoods(prev => prev.filter(f => f.id !== foodId));
 
-                        if (sharedFood && typeof sharedFood.name === 'string') {
-                            setNewFood({
-                                name: sharedFood.name, calories: sharedFood.calories, protein: sharedFood.protein,
-                                carbs: sharedFood.carbs, fat: sharedFood.fat,
-                            });
-                            setEditFood(null);
-                            setIsOverlayVisible(true); 
-                        } else {
-                            console.warn("Parsed shared food data is invalid:", sharedFood);
-                            Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
-                        }
-                    } catch (e) {
-                        console.error("Error parsing shared food data from deep link:", e);
-                        Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
-                    } finally {
-                        navigation.setParams({ foodData: undefined });
-                    }
-                }
-            }
-        }, [route.params, isOverlayVisible, toggleOverlay, navigation, t])
-    );
+        deleteTimeoutRef.current = setTimeout(() => {
+            deleteFoodService(foodId)
+              .then(() => { onFoodChange?.(); console.log(`Permanently deleted ${foodId}`); })
+              .catch(error => {
+                  Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
+                  setMasterFoods(prev => [...prev, foodToDelete]);
+              });
+        }, 4000);
 
-    const updateSearch = useCallback((text: string) => setSearch(text), []);
-    const handleClearSearch = useCallback(() => setSearch(''), []);
+        Toast.show({
+            type: 'info', text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
+            text2: t('dailyEntryScreen.undo'), position: 'bottom', visibilityTime: 4000,
+            onPress: () => handleUndoDelete(foodToDelete), bottomOffset: 80,
+        });
+    };
+
+    const handleUndoDelete = (foodToRestore: Food) => {
+        Toast.hide();
+        if (deleteTimeoutRef.current) { clearTimeout(deleteTimeoutRef.current); deleteTimeoutRef.current = null; }
+        
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setMasterFoods(prev => [...prev, foodToRestore]);
+        Toast.show({
+            type: 'success', text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
+            position: 'bottom', visibilityTime: 2000,
+        });
+    };
     
     const handleQuickAdd = useCallback((foodToQuickAdd: Food) => {
         navigation.navigate('DailyEntryRoute', { quickAddFood: foodToQuickAdd });
@@ -202,14 +225,13 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const handleCreateFood = async () => {
         const trimmedFood = { ...newFood, name: newFood.name.trim() };
-        const validationErrors = validateFood(trimmedFood);
-        if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
-        setErrors({}); setIsSaving(true);
+        if (validateFood(trimmedFood)) { Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
+        setIsSaving(true);
         try {
             const created = await createFood(trimmedFood);
-            setIsOverlayVisible(false); 
-            onFoodChange?.(); 
-            fetchFoods(search.trim(), sortOption); 
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setMasterFoods(prev => [...prev, created]);
+            setIsOverlayVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
@@ -219,41 +241,19 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const handleUpdateFood = async () => {
         if (!editFood) return;
         const trimmedFood = { ...editFood, name: editFood.name.trim() };
-        const validationErrors = validateFood(trimmedFood);
-        if (validationErrors) { setErrors(validationErrors); Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
-        setErrors({}); setIsSaving(true);
+        if (validateFood(trimmedFood)) { Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
+        setIsSaving(true);
         try {
             const updated = await updateFood(trimmedFood);
-            setIsOverlayVisible(false); 
-            onFoodChange?.(); 
-            fetchFoods(search.trim(), sortOption); 
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setMasterFoods(prev => prev.map(f => (f.id === updated.id ? updated : f)));
+            setIsOverlayVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setEditFood(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
         } finally { setIsSaving(false); }
     };
-
-    const handleDeleteFood = async (foodId: string) => {
-        const foodToDelete = foods.find((f) => f.id === foodId); if (!foodToDelete) return;
-        try {
-            await deleteFood(foodId);
-            onFoodChange?.();
-            if (foodToDelete.name && foodIcons[foodToDelete.name] !== undefined) { 
-                setFoodIcons(prev => { const newIcons = { ...prev }; delete newIcons[foodToDelete.name]; return newIcons; });
-            }
-            fetchFoods(search.trim(), sortOption); 
-        } catch (error) {
-            Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-            fetchFoods(search.trim(), sortOption); 
-        }
-    };
-
-    const handleUndoDeleteFood = useCallback(async (food: Food) => {
-        Toast.hide();
-        await fetchFoods(search.trim(), sortOption); 
-        Toast.show({ type: 'info', text1: t('foodListScreen.foodRestored', { foodName: food.name }), text2: "List refreshed.", position: 'bottom', visibilityTime: 2000 });
-    }, [search, sortOption, fetchFoods, t]); 
-
+    
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
             name: foodToShare.name, calories: foodToShare.calories, protein: foodToShare.protein,
@@ -264,57 +264,29 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const utf8Bytes = new TextEncoder().encode(jsonString);
             let binaryString = '';
             utf8Bytes.forEach((byte) => { binaryString += String.fromCharCode(byte); });
-            
-            const base64Data = btoa(binaryString)
-                                 .replace(/\+/g, '-')
-                                 .replace(/\//g, '_');
-            
+            const base64Data = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_');
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
-            
             await Share.share({ message: shareUrl, title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}), });
-        } catch (error) {
-            console.error("Error sharing food:", error);
-            Alert.alert(t('foodListScreen.shareErrorTitle'), t('foodListScreen.shareErrorMessage'));
-        }
+        } catch (error) { Alert.alert(t('foodListScreen.shareErrorTitle'), t('foodListScreen.shareErrorMessage')); }
     }, [t]);
 
     const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string, isEdit: boolean) => {
         const numericKeys: (keyof Omit<Food, "id" | "createdAt">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
-    
         if (numericKeys.includes(key)) {
-            if (value === "" || value === ".") {
-                processedValue = value;
-            } else {
-                const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                if (cleaned === "" || !isNaN(parseFloat(cleaned))) {
-                    processedValue = cleaned;
-                } else {
-                    return; 
-                }
-            }
+            if (value === "" || value === ".") { processedValue = value; }
+            else { const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                   if (cleaned === "" || !isNaN(parseFloat(cleaned))) processedValue = cleaned; else return; }
         }
-    
         const updateState = (prevState: any) => {
-            let finalValue: string | number;
-            if (numericKeys.includes(key)) {
-                finalValue = (processedValue === "" || processedValue === ".") ? 0 : parseFloat(processedValue as string);
-                if (isNaN(finalValue)) finalValue = 0;
-            } else {
-                finalValue = processedValue;
-            }
+            let finalValue: string | number = numericKeys.includes(key) ? ((processedValue === "" || processedValue === ".") ? 0 : parseFloat(processedValue as string) || 0) : processedValue;
             return { ...prevState, [key]: finalValue };
         };
-    
-        if (isEdit) {
-            setEditFood(updateState);
-        } else {
-            setNewFood(updateState);
-        }
+        if (isEdit) setEditFood(updateState); else setNewFood(updateState);
     };
 
-    if (isLoading && foods.length === 0 && !isOverlayVisible) {
+    if (isLoading) {
         return (
             <SafeAreaView style={styles.centeredLoader} edges={['top', 'left', 'right']}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -322,24 +294,23 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             </SafeAreaView>
         );
     }
-
+    
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <SearchBar
                 placeholder={t('foodListScreen.searchPlaceholder')}
-                onChangeText={updateSearch}
+                onChangeText={setSearch}
                 value={search}
-                platform={Platform.OS === "ios" ? "ios" : "android"}
+                platform="default"
                 containerStyle={styles.searchBarContainer}
                 inputContainerStyle={styles.searchBarInputContainer}
                 inputStyle={styles.searchInputStyle}
-                onClear={handleClearSearch}
-                showCancel={Platform.OS === 'ios' && search.length > 0}
-                cancelButtonProps={{ color: theme.colors.primary }}
-                showLoading={isLoading && search.trim().length > 0} 
+                onClear={() => setSearch('')}
+                lightTheme={theme.mode === 'light'}
+                round
             />
             <View style={styles.controlsContainer}>
-                <Text style={styles.sortLabel}>{t('foodListScreen.sortBy')}:</Text>
+                <Text style={styles.resultsCount}>{`${displayedFoods.length} foods`}</Text>
                 <ButtonGroup
                     buttons={[t('foodListScreen.sortByName'), t('foodListScreen.sortByNewest'), t('foodListScreen.sortByOldest')]}
                     selectedIndex={sortIndex}
@@ -349,40 +320,35 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                     selectedButtonStyle={styles.selectedSortButton}
                     textStyle={styles.sortButtonText}
                     selectedTextStyle={styles.selectedSortButtonText}
-                    disabled={isLoading}
-                    disabledStyle={styles.disabledSortButtonGroup}
-                    disabledTextStyle={styles.disabledSortButtonText}
+                    disabled={isSaving}
                 />
             </View>
             <FlatList
-                data={foods}
+                data={displayedFoods}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <FoodItem
                         food={item}
                         onEdit={() => toggleOverlay(item)}
                         onDelete={handleDeleteFood}
-                        onUndoDelete={handleUndoDeleteFood}
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
-                        foodIconUrl={foodIcons[item.name]} 
+                        foodIconUrl={foodIcons[item.name]}
                         setFoodIconForName={(name, icon) => setFoodIcons(prev => ({...prev, [name]: icon}))}
-                        />
+                    />
                 )}
                 ListEmptyComponent={
-                    !isLoading ? (
-                        <View style={styles.emptyListContainer}>
-                            <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
-                            <Text style={styles.emptyListText}>
-                                {search.trim() ? t('foodListScreen.noResults', { searchTerm: search.trim() }) : t('foodListScreen.emptyLibrary')}
-                            </Text>
-                            {!search.trim() && <Text style={styles.emptyListSubText}>{t('foodListScreen.emptyLibraryHint')}</Text>}
-                        </View>
-                    ) : null
+                    <View style={styles.emptyListContainer}>
+                        <RNEIcon name="nutrition-outline" type="ionicon" size={50} color={theme.colors.grey3} />
+                        <Text style={styles.emptyListText}>
+                            {search.trim() ? t('foodListScreen.noResults', { searchTerm: search.trim() }) : t('foodListScreen.emptyLibrary')}
+                        </Text>
+                        {!search.trim() && <Text style={styles.emptyListSubText}>{t('foodListScreen.emptyLibraryHint')}</Text>}
+                    </View>
                 }
-                contentContainerStyle={foods.length === 0 && !isLoading ? styles.listContentContainerEmpty : styles.listContentContainer}
+                contentContainerStyle={displayedFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
                 keyboardShouldPersistTaps="handled"
-                extraData={{ foodIcons, isLoading, search, foodsLength: foods.length }}
+                extraData={{ foodIcons, masterFoodsLength: masterFoods.length }}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
@@ -391,9 +357,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 placement="right"
                 size="large"
                 style={styles.fab}
-                disabled={isSaving || isLoading}
+                disabled={isSaving}
             />
-            <AddFoodModal
+            {isOverlayVisible && <AddFoodModal
                 isVisible={isOverlayVisible}
                 toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} 
                 newFood={newFood}
@@ -404,123 +370,42 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 handleUpdateFood={handleUpdateFood}
                 validateFood={validateFood}
                 setErrors={setErrors}
-            />
+            />}
         </SafeAreaView>
     );
 };
 
 const useStyles = makeStyles((theme) => ({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    centeredLoader: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme.colors.background,
-    },
-    loadingText: {
-        marginTop: 15,
-        color: theme.colors.grey1,
-        fontSize: 16,
-    },
-    emptyListContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 30,
-        marginTop: 50,
-    },
-    emptyListText: {
-        fontSize: 17,
-        color: theme.colors.grey2,
-        textAlign: 'center',
-        marginTop: 15,
-    },
-    emptyListSubText: {
-        fontSize: 14,
-        color: theme.colors.grey3,
-        textAlign: 'center',
-        marginTop: 8,
-    },
+    container: { flex: 1, backgroundColor: theme.colors.background, },
+    centeredLoader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background, },
+    loadingText: { marginTop: 15, color: theme.colors.grey1, fontSize: 16, },
+    emptyListContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, marginTop: 20, },
+    emptyListText: { fontSize: 17, color: theme.colors.grey2, textAlign: 'center', marginTop: 15, },
+    emptyListSubText: { fontSize: 14, color: theme.colors.grey3, textAlign: 'center', marginTop: 8, },
     searchBarContainer: {
-        backgroundColor: theme.colors.background,
-        borderBottomColor: 'transparent',
-        borderTopColor: 'transparent',
-        paddingHorizontal: 10,
-        paddingTop: 8,
-        paddingBottom: 0,
-        marginBottom: 0,
+        backgroundColor: 'transparent', borderBottomColor: 'transparent', borderTopColor: 'transparent',
+        paddingHorizontal: 10, paddingTop: 8, paddingBottom: 5,
     },
-    searchBarInputContainer: {
-        backgroundColor: theme.colors.searchBg || theme.colors.grey5,
-        height: 40,
-        borderRadius: 20,
-    },
-    searchInputStyle: {
-        color: theme.colors.text,
-        fontSize: 15,
-        textAlign: I18nManager.isRTL ? 'right' : 'left',
-    },
+    searchBarInputContainer: { backgroundColor: theme.colors.searchBg || theme.colors.grey5, },
+    searchInputStyle: { color: theme.colors.text, fontSize: 15, textAlign: I18nManager.isRTL ? 'right' : 'left', },
     controlsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingBottom: 10,
-        paddingTop: 5,
-        backgroundColor: theme.colors.background,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.divider,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15,
+        paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider,
     },
-    sortLabel: {
-        color: theme.colors.grey2,
-        fontWeight: 'bold',
-        marginRight: 10,
-        fontSize: 14,
-    },
+    resultsCount: { color: theme.colors.grey2, fontWeight: '600', fontSize: 14, },
     sortButtonGroup: {
-        flex: 1,
-        height: 35,
-        borderRadius: 8,
-        borderColor: theme.colors.primary,
-        borderWidth: 1,
-        backgroundColor: 'transparent',
-        marginHorizontal: 0,
+        flex: 0.7, height: 32, borderRadius: 8, borderWidth: 1,
+        borderColor: theme.colors.primary, marginHorizontal: 0,
     },
-    sortButton: {
-        backgroundColor: theme.colors.background,
-    },
-    selectedSortButton: {
-        backgroundColor: theme.colors.primary,
-    },
-    sortButtonText: {
-        fontSize: 13,
-        color: theme.colors.text,
-    },
-    selectedSortButtonText: {
-        color: theme.colors.white,
-    },
-    disabledSortButtonGroup: {
-        backgroundColor: theme.colors.grey5,
-        borderColor: theme.colors.grey4,
-    },
-    disabledSortButtonText: {
-        color: theme.colors.grey3,
-    },
-    listContentContainer: {
-        paddingBottom: 80,
-    },
-    listContentContainerEmpty: {
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
+    sortButton: { backgroundColor: 'transparent', },
+    selectedSortButton: { backgroundColor: theme.colors.primary, },
+    sortButtonText: { fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' },
+    selectedSortButtonText: { color: theme.colors.white, fontWeight: 'bold' },
+    listContentContainer: { paddingBottom: 80, },
+    listContentContainerEmpty: { flexGrow: 1, justifyContent: 'center', },
     fab: {
-        position: 'absolute',
-        margin: 16,
-        right: I18nManager.isRTL ? undefined : 10,
-        left: I18nManager.isRTL ? 10 : undefined,
-        bottom: 10,
+        position: 'absolute', margin: 16, right: I18nManager.isRTL ? undefined : 10,
+        left: I18nManager.isRTL ? 10 : undefined, bottom: 10,
     },
 }));
 

@@ -745,7 +745,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
   const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
 
-  const prevIsVisible = useRef(isVisible);
   const isActionDisabled = isAiLoading || quickAddLoading;
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
@@ -763,59 +762,36 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    // --- Modal Opening Logic ---
-    if (isVisible && !prevIsVisible.current) {
-        const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
-        if (actuallyEditingDailyItem) {
-            // Setup for editing an existing daily item
-            setModalMode("normal");
-            setUnitMode("grams");
-            setInternalSelectedFood(initialSelectedFoodForEdit);
-            setInternalGrams(initialGrams);
-            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-        } else if (initialSelectedFoodForEdit) {
-            // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
-            setModalMode("normal");
-            setUnitMode("grams");
-            setInternalSelectedFood(initialSelectedFoodForEdit);
-            setInternalGrams(initialGrams || "");
-            if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-        }
-        // Note: For a completely fresh modal, no specific setup is needed here
-        // because the closing logic already resets everything.
-    } 
-    // --- Modal Closing Logic ---
-    else if (!isVisible && prevIsVisible.current) {
-        // Use a timer to delay the state reset, allowing the closing animation to complete.
-        const timer = setTimeout(() => {
-            // Full reset of all modal-specific state
-            setInternalSelectedFood(null);
-            setInternalGrams("");
-            setInternalSearch("");
-            setUnitMode("grams");
-            setAutoInput("");
-            setSelectedMultipleFoods(new Map());
-            setModalMode("normal");
-            setQuickAddItems([]);
-            setSelectedQuickAddIndices(new Set());
-            setEditingQuickAddItemIndex(null);
-            setEditedFoodName("");
-            setEditedGrams("");
-            setIsAiLoading(false);
-            setQuickAddLoading(false);
-            setQuickAddTextInput("");
-            setIsTextQuickAddLoading(false);
-        }, 300);
-        
-        return () => clearTimeout(timer);
+    // This effect runs when the modal is mounted (i.e., isVisible becomes true).
+    // Since it's conditionally rendered, its state is fresh on each open, so we
+    // initialize the state from the incoming props here.
+    const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
+    const isPreSelectedForAdd = !isEditMode && initialSelectedFoodForEdit;
+
+    if (actuallyEditingDailyItem) {
+        // Setup for editing an existing daily item
+        setModalMode("normal");
+        setUnitMode("grams");
+        setInternalSelectedFood(initialSelectedFoodForEdit);
+        setInternalGrams(initialGrams);
+        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+    } else if (isPreSelectedForAdd) {
+        // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
+        setModalMode("normal");
+        setUnitMode("grams");
+        setInternalSelectedFood(initialSelectedFoodForEdit);
+        setInternalGrams(initialGrams || "");
+        if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
+    } else {
+        // This is a fresh "Add" from the FAB. Load recent foods.
+        loadRecentFoods().then(setRecentFoods);
     }
 
-    // Update the ref at the end of the effect to track the current state for the next render.
-    prevIsVisible.current = isVisible;
+    // The closing logic that was previously in a more complex useEffect is no longer
+    // needed because the component unmounts on close, destroying its state naturally.
+  }, []); // The empty dependency array ensures this runs only once when the modal mounts.
 
-  }, [isVisible, isEditMode, initialSelectedFoodForEdit, initialGrams, resolveAndSetIcon]);
 
-  useEffect(() => { if (isVisible && modalMode === "normal") loadRecentFoods().then(setRecentFoods); }, [isVisible, modalMode]);
   useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
 
   const addToRecentFoods = useCallback(async (food: Food) => {
