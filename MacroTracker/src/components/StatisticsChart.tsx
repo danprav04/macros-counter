@@ -18,6 +18,7 @@ interface uPlotSeriesConfig {
   label?: string;
   points?: { show?: boolean; size?: number; fill?: string; stroke?: string; };
   dash?: number[];
+  fill?: string;
   // Add other series properties if you use them
 }
 
@@ -82,25 +83,44 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                 const currentMacroData = chartData[macro];
                 const chartTitle = getChartTitle(macro);
                 const isCalories = macro === "calories";
+                
+                const dailyLabel = t('statisticsChart.daily');
+                const movingAverageLabel = t('statisticsChart.movingAverage');
+                const goalLabel = t('statisticsChart.goal');
+
+                const rawIntakeSeries: uPlotSeriesConfig = {
+                    stroke: `${lineColors[macro]}80`,
+                    width: 1,
+                    label: dailyLabel,
+                    points: { show: false },
+                };
+
+                const movingAverageSeries: uPlotSeriesConfig = {
+                    stroke: lineColors[macro],
+                    width: 2.5,
+                    label: movingAverageLabel,
+                    points: { show: false },
+                    fill: `${lineColors[macro]}2A`,
+                };
+                
+                const goalSeries: uPlotSeriesConfig = {
+                    stroke: "#e74c3c",
+                    width: 1.5,
+                    dash: [10, 5],
+                    label: goalLabel,
+                    points: { show: false }
+                };
 
                 const seriesConfig: uPlotSeriesConfig[] = [
-                    {}, // For X-axis (time)
-                    { // Intake series
-                        stroke: lineColors[macro] || theme.colors.primary,
-                        width: 2,
-                        label: isCalories ? t('statisticsChart.intake') : chartTitle,
-                        points: { show: false }
-                    }
+                    {}, // X-axis
+                    rawIntakeSeries,
+                    movingAverageSeries
                 ];
+
                 if (isCalories) {
-                    seriesConfig.push({ // Goal series for calories
-                        stroke: "red",
-                        width: 1.5,
-                        dash: [10, 5],
-                        label: t('statisticsChart.goal'),
-                        points: { show: false }
-                    });
+                    seriesConfig.push(goalSeries);
                 }
+
 
                 return `
                 <div id="${macro}-chart" class="chart-container">
@@ -111,45 +131,38 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                         const chartElement = document.getElementById('${macro}-chart');
                         try {
                             const dataForChart = ${JSON.stringify(currentMacroData)};
-                            console.log('--- uPlot Init for ${macro} ---');
-                            console.log('Data For Chart (${macro}):', JSON.stringify(dataForChart));
-                            
-                            let xValues = [];
-                            let yValuesIntake = [];
-                            let yValuesGoal = [];
                             let canRender = false;
 
-                            if (dataForChart && dataForChart.length > 0 && dataForChart[0] && Array.isArray(dataForChart[0]) && dataForChart[0].length >= 1) { // Need at least 1 point to attempt render, uPlot handles single points
+                            let xValues = [];
+                            let yValuesIntake = [];
+                            let yValuesMovingAvg = [];
+                            let yValuesGoal = [];
+                            
+                            // data structure: [ [intake], [moving_avg], [goal]? ]
+                            if (dataForChart && dataForChart.length >= 2 && dataForChart[0] && dataForChart[1] && Array.isArray(dataForChart[0]) && dataForChart[0].length >= 1) {
                                 xValues = dataForChart[0].map(d => d.x);
                                 yValuesIntake = dataForChart[0].map(d => d.y);
+                                yValuesMovingAvg = dataForChart[1].map(d => d.y);
                                 canRender = true; 
                                 
-                                if (${isCalories} && dataForChart.length > 1 && dataForChart[1] && Array.isArray(dataForChart[1])) {
-                                    // Align goal data to intake's xValues
-                                    const tempGoalMap = new Map(dataForChart[1].map(p => [p.x, p.y]));
+                                if (${isCalories} && dataForChart.length > 2 && dataForChart[2] && Array.isArray(dataForChart[2])) {
+                                    const tempGoalMap = new Map(dataForChart[2].map(p => [p.x, p.y]));
                                     yValuesGoal = xValues.map(x => tempGoalMap.get(x) === undefined ? null : tempGoalMap.get(x));
-                                } else if (${isCalories}) {
-                                    yValuesGoal = new Array(xValues.length).fill(null); // Ensure goal array exists if no data
                                 }
-                            }
-
-                            console.log('Can Render (${macro}):', canRender);
-                            console.log('X Values (${macro}):', JSON.stringify(xValues));
-                            console.log('Y Intake (${macro}):', JSON.stringify(yValuesIntake));
-                            if (${isCalories}) {
-                                console.log('Y Goal (${macro}):', JSON.stringify(yValuesGoal));
                             }
 
                             if (canRender) {
                                 chartElement.innerHTML = ''; // Clear "no data" message
-                                const uPlotInstanceData = ${isCalories} ? [xValues, yValuesIntake, yValuesGoal] : [xValues, yValuesIntake];
+                                const uPlotInstanceData = ${isCalories} 
+                                    ? [xValues, yValuesIntake, yValuesMovingAvg, yValuesGoal] 
+                                    : [xValues, yValuesIntake, yValuesMovingAvg];
                                 
                                 const opts = {
                                     title: "${chartTitle}",
                                     width: chartElement.offsetWidth,
                                     height: ${chartHeightInHTML},
                                     tzDate: ts => uPlot.tzDate(new Date(ts * 1000), '${Localization.getCalendars()?.[0]?.timeZone || 'UTC'}'),
-                                    scales: { x: { time: true }, y: { range: (self, min, max) => [0, Math.max(10, max * 1.1)] } }, // y-axis starts at 0, ensure some height even for small values
+                                    scales: { x: { time: true }, y: { range: (self, min, max) => [0, Math.max(10, max * 1.25)] } },
                                     axes: [
                                         { stroke: "${textColor}", font: "12px ${fontFamily}", grid: { stroke: "${gridColor}", width: 1 }, ticks: { stroke: "${gridColor}", width: 1 } },
                                         { stroke: "${textColor}", font: "12px ${fontFamily}", grid: { stroke: "${gridColor}", width: 1 }, ticks: { stroke: "${gridColor}", width: 1 }, values: (self, ticks) => ticks.map(rawValue => Math.round(rawValue)) }
@@ -161,17 +174,18 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                                         draw: [
                                             (u) => {
                                                 const { ctx, data } = u;
-                                                if (!data || data.length < 3 || !data[0] || !data[1] || !data[2]) return; // Need all three series for calories (x, intake, goal)
-                                                if (!u.series[1] || !u.series[1].show || !u.series[2] || !u.series[2].show) return;
+                                                // Now there are 4 series for calories: x, intake, movingAvg, goal
+                                                if (!data || data.length < 4 || !data[1] || !data[3]) return; 
+                                                if (!u.series[1] || !u.series[1].show || !u.series[3] || !u.series[3].show) return;
 
                                                 const ts = data[0];
-                                                const intake = data[1];
-                                                const goal = data[2];
+                                                const intake = data[1]; // Raw intake is at index 1
+                                                const goal = data[3];   // Goal is at index 3
 
                                                 if (ts.length < 2) return; // Need at least two points to draw an area
 
                                                 ctx.save();
-                                                ctx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                                                ctx.fillStyle = "rgba(231, 76, 60, 0.15)";
                                                 
                                                 let currentSegment = [];
 
@@ -179,8 +193,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                                                     if (intake[i] != null && goal[i] != null && intake[i] > goal[i]) {
                                                         currentSegment.push({ x: ts[i], intakeY: intake[i], goalY: goal[i] });
                                                     } else {
-                                                        if (currentSegment.length > 0) {
-                                                            // Draw filled segment
+                                                        if (currentSegment.length > 1) { // Need at least 2 points to draw a segment
                                                             ctx.beginPath();
                                                             ctx.moveTo(u.valToPos(currentSegment[0].x, "x", true), u.valToPos(currentSegment[0].goalY, "y", true));
                                                             currentSegment.forEach(pt => ctx.lineTo(u.valToPos(pt.x, "x", true), u.valToPos(pt.intakeY, "y", true)));
@@ -189,12 +202,11 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                                                             }
                                                             ctx.closePath();
                                                             ctx.fill();
-                                                            currentSegment = [];
                                                         }
+                                                        currentSegment = [];
                                                     }
                                                 }
-                                                // Draw any remaining segment
-                                                if (currentSegment.length > 0) {
+                                                if (currentSegment.length > 1) {
                                                     ctx.beginPath();
                                                     ctx.moveTo(u.valToPos(currentSegment[0].x, "x", true), u.valToPos(currentSegment[0].goalY, "y", true));
                                                     currentSegment.forEach(pt => ctx.lineTo(u.valToPos(pt.x, "x", true), u.valToPos(pt.intakeY, "y", true)));
@@ -209,12 +221,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                                         ]
                                     }` : ''}
                                 };
-                                console.log('uPlot opts for ${macro}:', JSON.stringify(opts.series));
-                                console.log('uPlot data for ${macro}:', JSON.stringify(uPlotInstanceData));
                                 new uPlot(opts, uPlotInstanceData, chartElement);
-                                console.log('--- uPlot instance CREATED for ${macro} ---');
-                            } else {
-                                console.log('--- Condition to render uPlot NOT MET for ${macro} ---');
                             }
                         } catch (e) {
                             console.error('--- ERROR in uPlot script for ${macro} ---', e.message, e.stack);

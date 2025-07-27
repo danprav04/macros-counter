@@ -336,7 +336,9 @@
   "statisticsChart": {
     "intake": "צריכה",
     "goal": "יעד",
-    "noData": "אין נתונים זמינים להצגת תרשים עבור %{chartTitle}."
+    "noData": "אין נתונים זמינים להצגת תרשים עבור %{chartTitle}.",
+    "daily": "יומי",
+    "movingAverage": "ממוצע 7 ימים"
   },
   "questionnaireScreen": {
     "title": "הערכת היעדים שלך",

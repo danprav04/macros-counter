@@ -33,6 +33,19 @@ type SettingsStackParamList = {
 
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
 
+const calculateMovingAverage = (data: MacroData[], windowSize: number): MacroData[] => {
+    if (windowSize <= 1) return data;
+    const movingAverageData: MacroData[] = [];
+    for (let i = 0; i < data.length; i++) {
+        const windowStart = Math.max(0, i - windowSize + 1);
+        const windowSlice = data.slice(windowStart, i + 1);
+        const sum = windowSlice.reduce((acc, point) => acc + point.y, 0);
+        const average = sum / windowSlice.length;
+        movingAverageData.push({ x: data[i].x, y: Math.round(average) });
+    }
+    return movingAverageData;
+};
+
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation, onLogout }) => {
   const [settings, setSettings] = useState<Settings>({
@@ -101,14 +114,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         y: intakeDataMap.get(ts) || 0
     }));
 
+    const movingAverageData = calculateMovingAverage(finalIntakeData, 7);
+
     if (macro === "calories") {
         const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({
             x: ts,
             y: goalDataMap.get(ts) || currentGoals[macro] || 0
         }));
-        return [finalIntakeData, finalGoalData];
+        return [finalIntakeData, movingAverageData, finalGoalData];
     }
-    return [finalIntakeData];
+    return [finalIntakeData, movingAverageData];
   }, []);
 
 
