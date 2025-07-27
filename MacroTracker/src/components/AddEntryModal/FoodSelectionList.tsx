@@ -3,7 +3,7 @@ import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, ActivityIndicator, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
-import { LastUsedPortions } from '../../services/storageService';
+import { RecentServings } from '../../services/storageService';
 import { t } from '../../localization/i18n';
 import { findFoodsByTagSearch } from '../../utils/searchUtils';
 import { getFoodIconUrl } from '../../utils/iconUtils';
@@ -25,7 +25,7 @@ interface FoodSelectionListProps {
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
     isEditMode: boolean;
-    lastUsedPortions: LastUsedPortions;
+    recentServings: RecentServings;
     modalMode: "normal" | "quickAddSelect";
 }
 
@@ -46,7 +46,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     onAddNewFoodRequest,
     isActionDisabled,
     isEditMode,
-    lastUsedPortions,
+    recentServings,
     modalMode,
 }) => {
     const { theme } = useTheme();
@@ -136,7 +136,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
             updateSearch(""); 
             setSelectedMultipleFoods(new Map()); 
             if (!isEditMode) { 
-                const lastPortion = lastUsedPortions[item.id];
+                const lastPortion = recentServings[item.id]?.[0];
                 if (lastPortion) {
                     setGrams(String(lastPortion));
                 } else {
@@ -149,7 +149,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         updateSearch, 
         selectedFood, 
         setGrams, 
-        lastUsedPortions, 
+        recentServings, 
         setSelectedMultipleFoods, 
         isEditMode,
         selectedMultipleFoods.size 
@@ -167,7 +167,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
         const iconIdentifier = getFoodIconUrl(foodItem.name);
-        const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
+        const displayGramsForMulti = recentServings[foodItem.id]?.[0] || DEFAULT_GRAMS_FOR_MULTI_ADD;
 
         const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
         const showSingleSelectCheckmark = isSingleSelectedViaState && selectedMultipleFoods.size === 0 && !search;
@@ -292,7 +292,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
+                extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, recentServings }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}

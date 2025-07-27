@@ -775,7 +775,7 @@ import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Ke
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import { loadRecentFoods, saveRecentFoods, LastUsedPortions } from "../../services/storageService";
+import { loadRecentFoods, saveRecentFoods, LastUsedPortions, loadRecentGrams, saveRecentGrams } from "../../services/storageService";
 import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
@@ -824,6 +824,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [internalGrams, setInternalGrams] = useState("");
   const [internalSearch, setInternalSearch] = useState("");
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
+  const [recentGrams, setRecentGrams] = useState<number[]>([]);
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({});
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
@@ -858,34 +859,26 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, dailyGoals]);
 
   useEffect(() => {
-    // This effect runs when the modal is mounted (i.e., isVisible becomes true).
-    // Since it's conditionally rendered, its state is fresh on each open, so we
-    // initialize the state from the incoming props here.
     const actuallyEditingDailyItem = isEditMode && initialSelectedFoodForEdit && initialGrams !== undefined;
     const isPreSelectedForAdd = !isEditMode && initialSelectedFoodForEdit;
 
     if (actuallyEditingDailyItem) {
-        // Setup for editing an existing daily item
         setModalMode("normal");
         setUnitMode("grams");
         setInternalSelectedFood(initialSelectedFoodForEdit);
         setInternalGrams(initialGrams);
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
     } else if (isPreSelectedForAdd) {
-        // Setup for adding a food that was pre-selected (e.g., from FoodListScreen)
         setModalMode("normal");
         setUnitMode("grams");
         setInternalSelectedFood(initialSelectedFoodForEdit);
         setInternalGrams(initialGrams || "");
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
     } else {
-        // This is a fresh "Add" from the FAB. Load recent foods.
         loadRecentFoods().then(setRecentFoods);
+        loadRecentGrams().then(setRecentGrams);
     }
-
-    // The closing logic that was previously in a more complex useEffect is no longer
-    // needed because the component unmounts on close, destroying its state naturally.
-  }, []); // The empty dependency array ensures this runs only once when the modal mounts.
+  }, []); 
 
 
   useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
@@ -898,14 +891,32 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
   }, []);
 
+  const addToRecentGrams = useCallback(async (newGrams: number[]) => {
+    if (!newGrams || newGrams.length === 0) return;
+    setRecentGrams(prev => {
+        const uniqueNewGrams = [...new Set(newGrams.map(g => Math.round(g)))];
+        const updated = [...uniqueNewGrams, ...prev];
+        const uniqueUpdated = [...new Set(updated)];
+        const final = uniqueUpdated.slice(0, 4);
+        saveRecentGrams(final).catch(() => {});
+        return final;
+    });
+  }, []);
+
   const servingSizeSuggestions = useMemo(() => {
     if (!internalSelectedFood?.id) return [];
-    const suggestions = [];
+    const suggestions = new Set<string>();
     const lastUsed = lastUsedPortions[internalSelectedFood.id];
-    if (lastUsed) suggestions.push({ label: t('addEntryModal.lastUsedServing', {grams: lastUsed}), value: String(lastUsed) });
-    ["50", "100", "150", "200"].forEach(val => { if (String(lastUsed) !== val) suggestions.push({ label: `${val}g`, value: val }); });
-    return suggestions;
-  }, [internalSelectedFood, lastUsedPortions, t]);
+    if (lastUsed) {
+        suggestions.add(String(lastUsed));
+    }
+    recentGrams.forEach(g => suggestions.add(String(g)));
+    const suggestionArray = Array.from(suggestions);
+    return suggestionArray.map(val => ({
+        label: val === String(lastUsed) ? t('addEntryModal.lastUsedServing', { grams: val }) : `${val}g`,
+        value: val
+    }));
+  }, [internalSelectedFood, lastUsedPortions, recentGrams, t]);
 
   const handleEstimateGrams = useCallback(async () => {
     Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
@@ -923,8 +934,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (!isValidNumberInput(internalGrams) || numericGramsValue <= 0) return Alert.alert(t('addEntryModal.alertInvalidAmount'), t('addEntryModal.alertInvalidAmountMessage'));
     if (isActionDisabled) return;
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
-    if (!isEditMode) addToRecentFoods(internalSelectedFood);
-  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, t]);
+    if (!isEditMode) {
+        addToRecentFoods(internalSelectedFood);
+        addToRecentGrams([numericGramsValue]);
+    }
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, addToRecentGrams, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
@@ -937,8 +951,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
     entriesToAdd.forEach(entry => addToRecentFoods(entry.food));
+    const gramValues = entriesToAdd.map(e => e.grams);
+    addToRecentGrams(gramValues);
     setSelectedMultipleFoods(new Map());
-  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods]);
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods, addToRecentGrams]);
 
   const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
     if (isEditMode) return;
@@ -1042,9 +1058,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
     });
     if (entriesToAdd.length > 0) {
-      parentHandleAddMultipleEntries(entriesToAdd);
+        parentHandleAddMultipleEntries(entriesToAdd);
+        const gramValues = entriesToAdd.map(e => e.grams);
+        addToRecentGrams(gramValues);
     }
-  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled]);
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, addToRecentGrams]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 
@@ -1104,8 +1122,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
-    overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: Dimensions.get("window").height * 0.85, },
-    overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1, },
+    overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: "90%", },
+    overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1 },
     keyboardAvoidingView: { width: "100%", height: "100%" },
     normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
     quickAddListStyle: { flex: 1 },
@@ -1239,6 +1257,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         key={`grams-input-${selectedFood.id}-${isEditMode}`}
                         disabled={isActionDisabled}
                         autoFocus={!isEditMode} // autofocus only when adding new, not editing
+                        selectTextOnFocus={!isEditMode}
                     />
                 </>
             )}
@@ -1481,29 +1500,37 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     }, [foods, search]);
 
     const listDisplayData = useMemo((): DisplayFoodItem[] => {
+        // If a single food is selected, show only that item.
+        if (selectedFood) {
+            const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
+            return [{ ...selectedFood, isRecent: isSelRecent }];
+        }
+
+        // If there is an active search term, show search results.
         if (search) {
             return filteredFoodsForSearch;
         }
+
+        // Otherwise, show default list (recents + library).
         const tempCombinedList: DisplayFoodItem[] = [];
         const displayedIds = new Set<string>();
-        if (selectedFood) {
-            const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
-            tempCombinedList.push({ ...selectedFood, isRecent: isSelRecent });
-            displayedIds.add(selectedFood.id);
-        }
+
         recentFoods.forEach(rf => {
             if (!displayedIds.has(rf.id)) {
                 tempCombinedList.push({ ...rf, isRecent: true });
                 displayedIds.add(rf.id);
             }
         });
+
         const otherLibraryFoods = foods
             .filter(food => !displayedIds.has(food.id))
             .sort((a, b) => a.name.localeCompare(b.name))
-            .slice(0, 10); 
+            .slice(0, 10);
+
         otherLibraryFoods.forEach(olf => {
             tempCombinedList.push({ ...olf, isRecent: false });
         });
+
         return tempCombinedList;
     }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
 
@@ -1728,7 +1755,7 @@ const useStyles = makeStyles((theme) => ({
         textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
-        maxHeight: 250, 
+        maxHeight: "90%", 
         minHeight: 150,
     },
     flatListContentContainer: {
@@ -2204,8 +2231,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: 'transparent', width: '90%', maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 2, }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, overflow: 'hidden', },
-    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 30, maxHeight: '90%', backgroundColor: theme.colors.background },
-    keyboardAvoidingView: { width: "100%", },
+    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 0, maxHeight: '97%', backgroundColor: theme.colors.background },
+    keyboardAvoidingView: { width: "100%", maxHeight: '100%' },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, },
     overlayTitle: { color: theme.colors.text, fontWeight: "bold", fontSize: 20, flexShrink: 1, marginRight: 10, textAlign: 'left' },
     closeIcon: { padding: 5, marginLeft: 10, },
@@ -8588,7 +8615,9 @@ const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
 const RECENT_FOODS_KEY = 'recentFoods';
-const LAST_USED_PORTIONS_KEY = 'lastUsedPortions'; // New key
+const LAST_USED_PORTIONS_KEY = 'lastUsedPortions';
+const RECENT_GRAMS_AMOUNTS_KEY = 'recentGramsAmounts';
+
 
 export type LastUsedPortions = { [foodId: string]: number }; // Type for last used portions
 
@@ -8746,6 +8775,25 @@ export const loadLastUsedPortions = async (): Promise<LastUsedPortions> => {
     } catch (error) {
         console.error('Error loading last used portions:', error);
         return {};
+    }
+};
+
+export const saveRecentGrams = async (grams: number[]): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(RECENT_GRAMS_AMOUNTS_KEY, JSON.stringify(grams));
+    } catch (error) {
+        console.error('Error saving recent gram amounts:', error);
+        throw error;
+    }
+};
+
+export const loadRecentGrams = async (): Promise<number[]> => {
+    try {
+        const gramsJson = await AsyncStorage.getItem(RECENT_GRAMS_AMOUNTS_KEY);
+        return gramsJson ? JSON.parse(gramsJson) : [];
+    } catch (error) {
+        console.error('Error loading recent gram amounts:', error);
+        return [];
     }
 };
 ---------- END storageService.ts ----------
