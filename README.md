@@ -12,8 +12,10 @@ MacrosVisionAI is a cross-platform mobile application built with React Native an
 
 The app is fully offline-first for core data (daily entries, food library), while leveraging a backend service for its AI-powered features.
 
-*(Placeholder for App Screenshot/GIF)*
-`[image]`
+<img width="189" height="422" alt="Screenshot_20250728-010156" src="https://github.com/user-attachments/assets/2395d27a-92f0-4b2b-a8e3-03b6cf2b1009" />    
+<img width="189" height="422" alt="Screenshot_20250727-225226" src="https://github.com/user-attachments/assets/bfb9b16b-5539-4d25-9e42-1a90f40dc6a4" />    
+<img width="189" height="422" alt="Screenshot_20250727-225212" src="https://github.com/user-attachments/assets/abea2728-9a9a-41f2-a597-c48b876a8267" />    
+<img width="189" height="422" alt="Screenshot_20250727-225206" src="https://github.com/user-attachments/assets/9621f56a-ad57-4146-b37e-80fcc84972cd" />
 
 ---
 
