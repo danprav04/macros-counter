@@ -35,7 +35,7 @@ interface AddEntryModalProps {
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
-const MAX_RECENT_FOODS = 5;
+const MAX_RECENT_FOODS = 15;
 const MAX_SERVINGS_PER_FOOD = 4;
 
 type UnitMode = "grams" | "auto";
