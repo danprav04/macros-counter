@@ -59,7 +59,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
                 autoCapitalize="words"
             />
@@ -71,7 +71,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -82,7 +82,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -93,7 +93,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -104,7 +104,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
         </>

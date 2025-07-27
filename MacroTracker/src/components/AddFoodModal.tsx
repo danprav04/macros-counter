@@ -216,7 +216,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     label={t('addFoodModal.ingredientsOptional')} labelStyle={styles.inputLabel} value={ingredients} onChangeText={setIngredients} multiline={true}
                                     numberOfLines={4} inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]} inputStyle={[styles.inputStyle, styles.multilineInput]}
                                     placeholder={t('addFoodModal.ingredientsPlaceholder')} placeholderTextColor={theme.colors.grey3}
-                                    leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey1} style={styles.multilineIcon} />}
+                                    leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey3} style={styles.multilineIcon} />}
                                     disabled={isAnyLoading}
                                 />
                             </>
@@ -254,7 +254,7 @@ const useStyles = makeStyles((theme) => ({
     multilineInput: { marginLeft: 5, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, textAlign: 'left' },
     multilineIcon: { marginTop: 8, marginRight: 5, },
     futureInputContainer: { backgroundColor: theme.colors.grey5, padding: 15, borderRadius: 10, marginTop: 20, marginBottom: 10, alignItems: "center", },
-    futureInputLabel: { color: theme.colors.grey2, fontStyle: "italic", },
+    futureInputLabel: { color: theme.colors.secondary, fontStyle: "italic", },
     buttonContainer: { },
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },

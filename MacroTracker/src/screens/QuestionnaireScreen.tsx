@@ -311,14 +311,14 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 15,
   },
   label: {
-    color: theme.colors.grey1,
+    color: theme.colors.secondary,
     fontWeight: 'bold',
     marginBottom: 5,
     fontSize: 16,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
   unitText: {
-    color: theme.colors.grey2,
+    color: theme.colors.secondary,
     fontSize: 16,
   },
   pickerWrapper: {

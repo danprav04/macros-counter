@@ -37,10 +37,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <Overlay
       isVisible={isVisible}
       onBackdropPress={onCancel}
-      overlayStyle={styles.overlay}
+      overlayStyle={[styles.overlay, { backgroundColor: theme.colors.card }]}
       backdropStyle={styles.backdrop}
     >
-      <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <View style={styles.container}>
         <Text style={[styles.title, {color: theme.colors.text}]}>{modalTitle}</Text>
         <Text style={[styles.message, {color: theme.colors.text}]}>{modalMessage}</Text>
         <Input
@@ -71,12 +71,11 @@ const styles = StyleSheet.create({
     overlay: {
         borderRadius: 10,
         width: '80%',
-        padding: 6,
-        backgroundColor: 'rgba(200, 200, 200, 0.5)'
+        padding: 0,
     },
   container: {
     padding: 20,
-    borderRadius: 7,
+    borderRadius: 10,
   },
   title: {
     fontSize: 18,

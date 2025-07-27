@@ -184,7 +184,7 @@ const useStyles = makeStyles((theme) => ({
     },
     inputLabel: {
         fontWeight: "600",
-        color: theme.colors.grey1,
+        color: theme.colors.secondary,
         fontSize: 14,
         marginRight: 0,
         textTransform: "uppercase",
@@ -213,7 +213,7 @@ const useStyles = makeStyles((theme) => ({
         paddingHorizontal: 5,
     },
     servingSizeLabel: {
-        color: theme.colors.grey2,
+        color: theme.colors.secondary,
         fontSize: 13,
         marginRight: 8,
         textAlign: 'left',
@@ -247,7 +247,7 @@ const useStyles = makeStyles((theme) => ({
         paddingHorizontal: 5,
     },
     unitText: {
-        color: theme.colors.grey2,
+        color: theme.colors.secondary,
         fontSize: 15,
         fontWeight: "500",
         paddingRight: 5,

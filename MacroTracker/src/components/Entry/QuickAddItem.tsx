@@ -85,6 +85,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
       protein: item.protein_per_100g,
       carbs: item.carbs_per_100g,
       fat: item.fat_per_100g,
+      createdAt: new Date().toISOString(), // Added to satisfy the Food type
     }),
     [
       item.foodName,
@@ -294,7 +295,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
                   type="material"
                   size={22}
                   color={
-                    canPerformActions ? theme.colors.grey1 : theme.colors.grey3
+                    canPerformActions ? theme.colors.secondary : theme.colors.grey3
                   }
                 />
               </TouchableOpacity>
