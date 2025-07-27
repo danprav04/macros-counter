@@ -239,8 +239,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: 'transparent', width: '90%', maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 2, }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, overflow: 'hidden', },
-    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 30, maxHeight: '90%', backgroundColor: theme.colors.background },
-    keyboardAvoidingView: { width: "100%", },
+    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 0, maxHeight: '97%', backgroundColor: theme.colors.background },
+    keyboardAvoidingView: { width: "100%", maxHeight: '100%' },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, },
     overlayTitle: { color: theme.colors.text, fontWeight: "bold", fontSize: 20, flexShrink: 1, marginRight: 10, textAlign: 'left' },
     closeIcon: { padding: 5, marginLeft: 10, },

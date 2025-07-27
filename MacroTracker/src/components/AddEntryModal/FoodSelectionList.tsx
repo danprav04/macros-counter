@@ -327,7 +327,7 @@ const useStyles = makeStyles((theme) => ({
         textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
-        maxHeight: 250, 
+        maxHeight: "90%", 
         minHeight: 150,
     },
     flatListContentContainer: {
