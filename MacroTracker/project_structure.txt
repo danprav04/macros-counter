@@ -1306,7 +1306,7 @@ const useStyles = makeStyles((theme) => ({
     },
     inputLabel: {
         fontWeight: "600",
-        color: theme.colors.grey1,
+        color: theme.colors.secondary,
         fontSize: 14,
         marginRight: 0,
         textTransform: "uppercase",
@@ -1335,7 +1335,7 @@ const useStyles = makeStyles((theme) => ({
         paddingHorizontal: 5,
     },
     servingSizeLabel: {
-        color: theme.colors.grey2,
+        color: theme.colors.secondary,
         fontSize: 13,
         marginRight: 8,
         textAlign: 'left',
@@ -1369,7 +1369,7 @@ const useStyles = makeStyles((theme) => ({
         paddingHorizontal: 5,
     },
     unitText: {
-        color: theme.colors.grey2,
+        color: theme.colors.secondary,
         fontSize: 15,
         fontWeight: "500",
         paddingRight: 5,
@@ -2181,7 +2181,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     label={t('addFoodModal.ingredientsOptional')} labelStyle={styles.inputLabel} value={ingredients} onChangeText={setIngredients} multiline={true}
                                     numberOfLines={4} inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]} inputStyle={[styles.inputStyle, styles.multilineInput]}
                                     placeholder={t('addFoodModal.ingredientsPlaceholder')} placeholderTextColor={theme.colors.grey3}
-                                    leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey1} style={styles.multilineIcon} />}
+                                    leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey3} style={styles.multilineIcon} />}
                                     disabled={isAnyLoading}
                                 />
                             </>
@@ -2219,7 +2219,7 @@ const useStyles = makeStyles((theme) => ({
     multilineInput: { marginLeft: 5, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, textAlign: 'left' },
     multilineIcon: { marginTop: 8, marginRight: 5, },
     futureInputContainer: { backgroundColor: theme.colors.grey5, padding: 15, borderRadius: 10, marginTop: 20, marginBottom: 10, alignItems: "center", },
-    futureInputLabel: { color: theme.colors.grey2, fontStyle: "italic", },
+    futureInputLabel: { color: theme.colors.secondary, fontStyle: "italic", },
     buttonContainer: { },
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
@@ -2275,10 +2275,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <Overlay
       isVisible={isVisible}
       onBackdropPress={onCancel}
-      overlayStyle={styles.overlay}
+      overlayStyle={[styles.overlay, { backgroundColor: theme.colors.card }]}
       backdropStyle={styles.backdrop}
     >
-      <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <View style={styles.container}>
         <Text style={[styles.title, {color: theme.colors.text}]}>{modalTitle}</Text>
         <Text style={[styles.message, {color: theme.colors.text}]}>{modalMessage}</Text>
         <Input
@@ -2309,12 +2309,11 @@ const styles = StyleSheet.create({
     overlay: {
         borderRadius: 10,
         width: '80%',
-        padding: 6,
-        backgroundColor: 'rgba(200, 200, 200, 0.5)'
+        padding: 0,
     },
   container: {
     padding: 20,
-    borderRadius: 7,
+    borderRadius: 10,
   },
   title: {
     fontSize: 18,
@@ -3041,6 +3040,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
       protein: item.protein_per_100g,
       carbs: item.carbs_per_100g,
       fat: item.fat_per_100g,
+      createdAt: new Date().toISOString(), // Added to satisfy the Food type
     }),
     [
       item.foodName,
@@ -3250,7 +3250,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
                   type="material"
                   size={22}
                   color={
-                    canPerformActions ? theme.colors.grey1 : theme.colors.grey3
+                    canPerformActions ? theme.colors.secondary : theme.colors.grey3
                   }
                 />
               </TouchableOpacity>
@@ -3481,7 +3481,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="food-apple" size={24} color={errors.name ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
                 autoCapitalize="words"
             />
@@ -3493,7 +3493,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="fire" size={24} color={errors.calories ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -3504,7 +3504,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="food-drumstick" size={24} color={errors.protein ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -3515,7 +3515,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="bread-slice" size={24} color={errors.carbs ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
             <Input
@@ -3526,7 +3526,7 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                 errorStyle={styles.errorStyle}
                 inputContainerStyle={styles.inputContainerStyle}
                 inputStyle={styles.inputStyle}
-                leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey1} />}
+                leftIcon={<MaterialCommunityIcons name="oil" size={24} color={errors.fat ? theme.colors.error : theme.colors.grey3} />}
                 disabled={disabled}
             />
         </>
@@ -5839,7 +5839,7 @@ declare module "@rneui/themed" {
   export interface Colors { text: string; card: string; successLight: string; }
 }
 const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", };
-const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#495057", greyOutline: "#6c757d", searchBg: "#1e1e1e", };
+const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#495057", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#8899a6", greyOutline: "#8899a6", searchBg: "#1e1e1e", };
 
 // Settings Stack Navigator Component
 function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
@@ -7634,14 +7634,14 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 15,
   },
   label: {
-    color: theme.colors.grey1,
+    color: theme.colors.secondary,
     fontWeight: 'bold',
     marginBottom: 5,
     fontSize: 16,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
   unitText: {
-    color: theme.colors.grey2,
+    color: theme.colors.secondary,
     fontSize: 16,
   },
   pickerWrapper: {

@@ -72,29 +72,37 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     }, [foods, search]);
 
     const listDisplayData = useMemo((): DisplayFoodItem[] => {
+        // If a single food is selected, show only that item.
+        if (selectedFood) {
+            const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
+            return [{ ...selectedFood, isRecent: isSelRecent }];
+        }
+
+        // If there is an active search term, show search results.
         if (search) {
             return filteredFoodsForSearch;
         }
+
+        // Otherwise, show default list (recents + library).
         const tempCombinedList: DisplayFoodItem[] = [];
         const displayedIds = new Set<string>();
-        if (selectedFood) {
-            const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
-            tempCombinedList.push({ ...selectedFood, isRecent: isSelRecent });
-            displayedIds.add(selectedFood.id);
-        }
+
         recentFoods.forEach(rf => {
             if (!displayedIds.has(rf.id)) {
                 tempCombinedList.push({ ...rf, isRecent: true });
                 displayedIds.add(rf.id);
             }
         });
+
         const otherLibraryFoods = foods
             .filter(food => !displayedIds.has(food.id))
             .sort((a, b) => a.name.localeCompare(b.name))
-            .slice(0, 10); 
+            .slice(0, 10);
+
         otherLibraryFoods.forEach(olf => {
             tempCombinedList.push({ ...olf, isRecent: false });
         });
+
         return tempCombinedList;
     }, [search, recentFoods, foods, filteredFoodsForSearch, selectedFood]);
 

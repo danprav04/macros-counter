@@ -117,6 +117,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         key={`grams-input-${selectedFood.id}-${isEditMode}`}
                         disabled={isActionDisabled}
                         autoFocus={!isEditMode} // autofocus only when adding new, not editing
+                        selectTextOnFocus={!isEditMode}
                     />
                 </>
             )}

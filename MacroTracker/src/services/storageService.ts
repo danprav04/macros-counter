@@ -11,7 +11,9 @@ const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
 const RECENT_FOODS_KEY = 'recentFoods';
-const LAST_USED_PORTIONS_KEY = 'lastUsedPortions'; // New key
+const LAST_USED_PORTIONS_KEY = 'lastUsedPortions';
+const RECENT_GRAMS_AMOUNTS_KEY = 'recentGramsAmounts';
+
 
 export type LastUsedPortions = { [foodId: string]: number }; // Type for last used portions
 
@@ -169,5 +171,24 @@ export const loadLastUsedPortions = async (): Promise<LastUsedPortions> => {
     } catch (error) {
         console.error('Error loading last used portions:', error);
         return {};
+    }
+};
+
+export const saveRecentGrams = async (grams: number[]): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(RECENT_GRAMS_AMOUNTS_KEY, JSON.stringify(grams));
+    } catch (error) {
+        console.error('Error saving recent gram amounts:', error);
+        throw error;
+    }
+};
+
+export const loadRecentGrams = async (): Promise<number[]> => {
+    try {
+        const gramsJson = await AsyncStorage.getItem(RECENT_GRAMS_AMOUNTS_KEY);
+        return gramsJson ? JSON.parse(gramsJson) : [];
+    } catch (error) {
+        console.error('Error loading recent gram amounts:', error);
+        return [];
     }
 };
