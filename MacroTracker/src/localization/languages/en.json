@@ -337,7 +337,6 @@
     "intake": "Intake",
     "goal": "Goal",
     "noData": "No data available to display chart for %{chartTitle}.",
-    "daily": "Daily",
     "movingAverage": "7-Day Avg"
   },
   "questionnaireScreen": {

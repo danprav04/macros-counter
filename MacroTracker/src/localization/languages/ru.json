@@ -337,7 +337,6 @@
     "intake": "Потребление",
     "goal": "Цель",
     "noData": "Нет данных для отображения графика для %{chartTitle}.",
-    "daily": "Ежедневно",
     "movingAverage": "Среднее за 7 дн."
   },
   "questionnaireScreen": {

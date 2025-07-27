@@ -84,18 +84,10 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                 const chartTitle = getChartTitle(macro);
                 const isCalories = macro === "calories";
                 
-                const dailyLabel = t('statisticsChart.daily');
                 const movingAverageLabel = t('statisticsChart.movingAverage');
                 const goalLabel = t('statisticsChart.goal');
 
-                const rawIntakeSeries: uPlotSeriesConfig = {
-                    stroke: `${lineColors[macro]}80`,
-                    width: 1,
-                    label: dailyLabel,
-                    points: { show: false },
-                };
-
-                const movingAverageSeries: uPlotSeriesConfig = {
+                const intakeSeries: uPlotSeriesConfig = {
                     stroke: lineColors[macro],
                     width: 2.5,
                     label: movingAverageLabel,
@@ -113,8 +105,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
 
                 const seriesConfig: uPlotSeriesConfig[] = [
                     {}, // X-axis
-                    rawIntakeSeries,
-                    movingAverageSeries
+                    intakeSeries
                 ];
 
                 if (isCalories) {
@@ -134,14 +125,14 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                             let canRender = false;
 
                             let xValues = [];
-                            let yValuesIntake = [];
                             let yValuesMovingAvg = [];
                             let yValuesGoal = [];
                             
-                            // data structure: [ [intake], [moving_avg], [goal]? ]
+                            // data structure: [ [daily_intake], [moving_avg], [goal]? ]
                             if (dataForChart && dataForChart.length >= 2 && dataForChart[0] && dataForChart[1] && Array.isArray(dataForChart[0]) && dataForChart[0].length >= 1) {
+                                // xValues from daily data to get all date points
                                 xValues = dataForChart[0].map(d => d.x);
-                                yValuesIntake = dataForChart[0].map(d => d.y);
+                                // yValues from moving average data
                                 yValuesMovingAvg = dataForChart[1].map(d => d.y);
                                 canRender = true; 
                                 
@@ -154,8 +145,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                             if (canRender) {
                                 chartElement.innerHTML = ''; // Clear "no data" message
                                 const uPlotInstanceData = ${isCalories} 
-                                    ? [xValues, yValuesIntake, yValuesMovingAvg, yValuesGoal] 
-                                    : [xValues, yValuesIntake, yValuesMovingAvg];
+                                    ? [xValues, yValuesMovingAvg, yValuesGoal] 
+                                    : [xValues, yValuesMovingAvg];
                                 
                                 const opts = {
                                     title: "${chartTitle}",
@@ -168,58 +159,8 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ statistics }) => {
                                         { stroke: "${textColor}", font: "12px ${fontFamily}", grid: { stroke: "${gridColor}", width: 1 }, ticks: { stroke: "${gridColor}", width: 1 }, values: (self, ticks) => ticks.map(rawValue => Math.round(rawValue)) }
                                     ],
                                     series: ${JSON.stringify(seriesConfig)},
-                                    cursor: { drag: { setScale: false }, focus: { prox: 30 }, points: { size: 6, fill: (self, i) => self.series[i]._stroke, stroke: (self, i) => self.series[i]._stroke } },
-                                    ${isCalories ? `
-                                    hooks: {
-                                        draw: [
-                                            (u) => {
-                                                const { ctx, data } = u;
-                                                // Now there are 4 series for calories: x, intake, movingAvg, goal
-                                                if (!data || data.length < 4 || !data[1] || !data[3]) return; 
-                                                if (!u.series[1] || !u.series[1].show || !u.series[3] || !u.series[3].show) return;
-
-                                                const ts = data[0];
-                                                const intake = data[1]; // Raw intake is at index 1
-                                                const goal = data[3];   // Goal is at index 3
-
-                                                if (ts.length < 2) return; // Need at least two points to draw an area
-
-                                                ctx.save();
-                                                ctx.fillStyle = "rgba(231, 76, 60, 0.15)";
-                                                
-                                                let currentSegment = [];
-
-                                                for (let i = 0; i < ts.length; i++) {
-                                                    if (intake[i] != null && goal[i] != null && intake[i] > goal[i]) {
-                                                        currentSegment.push({ x: ts[i], intakeY: intake[i], goalY: goal[i] });
-                                                    } else {
-                                                        if (currentSegment.length > 1) { // Need at least 2 points to draw a segment
-                                                            ctx.beginPath();
-                                                            ctx.moveTo(u.valToPos(currentSegment[0].x, "x", true), u.valToPos(currentSegment[0].goalY, "y", true));
-                                                            currentSegment.forEach(pt => ctx.lineTo(u.valToPos(pt.x, "x", true), u.valToPos(pt.intakeY, "y", true)));
-                                                            for (let k = currentSegment.length - 1; k >= 0; k--) {
-                                                                ctx.lineTo(u.valToPos(currentSegment[k].x, "x", true), u.valToPos(currentSegment[k].goalY, "y", true));
-                                                            }
-                                                            ctx.closePath();
-                                                            ctx.fill();
-                                                        }
-                                                        currentSegment = [];
-                                                    }
-                                                }
-                                                if (currentSegment.length > 1) {
-                                                    ctx.beginPath();
-                                                    ctx.moveTo(u.valToPos(currentSegment[0].x, "x", true), u.valToPos(currentSegment[0].goalY, "y", true));
-                                                    currentSegment.forEach(pt => ctx.lineTo(u.valToPos(pt.x, "x", true), u.valToPos(pt.intakeY, "y", true)));
-                                                    for (let k = currentSegment.length - 1; k >= 0; k--) {
-                                                        ctx.lineTo(u.valToPos(currentSegment[k].x, "x", true), u.valToPos(currentSegment[k].goalY, "y", true));
-                                                    }
-                                                    ctx.closePath();
-                                                    ctx.fill();
-                                                }
-                                                ctx.restore();
-                                            }
-                                        ]
-                                    }` : ''}
+                                    legend: { show: false },
+                                    cursor: { drag: { setScale: false }, focus: { prox: 30 }, points: { size: 6, fill: (self, i) => self.series[i]._stroke, stroke: (self, i) => self.series[i]._stroke } }
                                 };
                                 new uPlot(opts, uPlotInstanceData, chartElement);
                             }
