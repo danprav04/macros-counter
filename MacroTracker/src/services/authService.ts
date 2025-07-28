@@ -1,32 +1,27 @@
 // src/services/authService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
-import Constants from 'expo-constants'; // Import expo-constants
+import Constants from 'expo-constants';
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
-    // This function now reads from the 'extra.env' block in app.json
     const env = Constants.expoConfig?.extra?.env;
 
     if (__DEV__) {
-        // In development, use the development URL
         if (env?.BACKEND_URL_DEVELOPMENT) {
             return env.BACKEND_URL_DEVELOPMENT;
         }
         console.warn(
             "BACKEND_URL_DEVELOPMENT not found in app.json. Falling back to a default."
         );
-        return 'http://127.0.0.1:8000'; // Fallback for local dev
+        return 'http://127.0.0.1:8000';
     } else {
-        // In production, use the production URL
         if (env?.BACKEND_URL_PRODUCTION) {
             return env.BACKEND_URL_PRODUCTION;
         }
-        // This is a critical configuration error for a production build
         console.error("FATAL: BACKEND_URL_PRODUCTION is not defined in app.json extra.env.");
-        // Return a non-functional URL to make it clear there's a problem
         return 'https://api.example.com/not-configured';
     }
 };
@@ -60,8 +55,14 @@ export const triggerLogout = () => {
 const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
 
 export const getAuthToken = async (): Promise<Token | null> => {
-    const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-    return tokenJson ? JSON.parse(tokenJson) : null;
+    try {
+        const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        return tokenJson ? JSON.parse(tokenJson) : null;
+    } catch (error) {
+        console.error('Failed to parse auth token from AsyncStorage. Clearing corrupted token.', error);
+        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+    }
 };
 
 export const setAuthToken = async (token: Token): Promise<void> => {
@@ -85,7 +86,7 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     try {
         const response = await fetch(url, { ...options, headers });
 
-        if (response.status === 204) { // Handle No Content for logout
+        if (response.status === 204) {
              return {} as T;
         }
 
