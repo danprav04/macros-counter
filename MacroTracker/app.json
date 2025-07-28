@@ -82,8 +82,8 @@
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "http://192.168.1.15:8000",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
+         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+         "BACKEND_URL_DEVELOPMENT": "https://5e993426d95d.ngrok-free.app"
       }
     }
   }

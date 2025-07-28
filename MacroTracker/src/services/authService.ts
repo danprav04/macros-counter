@@ -1,20 +1,34 @@
 // src/services/authService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import Constants from 'expo-constants'; // Import expo-constants
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
-    // This variable is set by EAS build or in .env for local development
-    const url = process.env.EXPO_PUBLIC_BACKEND_URL;
-    if (!url) {
+    // This function now reads from the 'extra.env' block in app.json
+    const env = Constants.expoConfig?.extra?.env;
+
+    if (__DEV__) {
+        // In development, use the development URL
+        if (env?.BACKEND_URL_DEVELOPMENT) {
+            return env.BACKEND_URL_DEVELOPMENT;
+        }
         console.warn(
-            "Backend URL is not configured. Falling back to default development URL. Create a .env file with EXPO_PUBLIC_BACKEND_URL=http://your-ip:8000 for local development."
+            "BACKEND_URL_DEVELOPMENT not found in app.json. Falling back to a default."
         );
-        return 'http://192.168.1.15:8000'; // Default dev URL
+        return 'http://127.0.0.1:8000'; // Fallback for local dev
+    } else {
+        // In production, use the production URL
+        if (env?.BACKEND_URL_PRODUCTION) {
+            return env.BACKEND_URL_PRODUCTION;
+        }
+        // This is a critical configuration error for a production build
+        console.error("FATAL: BACKEND_URL_PRODUCTION is not defined in app.json extra.env.");
+        // Return a non-functional URL to make it clear there's a problem
+        return 'https://api.example.com/not-configured';
     }
-    return url;
 };
 
 export const getApiUrl = (): string => {
@@ -125,7 +139,6 @@ export const loginUser = async (email: string, password: string): Promise<Token>
 
 export const refreshAuthToken = async (refreshToken: string): Promise<Token | null> => {
     try {
-        // Assuming the backend was updated to return the new refresh token in the body as well
         const newTokens = await fetchAuthApi<Token>('/refresh-token', {
              method: 'POST',
              body: JSON.stringify({ refresh_token: refreshToken })
