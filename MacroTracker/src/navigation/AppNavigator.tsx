@@ -22,7 +22,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
-import { setLogoutListener } from '../services/authService'; // Import the listener setter
+import { setLogoutListener } from '../services/authService';
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -39,7 +39,7 @@ export type SettingsStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  ForgotPassword: undefined; // Add the new screen here
+  ForgotPassword: undefined;
 };
 
 export type RootStackParamList = {
@@ -59,9 +59,9 @@ const linking = {
   config: {
     screens: {
       Main: {
-          path: '', // Root path maps to main tabs
+          path: '', 
           screens: {
-              FoodListRoute: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+              FoodListRoute: 'open-add-food-modal', 
           }
       },
     }
@@ -145,11 +145,11 @@ function AppContent() {
   const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
 
-  // Set up the global logout listener
   React.useEffect(() => {
     if (logout) {
       setLogoutListener(logout);
     }
+    return () => setLogoutListener(null); // Cleanup on unmount
   }, [logout]);
 
   const themeMode = settings.theme;
@@ -182,8 +182,8 @@ function AppContent() {
   };
 
   const LoadingFallback = () => (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-          <Text>Loading...</Text>
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: currentThemeConfig.colors.background}}>
+          <Text style={{color: currentThemeConfig.colors.text}}>Loading...</Text>
       </View>
   )
 

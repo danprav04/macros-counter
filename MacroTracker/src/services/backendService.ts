@@ -1,14 +1,15 @@
 // src/services/backendService.ts
-import { getApiUrl, getAuthToken, triggerLogout } from './authService';
+import { getApiUrl, getAuthToken, setAuthToken, refreshAuthToken, triggerLogout } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
 import i18n, { t } from '../localization/i18n';
+import { Token } from '../types/token';
 
 const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-export interface UserStatus { client_id: string; coins: number; }
+export interface UserStatus { client_id: string; coins: number; is_verified: boolean; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
 
@@ -19,32 +20,75 @@ export class BackendError extends Error {
     }
 }
 
+let isRefreshing = false;
+let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void; endpoint: string; options: RequestInit; needsAuth: boolean; }[] = [];
+
+const processFailedQueue = (error: any, token: Token | null) => {
+    failedQueue.forEach(prom => {
+        if (error || !token) {
+            prom.reject(error);
+        } else {
+            prom.resolve(fetchBackend(prom.endpoint, prom.options, prom.needsAuth));
+        }
+    });
+    failedQueue = [];
+};
+
 async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, needsAuth: boolean = true ): Promise<T> {
     const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    let response: Response | null = null;
-    let requestId: string | null = null;
-    try {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Platform': Platform.OS,
-            'Accept-Language': i18n.locale,
-            ...(options.headers as Record<string, string> || {})
-        };
+    
+    const tokenData = needsAuth ? await getAuthToken() : null;
+    
+    if (needsAuth && !tokenData?.access_token) {
+        triggerLogout();
+        throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+    }
 
-        if (needsAuth) {
-            const token = await getAuthToken();
-            if (!token) {
-                // If a screen needs auth and there's no token, this will prevent the call.
-                // The user should be redirected to login by the navigation logic.
-                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Platform': Platform.OS,
+        'Accept-Language': i18n.locale,
+        ...(options.headers as Record<string, string> || {})
+    };
+    if (needsAuth && tokenData) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+    }
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const requestId = response.headers.get("X-Request-ID");
+
+        if (response.status === 401 && needsAuth) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject, endpoint, options, needsAuth });
+                });
             }
-            headers['Authorization'] = `Bearer ${token}`;
+
+            isRefreshing = true;
+            const currentRefreshToken = tokenData?.refresh_token;
+
+            if (!currentRefreshToken) {
+                triggerLogout();
+                isRefreshing = false;
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Refresh token not found.");
+            }
+            
+            const newTokens = await refreshAuthToken(currentRefreshToken);
+
+            if (newTokens?.access_token) {
+                await setAuthToken(newTokens);
+                processFailedQueue(null, newTokens);
+                return fetchBackend(endpoint, options, needsAuth);
+            } else {
+                const refreshError = new BackendError(t('backendService.errorAuthFailed'), 401, "Session expired. Please log in again.");
+                processFailedQueue(refreshError, null);
+                triggerLogout();
+                throw refreshError;
+            }
         }
         
-        response = await fetch(url, { ...options, headers });
-        requestId = response.headers.get("X-Request-ID");
-
         if (response.status === 204) return null as T;
 
         const contentType = response.headers.get("content-type");
@@ -55,16 +99,10 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             if (isJson && responseBody?.detail) {
                 errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
-            } else if (!isJson && responseBody) {
-                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
             
-            if (response.status === 401) {
-                errorMessage = t('backendService.errorAuthFailed');
-                // Trigger global logout handler
-                triggerLogout();
-            }
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 403) errorMessage = responseBody?.detail || t('backendService.errorPermissionDenied');
             if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
 
             throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
@@ -85,7 +123,11 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
         }
         
-        throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
+        throw new BackendError(networkErrorMessage, 0, networkErrorMessage, null);
+    } finally {
+        if(isRefreshing && endpoint === '/auth/refresh-token') {
+             isRefreshing = false;
+        }
     }
 }
 

@@ -14,7 +14,7 @@ export async function getGramsFromNaturalLanguage(
         const message = error instanceof BackendError
             ? error.message
             : t('errors.unexpectedError');
-        Alert.alert(t('errors.estimationFailedTitle'), message);
+        Alert.alert(t('utils.units.errorTitle'), message);
         throw error;
     }
 }

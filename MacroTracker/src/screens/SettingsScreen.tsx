@@ -128,7 +128,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
 
   const updateStatistics = useCallback(async (currentGoals: { [key in MacroType]: number }) => {
-    console.log("SettingsScreen: Updating statistics with goals:", currentGoals);
     try {
         const loadedEntries = await loadDailyEntries();
         const updatedStats: Statistics = {
@@ -139,7 +138,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         });
         setStatistics(updatedStats);
         setChartUpdateKey((prevKey) => prevKey + 1);
-        console.log("SettingsScreen: Statistics updated.");
     } catch (error) {
         console.error("SettingsScreen: Failed to update statistics:", error);
     }
@@ -147,13 +145,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const fetchUserStatus = useCallback(async () => {
     setIsLoadingCoins(true);
-    try { const status = await getUserStatus(); setUserCoins(status.coins); }
+    try { 
+      const status = await getUserStatus(); 
+      setUserCoins(status.coins); 
+    }
     catch (error) {
       setUserCoins(null);
-      Toast.show({ type: 'error', text1: t('accountSettings.errorLoadCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom', });
+      const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+      Toast.show({ 
+        type: 'error', 
+        text1: t('accountSettings.errorLoadCoins'), 
+        text2: message, 
+        position: 'bottom', 
+      });
     }
     finally { setIsLoadingCoins(false); }
-  }, []);
+  }, [t]);
 
   useFocusEffect( useCallback(() => {
       let isActive = true;
@@ -176,7 +183,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus, navigation]) 
+    }, [updateStatistics, fetchUserStatus, navigation, t]) 
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
@@ -196,7 +203,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         });
       return updatedSettings;
     });
-  }, [updateStatistics]);
+  }, [updateStatistics, t]);
 
 
   const localDataOperationHandler = useCallback(async () => {
@@ -215,14 +222,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
+  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation, t]);
 
     const handleAddTestCoins = useCallback(async () => {
         setIsAddingCoins(true);
-        try { const amount = 10; const updatedStatus = await addCoinsToUser(amount); setUserCoins(updatedStatus.coins); Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); }
-        catch (error) { Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom' }); }
+        try { 
+            const amount = 10; 
+            const updatedStatus = await addCoinsToUser(amount); 
+            setUserCoins(updatedStatus.coins); 
+            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); 
+        }
+        catch (error) { 
+            const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+            Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
+        }
         finally { setIsAddingCoins(false); }
-    }, []);
+    }, [t]);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));

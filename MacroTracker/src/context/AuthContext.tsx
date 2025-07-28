@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { loadSettings, saveSettings } from '../services/storageService';
-import { getAuthToken, removeAuthToken, setAuthToken } from '../services/authService';
+import * as authService from '../services/authService';
 import { Settings, LanguageCode } from '../types/settings';
+import { Token } from '../types/token';
 
 export interface AuthState {
   authenticated: boolean;
@@ -12,7 +13,7 @@ export interface AuthContextType {
   authState: AuthState;
   settings: Settings;
   isLoading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (tokenData: Token) => Promise<void>;
   logout: () => Promise<void>;
   changeTheme: (theme: 'light' | 'dark' | 'system') => void;
   changeLocale: (locale: LanguageCode) => void;
@@ -36,12 +37,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const token = await getAuthToken();
+        const tokenData = await authService.getAuthToken();
         const loadedSettings = await loadSettings();
         setSettings(loadedSettings);
 
-        if (token) {
-          setAuthState({ authenticated: true, token });
+        if (tokenData?.access_token) {
+          setAuthState({ authenticated: true, token: tokenData.access_token });
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -53,13 +54,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     loadAuthData();
   }, []);
 
-  const login = async (token: string) => {
-    await setAuthToken(token);
-    setAuthState({ authenticated: true, token });
+  const login = async (tokenData: Token) => {
+    await authService.setAuthToken(tokenData);
+    setAuthState({ authenticated: true, token: tokenData.access_token });
   };
 
   const logout = async () => {
-    await removeAuthToken();
+    await authService.logoutUser(); // This clears tokens and calls backend
     setAuthState({ authenticated: false, token: null });
   };
 
@@ -74,7 +75,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setSettings(newSettings);
     await saveSettings(newSettings);
   }, [settings]);
-
 
   const value: AuthContextType = {
     authState,

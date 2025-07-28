@@ -1,6 +1,6 @@
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,16 +28,18 @@ const LoginScreen: React.FC = () => {
         setIsLoading(true);
         try {
             const response = await loginUser(email, password);
-            await login(response.access_token);
+            if (response.access_token) {
+                await login(response);
+            }
         } catch (error: any) {
-            // The error message is now handled inside authService, so we just show it.
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Text h2 style={[styles.title, { color: theme.colors.text }]}>Welcome Back</Text>
             <Input
                 placeholder="Email"
@@ -81,7 +83,7 @@ const LoginScreen: React.FC = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 };
 

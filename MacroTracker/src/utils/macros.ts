@@ -16,13 +16,18 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
     }
 }
 
+const handleError = (error: unknown, title: string) => {
+    const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+    Alert.alert(title, message);
+    throw error;
+}
+
 export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
     try {
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.errorTitle'), message);
-        throw error;
+        handleError(error, t('utils.macros.errorTitle'));
+        throw error; // Re-throw to allow caller to handle UI state
     }
 }
 
@@ -32,8 +37,7 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         const mimeType = determineMimeType(asset);
         return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.errorTitle'), message);
+        handleError(error, t('utils.macros.errorTitle'));
         throw error;
     }
 }
@@ -44,8 +48,7 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
         if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        handleError(error, t('utils.macros.multiItemErrorTitle'));
         throw error;
     }
 }
@@ -56,8 +59,7 @@ export async function getMultipleFoodsFromText(text: string): Promise<EstimatedF
         if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        handleError(error, t('utils.macros.multiItemErrorTitle'));
         throw error;
     }
 }
