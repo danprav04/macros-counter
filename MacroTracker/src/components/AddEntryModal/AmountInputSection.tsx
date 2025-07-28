@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/AmountInputSection.tsx
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Keyboard } from 'react-native';
 import { Text, Input, Icon, ButtonGroup, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
@@ -44,6 +44,18 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const gramsInputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (isEditMode && unitMode === "grams") {
+            // A timeout helps ensure the modal animation is complete and the component is fully rendered before focusing.
+            const timer = setTimeout(() => {
+                gramsInputRef.current?.focus();
+            }, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [isEditMode, unitMode]);
+
 
     const handleGramsChange = (text: string) => {
         const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1");
@@ -104,6 +116,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         </View>
                     )}
                     <Input
+                        ref={gramsInputRef}
                         placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
                         keyboardType="numeric"
                         value={grams}
@@ -116,8 +129,8 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         containerStyle={{ paddingHorizontal: 0 }}
                         key={`grams-input-${selectedFood.id}-${isEditMode}`}
                         disabled={isActionDisabled}
-                        autoFocus={!isEditMode} // autofocus only when adding new, not editing
-                        selectTextOnFocus={!isEditMode}
+                        autoFocus={!isEditMode} // Keep autoFocus for add mode
+                        selectTextOnFocus={true} // Select text on focus for both add and edit
                     />
                 </>
             )}

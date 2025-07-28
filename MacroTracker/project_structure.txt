@@ -775,7 +775,7 @@ import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Ke
 import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
-import { loadRecentFoods, saveRecentFoods, LastUsedPortions, loadRecentGrams, saveRecentGrams } from "../../services/storageService";
+import { loadRecentFoods, saveRecentFoods, RecentServings, loadRecentServings, saveRecentServings } from "../../services/storageService";
 import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
@@ -803,11 +803,11 @@ interface AddEntryModalProps {
   onAddNewFoodRequest: () => void;
   onCommitFoodToLibrary: (foodData: Omit<Food, 'id' | 'createdAt'> | Food, isUpdate: boolean) => Promise<Food | null>;
   dailyGoals: Settings['dailyGoals'];
-  lastUsedPortions: LastUsedPortions;
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
-const MAX_RECENT_FOODS = 5;
+const MAX_RECENT_FOODS = 15;
+const MAX_SERVINGS_PER_FOOD = 4;
 
 type UnitMode = "grams" | "auto";
 type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
@@ -815,7 +815,6 @@ type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
 const AddEntryModal: React.FC<AddEntryModalProps> = ({
   isVisible, toggleOverlay, handleAddEntry: parentHandleAddEntry, handleAddMultipleEntries: parentHandleAddMultipleEntries,
   foods, isEditMode, initialGrams, initialSelectedFoodForEdit, onAddNewFoodRequest, onCommitFoodToLibrary, dailyGoals,
-  lastUsedPortions,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -824,7 +823,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [internalGrams, setInternalGrams] = useState("");
   const [internalSearch, setInternalSearch] = useState("");
   const [recentFoods, setRecentFoods] = useState<Food[]>([]);
-  const [recentGrams, setRecentGrams] = useState<number[]>([]);
+  const [recentServings, setRecentServings] = useState<RecentServings>({});
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({});
   const [unitMode, setUnitMode] = useState<UnitMode>("grams");
   const [autoInput, setAutoInput] = useState("");
@@ -874,9 +873,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         setInternalSelectedFood(initialSelectedFoodForEdit);
         setInternalGrams(initialGrams || "");
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
-    } else {
+    } 
+    
+    // Always load recents for non-edit scenarios.
+    if (!isEditMode) {
         loadRecentFoods().then(setRecentFoods);
-        loadRecentGrams().then(setRecentGrams);
+        loadRecentServings().then(setRecentServings);
     }
   }, []); 
 
@@ -891,32 +893,33 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
   }, []);
 
-  const addToRecentGrams = useCallback(async (newGrams: number[]) => {
-    if (!newGrams || newGrams.length === 0) return;
-    setRecentGrams(prev => {
-        const uniqueNewGrams = [...new Set(newGrams.map(g => Math.round(g)))];
-        const updated = [...uniqueNewGrams, ...prev];
-        const uniqueUpdated = [...new Set(updated)];
-        const final = uniqueUpdated.slice(0, 4);
-        saveRecentGrams(final).catch(() => {});
-        return final;
+  const addMultipleToRecentServings = useCallback(async (entries: { foodId: string; grams: number }[]) => {
+    if (!entries || entries.length === 0) return;
+    
+    setRecentServings(prevServings => {
+        const newServings = { ...prevServings };
+        entries.forEach(({ foodId, grams }) => {
+            const roundedGrams = Math.round(grams);
+            const currentServingsForFood = newServings[foodId] || [];
+            const updatedServingsForFood = [roundedGrams, ...currentServingsForFood.filter(g => g !== roundedGrams)];
+            newServings[foodId] = [...new Set(updatedServingsForFood)].slice(0, MAX_SERVINGS_PER_FOOD);
+        });
+        saveRecentServings(newServings).catch(() => {});
+        return newServings;
     });
   }, []);
 
   const servingSizeSuggestions = useMemo(() => {
     if (!internalSelectedFood?.id) return [];
-    const suggestions = new Set<string>();
-    const lastUsed = lastUsedPortions[internalSelectedFood.id];
-    if (lastUsed) {
-        suggestions.add(String(lastUsed));
-    }
-    recentGrams.forEach(g => suggestions.add(String(g)));
-    const suggestionArray = Array.from(suggestions);
-    return suggestionArray.map(val => ({
-        label: val === String(lastUsed) ? t('addEntryModal.lastUsedServing', { grams: val }) : `${val}g`,
-        value: val
+    
+    const servingsForFood = recentServings[internalSelectedFood.id] || [];
+    if (servingsForFood.length === 0) return [];
+
+    return servingsForFood.map((val, index) => ({
+        label: index === 0 ? t('addEntryModal.lastUsedServing', { grams: val }) : `${val}g`,
+        value: String(val)
     }));
-  }, [internalSelectedFood, lastUsedPortions, recentGrams, t]);
+  }, [internalSelectedFood, recentServings, t]);
 
   const handleEstimateGrams = useCallback(async () => {
     Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
@@ -936,9 +939,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     parentHandleAddEntry(internalSelectedFood, numericGramsValue);
     if (!isEditMode) {
         addToRecentFoods(internalSelectedFood);
-        addToRecentGrams([numericGramsValue]);
+        addMultipleToRecentServings([{ foodId: internalSelectedFood.id, grams: numericGramsValue }]);
     }
-  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, addToRecentGrams, t]);
+  }, [internalSelectedFood, internalGrams, isActionDisabled, isEditMode, parentHandleAddEntry, addToRecentFoods, addMultipleToRecentServings, t]);
 
   const handleToggleMultipleFoodSelection = useCallback((food: Food, displayGrams: number) => {
     if (isEditMode || internalSelectedFood) return;
@@ -951,10 +954,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const entriesToAdd = Array.from(selectedMultipleFoods.values()); if (entriesToAdd.length === 0) return;
     parentHandleAddMultipleEntries(entriesToAdd);
     entriesToAdd.forEach(entry => addToRecentFoods(entry.food));
-    const gramValues = entriesToAdd.map(e => e.grams);
-    addToRecentGrams(gramValues);
+    const servingsToAdd = entriesToAdd.map(e => ({ foodId: e.food.id, grams: e.grams }));
+    addMultipleToRecentServings(servingsToAdd);
     setSelectedMultipleFoods(new Map());
-  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods, addToRecentGrams]);
+  }, [isEditMode, internalSelectedFood, selectedMultipleFoods, isActionDisabled, parentHandleAddMultipleEntries, addToRecentFoods, addMultipleToRecentServings]);
 
   const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
     if (isEditMode) return;
@@ -1059,10 +1062,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     });
     if (entriesToAdd.length > 0) {
         parentHandleAddMultipleEntries(entriesToAdd);
-        const gramValues = entriesToAdd.map(e => e.grams);
-        addToRecentGrams(gramValues);
+        const servingsToAdd = entriesToAdd.map(e => ({ foodId: e.food.id, grams: e.grams }));
+        addMultipleToRecentServings(servingsToAdd);
     }
-  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, addToRecentGrams]);
+  }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, addMultipleToRecentServings]);
 
   const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
 
@@ -1111,7 +1114,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected} onConfirmQuickAdd={handleConfirmQuickAdd} onQuickAddImage={handleQuickAddImage} onQuickAddText={handleQuickAddText}
             onBackFromQuickAdd={() => { setModalMode("normal"); setQuickAddTextInput(""); }}
           />
-          {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} lastUsedPortions={lastUsedPortions} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
+          {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} recentServings={recentServings} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
           {modalMode === 'quickAddText' && <View style={styles.quickAddTextView}><Input placeholder={t('addEntryModal.textQuickAdd.placeholder')} multiline numberOfLines={6} value={quickAddTextInput} onChangeText={setQuickAddTextInput} inputStyle={styles.quickAddTextArea} inputContainerStyle={styles.quickAddTextAreaContainer} containerStyle={{ paddingHorizontal: 0 }} autoFocus /><Button title={t('addEntryModal.textQuickAdd.analyzeButton')} onPress={handleAnalyzeText} loading={isTextQuickAddLoading} disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} buttonStyle={styles.analyzeButton} /></View>}
           {modalMode === 'quickAddSelect' && <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} />}
           <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
@@ -1431,7 +1434,7 @@ import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, ActivityIndicator, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
-import { LastUsedPortions } from '../../services/storageService';
+import { RecentServings } from '../../services/storageService';
 import { t } from '../../localization/i18n';
 import { findFoodsByTagSearch } from '../../utils/searchUtils';
 import { getFoodIconUrl } from '../../utils/iconUtils';
@@ -1453,7 +1456,7 @@ interface FoodSelectionListProps {
     onAddNewFoodRequest: () => void;
     isActionDisabled: boolean;
     isEditMode: boolean;
-    lastUsedPortions: LastUsedPortions;
+    recentServings: RecentServings;
     modalMode: "normal" | "quickAddSelect";
 }
 
@@ -1474,7 +1477,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     onAddNewFoodRequest,
     isActionDisabled,
     isEditMode,
-    lastUsedPortions,
+    recentServings,
     modalMode,
 }) => {
     const { theme } = useTheme();
@@ -1564,7 +1567,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
             updateSearch(""); 
             setSelectedMultipleFoods(new Map()); 
             if (!isEditMode) { 
-                const lastPortion = lastUsedPortions[item.id];
+                const lastPortion = recentServings[item.id]?.[0];
                 if (lastPortion) {
                     setGrams(String(lastPortion));
                 } else {
@@ -1577,7 +1580,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         updateSearch, 
         selectedFood, 
         setGrams, 
-        lastUsedPortions, 
+        recentServings, 
         setSelectedMultipleFoods, 
         isEditMode,
         selectedMultipleFoods.size 
@@ -1595,7 +1598,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
         const isSingleSelectedViaState = selectedFood?.id === foodItem.id;
         const isMultiSelected = selectedMultipleFoods.has(foodItem.id);
         const iconIdentifier = getFoodIconUrl(foodItem.name);
-        const displayGramsForMulti = lastUsedPortions[foodItem.id] || DEFAULT_GRAMS_FOR_MULTI_ADD;
+        const displayGramsForMulti = recentServings[foodItem.id]?.[0] || DEFAULT_GRAMS_FOR_MULTI_ADD;
 
         const canShowCheckbox = modalMode === "normal" && !isEditMode && (selectedMultipleFoods.size > 0 || !selectedFood);
         const showSingleSelectCheckmark = isSingleSelectedViaState && selectedMultipleFoods.size === 0 && !search;
@@ -1720,7 +1723,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
-                extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, lastUsedPortions }}
+                extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, recentServings }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
                 maxToRenderPerBatch={10}
@@ -6035,7 +6038,7 @@ import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nMan
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
-import { saveDailyEntries, loadDailyEntries, loadSettings, saveLastUsedPortions, loadLastUsedPortions, LastUsedPortions } from "../services/storageService";
+import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 // isValidNumberInput is not directly used in this file after changes
 import DailyProgress from "../components/DailyProgress";
@@ -6077,7 +6080,6 @@ const DailyEntryScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
-  const [lastUsedPortions, setLastUsedPortions] = useState<LastUsedPortions>({});
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -6132,11 +6134,10 @@ const DailyEntryScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [foodsResult, loadedEntries, loadedSettings, loadedPortions] = await Promise.all([
+      const [foodsResult, loadedEntries, loadedSettings] = await Promise.all([
         getFoods(),
         loadDailyEntries(),
         loadSettings(),
-        loadLastUsedPortions(),
       ]);
 
       const loadedFoodsArray = foodsResult.items;
@@ -6145,7 +6146,6 @@ const DailyEntryScreen: React.FC = () => {
       loadedFoodsArray.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(loadedFoodsArray);
       setDailyEntries(loadedEntries);
-      setLastUsedPortions(loadedPortions);
       triggerIconPrefetch(loadedEntries, selectedDate);
     } catch (error) {
       console.error("Error in DailyEntryScreen loadData:", error);
@@ -6218,7 +6218,7 @@ const DailyEntryScreen: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [dailyEntries, t]); // Added dailyEntries as it's used to get previousEntriesState
+  }, [dailyEntries, t]);
 
   const handleSingleEntryActionFinal = useCallback(async (foodToAdd: Food, gramsToAdd: number) => {
     if (isSaving) return;
@@ -6255,12 +6255,6 @@ const DailyEntryScreen: React.FC = () => {
         return updatedEntriesArray;
     });
 
-    if (foodToAdd?.id) {
-        const updatedPortions = { ...lastUsedPortions, [foodToAdd.id]: gramsToAdd };
-        setLastUsedPortions(updatedPortions);
-        await saveLastUsedPortions(updatedPortions);
-    }
-
     if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
     
     setIsOverlayVisible(false);
@@ -6269,7 +6263,7 @@ const DailyEntryScreen: React.FC = () => {
     setFoodForEditModal(null);
 
     Toast.show({ type: "success", text1: t(isEditingThisAction ? 'dailyEntryScreen.entryUpdated' : 'dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t, lastUsedPortions ]);
+  }, [ isSaving, editIndex, selectedDate, getOriginalIndex, updateAndSaveEntries, resolveAndSetIcon, t ]);
 
 
   const handleAddMultipleEntriesFinal = useCallback(async (entriesToAdd: { food: Food; grams: number }[]) => {
@@ -6294,13 +6288,6 @@ const DailyEntryScreen: React.FC = () => {
           return updatedEntriesArray;
       });
 
-      const newPortions = { ...lastUsedPortions };
-      entriesToAdd.forEach(entry => {
-        if (entry.food.id) newPortions[entry.food.id] = entry.grams;
-      });
-      setLastUsedPortions(newPortions);
-      await saveLastUsedPortions(newPortions);
-
       newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
       
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
@@ -6310,7 +6297,7 @@ const DailyEntryScreen: React.FC = () => {
       setInitialGramsForEdit(undefined);
       setFoodForEditModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsOverlayVisible(false); }
-  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t, lastUsedPortions]);
+  }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t]);
 
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
@@ -6551,13 +6538,12 @@ const DailyEntryScreen: React.FC = () => {
             handleAddEntry={handleSingleEntryActionFinal}
             handleAddMultipleEntries={handleAddMultipleEntriesFinal}
             foods={foods} 
-            isEditMode={editIndex !== null} // isEditMode depends on editIndex (which is a reversed index)
+            isEditMode={editIndex !== null}
             initialGrams={initialGramsForEdit}
             initialSelectedFoodForEdit={foodForEditModal}
             onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
             onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
             dailyGoals={dailyGoals}
-            lastUsedPortions={lastUsedPortions}
           />
       )}
     </SafeAreaView>
@@ -8615,11 +8601,10 @@ const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
 const SETTINGS_KEY = 'settings';
 const RECENT_FOODS_KEY = 'recentFoods';
-const LAST_USED_PORTIONS_KEY = 'lastUsedPortions';
-const RECENT_GRAMS_AMOUNTS_KEY = 'recentGramsAmounts';
+const RECENT_SERVINGS_KEY = 'recentServings';
 
 
-export type LastUsedPortions = { [foodId: string]: number }; // Type for last used portions
+export type RecentServings = { [foodId: string]: number[] }; // Type for recent servings
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -8724,16 +8709,21 @@ export const loadSettings = async (): Promise<Settings> => {
 
 export const clearAllData = async (): Promise<void> => {
   try {
-    // Keep clientID, clear everything else
+    // Keep clientID and auth token, clear everything else
     const clientIdKey = '@MacroTracker:clientId';
-    const clientId = await AsyncStorage.getItem(clientIdKey);
+    const authTokenKey = '@MacroTracker:authToken';
+    const [clientId, authToken] = await AsyncStorage.multiGet([clientIdKey, authTokenKey]);
     
     await AsyncStorage.clear();
     
-    if (clientId) {
-        await AsyncStorage.setItem(clientIdKey, clientId);
+    const itemsToKeep: [string, string][] = [];
+    if (clientId?.[1]) itemsToKeep.push(clientId as [string, string]);
+    if (authToken?.[1]) itemsToKeep.push(authToken as [string, string]);
+
+    if (itemsToKeep.length > 0) {
+        await AsyncStorage.multiSet(itemsToKeep);
     }
-    console.log('Application data cleared (excluding Client ID).');
+    console.log('Application data cleared (excluding auth/client ID).');
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;
@@ -8759,41 +8749,22 @@ export const loadRecentFoods = async (): Promise<Food[]> => {
     }
 };
 
-export const saveLastUsedPortions = async (portions: LastUsedPortions): Promise<void> => {
+export const saveRecentServings = async (servings: RecentServings): Promise<void> => {
     try {
-        await AsyncStorage.setItem(LAST_USED_PORTIONS_KEY, JSON.stringify(portions));
+        await AsyncStorage.setItem(RECENT_SERVINGS_KEY, JSON.stringify(servings));
     } catch (error) {
-        console.error('Error saving last used portions:', error);
+        console.error('Error saving recent servings:', error);
         throw error;
     }
 };
 
-export const loadLastUsedPortions = async (): Promise<LastUsedPortions> => {
+export const loadRecentServings = async (): Promise<RecentServings> => {
     try {
-        const portionsJson = await AsyncStorage.getItem(LAST_USED_PORTIONS_KEY);
-        return portionsJson ? JSON.parse(portionsJson) : {};
+        const servingsJson = await AsyncStorage.getItem(RECENT_SERVINGS_KEY);
+        return servingsJson ? JSON.parse(servingsJson) : {};
     } catch (error) {
-        console.error('Error loading last used portions:', error);
+        console.error('Error loading recent servings:', error);
         return {};
-    }
-};
-
-export const saveRecentGrams = async (grams: number[]): Promise<void> => {
-    try {
-        await AsyncStorage.setItem(RECENT_GRAMS_AMOUNTS_KEY, JSON.stringify(grams));
-    } catch (error) {
-        console.error('Error saving recent gram amounts:', error);
-        throw error;
-    }
-};
-
-export const loadRecentGrams = async (): Promise<number[]> => {
-    try {
-        const gramsJson = await AsyncStorage.getItem(RECENT_GRAMS_AMOUNTS_KEY);
-        return gramsJson ? JSON.parse(gramsJson) : [];
-    } catch (error) {
-        console.error('Error loading recent gram amounts:', error);
-        return [];
     }
 };
 ---------- END storageService.ts ----------
