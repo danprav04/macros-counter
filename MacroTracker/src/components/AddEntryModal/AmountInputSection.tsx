@@ -48,7 +48,6 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 
     useEffect(() => {
         if (isEditMode && unitMode === "grams") {
-            // A timeout helps ensure the modal animation is complete and the component is fully rendered before focusing.
             const timer = setTimeout(() => {
                 gramsInputRef.current?.focus();
             }, 150);
@@ -73,23 +72,25 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         </Text>
                     )}
                 </View>
-                <ButtonGroup
-                    buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
-                    selectedIndex={unitMode === "grams" ? 0 : 1}
-                    onPress={(index) => {
-                        if (!isActionDisabled) {
-                            setUnitMode(index === 0 ? "grams" : "auto");
-                            Keyboard.dismiss();
-                        }
-                    }}
-                    containerStyle={styles.buttonGroupContainer}
-                    selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-                    textStyle={styles.buttonGroupText}
-                    selectedTextStyle={{ color: theme.colors.white }}
-                    disabled={isEditMode ? [1] : isActionDisabled ? [0, 1] : []}
-                    disabledStyle={styles.disabledButtonGroup}
-                    disabledTextStyle={{ color: theme.colors.grey3 }}
-                />
+                {!isEditMode && (
+                    <ButtonGroup
+                        buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
+                        selectedIndex={unitMode === "grams" ? 0 : 1}
+                        onPress={(index) => {
+                            if (!isActionDisabled) {
+                                setUnitMode(index === 0 ? "grams" : "auto");
+                                Keyboard.dismiss();
+                            }
+                        }}
+                        containerStyle={styles.buttonGroupContainer}
+                        selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                        textStyle={styles.buttonGroupText}
+                        selectedTextStyle={{ color: theme.colors.white }}
+                        disabled={isActionDisabled ? [0, 1] : []}
+                        disabledStyle={styles.disabledButtonGroup}
+                        disabledTextStyle={{ color: theme.colors.grey3 }}
+                    />
+                )}
             </View>
             {unitMode === "grams" && (
                 <>
@@ -129,8 +130,8 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         containerStyle={{ paddingHorizontal: 0 }}
                         key={`grams-input-${selectedFood.id}-${isEditMode}`}
                         disabled={isActionDisabled}
-                        autoFocus={!isEditMode} // Keep autoFocus for add mode
-                        selectTextOnFocus={true} // Select text on focus for both add and edit
+                        autoFocus={!isEditMode}
+                        selectTextOnFocus={true}
                     />
                 </>
             )}
