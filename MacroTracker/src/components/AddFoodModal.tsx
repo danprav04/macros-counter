@@ -227,9 +227,6 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                             titleStyle={styles.aiButtonTitle} loading={aiTextLoading} disabled={isAnyLoading}
                             icon={mode === "normal" ? <MaterialCommunityIcons name="text-box-search-outline" size={18} color={theme.colors.white} style={{ marginRight: 8 }} /> : undefined}
                             containerStyle={[styles.buttonContainer, { marginTop: 15 }]} />
-                        <View style={styles.futureInputContainer}>
-                            <Text style={styles.futureInputLabel}> {t('addFoodModal.barcodeComingSoon')} </Text>
-                        </View>
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
