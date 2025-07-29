@@ -237,7 +237,7 @@ const useStyles = makeStyles((theme) => ({
         flexGrow: 0,
     },
     servingSizeButton: {
-        backgroundColor: theme.colors.grey4,
+        backgroundColor: theme.colors.primaryLight,
         borderRadius: 15,
         marginRight: 8,
         paddingHorizontal: 12,
@@ -247,8 +247,9 @@ const useStyles = makeStyles((theme) => ({
         height: 30,
     },
     servingSizeButtonTitle: {
-        color: theme.colors.text,
+        color: theme.colors.primary,
         fontSize: 13,
+        fontWeight: '500',
     },
     gramInputStyle: {
         color: theme.colors.text,

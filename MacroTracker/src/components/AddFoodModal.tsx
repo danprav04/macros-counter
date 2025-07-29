@@ -8,7 +8,6 @@ import {
     Alert,
     ScrollView,
     StyleSheet,
-    TouchableOpacity,
 } from "react-native";
 import {
     Button,
@@ -18,6 +17,7 @@ import {
     makeStyles,
     useTheme,
     Icon,
+    ButtonGroup,
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -25,7 +25,6 @@ import Toast from "react-native-toast-message";
 import {
     getMacrosFromText,
     getMacrosForImageFile,
-    BackendError,
 } from "../utils/macros";
 import * as ImagePicker from "expo-image-picker";
 import { ImagePickerResult } from 'expo-image-picker';
@@ -35,6 +34,7 @@ import { t } from '../localization/i18n';
 
 // Use a specific type for the form data
 type FoodFormData = Omit<Food, "id" | "createdAt">;
+type InputMode = 'manual' | 'ai';
 
 interface AddFoodModalProps {
     isVisible: boolean;
@@ -70,17 +70,21 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
     const [loading, setLoading] = useState(false);
-    const [mode, setMode] = useState<"normal" | "ingredients">("normal");
+    const [inputMode, setInputMode] = useState<InputMode>('manual');
     const [ingredients, setIngredients] = useState("");
     const [aiTextLoading, setAiTextLoading] = useState(false);
     const [aiImageLoading, setAiImageLoading] = useState(false);
 
     useEffect(() => {
         if (isVisible) {
-            setErrors({}); setMode("normal"); setIngredients("");
-            setAiTextLoading(false); setAiImageLoading(false); setLoading(false);
+            setErrors({});
+            setIngredients("");
+            setAiTextLoading(false);
+            setAiImageLoading(false);
+            setLoading(false);
+            setInputMode(editFood ? 'manual' : 'manual');
         }
-    }, [isVisible, setErrors]);
+    }, [isVisible, editFood, setErrors]);
 
     const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
@@ -116,38 +120,39 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         } finally { setLoading(false); }
     };
 
-    const handleAiTextButtonClick = async () => {
-        const currentFoodName = (getCurrentFoodData().name ?? "").trim();
-        const isUpdate = !!editFood;
-        if (mode === "normal") {
-            setMode("ingredients");
-            handleInputChange("calories", "", isUpdate); handleInputChange("protein", "", isUpdate);
-            handleInputChange("carbs", "", isUpdate); handleInputChange("fat", "", isUpdate);
-        } else {
-            if (!currentFoodName && !ingredients.trim()) { Alert.alert(t('addFoodModal.alertInputNeeded'), t('addFoodModal.alertInputNeededMessage')); return; }
-            setAiTextLoading(true);
-            try {
-                const macros = await getMacrosFromText(currentFoodName, ingredients);
-                // The 'macros' object now includes 'foodName'
-                if (macros.foodName) {
-                    handleInputChange("name", macros.foodName, isUpdate);
-                }
-                handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
-                handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
-                handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
-                handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-                setMode("normal");
-                Toast.show({
-                    type: 'info',
-                    text1: currentFoodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
-                    text2: currentFoodName ? undefined : t('addFoodModal.foodIdentifiedMessage', { foodName: macros.foodName }),
-                    position: 'bottom'
-                });
-            } catch (error) {
-                console.error("AI Macro fetch error (recipe - modal):", error);
-            } finally {
-                setAiTextLoading(false);
+    const handleAnalyzeText = async () => {
+        const foodName = (getCurrentFoodData().name ?? "").trim();
+        const textToAnalyze = ingredients.trim();
+        if (!foodName && !textToAnalyze) {
+            Alert.alert(t('addFoodModal.alertInputNeeded'), t('addFoodModal.alertInputNeededMessage'));
+            return;
+        }
+    
+        setAiTextLoading(true);
+        try {
+            const macros = await getMacrosFromText(foodName, textToAnalyze);
+            const isUpdate = !!editFood;
+    
+            if (macros.foodName) {
+                handleInputChange("name", macros.foodName, isUpdate);
             }
+            handleInputChange("calories", String(Math.round(macros.calories)), isUpdate);
+            handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
+            handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
+            handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
+            
+            setInputMode("manual");
+    
+            Toast.show({
+                type: 'info',
+                text1: foodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
+                text2: foodName ? undefined : t('addFoodModal.foodIdentifiedMessage', { foodName: macros.foodName }),
+                position: 'bottom'
+            });
+        } catch (error) {
+            console.error("AI Macro fetch error (text - modal):", error);
+        } finally {
+            setAiTextLoading(false);
         }
     };
 
@@ -166,7 +171,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
                      handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
-                     setMode("normal"); setIngredients("");
+                     setInputMode("manual");
+                     setIngredients("");
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
                 } catch (analysisError) { console.error("Error during image analysis (modal):", analysisError); }
                 finally { setAiImageLoading(false); }
@@ -195,38 +201,70 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         <Icon name="close" type="material" size={28} color={theme.colors.text} onPress={!isAnyLoading ? toggleOverlay : undefined}
                               containerStyle={styles.closeIcon} disabled={isAnyLoading} disabledStyle={{ backgroundColor: 'transparent' }} />
                     </View>
-                    <ScrollView keyboardShouldPersistTaps="handled">
-                        <View style={styles.imageButtonContainer}>
-                            <TouchableOpacity onPress={handleGetImageAndAnalyze} disabled={isAnyLoading} style={styles.iconButton}>
-                                {aiImageLoading ? ( <ActivityIndicator size="small" color={theme.colors.primary} /> ) : (
-                                    <Icon name="camera-enhance-outline" type="material-community" size={28} color={isAnyLoading ? theme.colors.grey3 : theme.colors.primary} />
-                                )}
-                            </TouchableOpacity>
-                             <Text style={styles.imageButtonLabel}>{t('addFoodModal.getFromImage')}</Text>
-                        </View>
-                        {mode === "normal" ? (
-                            <FoodFormFields values={getCurrentFoodData()} errors={errors} onInputChange={handleInputChange} isEditing={!!editFood} disabled={isAnyLoading} />
-                        ) : (
-                            <>
-                                <View style={styles.backButtonContainer}>
-                                    <Icon name="arrow-left" type="material-community" size={24} color={theme.colors.primary} onPress={() => !isAnyLoading && setMode("normal")} disabled={isAnyLoading} containerStyle={styles.backIcon} />
-                                    <Text style={[styles.backButtonText, isAnyLoading && styles.disabledText]} onPress={() => !isAnyLoading && setMode("normal")}> {t('addFoodModal.backToManual')} </Text>
-                                </View>
-                                 <Input
-                                    label={t('addFoodModal.ingredientsOptional')} labelStyle={styles.inputLabel} value={ingredients} onChangeText={setIngredients} multiline={true}
-                                    numberOfLines={4} inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]} inputStyle={[styles.inputStyle, styles.multilineInput]}
-                                    placeholder={t('addFoodModal.ingredientsPlaceholder')} placeholderTextColor={theme.colors.grey3}
-                                    leftIcon={<MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.grey3} style={styles.multilineIcon} />}
+                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContentContainer}>
+                        {!editFood && (
+                            <ButtonGroup
+                                buttons={[t('addFoodModal.manualInput'), t('addFoodModal.aiAssist')]}
+                                selectedIndex={inputMode === 'manual' ? 0 : 1}
+                                onPress={(index) => {
+                                    if (isAnyLoading) return;
+                                    setInputMode(index === 0 ? 'manual' : 'ai');
+                                }}
+                                containerStyle={styles.inputModeButtonGroup}
+                                selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                                textStyle={{ color: theme.colors.text }}
+                                selectedTextStyle={{ color: theme.colors.white }}
+                                disabled={isAnyLoading}
+                                disabledStyle={{ backgroundColor: theme.colors.grey4 }}
+                            />
+                        )}
+
+                        {inputMode === 'manual' ? (
+                            <View>
+                                <FoodFormFields
+                                    values={getCurrentFoodData()}
+                                    errors={errors}
+                                    onInputChange={handleInputChange}
+                                    isEditing={!!editFood}
                                     disabled={isAnyLoading}
                                 />
-                            </>
+                            </View>
+                        ) : (
+                            <View style={styles.aiContainer}>
+                                <Input
+                                    label={t('addFoodModal.ingredientsLabel')}
+                                    labelStyle={styles.inputLabel}
+                                    value={ingredients}
+                                    onChangeText={setIngredients}
+                                    multiline={true}
+                                    numberOfLines={4}
+                                    inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
+                                    inputStyle={[styles.inputStyle, styles.multilineInput]}
+                                    placeholder={t('addFoodModal.ingredientsPlaceholder')}
+                                    placeholderTextColor={theme.colors.grey3}
+                                    disabled={isAnyLoading}
+                                />
+                                <Button
+                                    title={t('addFoodModal.analyzeTextButton')}
+                                    onPress={handleAnalyzeText}
+                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
+                                    titleStyle={styles.aiButtonTitle}
+                                    loading={aiTextLoading}
+                                    disabled={isAnyLoading}
+                                    icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                />
+                                <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
+                                <Button
+                                    title={t('addFoodModal.analyzeImageButton')}
+                                    onPress={handleGetImageAndAnalyze}
+                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
+                                    titleStyle={styles.aiButtonTitle}
+                                    loading={aiImageLoading}
+                                    disabled={isAnyLoading}
+                                    icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                />
+                            </View>
                         )}
-                        <Button
-                            title={mode === "normal" ? t('addFoodModal.aiCalculateRecipe') : ingredients ? t('addFoodModal.aiGetFromIngredients') : t('addFoodModal.aiGetFromNameOnly')}
-                            onPress={handleAiTextButtonClick} buttonStyle={[styles.button, styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                            titleStyle={styles.aiButtonTitle} loading={aiTextLoading} disabled={isAnyLoading}
-                            icon={mode === "normal" ? <MaterialCommunityIcons name="text-box-search-outline" size={18} color={theme.colors.white} style={{ marginRight: 8 }} /> : undefined}
-                            containerStyle={[styles.buttonContainer, { marginTop: 15 }]} />
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
@@ -238,29 +276,33 @@ const useStyles = makeStyles((theme) => ({
     overlayContainer: { backgroundColor: 'transparent', width: '90%', maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 2, }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, overflow: 'hidden', },
     overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 0, maxHeight: '97%', backgroundColor: theme.colors.background },
     keyboardAvoidingView: { width: "100%", maxHeight: '100%' },
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, },
+    scrollContentContainer: { paddingBottom: 20 },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, },
     overlayTitle: { color: theme.colors.text, fontWeight: "bold", fontSize: 20, flexShrink: 1, marginRight: 10, textAlign: 'left' },
     closeIcon: { padding: 5, marginLeft: 10, },
-    imageButtonContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 15, paddingHorizontal: 10, },
-    iconButton: { padding: 8, marginRight: 8, },
-    imageButtonLabel: { color: theme.colors.primary, fontSize: 14, fontWeight: '500', textAlign: 'left' },
-    inputLabel: { color: theme.colors.text, fontWeight: '500', marginBottom: 2, fontSize: 14, textAlign: 'left' },
+    inputLabel: { color: theme.colors.text, fontWeight: '500', marginBottom: 5, fontSize: 14, textAlign: 'left' },
     inputContainerStyle: { borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, marginBottom: 5, paddingBottom: 2, },
     inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, textAlign: 'left' },
-    multilineInputContainer: { borderWidth: 1, borderColor: theme.colors.grey4, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 5, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, minHeight: 100, },
-    multilineInput: { marginLeft: 5, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, textAlign: 'left' },
-    multilineIcon: { marginTop: 8, marginRight: 5, },
-    futureInputContainer: { backgroundColor: theme.colors.grey5, padding: 15, borderRadius: 10, marginTop: 20, marginBottom: 10, alignItems: "center", },
-    futureInputLabel: { color: theme.colors.secondary, fontStyle: "italic", },
+    multilineInputContainer: { borderWidth: 1, borderColor: theme.colors.grey4, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, minHeight: 100, },
+    multilineInput: { marginLeft: 0, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, textAlign: 'left' },
     buttonContainer: { },
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
-    aiButton: { paddingVertical: 12, },
+    aiButton: { paddingVertical: 12, borderRadius: 8, },
     aiButtonTitle: { fontWeight: "600", fontSize: 15, textAlign: 'center', },
-    backButtonContainer: { flexDirection: "row", alignItems: "center", marginBottom: 15, marginTop: 5, },
-    backIcon: { marginRight: 5, padding: 5, },
-    backButtonText: { color: theme.colors.primary, fontSize: 16, fontWeight: '500', textAlign: 'left' },
-    disabledText: { color: theme.colors.grey3, }
+    inputModeButtonGroup: {
+        marginBottom: 20,
+        borderRadius: 8,
+    },
+    aiContainer: {
+        paddingTop: 10,
+    },
+    orDividerText: {
+        textAlign: 'center',
+        marginVertical: 15,
+        color: theme.colors.grey2,
+        fontWeight: 'bold',
+    },
 }));
 
 export default AddFoodModal;
