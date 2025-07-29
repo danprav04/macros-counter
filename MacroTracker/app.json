@@ -83,7 +83,7 @@
       },
       "env": {
          "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "https://5e993426d95d.ngrok-free.app"
+         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
   }
