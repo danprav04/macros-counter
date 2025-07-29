@@ -211,60 +211,64 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     setInputMode(index === 0 ? 'manual' : 'ai');
                                 }}
                                 containerStyle={styles.inputModeButtonGroup}
-                                selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-                                textStyle={{ color: theme.colors.text }}
-                                selectedTextStyle={{ color: theme.colors.white }}
+                                selectedButtonStyle={{ backgroundColor: theme.colors.card }}
+                                textStyle={{ color: theme.colors.grey4 }}
+                                selectedTextStyle={{ color: theme.colors.text }}
                                 disabled={isAnyLoading}
                                 disabledStyle={{ backgroundColor: theme.colors.grey4 }}
                             />
                         )}
 
-                        {inputMode === 'manual' ? (
-                            <View>
-                                <FoodFormFields
-                                    values={getCurrentFoodData()}
-                                    errors={errors}
-                                    onInputChange={handleInputChange}
-                                    isEditing={!!editFood}
-                                    disabled={isAnyLoading}
-                                />
-                            </View>
-                        ) : (
-                            <View style={styles.aiContainer}>
-                                <Input
-                                    label={t('addFoodModal.ingredientsLabel')}
-                                    labelStyle={styles.inputLabel}
-                                    value={ingredients}
-                                    onChangeText={setIngredients}
-                                    multiline={true}
-                                    numberOfLines={4}
-                                    inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
-                                    inputStyle={[styles.inputStyle, styles.multilineInput]}
-                                    placeholder={t('addFoodModal.ingredientsPlaceholder')}
-                                    placeholderTextColor={theme.colors.grey3}
-                                    disabled={isAnyLoading}
-                                />
-                                <Button
-                                    title={t('addFoodModal.analyzeTextButton')}
-                                    onPress={handleAnalyzeText}
-                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                                    titleStyle={styles.aiButtonTitle}
-                                    loading={aiTextLoading}
-                                    disabled={isAnyLoading}
-                                    icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                />
-                                <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
-                                <Button
-                                    title={t('addFoodModal.analyzeImageButton')}
-                                    onPress={handleGetImageAndAnalyze}
-                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                                    titleStyle={styles.aiButtonTitle}
-                                    loading={aiImageLoading}
-                                    disabled={isAnyLoading}
-                                    icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                />
-                            </View>
-                        )}
+                        {/* START: MODIFICATION FOR CONSISTENT HEIGHT */}
+                        <View style={styles.contentContainer}>
+                            {inputMode === 'manual' ? (
+                                <View>
+                                    <FoodFormFields
+                                        values={getCurrentFoodData()}
+                                        errors={errors}
+                                        onInputChange={handleInputChange}
+                                        isEditing={!!editFood}
+                                        disabled={isAnyLoading}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.aiContainer}>
+                                    <Input
+                                        label={t('addFoodModal.ingredientsLabel')}
+                                        labelStyle={styles.inputLabel}
+                                        value={ingredients}
+                                        onChangeText={setIngredients}
+                                        multiline={true}
+                                        numberOfLines={4}
+                                        inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
+                                        inputStyle={[styles.inputStyle, styles.multilineInput]}
+                                        placeholder={t('addFoodModal.ingredientsPlaceholder')}
+                                        placeholderTextColor={theme.colors.grey3}
+                                        disabled={isAnyLoading}
+                                    />
+                                    <Button
+                                        title={t('addFoodModal.analyzeTextButton')}
+                                        onPress={handleAnalyzeText}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        titleStyle={styles.aiButtonTitle}
+                                        loading={aiTextLoading}
+                                        disabled={isAnyLoading}
+                                        icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                    />
+                                    <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
+                                    <Button
+                                        title={t('addFoodModal.analyzeImageButton')}
+                                        onPress={handleGetImageAndAnalyze}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        titleStyle={styles.aiButtonTitle}
+                                        loading={aiImageLoading}
+                                        disabled={isAnyLoading}
+                                        icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                    />
+                                </View>
+                            )}
+                        </View>
+                        {/* END: MODIFICATION */}
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
@@ -293,6 +297,7 @@ const useStyles = makeStyles((theme) => ({
     inputModeButtonGroup: {
         marginBottom: 20,
         borderRadius: 8,
+        backgroundColor: theme.colors.background
     },
     aiContainer: {
         paddingTop: 10,
@@ -300,9 +305,15 @@ const useStyles = makeStyles((theme) => ({
     orDividerText: {
         textAlign: 'center',
         marginVertical: 15,
-        color: theme.colors.grey2,
+        color: theme.colors.grey1,
         fontWeight: 'bold',
     },
+    // START: ADDED STYLE FOR CONSISTENT HEIGHT
+    contentContainer: {
+        minHeight: 500,
+        justifyContent: 'flex-start',
+    },
+    // END: ADDED STYLE
 }));
 
 export default AddFoodModal;

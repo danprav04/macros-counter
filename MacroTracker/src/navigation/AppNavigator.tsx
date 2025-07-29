@@ -2,7 +2,7 @@
 import React from 'react';
 import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
 import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -81,7 +81,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
   return (
     <SettingsStackNav.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTitleStyle: { color: theme.colors.text }, headerTintColor: theme.colors.primary, headerTitleAlign: 'center' }}>
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
-        {(props) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
+        {(props: NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
     </SettingsStackNav.Navigator>
@@ -96,8 +96,8 @@ function MainTabNavigator({ onThemeChange, onLocaleChange, onLogout }: { onTheme
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+      screenOptions={({ route }: { route: RouteProp<MainTabParamList, keyof MainTabParamList> }) => ({
+        tabBarIcon: ({ focused, color, size }: { focused: boolean; color: string; size: number }) => {
           let iconName: string = '';
           if (route.name === 'DailyEntryRoute') iconName = focused ? 'calendar' : 'calendar-outline';
           else if (route.name === 'FoodListRoute') iconName = focused ? 'fast-food' : 'fast-food-outline';

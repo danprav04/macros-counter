@@ -463,7 +463,7 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 20,
-        backgroundColor: theme.colors.grey5,
+        backgroundColor: theme.colors.primaryLight,
     },
     sortButtonText: {
         color: theme.colors.primary,
