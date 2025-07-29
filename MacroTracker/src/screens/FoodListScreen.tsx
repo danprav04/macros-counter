@@ -54,8 +54,6 @@ const getBackendShareBaseUrl = (): string => {
     return String(chosenUrl).replace(/\/api\/v1$/, '').replace(/\/$/, '');
 };
 
-const MAX_DEEP_LINK_PAYLOAD_SIZE = 10240; // 10 KB limit for safety
-
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [masterFoods, setMasterFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
@@ -195,13 +193,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
           try {
             let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
             const binaryString = atob(b64);
-
-            // Security Hardening: Check payload size before parsing
-            if (binaryString.length > MAX_DEEP_LINK_PAYLOAD_SIZE) {
-                Alert.alert(t('foodListScreen.deepLinkErrorTitle'), "The shared food data is too large to process.");
-                throw new Error("Payload size exceeds limit.");
-            }
-
             const utf8Bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
             const decodedJson = new TextDecoder().decode(utf8Bytes);
