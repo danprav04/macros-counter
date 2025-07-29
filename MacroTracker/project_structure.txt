@@ -60,6 +60,7 @@ src/
     clientIDService.ts
     foodService.ts
     storageService.ts
+    tokenStorage.ts
   types/
     dailyEntry.ts
     food.ts
@@ -200,19 +201,21 @@ yarn-error.*
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
+        "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
   }
 }
+
 ---------- END app.json ----------
 
 
@@ -359,7 +362,8 @@ registerRootComponent(App);
     "react-native-uuid": "^2.0.3",
     "react-native-webview": "^13.13.4",
     "uuid": "^11.1.0",
-    "expo-linking": "~7.0.5"
+    "expo-linking": "~7.0.5",
+    "expo-secure-store": "~14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -2229,52 +2233,56 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                             />
                         )}
 
-                        {inputMode === 'manual' ? (
-                            <View>
-                                <FoodFormFields
-                                    values={getCurrentFoodData()}
-                                    errors={errors}
-                                    onInputChange={handleInputChange}
-                                    isEditing={!!editFood}
-                                    disabled={isAnyLoading}
-                                />
-                            </View>
-                        ) : (
-                            <View style={styles.aiContainer}>
-                                <Input
-                                    label={t('addFoodModal.ingredientsLabel')}
-                                    labelStyle={styles.inputLabel}
-                                    value={ingredients}
-                                    onChangeText={setIngredients}
-                                    multiline={true}
-                                    numberOfLines={4}
-                                    inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
-                                    inputStyle={[styles.inputStyle, styles.multilineInput]}
-                                    placeholder={t('addFoodModal.ingredientsPlaceholder')}
-                                    placeholderTextColor={theme.colors.grey3}
-                                    disabled={isAnyLoading}
-                                />
-                                <Button
-                                    title={t('addFoodModal.analyzeTextButton')}
-                                    onPress={handleAnalyzeText}
-                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                                    titleStyle={styles.aiButtonTitle}
-                                    loading={aiTextLoading}
-                                    disabled={isAnyLoading}
-                                    icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                />
-                                <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
-                                <Button
-                                    title={t('addFoodModal.analyzeImageButton')}
-                                    onPress={handleGetImageAndAnalyze}
-                                    buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.secondary }]}
-                                    titleStyle={styles.aiButtonTitle}
-                                    loading={aiImageLoading}
-                                    disabled={isAnyLoading}
-                                    icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                />
-                            </View>
-                        )}
+                        {/* START: MODIFICATION FOR CONSISTENT HEIGHT */}
+                        <View style={styles.contentContainer}>
+                            {inputMode === 'manual' ? (
+                                <View>
+                                    <FoodFormFields
+                                        values={getCurrentFoodData()}
+                                        errors={errors}
+                                        onInputChange={handleInputChange}
+                                        isEditing={!!editFood}
+                                        disabled={isAnyLoading}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.aiContainer}>
+                                    <Input
+                                        label={t('addFoodModal.ingredientsLabel')}
+                                        labelStyle={styles.inputLabel}
+                                        value={ingredients}
+                                        onChangeText={setIngredients}
+                                        multiline={true}
+                                        numberOfLines={4}
+                                        inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
+                                        inputStyle={[styles.inputStyle, styles.multilineInput]}
+                                        placeholder={t('addFoodModal.ingredientsPlaceholder')}
+                                        placeholderTextColor={theme.colors.grey3}
+                                        disabled={isAnyLoading}
+                                    />
+                                    <Button
+                                        title={t('addFoodModal.analyzeTextButton')}
+                                        onPress={handleAnalyzeText}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        titleStyle={styles.aiButtonTitle}
+                                        loading={aiTextLoading}
+                                        disabled={isAnyLoading}
+                                        icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                    />
+                                    <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
+                                    <Button
+                                        title={t('addFoodModal.analyzeImageButton')}
+                                        onPress={handleGetImageAndAnalyze}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        titleStyle={styles.aiButtonTitle}
+                                        loading={aiImageLoading}
+                                        disabled={isAnyLoading}
+                                        icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                    />
+                                </View>
+                            )}
+                        </View>
+                        {/* END: MODIFICATION */}
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
@@ -2311,9 +2319,15 @@ const useStyles = makeStyles((theme) => ({
     orDividerText: {
         textAlign: 'center',
         marginVertical: 15,
-        color: theme.colors.grey2,
+        color: theme.colors.grey1,
         fontWeight: 'bold',
     },
+    // START: ADDED STYLE FOR CONSISTENT HEIGHT
+    contentContainer: {
+        minHeight: 500,
+        justifyContent: 'flex-start',
+    },
+    // END: ADDED STYLE
 }));
 
 export default AddFoodModal;
@@ -8292,11 +8306,11 @@ export default SettingsScreen;
 
 ---------- authService.ts ----------
 // src/services/authService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';
+import { getToken, saveToken, deleteToken } from './tokenStorage';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
@@ -8336,7 +8350,7 @@ export const setLogoutListener = (listener: LogoutListener) => {
 
 export const triggerLogout = () => {
     console.log("Global logout triggered.");
-    removeAuthToken();
+    deleteToken(); // Use the new abstracted function
     if (onLogout) {
         onLogout();
     } else {
@@ -8344,26 +8358,11 @@ export const triggerLogout = () => {
     }
 };
 
-// --- Token Management ---
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
-
-export const getAuthToken = async (): Promise<Token | null> => {
-    try {
-        const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-        return tokenJson ? JSON.parse(tokenJson) : null;
-    } catch (error) {
-        console.error('Failed to parse auth token from AsyncStorage. Clearing corrupted token.', error);
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-        return null;
-    }
-};
-
-export const setAuthToken = async (token: Token): Promise<void> => {
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
-};
-
-export const removeAuthToken = async (): Promise<void> => {
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+// --- Token Management using the abstraction layer ---
+export {
+  getToken as getAuthToken,
+  saveToken as setAuthToken,
+  deleteToken as removeAuthToken,
 };
 
 // --- API Calls ---
@@ -8446,7 +8445,7 @@ export const refreshAuthToken = async (refreshToken: string): Promise<Token | nu
 
 export const logoutUser = async (): Promise<void> => {
     try {
-        const tokenData = await getAuthToken();
+        const tokenData = await getToken();
         if (tokenData?.access_token) {
             await fetchAuthApi('/logout', {
                 method: 'POST',
@@ -8456,7 +8455,7 @@ export const logoutUser = async (): Promise<void> => {
     } catch (error) {
         console.warn("Logout API call failed, but logging out locally anyway.", error);
     } finally {
-        await removeAuthToken();
+        await deleteToken();
     }
 }
 
@@ -8900,6 +8899,83 @@ export const loadRecentServings = async (): Promise<RecentServings> => {
     }
 };
 ---------- END storageService.ts ----------
+
+
+---------- tokenStorage.ts ----------
+// src/services/tokenStorage.ts
+
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { Token } from '../types/token';
+
+const TOKEN_KEY = '@MacroTracker:authToken';
+
+/**
+ * Checks if the app is running inside the generic Expo Go client.
+ * SecureStore is not truly secure in Expo Go because the app shares a generic
+ * bundle identifier. We fall back to AsyncStorage in this specific case.
+ * In development builds and production, this will be false.
+ */
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
+if (__DEV__) {
+  console.log(
+    `[TokenStorage] Running in ${IS_EXPO_GO ? 'Expo Go' : 'Development Build/Production'}. ` +
+    `Using ${IS_EXPO_GO ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
+  );
+}
+
+/**
+ * Saves the authentication token to the appropriate storage.
+ * @param token The token object to save.
+ */
+export async function saveToken(token: Token): Promise<void> {
+  const tokenJson = JSON.stringify(token);
+  if (IS_EXPO_GO) {
+    await AsyncStorage.setItem(TOKEN_KEY, tokenJson);
+  } else {
+    await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
+  }
+}
+
+/**
+ * Retrieves the authentication token from the appropriate storage.
+ * @returns The token object or null if not found or corrupted.
+ */
+export async function getToken(): Promise<Token | null> {
+  let tokenJson: string | null = null;
+  if (IS_EXPO_GO) {
+    tokenJson = await AsyncStorage.getItem(TOKEN_KEY);
+  } else {
+    tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
+  }
+
+  if (!tokenJson) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(tokenJson);
+  } catch (error) {
+    console.error('Failed to parse auth token from storage. Clearing corrupted token.', error);
+    // Clean up the corrupted value
+    await deleteToken();
+    return null;
+  }
+}
+
+/**
+ * Deletes the authentication token from the appropriate storage.
+ */
+export async function deleteToken(): Promise<void> {
+  if (IS_EXPO_GO) {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  } else {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  }
+}
+---------- END tokenStorage.ts ----------
 
 
 ---------- dailyEntry.ts ----------

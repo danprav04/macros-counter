@@ -1,9 +1,9 @@
 // src/services/authService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';
+import { getToken, saveToken, deleteToken } from './tokenStorage';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
@@ -43,7 +43,7 @@ export const setLogoutListener = (listener: LogoutListener) => {
 
 export const triggerLogout = () => {
     console.log("Global logout triggered.");
-    removeAuthToken();
+    deleteToken(); // Use the new abstracted function
     if (onLogout) {
         onLogout();
     } else {
@@ -51,26 +51,11 @@ export const triggerLogout = () => {
     }
 };
 
-// --- Token Management ---
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
-
-export const getAuthToken = async (): Promise<Token | null> => {
-    try {
-        const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-        return tokenJson ? JSON.parse(tokenJson) : null;
-    } catch (error) {
-        console.error('Failed to parse auth token from AsyncStorage. Clearing corrupted token.', error);
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-        return null;
-    }
-};
-
-export const setAuthToken = async (token: Token): Promise<void> => {
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
-};
-
-export const removeAuthToken = async (): Promise<void> => {
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+// --- Token Management using the abstraction layer ---
+export {
+  getToken as getAuthToken,
+  saveToken as setAuthToken,
+  deleteToken as removeAuthToken,
 };
 
 // --- API Calls ---
@@ -153,7 +138,7 @@ export const refreshAuthToken = async (refreshToken: string): Promise<Token | nu
 
 export const logoutUser = async (): Promise<void> => {
     try {
-        const tokenData = await getAuthToken();
+        const tokenData = await getToken();
         if (tokenData?.access_token) {
             await fetchAuthApi('/logout', {
                 method: 'POST',
@@ -163,7 +148,7 @@ export const logoutUser = async (): Promise<void> => {
     } catch (error) {
         console.warn("Logout API call failed, but logging out locally anyway.", error);
     } finally {
-        await removeAuthToken();
+        await deleteToken();
     }
 }
 
