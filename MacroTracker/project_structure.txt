@@ -207,8 +207,8 @@ yarn-error.*
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "http://192.168.1.15:8000",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
+         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
   }
@@ -4170,8 +4170,9 @@ export default ThemeSwitch;
 ---------- AuthContext.tsx ----------
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { loadSettings, saveSettings } from '../services/storageService';
-import { getAuthToken, removeAuthToken, setAuthToken } from '../services/authService';
+import * as authService from '../services/authService';
 import { Settings, LanguageCode } from '../types/settings';
+import { Token } from '../types/token';
 
 export interface AuthState {
   authenticated: boolean;
@@ -4182,7 +4183,7 @@ export interface AuthContextType {
   authState: AuthState;
   settings: Settings;
   isLoading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (tokenData: Token) => Promise<void>;
   logout: () => Promise<void>;
   changeTheme: (theme: 'light' | 'dark' | 'system') => void;
   changeLocale: (locale: LanguageCode) => void;
@@ -4206,12 +4207,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const token = await getAuthToken();
+        const tokenData = await authService.getAuthToken();
         const loadedSettings = await loadSettings();
         setSettings(loadedSettings);
 
-        if (token) {
-          setAuthState({ authenticated: true, token });
+        if (tokenData?.access_token) {
+          setAuthState({ authenticated: true, token: tokenData.access_token });
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -4223,13 +4224,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     loadAuthData();
   }, []);
 
-  const login = async (token: string) => {
-    await setAuthToken(token);
-    setAuthState({ authenticated: true, token });
+  const login = async (tokenData: Token) => {
+    await authService.setAuthToken(tokenData);
+    setAuthState({ authenticated: true, token: tokenData.access_token });
   };
 
   const logout = async () => {
-    await removeAuthToken();
+    await authService.logoutUser(); // This clears tokens and calls backend
     setAuthState({ authenticated: false, token: null });
   };
 
@@ -4244,7 +4245,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setSettings(newSettings);
     await saveSettings(newSettings);
   }, [settings]);
-
 
   const value: AuthContextType = {
     authState,
@@ -5832,7 +5832,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
-import { setLogoutListener } from '../services/authService'; // Import the listener setter
+import { setLogoutListener } from '../services/authService';
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -5849,7 +5849,7 @@ export type SettingsStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  ForgotPassword: undefined; // Add the new screen here
+  ForgotPassword: undefined;
 };
 
 export type RootStackParamList = {
@@ -5869,9 +5869,9 @@ const linking = {
   config: {
     screens: {
       Main: {
-          path: '', // Root path maps to main tabs
+          path: '', 
           screens: {
-              FoodListRoute: 'open-add-food-modal', // e.g., macrosvisionai://open-add-food-modal?foodData=...
+              FoodListRoute: 'open-add-food-modal', 
           }
       },
     }
@@ -5955,11 +5955,11 @@ function AppContent() {
   const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
 
-  // Set up the global logout listener
   React.useEffect(() => {
     if (logout) {
       setLogoutListener(logout);
     }
+    return () => setLogoutListener(null); // Cleanup on unmount
   }, [logout]);
 
   const themeMode = settings.theme;
@@ -5992,8 +5992,8 @@ function AppContent() {
   };
 
   const LoadingFallback = () => (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-          <Text>Loading...</Text>
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: currentThemeConfig.colors.background}}>
+          <Text style={{color: currentThemeConfig.colors.text}}>Loading...</Text>
       </View>
   )
 
@@ -7128,8 +7128,7 @@ const ForgotPasswordScreen: React.FC = () => {
                 [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
         } catch (error: any) {
-            // The service shows a generic error, which is fine.
-            // No need to show another one here unless we want to be more specific.
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }
@@ -7226,7 +7225,7 @@ export default ForgotPasswordScreen;
 ---------- LoginScreen.tsx ----------
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7254,16 +7253,18 @@ const LoginScreen: React.FC = () => {
         setIsLoading(true);
         try {
             const response = await loginUser(email, password);
-            await login(response.access_token);
+            if (response.access_token) {
+                await login(response);
+            }
         } catch (error: any) {
-            // The error message is now handled inside authService, so we just show it.
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Text h2 style={[styles.title, { color: theme.colors.text }]}>Welcome Back</Text>
             <Input
                 placeholder="Email"
@@ -7307,7 +7308,7 @@ const LoginScreen: React.FC = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Don't have an account? Sign Up</Text>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -7706,8 +7707,9 @@ export default QuestionnaireScreen;
 
 
 ---------- RegisterScreen.tsx ----------
+// src/screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7728,23 +7730,27 @@ const RegisterScreen: React.FC = () => {
             Alert.alert('Missing Fields', 'Please fill in all fields.');
             return;
         }
+        if (password.length < 8) {
+            Alert.alert('Password Too Short', 'Password must be at least 8 characters long.');
+            return;
+        }
         setIsLoading(true);
         try {
-            await registerUser(email, password);
+            const response = await registerUser(email, password);
             Alert.alert(
-                'Registration Successful',
-                'A verification email has been sent to your address. Please check your inbox to activate your account.',
+                'Check Your Email',
+                response.message,
                 [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
             );
         } catch (error: any) {
-            // The service now handles the alert, so we just catch to stop the loader
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Text h2 style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
             <Input
                 placeholder="Email"
@@ -7775,7 +7781,7 @@ const RegisterScreen: React.FC = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Already have an account? Log In</Text>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -7942,7 +7948,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
 
   const updateStatistics = useCallback(async (currentGoals: { [key in MacroType]: number }) => {
-    console.log("SettingsScreen: Updating statistics with goals:", currentGoals);
     try {
         const loadedEntries = await loadDailyEntries();
         const updatedStats: Statistics = {
@@ -7953,7 +7958,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         });
         setStatistics(updatedStats);
         setChartUpdateKey((prevKey) => prevKey + 1);
-        console.log("SettingsScreen: Statistics updated.");
     } catch (error) {
         console.error("SettingsScreen: Failed to update statistics:", error);
     }
@@ -7961,13 +7965,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const fetchUserStatus = useCallback(async () => {
     setIsLoadingCoins(true);
-    try { const status = await getUserStatus(); setUserCoins(status.coins); }
+    try { 
+      const status = await getUserStatus(); 
+      setUserCoins(status.coins); 
+    }
     catch (error) {
       setUserCoins(null);
-      Toast.show({ type: 'error', text1: t('accountSettings.errorLoadCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom', });
+      const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+      Toast.show({ 
+        type: 'error', 
+        text1: t('accountSettings.errorLoadCoins'), 
+        text2: message, 
+        position: 'bottom', 
+      });
     }
     finally { setIsLoadingCoins(false); }
-  }, []);
+  }, [t]);
 
   useFocusEffect( useCallback(() => {
       let isActive = true;
@@ -7990,7 +8003,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus, navigation]) 
+    }, [updateStatistics, fetchUserStatus, navigation, t]) 
   );
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
@@ -8010,7 +8023,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         });
       return updatedSettings;
     });
-  }, [updateStatistics]);
+  }, [updateStatistics, t]);
 
 
   const localDataOperationHandler = useCallback(async () => {
@@ -8029,14 +8042,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }
     catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
+  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation, t]);
 
     const handleAddTestCoins = useCallback(async () => {
         setIsAddingCoins(true);
-        try { const amount = 10; const updatedStatus = await addCoinsToUser(amount); setUserCoins(updatedStatus.coins); Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); }
-        catch (error) { Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom' }); }
+        try { 
+            const amount = 10; 
+            const updatedStatus = await addCoinsToUser(amount); 
+            setUserCoins(updatedStatus.coins); 
+            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); 
+        }
+        catch (error) { 
+            const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+            Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
+        }
         finally { setIsAddingCoins(false); }
-    }, []);
+    }, [t]);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
@@ -8233,26 +8254,30 @@ export default SettingsScreen;
 ---------- authService.ts ----------
 // src/services/authService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { Alert } from 'react-native';
+import Constants from 'expo-constants';
+import { Token } from '../types/token';
+import { t } from '../localization/i18n';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
-    // EAS Build's process.env takes precedence
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
-    if (envUrl) {
-        return envUrl;
+    const env = Constants.expoConfig?.extra?.env;
+
+    if (__DEV__) {
+        if (env?.BACKEND_URL_DEVELOPMENT) {
+            return env.BACKEND_URL_DEVELOPMENT;
+        }
+        console.warn(
+            "BACKEND_URL_DEVELOPMENT not found in app.json. Falling back to a default."
+        );
+        return 'http://127.0.0.1:8000';
+    } else {
+        if (env?.BACKEND_URL_PRODUCTION) {
+            return env.BACKEND_URL_PRODUCTION;
+        }
+        console.error("FATAL: BACKEND_URL_PRODUCTION is not defined in app.json extra.env.");
+        return 'https://api.example.com/not-configured';
     }
-    // Fallback for older expo-constants approach or local dev without .env
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    if (configUrl) {
-        return configUrl;
-    }
-    // Final fallback to a default development URL
-    console.warn(
-        "Production backend URL not found in process.env or app.json. Falling back to default development URL."
-    );
-    return 'http://192.168.1.15:8000'; // Default dev URL
 };
 
 export const getApiUrl = (): string => {
@@ -8263,39 +8288,44 @@ export const getApiUrl = (): string => {
 const API_URL = getApiUrl();
 
 // --- Auth Event Emitter for 401 Handling ---
-type LogoutListener = () => void;
-let onLogout: LogoutListener | null = null;
+type LogoutListener = (() => void) | null;
+let onLogout: LogoutListener = null;
 
 export const setLogoutListener = (listener: LogoutListener) => {
     onLogout = listener;
 };
 
 export const triggerLogout = () => {
+    console.log("Global logout triggered.");
+    removeAuthToken();
     if (onLogout) {
         onLogout();
     } else {
-        console.warn('Logout triggered, but no listener was set. A full app reload might be required.');
-        // Fallback behavior if the listener isn't set for some reason
-        removeAuthToken();
+        console.warn('Logout triggered, but no UI listener was set.');
     }
 };
-
 
 // --- Token Management ---
 const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
 
-export const getAuthToken = async (): Promise<string | null> => {
-  return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+export const getAuthToken = async (): Promise<Token | null> => {
+    try {
+        const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        return tokenJson ? JSON.parse(tokenJson) : null;
+    } catch (error) {
+        console.error('Failed to parse auth token from AsyncStorage. Clearing corrupted token.', error);
+        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+    }
 };
 
-export const setAuthToken = async (token: string): Promise<void> => {
-  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+export const setAuthToken = async (token: Token): Promise<void> => {
+    await AsyncStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
 };
 
 export const removeAuthToken = async (): Promise<void> => {
-  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
 };
-
 
 // --- API Calls ---
 async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -8310,10 +8340,8 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     try {
         const response = await fetch(url, { ...options, headers });
 
-        // For 202 Accepted, the body might be empty or contain a message.
-        // We handle it as a success case.
-        if (response.status === 202) {
-            return (await response.json()) as T;
+        if (response.status === 204) {
+             return {} as T;
         }
 
         const responseBody = await response.json();
@@ -8330,17 +8358,15 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     }
 }
 
-export const registerUser = async (email: string, password: string): Promise<any> => {
-    return fetchAuthApi('/register', {
+export const registerUser = async (email: string, password: string): Promise<{message: string}> => {
+    return fetchAuthApi<{message: string}>('/register', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
     });
 };
 
-export const loginUser = async (email: string, password: string): Promise<{access_token: string}> => {
+export const loginUser = async (email: string, password: string): Promise<Token> => {
     const details = { 'username': email, 'password': password };
-    
-    // Corrected: Use Object.entries for a type-safe way to build form data
     const formBody = Object.entries(details)
         .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
         .join('&');
@@ -8366,6 +8392,35 @@ export const loginUser = async (email: string, password: string): Promise<{acces
     }
 };
 
+export const refreshAuthToken = async (refreshToken: string): Promise<Token | null> => {
+    try {
+        const newTokens = await fetchAuthApi<Token>('/refresh-token', {
+             method: 'POST',
+             body: JSON.stringify({ refresh_token: refreshToken })
+        });
+        return newTokens;
+    } catch (error) {
+        console.error("Token refresh failed:", error);
+        return null;
+    }
+};
+
+export const logoutUser = async (): Promise<void> => {
+    try {
+        const tokenData = await getAuthToken();
+        if (tokenData?.access_token) {
+            await fetchAuthApi('/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+            });
+        }
+    } catch (error) {
+        console.warn("Logout API call failed, but logging out locally anyway.", error);
+    } finally {
+        await removeAuthToken();
+    }
+}
+
 export const requestPasswordReset = async (email: string): Promise<{message: string}> => {
     return fetchAuthApi<{message: string}>('/request-password-reset', {
         method: 'POST',
@@ -8377,16 +8432,17 @@ export const requestPasswordReset = async (email: string): Promise<{message: str
 
 ---------- backendService.ts ----------
 // src/services/backendService.ts
-import { getApiUrl, getAuthToken, triggerLogout } from './authService';
+import { getApiUrl, getAuthToken, setAuthToken, refreshAuthToken, triggerLogout } from './authService';
 import { EstimatedFoodItem, Macros, MacrosWithFoodName } from '../types/macros';
 import { Platform } from 'react-native';
 import i18n, { t } from '../localization/i18n';
+import { Token } from '../types/token';
 
 const BASE_URL = getApiUrl();
 console.log(`Backend Service Initialized. Base URL: ${BASE_URL}`);
 
 interface GramsResponse { grams: number; }
-export interface UserStatus { client_id: string; coins: number; }
+export interface UserStatus { client_id: string; coins: number; is_verified: boolean; }
 interface BackendErrorDetail { loc?: (string | number)[]; msg?: string; type?: string; }
 interface BackendErrorResponse { detail?: string | BackendErrorDetail[]; }
 
@@ -8397,32 +8453,75 @@ export class BackendError extends Error {
     }
 }
 
+let isRefreshing = false;
+let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void; endpoint: string; options: RequestInit; needsAuth: boolean; }[] = [];
+
+const processFailedQueue = (error: any, token: Token | null) => {
+    failedQueue.forEach(prom => {
+        if (error || !token) {
+            prom.reject(error);
+        } else {
+            prom.resolve(fetchBackend(prom.endpoint, prom.options, prom.needsAuth));
+        }
+    });
+    failedQueue = [];
+};
+
 async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, needsAuth: boolean = true ): Promise<T> {
     const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    let response: Response | null = null;
-    let requestId: string | null = null;
-    try {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Platform': Platform.OS,
-            'Accept-Language': i18n.locale,
-            ...(options.headers as Record<string, string> || {})
-        };
+    
+    const tokenData = needsAuth ? await getAuthToken() : null;
+    
+    if (needsAuth && !tokenData?.access_token) {
+        triggerLogout();
+        throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+    }
 
-        if (needsAuth) {
-            const token = await getAuthToken();
-            if (!token) {
-                // If a screen needs auth and there's no token, this will prevent the call.
-                // The user should be redirected to login by the navigation logic.
-                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Authentication token is missing.");
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Platform': Platform.OS,
+        'Accept-Language': i18n.locale,
+        ...(options.headers as Record<string, string> || {})
+    };
+    if (needsAuth && tokenData) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+    }
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const requestId = response.headers.get("X-Request-ID");
+
+        if (response.status === 401 && needsAuth) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject, endpoint, options, needsAuth });
+                });
             }
-            headers['Authorization'] = `Bearer ${token}`;
+
+            isRefreshing = true;
+            const currentRefreshToken = tokenData?.refresh_token;
+
+            if (!currentRefreshToken) {
+                triggerLogout();
+                isRefreshing = false;
+                throw new BackendError(t('backendService.errorAuthFailed'), 401, "Refresh token not found.");
+            }
+            
+            const newTokens = await refreshAuthToken(currentRefreshToken);
+
+            if (newTokens?.access_token) {
+                await setAuthToken(newTokens);
+                processFailedQueue(null, newTokens);
+                return fetchBackend(endpoint, options, needsAuth);
+            } else {
+                const refreshError = new BackendError(t('backendService.errorAuthFailed'), 401, "Session expired. Please log in again.");
+                processFailedQueue(refreshError, null);
+                triggerLogout();
+                throw refreshError;
+            }
         }
         
-        response = await fetch(url, { ...options, headers });
-        requestId = response.headers.get("X-Request-ID");
-
         if (response.status === 204) return null as T;
 
         const contentType = response.headers.get("content-type");
@@ -8433,16 +8532,10 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             let errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             if (isJson && responseBody?.detail) {
                 errorMessage = typeof responseBody.detail === 'string' ? responseBody.detail : JSON.stringify(responseBody.detail);
-            } else if (!isJson && responseBody) {
-                errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
             }
             
-            if (response.status === 401) {
-                errorMessage = t('backendService.errorAuthFailed');
-                // Trigger global logout handler
-                triggerLogout();
-            }
             if (response.status === 402) errorMessage = t('backendService.errorInsufficientCoins');
+            if (response.status === 403) errorMessage = responseBody?.detail || t('backendService.errorPermissionDenied');
             if (response.status === 429) errorMessage = t('backendService.errorTooManyRequests');
 
             throw new BackendError(errorMessage, response.status, responseBody?.detail, requestId);
@@ -8463,7 +8556,11 @@ async function fetchBackend<T>( endpoint: string, options: RequestInit = {}, nee
             networkErrorMessage = t('backendService.errorNetwork') + t('backendService.errorNetworkUnknown');
         }
         
-        throw new BackendError(networkErrorMessage, 0, networkErrorMessage, requestId);
+        throw new BackendError(networkErrorMessage, 0, networkErrorMessage, null);
+    } finally {
+        if(isRefreshing && endpoint === '/auth/refresh-token') {
+             isRefreshing = false;
+        }
     }
 }
 
@@ -8603,13 +8700,10 @@ export const deleteFood = async (foodId: string): Promise<void> => {
 
 ---------- storageService.ts ----------
 // src/services/storageService.ts
-// services/storageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
-import { Settings, LanguageCode } from '../types/settings'; // Import LanguageCode
-import { formatISO, parseISO } from 'date-fns';
-
+import { Settings, LanguageCode } from '../types/settings';
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
@@ -8617,8 +8711,7 @@ const SETTINGS_KEY = 'settings';
 const RECENT_FOODS_KEY = 'recentFoods';
 const RECENT_SERVINGS_KEY = 'recentServings';
 
-
-export type RecentServings = { [foodId: string]: number[] }; // Type for recent servings
+export type RecentServings = { [foodId: string]: number[] };
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -8634,7 +8727,8 @@ export const loadDailyEntries = async (): Promise<DailyEntry[]> => {
     const entriesJson = await AsyncStorage.getItem(DAILY_ENTRIES_KEY);
     return entriesJson ? JSON.parse(entriesJson) : [];
   } catch (error) {
-    console.error('Error loading daily entries:', error);
+    console.error('Failed to parse daily entries from AsyncStorage. Clearing corrupted data.', error);
+    await AsyncStorage.removeItem(DAILY_ENTRIES_KEY);
     return [];
   }
 };
@@ -8644,7 +8738,7 @@ export const saveFoods = async (foods: Food[]): Promise<void> => {
     await AsyncStorage.setItem(FOODS_KEY, JSON.stringify(foods));
   } catch (error) {
     console.error('Error saving foods:', error);
-    throw error; // Re-throw the error
+    throw error;
   }
 };
 
@@ -8661,12 +8755,11 @@ export const loadFoods = async (offset: number = 0, limit?: number): Promise<{ i
     const paginatedFoods = allFoods.slice(offset, offset + limit);
     return { items: paginatedFoods, total };
   } catch (error) {
-    console.error('Error loading foods:', error);
-    return { items: [], total: 0 }; // Return an empty array and 0 total on error
+    console.error('Failed to parse foods from AsyncStorage. Clearing corrupted data.', error);
+    await AsyncStorage.removeItem(FOODS_KEY);
+    return { items: [], total: 0 };
   }
 };
-
-
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -8678,52 +8771,36 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 };
 
 export const loadSettings = async (): Promise<Settings> => {
+  const defaultSettings: Settings = {
+    theme: 'system',
+    language: 'system',
+    dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+    settingsHistory: []
+  };
+
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
-
-    // Apply defaults and ensure structure
-    const defaultSettings: Settings = {
-      theme: 'system',
-      language: 'system', // Default language
-      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: [] // Ensure settingsHistory exists
-    };
-
+    if (!settingsJson) return defaultSettings;
+    
+    const loadedSettings = JSON.parse(settingsJson);
 
     return {
-      ...defaultSettings, // Start with defaults
-        ...loadedSettings, // Override with loaded values
-        dailyGoals: {
-          ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
-            ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
-        }
-    };
-
-  } catch (error: any) {
-    console.error('Error loading settings:', error);
-
-    if (error.message.includes('Row too big')) {
-      console.warn('Detected oversized settings data. Clearing settings.');
-      try {
-        await AsyncStorage.removeItem(SETTINGS_KEY);
-      } catch (clearError) {
-        console.error('Error clearing oversized settings:', clearError);
+      ...defaultSettings,
+      ...loadedSettings,
+      dailyGoals: {
+        ...defaultSettings.dailyGoals,
+        ...(loadedSettings.dailyGoals || {})
       }
-    }
-
-    return {
-      theme: 'system',
-      language: 'system', // Default language on error
-      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: []
     };
+  } catch (error) {
+    console.error('Failed to parse settings from AsyncStorage. Clearing corrupted data and returning defaults.', error);
+    await AsyncStorage.removeItem(SETTINGS_KEY);
+    return defaultSettings;
   }
 };
 
 export const clearAllData = async (): Promise<void> => {
   try {
-    // Keep clientID and auth token, clear everything else
     const clientIdKey = '@MacroTracker:clientId';
     const authTokenKey = '@MacroTracker:authToken';
     const [clientId, authToken] = await AsyncStorage.multiGet([clientIdKey, authTokenKey]);
@@ -8758,7 +8835,8 @@ export const loadRecentFoods = async (): Promise<Food[]> => {
         const foodsJson = await AsyncStorage.getItem(RECENT_FOODS_KEY);
         return foodsJson ? JSON.parse(foodsJson) : [];
     } catch (error) {
-        console.error('Error loading recent foods:', error);
+        console.error('Failed to parse recent foods from AsyncStorage. Clearing corrupted data.', error);
+        await AsyncStorage.removeItem(RECENT_FOODS_KEY);
         return [];
     }
 };
@@ -8777,7 +8855,8 @@ export const loadRecentServings = async (): Promise<RecentServings> => {
         const servingsJson = await AsyncStorage.getItem(RECENT_SERVINGS_KEY);
         return servingsJson ? JSON.parse(servingsJson) : {};
     } catch (error) {
-        console.error('Error loading recent servings:', error);
+        console.error('Failed to parse recent servings from AsyncStorage. Clearing corrupted data.', error);
+        await AsyncStorage.removeItem(RECENT_SERVINGS_KEY);
         return {};
     }
 };
@@ -9035,6 +9114,7 @@ export interface SettingsScreenProps {
 ---------- token.ts ----------
 export interface Token {
     access_token: string;
+    refresh_token: string;
     token_type: string;
 }
 ---------- END token.ts ----------
@@ -9610,13 +9690,18 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
     }
 }
 
+const handleError = (error: unknown, title: string) => {
+    const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+    Alert.alert(title, message);
+    throw error;
+}
+
 export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
     try {
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.errorTitle'), message);
-        throw error;
+        handleError(error, t('utils.macros.errorTitle'));
+        throw error; // Re-throw to allow caller to handle UI state
     }
 }
 
@@ -9626,8 +9711,7 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset): Promise<Ma
         const mimeType = determineMimeType(asset);
         return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.errorTitle'), message);
+        handleError(error, t('utils.macros.errorTitle'));
         throw error;
     }
 }
@@ -9638,8 +9722,7 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
         if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        handleError(error, t('utils.macros.multiItemErrorTitle'));
         throw error;
     }
 }
@@ -9650,8 +9733,7 @@ export async function getMultipleFoodsFromText(text: string): Promise<EstimatedF
         if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
-        Alert.alert(t('utils.macros.multiItemErrorTitle'), message);
+        handleError(error, t('utils.macros.multiItemErrorTitle'));
         throw error;
     }
 }
@@ -9754,7 +9836,7 @@ export async function getGramsFromNaturalLanguage(
         const message = error instanceof BackendError
             ? error.message
             : t('errors.unexpectedError');
-        Alert.alert(t('errors.estimationFailedTitle'), message);
+        Alert.alert(t('utils.units.errorTitle'), message);
         throw error;
     }
 }

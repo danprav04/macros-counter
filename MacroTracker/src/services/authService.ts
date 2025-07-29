@@ -1,7 +1,7 @@
 // src/services/authService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import Constants from 'expo-constants';
+import * as Keychain from 'react-native-keychain';
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';
 
@@ -51,27 +51,41 @@ export const triggerLogout = () => {
     }
 };
 
-// --- Token Management ---
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
+// --- Secure Token Management ---
+const AUTH_TOKEN_SERVICE = 'com.macrosvisionai.authtoken';
 
 export const getAuthToken = async (): Promise<Token | null> => {
     try {
-        const tokenJson = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-        return tokenJson ? JSON.parse(tokenJson) : null;
+        const credentials = await Keychain.getGenericPassword({ service: AUTH_TOKEN_SERVICE });
+        if (credentials) {
+            return JSON.parse(credentials.password);
+        }
+        return null;
     } catch (error) {
-        console.error('Failed to parse auth token from AsyncStorage. Clearing corrupted token.', error);
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        console.error('Failed to get auth token from keychain. This may happen on first run.', error);
         return null;
     }
 };
 
 export const setAuthToken = async (token: Token): Promise<void> => {
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
+    try {
+        await Keychain.setGenericPassword('userToken', JSON.stringify(token), {
+            service: AUTH_TOKEN_SERVICE
+        });
+    } catch (error) {
+        console.error('Failed to set auth token in keychain.', error);
+        throw error;
+    }
 };
 
 export const removeAuthToken = async (): Promise<void> => {
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    try {
+        await Keychain.resetGenericPassword({ service: AUTH_TOKEN_SERVICE });
+    } catch (error) {
+        console.error('Failed to remove auth token from keychain.', error);
+    }
 };
+
 
 // --- API Calls ---
 async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
