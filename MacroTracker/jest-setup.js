@@ -7,6 +7,29 @@
 // we ensure this mock is registered before the preset's scripts are executed.
 jest.mock('expo-modules-core/build/Refs', () => ({}));
 
+// This prevents the console warning about process.env.EXPO_OS by defining it
+// before any module that might need it is imported.
+process.env.EXPO_OS = 'android';
+
+// Mock react-navigation hooks globally.
+// This prevents "TypeError: Cannot redefine property: useNavigation"
+// and provides a consistent mock navigator for all tests, fixing the LoginScreen tests.
+jest.mock('@react-navigation/native', () => {
+    const actualNav = jest.requireActual('@react-navigation/native');
+    return {
+        ...actualNav,
+        useNavigation: () => ({
+            navigate: jest.fn(),
+            goBack: jest.fn(),
+            setParams: jest.fn(),
+        }),
+        useRoute: () => ({
+            params: {},
+        }),
+    };
+});
+
+
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
@@ -21,14 +44,12 @@ jest.mock('react-native-toast-message', () => ({
   hide: jest.fn(),
 }));
 
-// --- ADDED MOCK ---
 // Mock expo-font to prevent errors from @expo/vector-icons in tests
 jest.mock('expo-font', () => ({
   ...jest.requireActual('expo-font'),
   loadAsync: jest.fn().mockResolvedValue(undefined),
   isLoaded: jest.fn().mockReturnValue(true),
 }));
-// --- END ADDED MOCK ---
 
 // Mock Expo Modules
 jest.mock('expo-constants', () => ({
