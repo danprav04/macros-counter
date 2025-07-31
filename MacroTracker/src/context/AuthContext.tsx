@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { loadSettings, saveSettings } from '../services/storageService';
 import * as authService from '../services/authService';
@@ -19,7 +20,7 @@ export interface AuthContextType {
   changeLocale: (locale: LanguageCode) => void;
 }
 
-const AuthContext = createContext<Partial<AuthContextType>>({});
+export const AuthContext = createContext<Partial<AuthContextType>>({});
 
 export function useAuth() {
   return useContext(AuthContext);

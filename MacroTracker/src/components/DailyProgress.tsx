@@ -1,8 +1,7 @@
 // src/components/DailyProgress.tsx
-// components/DailyProgress.tsx
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme, makeStyles } from '@rneui/themed'; // Import makeStyles
+import { View } from 'react-native';
+import { Text, useTheme, makeStyles } from '@rneui/themed';
 import { t } from '../localization/i18n';
 
 interface DailyProgressProps {
@@ -26,7 +25,7 @@ const DailyProgress: React.FC<DailyProgressProps> = ({
   goals,
 }) => {
   const { theme } = useTheme();
-  const styles = useStyles(); // Use styles
+  const styles = useStyles();
 
   const calculateProgress = (current: number, goal?: number) => {
     if (!goal || goal <= 0) return 0;
@@ -44,7 +43,7 @@ const DailyProgress: React.FC<DailyProgressProps> = ({
                         {`${Math.round(current)} / ${goal || 0}`}
                     </Text>
               </View>
-              <View style={styles.progressBarContainer}>
+              <View testID="progress-bar-container" style={styles.progressBarContainer}>
                   <View style={[styles.progressBar, { width: `${progress * 100}%`, backgroundColor: color }]} />
               </View>
           </View>
@@ -61,7 +60,6 @@ const DailyProgress: React.FC<DailyProgressProps> = ({
   );
 };
 
-// Update useStyles for text alignment
 const useStyles = makeStyles((theme) => ({
   container: {
     marginBottom: 20,
