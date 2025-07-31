@@ -1,6 +1,6 @@
 // jest-setup.js
 
-// This mock MUST be at the top to be hoisted by Jest. It resolves a module
+// This mock MUST BE at the top to be hoisted by Jest. It resolves a module
 // not found error in jest-expo@51 with Expo SDK 52. The jest-expo preset
 // attempts to require a file that no longer exists in newer Expo versions.
 // By mocking it here and loading this file via `setupFiles` in jest.config.js,
@@ -20,6 +20,15 @@ jest.mock('react-native-toast-message', () => ({
   show: jest.fn(),
   hide: jest.fn(),
 }));
+
+// --- ADDED MOCK ---
+// Mock expo-font to prevent errors from @expo/vector-icons in tests
+jest.mock('expo-font', () => ({
+  ...jest.requireActual('expo-font'),
+  loadAsync: jest.fn().mockResolvedValue(undefined),
+  isLoaded: jest.fn().mockReturnValue(true),
+}));
+// --- END ADDED MOCK ---
 
 // Mock Expo Modules
 jest.mock('expo-constants', () => ({

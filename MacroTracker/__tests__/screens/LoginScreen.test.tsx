@@ -1,32 +1,36 @@
 // __tests__/screens/LoginScreen.test.tsx
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
-import LoginScreen from '../../src/screens/LoginScreen';
-import { AuthContext, AuthContextType } from '../../src/context/AuthContext';
-import { NavigationContainer } from '@react-navigation/native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ThemeProvider, createTheme } from '@rneui/themed';
+import { NavigationContainer } from '@react-navigation/native';
+import { AuthContext, AuthContextType } from '../../src/context/AuthContext';
+import LoginScreen from '../../src/screens/LoginScreen';
+import * as authService from '../../src/services/authService';
 
-// Mock services and navigation
-const mockLogin = jest.fn();
-const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-  ...jest.requireActual('@react-navigation/native'),
-  useNavigation: () => ({
-    navigate: mockNavigate,
-  }),
-}));
-jest.mock('../../src/services/authService', () => ({
-  loginUser: jest.fn(),
-}));
-import { loginUser } from '../../src/services/authService';
+// Mock the entire authService module
+jest.mock('../../src/services/authService');
+const mockedLoginUser = authService.loginUser as jest.Mock;
 
+// Define a minimal theme for the ThemeProvider
+const theme = createTheme({
+  lightColors: {
+    primary: '#2e86de',
+    secondary: '#adb5bd',
+    background: '#f8f9fa',
+    grey3: '#ced4da',
+    text: '#212529',
+  },
+});
 
-const theme = createTheme({}); // Provide a default theme
+// Mock the navigation object
+const mockNavigation = {
+  navigate: jest.fn(),
+};
 
-const renderLoginScreen = () => {
-  const authContextValue: Partial<AuthContextType> = {
-    login: mockLogin,
-  };
+// A helper function to render the component with all necessary providers
+const renderLoginScreen = (authContextValue: Partial<AuthContextType>) => {
+  // Mock the useNavigation hook to return our mock object
+  jest.spyOn(require('@react-navigation/native'), 'useNavigation').mockReturnValue(mockNavigation);
 
   return render(
     <ThemeProvider theme={theme}>
@@ -40,22 +44,25 @@ const renderLoginScreen = () => {
 };
 
 describe('<LoginScreen />', () => {
+  let mockLogin: jest.Mock;
+
   beforeEach(() => {
-    // Clear mocks before each test
+    // Reset mocks before each test
     jest.clearAllMocks();
+    mockLogin = jest.fn();
   });
 
   it('renders email, password inputs, and login button', () => {
-    renderLoginScreen();
-    expect(screen.getByPlaceholderText('Email')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Password')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Login' })).toBeTruthy();
+    const { getByPlaceholderText, getByText } = renderLoginScreen({ login: mockLogin });
+    expect(getByPlaceholderText('Email')).toBeTruthy();
+    expect(getByPlaceholderText('Password')).toBeTruthy();
+    expect(getByText('Login')).toBeTruthy();
   });
 
   it('allows typing in email and password fields', () => {
-    renderLoginScreen();
-    const emailInput = screen.getByPlaceholderText('Email');
-    const passwordInput = screen.getByPlaceholderText('Password');
+    const { getByPlaceholderText } = renderLoginScreen({ login: mockLogin });
+    const emailInput = getByPlaceholderText('Email');
+    const passwordInput = getByPlaceholderText('Password');
 
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
@@ -65,54 +72,46 @@ describe('<LoginScreen />', () => {
   });
 
   it('calls login service and context on successful login', async () => {
-    const mockToken = { access_token: 'fake-token', refresh_token: 'fake-refresh', token_type: 'bearer' };
-    (loginUser as jest.Mock).mockResolvedValue(mockToken);
-    
-    renderLoginScreen();
-    
-    fireEvent.changeText(screen.getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.changeText(screen.getByPlaceholderText('Password'), 'password123');
-    fireEvent.press(screen.getByRole('button', { name: 'Login' }));
+    const mockToken = { access_token: 'abc-123', refresh_token: 'def-456', token_type: 'bearer' };
+    mockedLoginUser.mockResolvedValue(mockToken);
 
-    // Wait for the async operations to complete
+    const { getByText, getByPlaceholderText } = renderLoginScreen({ login: mockLogin });
+    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
+    fireEvent.press(getByText('Login'));
+
+    // Wait for async operations to complete
     await waitFor(() => {
-      expect(loginUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authService.loginUser).toHaveBeenCalledWith('test@example.com', 'password123');
       expect(mockLogin).toHaveBeenCalledWith(mockToken);
     });
   });
 
-  it('shows an alert if login service throws an error', async () => {
-    (loginUser as jest.Mock).mockRejectedValue(new Error('Invalid credentials'));
-    const alertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+  it('does not call login context if service throws an error', async () => {
+    // The authService itself shows an alert, so we just check the side effects
+    mockedLoginUser.mockRejectedValue(new Error('Invalid credentials'));
 
-    renderLoginScreen();
-
-    fireEvent.changeText(screen.getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.changeText(screen.getByPlaceholderText('Password'), 'wrongpassword');
-    fireEvent.press(screen.getByRole('button', { name: 'Login' }));
+    const { getByText, getByPlaceholderText } = renderLoginScreen({ login: mockLogin });
+    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
+    fireEvent.press(getByText('Login'));
 
     await waitFor(() => {
-      // The authService mock will show an alert. We can spy on it.
-      // This assertion depends on the error handling inside the authService itself.
-      // Since authService shows the alert, we don't need to check for it here
-      // unless we mock authService to NOT show an alert and let the component handle it.
-      // Based on the current code, the service handles it. So we just ensure it was called.
-      expect(loginUser).toHaveBeenCalled();
+      expect(authService.loginUser).toHaveBeenCalledTimes(1);
     });
-
-    // Clean up the spy
-    alertSpy.mockRestore();
+    // The crucial check: ensure the app's login state is not updated
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
-  it('navigates to Register screen when "Sign Up" is pressed', () => {
-    renderLoginScreen();
-    fireEvent.press(screen.getByText("Don't have an account? Sign Up"));
-    expect(mockNavigate).toHaveBeenCalledWith('Register');
+   it('navigates to Register screen when "Sign Up" is pressed', () => {
+    const { getByText } = renderLoginScreen({ login: mockLogin });
+    fireEvent.press(getByText("Don't have an account? Sign Up"));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Register');
   });
 
   it('navigates to ForgotPassword screen when "Forgot Password?" is pressed', () => {
-    renderLoginScreen();
-    fireEvent.press(screen.getByText("Forgot Password?"));
-    expect(mockNavigate).toHaveBeenCalledWith('ForgotPassword');
+    const { getByText } = renderLoginScreen({ login: mockLogin });
+    fireEvent.press(getByText('Forgot Password?'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
   });
 });
