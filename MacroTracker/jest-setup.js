@@ -7,13 +7,9 @@
 // we ensure this mock is registered before the preset's scripts are executed.
 jest.mock('expo-modules-core/build/Refs', () => ({}));
 
-// This prevents the console warning about process.env.EXPO_OS by defining it
-// before any module that might need it is imported.
-process.env.EXPO_OS = 'android';
-
 // Mock react-navigation hooks globally.
 // This prevents "TypeError: Cannot redefine property: useNavigation"
-// and provides a consistent mock navigator for all tests, fixing the LoginScreen tests.
+// and provides a consistent mock navigator for all tests.
 jest.mock('@react-navigation/native', () => {
     const actualNav = jest.requireActual('@react-navigation/native');
     return {
@@ -29,7 +25,6 @@ jest.mock('@react-navigation/native', () => {
     };
 });
 
-
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
@@ -44,16 +39,19 @@ jest.mock('react-native-toast-message', () => ({
   hide: jest.fn(),
 }));
 
-// Mock expo-font to prevent errors from @expo/vector-icons in tests
+// --- CORRECTED MOCK ---
+// Mock expo-font without `requireActual` to prevent native code execution.
+// This resolves the crash when rendering @rneui/themed Icons.
 jest.mock('expo-font', () => ({
-  ...jest.requireActual('expo-font'),
   loadAsync: jest.fn().mockResolvedValue(undefined),
   isLoaded: jest.fn().mockReturnValue(true),
+  // Add any other functions that might be called from expo-font if needed
 }));
+// --- END CORRECTED MOCK ---
 
-// Mock Expo Modules
+
+// Mock Expo Modules to prevent console warnings
 jest.mock('expo-constants', () => ({
-  ...jest.requireActual('expo-constants'),
   expoConfig: {
     extra: {
       env: {
@@ -61,8 +59,23 @@ jest.mock('expo-constants', () => ({
         BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
       },
     },
+    // Mock appOwnership to control tokenStorage behavior in tests
+    appOwnership: 'standalone',
   },
 }));
+
+jest.mock('expo-localization', () => ({
+    getLocales: () => [{
+        languageCode: 'en',
+        languageTag: 'en-US',
+        countryCode: 'US',
+        isRTL: false,
+    }],
+    getCalendars: () => [{
+        timeZone: 'UTC',
+    }],
+}));
+
 
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(() => Promise.resolve(null)),
