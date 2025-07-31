@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 async function generateProjectStructureAndContent(projectRoot, outputFile) {
-    const excludedDirs = ['node_modules', '.git', '.expo', 'android', 'ios', '__tests__', 'dist', 'build', '.vscode'];
-    const excludedFiles = ['.DS_Store', 'package-lock.json', 'yarn.lock', 'bun.lockb', 'metro.config.js', 'babel.config.js'];
+    const excludedDirs = ['node_modules', '.git', '.expo', 'android', 'ios', '__tests__', 'dist', 'build', '.vscode', 'coverage'];
+    const excludedFiles = ['.DS_Store', 'package-lock.json', 'yarn.lock', 'bun.lockb', 'metro.config.js', 'babel.config.js', 'testOtp.txt'];
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp', '.ico']; // Add more if needed
 
     let fileStructureTree = '';  // For the initial tree structure
