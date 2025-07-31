@@ -76,7 +76,8 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-localization"
     ],
     "extra": {
       "eas": {

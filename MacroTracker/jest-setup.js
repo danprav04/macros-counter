@@ -1,4 +1,12 @@
 // jest-setup.js
+
+// This mock MUST be at the top to be hoisted by Jest. It resolves a module
+// not found error in jest-expo@51 with Expo SDK 52. The jest-expo preset
+// attempts to require a file that no longer exists in newer Expo versions.
+// By mocking it here and loading this file via `setupFiles` in jest.config.js,
+// we ensure this mock is registered before the preset's scripts are executed.
+jest.mock('expo-modules-core/build/Refs', () => ({}));
+
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 

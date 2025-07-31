@@ -19,4 +19,12 @@ module.exports = {
     '!src/assets/**',
   ],
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
+
+  // Add moduleNameMapper to fix the "Cannot find module" error.
+  // This is the definitive fix for the jest-expo/Expo SDK 52 incompatibility.
+  // It intercepts the call for the missing module at the resolver level
+  // and provides a valid substitute file, preventing the test runner from crashing.
+  moduleNameMapper: {
+    '^expo-modules-core/build/Refs$': '<rootDir>/jest.config.js',
+  },
 };
