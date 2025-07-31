@@ -1,2 +1,4 @@
 MacroTracker/build-1748897315990.apk
 *.apk
+/MacroTracker/coverage
+MacroTracker/testOtp.txt
