@@ -328,6 +328,24 @@ registerRootComponent(App);
 // we ensure this mock is registered before the preset's scripts are executed.
 jest.mock('expo-modules-core/build/Refs', () => ({}));
 
+// Mock react-navigation hooks globally.
+// This prevents "TypeError: Cannot redefine property: useNavigation"
+// and provides a consistent mock navigator for all tests.
+jest.mock('@react-navigation/native', () => {
+    const actualNav = jest.requireActual('@react-navigation/native');
+    return {
+        ...actualNav,
+        useNavigation: () => ({
+            navigate: jest.fn(),
+            goBack: jest.fn(),
+            setParams: jest.fn(),
+        }),
+        useRoute: () => ({
+            params: {},
+        }),
+    };
+});
+
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
@@ -342,18 +360,19 @@ jest.mock('react-native-toast-message', () => ({
   hide: jest.fn(),
 }));
 
-// --- ADDED MOCK ---
-// Mock expo-font to prevent errors from @expo/vector-icons in tests
+// --- CORRECTED MOCK ---
+// Mock expo-font without `requireActual` to prevent native code execution.
+// This resolves the crash when rendering @rneui/themed Icons.
 jest.mock('expo-font', () => ({
-  ...jest.requireActual('expo-font'),
   loadAsync: jest.fn().mockResolvedValue(undefined),
   isLoaded: jest.fn().mockReturnValue(true),
+  // Add any other functions that might be called from expo-font if needed
 }));
-// --- END ADDED MOCK ---
+// --- END CORRECTED MOCK ---
 
-// Mock Expo Modules
+
+// Mock Expo Modules to prevent console warnings
 jest.mock('expo-constants', () => ({
-  ...jest.requireActual('expo-constants'),
   expoConfig: {
     extra: {
       env: {
@@ -361,8 +380,23 @@ jest.mock('expo-constants', () => ({
         BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
       },
     },
+    // Mock appOwnership to control tokenStorage behavior in tests
+    appOwnership: 'standalone',
   },
 }));
+
+jest.mock('expo-localization', () => ({
+    getLocales: () => [{
+        languageCode: 'en',
+        languageTag: 'en-US',
+        countryCode: 'US',
+        isRTL: false,
+    }],
+    getCalendars: () => [{
+        timeZone: 'UTC',
+    }],
+}));
+
 
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(() => Promise.resolve(null)),
@@ -392,8 +426,12 @@ module.exports = {
     '!src/navigation/**',
     '!src/localization/languages/**',
     '!src/assets/**',
+    // Exclude App.tsx and index.ts from coverage as they are entry points
+    '!App.tsx',
+    '!index.ts',
   ],
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
+  moduleDirectories: ['node_modules', 'src'], // Added to help resolve paths
 
   // Add moduleNameMapper to fix the "Cannot find module" error.
   // This is the definitive fix for the jest-expo/Expo SDK 52 incompatibility.
@@ -10088,11 +10126,12 @@ export async function getGramsFromNaturalLanguage(
 // utils/validationUtils.ts
 
 export const isValidNumberInput = (value: string): boolean => {
+    if (typeof value !== 'string') return false;
     return /^[0-9]*(\.[0-9]*)?$/.test(value) && !isNaN(parseFloat(value));
   };
   
   export const isNotEmpty = (value: string): boolean => {
-    return value.trim() !== '';
+    return typeof value === 'string' && value.trim() !== '';
   };
 ---------- END validationUtils.ts ----------
 

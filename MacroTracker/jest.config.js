@@ -17,8 +17,12 @@ module.exports = {
     '!src/navigation/**',
     '!src/localization/languages/**',
     '!src/assets/**',
+    // Exclude App.tsx and index.ts from coverage as they are entry points
+    '!App.tsx',
+    '!index.ts',
   ],
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
+  moduleDirectories: ['node_modules', 'src'], // Added to help resolve paths
 
   // Add moduleNameMapper to fix the "Cannot find module" error.
   // This is the definitive fix for the jest-expo/Expo SDK 52 incompatibility.
