@@ -8,17 +8,16 @@ import { Token } from '../types/token';
 const TOKEN_KEY = '@MacroTracker:authToken';
 
 /**
- * Checks if the app is running inside the generic Expo Go client.
- * SecureStore is not truly secure in Expo Go because the app shares a generic
- * bundle identifier. We fall back to AsyncStorage in this specific case.
- * In development builds and production, this will be false.
+ * Checks if the app is running in a development environment where SecureStore might
+ * not be ideal or available (like Expo Go). In these cases, we fall back to AsyncStorage.
+ * In production builds, this will be false, and SecureStore will be used.
  */
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const USE_ASYNC_STORAGE = __DEV__;
 
 if (__DEV__) {
   console.log(
-    `[TokenStorage] Running in ${IS_EXPO_GO ? 'Expo Go' : 'Development Build/Production'}. ` +
-    `Using ${IS_EXPO_GO ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
+    `[TokenStorage] Running in Development. ` +
+    `Using ${USE_ASYNC_STORAGE ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
   );
 }
 
@@ -28,7 +27,7 @@ if (__DEV__) {
  */
 export async function saveToken(token: Token): Promise<void> {
   const tokenJson = JSON.stringify(token);
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     await AsyncStorage.setItem(TOKEN_KEY, tokenJson);
   } else {
     await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
@@ -41,7 +40,7 @@ export async function saveToken(token: Token): Promise<void> {
  */
 export async function getToken(): Promise<Token | null> {
   let tokenJson: string | null = null;
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     tokenJson = await AsyncStorage.getItem(TOKEN_KEY);
   } else {
     tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -65,7 +64,7 @@ export async function getToken(): Promise<Token | null> {
  * Deletes the authentication token from the appropriate storage.
  */
 export async function deleteToken(): Promise<void> {
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } else {
     await SecureStore.deleteItemAsync(TOKEN_KEY);

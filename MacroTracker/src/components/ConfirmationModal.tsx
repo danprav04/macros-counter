@@ -61,6 +61,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             color="error"
             buttonStyle={styles.button}
             disabled={isConfirmDisabled}
+            accessibilityState={{ disabled: isConfirmDisabled }}
           />
         </View>
       </View>

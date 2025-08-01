@@ -105,9 +105,10 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
     }
 
     // Boost for low calorie, moderately balanced foods (like quinoa)
-    if (calories < 150 && protein > 3 && carbs > 15 && fat > 1) {
-        score += 15;
+    if (calories <= 120 && protein >= 4 && carbs >= 20 && fat >= 2) {
+        score += 20;
     }
+
 
     return mapScoreToGradeDetails(score);
 };
@@ -144,8 +145,8 @@ export const calculateDailyEntryGrade = (
     const consumedFat = food.fat * factor;
 
     const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
-    if (caloriePortionPercentage > 50) currentScore -= 25; // More aggressive penalty
-    else if (caloriePortionPercentage > 35) currentScore -= 15;
+    if (caloriePortionPercentage > 50) currentScore -= 30; // More aggressive penalty
+    else if (caloriePortionPercentage > 35) currentScore -= 20;
 
     const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
     if (fatPortionPercentage > 60) currentScore -= 15;

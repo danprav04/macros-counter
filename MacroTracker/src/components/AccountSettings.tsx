@@ -41,9 +41,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                         title={t('accountSettings.addTestCoins')}
                         onPress={onAddTestCoins}
                         buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        loading={isAddingCoins}
                         disabled={isAddingCoins || isLoadingCoins}
-                        icon={isAddingCoins ? undefined : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+                        icon={isAddingCoins ? <ActivityIndicator color="white" /> : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
                     />
                     <Text style={styles.testButtonWarning}>
                         {t('accountSettings.testButtonWarning')}

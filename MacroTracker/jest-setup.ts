@@ -30,6 +30,12 @@ jest.mock('@react-navigation/native', () => {
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
+// Mock react-native-uuid
+jest.mock('react-native-uuid', () => ({
+  v4: () => 'mock-uuid',
+}));
+
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -93,3 +99,30 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(() => Promise.resolve()),
   deleteItemAsync: jest.fn(() => Promise.resolve()),
 }));
+
+// --- ADDED MOCKS for Expo modules causing crashes ---
+jest.mock('expo-asset', () => ({
+    ...jest.requireActual('expo-asset'),
+    Asset: {
+        fromModule: jest.fn(() => ({
+            downloadAsync: jest.fn(),
+            uri: 'test-uri',
+        })),
+    },
+}));
+
+jest.mock('expo-image-manipulator', () => ({
+    manipulateAsync: jest.fn(async (uri, actions, options) => {
+        return {
+            uri: `manipulated-${uri}`,
+            width: 50,
+            height: 50,
+            base64: 'manipulated-base64',
+        };
+    }),
+    SaveFormat: {
+        JPEG: 'jpeg',
+        PNG: 'png',
+    },
+}));
+// --- END ADDED MOCKS ---

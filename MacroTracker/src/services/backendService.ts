@@ -38,17 +38,19 @@ async function fetchBackend<T>(
         const response = await fetch(url, { ...options, headers });
 
         // Handle token refresh on 401 Unauthorized
-        if (response.status === 401 && retry && tokenData?.refresh_token) {
-            console.log('Token expired, attempting refresh...');
-            const newTokens = await authService.refreshAuthToken(tokenData.refresh_token);
-            if (newTokens) {
-                await authService.setAuthToken(newTokens);
-                console.log('Token refreshed, retrying original request.');
-                return await fetchBackend(endpoint, options, false); // Retry only once
-            } else {
-                authService.triggerLogout();
-                throw new BackendError(t('backendService.errorAuthFailed'), 401);
+        if (response.status === 401 && retry) {
+            if (tokenData?.refresh_token){
+                console.log('Token expired, attempting refresh...');
+                const newTokens = await authService.refreshAuthToken(tokenData.refresh_token);
+                if (newTokens) {
+                    await authService.setAuthToken(newTokens);
+                    console.log('Token refreshed, retrying original request.');
+                    return await fetchBackend(endpoint, options, false); // Retry only once
+                }
             }
+            // If refresh fails or no refresh token, trigger logout
+            authService.triggerLogout();
+            throw new BackendError(t('backendService.errorAuthFailed'), 401);
         }
         
         // Handle 204 No Content response
@@ -56,15 +58,16 @@ async function fetchBackend<T>(
              return null as T;
         }
 
-        const responseBody = await response.text();
+        const responseBodyText = await response.text();
         let data;
         try {
-            data = JSON.parse(responseBody);
+            data = JSON.parse(responseBodyText);
         } catch (e) {
             if (!response.ok) {
                  throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
             }
-            return responseBody as T;
+            // If parsing fails but response is ok, it might be plain text
+            return responseBodyText as T;
         }
 
         // Handle other non-successful responses
