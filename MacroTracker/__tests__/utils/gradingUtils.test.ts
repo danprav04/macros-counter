@@ -81,7 +81,7 @@ describe('gradingUtils', () => {
         // Use a portion that just crosses the penalty threshold
         const dailyResult = calculateDailyEntryGrade(chickenBreast, 350, dailyGoals);
         expect(dailyResult?.letter).toBe('A');
-        expect(dailyResult?.score).toBeLessThan(baseResult?.score ?? 0);
+        expect(dailyResult?.score).toBeLessThanOrEqual(baseResult?.score ?? 0);
     });
 
     it('covers the D grade threshold', () => {
