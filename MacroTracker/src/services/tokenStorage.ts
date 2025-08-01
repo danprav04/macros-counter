@@ -8,19 +8,25 @@ import { Token } from '../types/token';
 const TOKEN_KEY = '@MacroTracker:authToken';
 
 /**
- * Checks if the app is running in a development environment where SecureStore might
- * not be ideal or available (like Expo Go). In these cases, we fall back to AsyncStorage.
- * In production builds (appOwnership === 'standalone'), this will be false, and SecureStore will be used.
+ * Determines at runtime if the app should use AsyncStorage instead of SecureStore.
+ * This is typically true for development environments like Expo Go where SecureStore might not be available.
+ * In production builds (appOwnership === 'standalone'), this will return false.
+ * @returns {boolean} True if AsyncStorage should be used, false for SecureStore.
  */
-const USE_ASYNC_STORAGE = __DEV__ && (Constants.expoConfig as any)?.appOwnership !== 'standalone';
+const isUsingAsyncStorage = (): boolean => {
+  const shouldUseAsync = __DEV__ && (Constants.expoConfig as any)?.appOwnership !== 'standalone';
+  
+  // This log is useful for debugging which storage is being used during tests.
+  if (process.env.JEST_WORKER_ID !== undefined) { 
+      console.log(
+        `[TokenStorage] Running in test (appOwnership: ${(Constants.expoConfig as any)?.appOwnership}). ` +
+        `Using ${shouldUseAsync ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
+      );
+  }
 
+  return shouldUseAsync;
+};
 
-if (__DEV__) {
-  console.log(
-    `[TokenStorage] Running in Development (appOwnership: ${(Constants.expoConfig as any)?.appOwnership}). ` +
-    `Using ${USE_ASYNC_STORAGE ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
-  );
-}
 
 /**
  * Saves the authentication token to the appropriate storage.
@@ -28,7 +34,7 @@ if (__DEV__) {
  */
 export async function saveToken(token: Token): Promise<void> {
   const tokenJson = JSON.stringify(token);
-  if (USE_ASYNC_STORAGE) {
+  if (isUsingAsyncStorage()) {
     await AsyncStorage.setItem(TOKEN_KEY, tokenJson);
   } else {
     await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
@@ -41,7 +47,7 @@ export async function saveToken(token: Token): Promise<void> {
  */
 export async function getToken(): Promise<Token | null> {
   let tokenJson: string | null = null;
-  if (USE_ASYNC_STORAGE) {
+  if (isUsingAsyncStorage()) {
     tokenJson = await AsyncStorage.getItem(TOKEN_KEY);
   } else {
     tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -65,7 +71,7 @@ export async function getToken(): Promise<Token | null> {
  * Deletes the authentication token from the appropriate storage.
  */
 export async function deleteToken(): Promise<void> {
-  if (USE_ASYNC_STORAGE) {
+  if (isUsingAsyncStorage()) {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } else {
     await SecureStore.deleteItemAsync(TOKEN_KEY);

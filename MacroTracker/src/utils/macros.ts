@@ -19,7 +19,7 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
 const handleError = (error: unknown, title: string) => {
     const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
     Alert.alert(title, message);
-    throw error;
+    // The calling function is now responsible for re-throwing the error
 }
 
 export async function getMacrosFromText(foodName: string, ingredients: string): Promise<MacrosWithFoodName> {
@@ -27,7 +27,7 @@ export async function getMacrosFromText(foodName: string, ingredients: string): 
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
         handleError(error, t('utils.macros.errorTitle'));
-        throw error; // Re-throw to allow caller to handle UI state
+        throw error; // Re-throw to allow caller to handle UI state and promise rejection
     }
 }
 

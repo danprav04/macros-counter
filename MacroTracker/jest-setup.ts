@@ -86,8 +86,9 @@ jest.mock('expo-font', () => ({
 }));
 
 
-// Mock Expo Modules to prevent console warnings.
-// This is now a self-contained mock and does NOT use requireActual to avoid native code issues.
+// --- CORRECTED MOCK for expo-constants ---
+// This mock is now more complete to prevent crashes related to expo-linking.
+// It provides the 'scheme' and 'linking' properties that the library depends on.
 jest.mock('expo-constants', () => ({
   expoConfig: {
     extra: {
@@ -96,12 +97,12 @@ jest.mock('expo-constants', () => ({
         BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
       },
     },
-    // 3. FIX: Add scheme for expo-linking. This resolves multiple test failures.
+    // The 'scheme' is required by expo-linking. This resolves the test failures.
     scheme: 'macrosvisionai',
-    // appOwnership is now controlled by the specific test file that needs it by re-mocking this module.
-    appOwnership: 'expo', // Default to a safe value
+    // 'appOwnership' is controlled by specific tests that need to simulate production.
+    appOwnership: 'expo', // Default to a safe value for most tests.
   },
-  // 3. FIX: Add linking object for expo-linking
+  // The 'linking' object is also used by expo-linking.
   linking: {
       hostname: 'expo.dev',
       path: '',
@@ -115,7 +116,7 @@ jest.mock('expo-constants', () => ({
     assetBundlePatterns: ['**/*'],
   },
   manifest2: {},
-  // Add other constants that might be used
+  // Add other common constants for robustness.
   statusBarHeight: 20,
   platform: {
       ios: {
@@ -126,6 +127,7 @@ jest.mock('expo-constants', () => ({
       },
   },
 }));
+// --- END CORRECTED MOCK ---
 
 jest.mock('expo-localization', () => ({
     getLocales: () => [{
