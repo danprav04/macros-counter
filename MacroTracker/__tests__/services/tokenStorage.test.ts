@@ -1,12 +1,12 @@
 // __tests__/services/tokenStorage.test.ts
 
+import { saveToken, getToken, deleteToken } from '../../src/services/tokenStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
-import { saveToken, getToken, deleteToken } from '../../src/services/tokenStorage';
 import { Token } from '../../src/types/token';
+import Constants from 'expo-constants';
 
-// Mock the storage modules
+// Mock the modules we'll be checking
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('expo-secure-store');
 
@@ -18,12 +18,25 @@ const mockToken: Token = {
 const mockTokenJson = JSON.stringify(mockToken);
 
 describe('tokenStorage', () => {
+  let constantsSpy: jest.SpyInstance;
+
   afterEach(() => {
     jest.clearAllMocks();
+    // Restore the spy after each test
+    if (constantsSpy) {
+      constantsSpy.mockRestore();
+    }
   });
 
   describe('when in a standalone app', () => {
-    // This suite relies on the global mock from jest-setup.ts where appOwnership is 'standalone'
+    beforeEach(() => {
+      // Mock the implementation for this specific context
+      constantsSpy = jest.spyOn(Constants, 'expoConfig', 'get').mockReturnValue({
+        ...(Constants.expoConfig as any),
+        appOwnership: 'standalone',
+      });
+    });
+
     it('should use SecureStore to save a token', async () => {
       await saveToken(mockToken);
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith(expect.any(String), mockTokenJson);
@@ -43,9 +56,9 @@ describe('tokenStorage', () => {
       expect(SecureStore.deleteItemAsync).toHaveBeenCalled();
       expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
     });
-
+    
     it('should return null and clear corrupted token from SecureStore', async () => {
-      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('{invalid-json');
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('{invalid-json}');
       const token = await getToken();
       expect(token).toBeNull();
       expect(SecureStore.deleteItemAsync).toHaveBeenCalled();
@@ -53,22 +66,12 @@ describe('tokenStorage', () => {
   });
 
   describe('when in Expo Go', () => {
-    let originalAppOwnership: string | undefined;
-
-    beforeAll(() => {
-      // Safely access and store the original value from the global mock
-      if (Constants.expoConfig) {
-        originalAppOwnership = (Constants.expoConfig as any).appOwnership;
-        // Mutate the mock object for this specific test suite by casting to 'any'
-        (Constants.expoConfig as any).appOwnership = 'expo';
-      }
-    });
-
-    afterAll(() => {
-      // Restore the original value to avoid side effects in other tests
-      if (Constants.expoConfig) {
-        (Constants.expoConfig as any).appOwnership = originalAppOwnership;
-      }
+    beforeEach(() => {
+      // Mock the implementation for this specific context
+      constantsSpy = jest.spyOn(Constants, 'expoConfig', 'get').mockReturnValue({
+        ...(Constants.expoConfig as any),
+        appOwnership: 'expo',
+      });
     });
 
     it('should use AsyncStorage to save a token', async () => {
@@ -89,6 +92,13 @@ describe('tokenStorage', () => {
       await deleteToken();
       expect(AsyncStorage.removeItem).toHaveBeenCalled();
       expect(SecureStore.deleteItemAsync).not.toHaveBeenCalled();
+    });
+
+    it('should return null and clear corrupted token from AsyncStorage', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('{invalid-json}');
+      const token = await getToken();
+      expect(token).toBeNull();
+      expect(AsyncStorage.removeItem).toHaveBeenCalled();
     });
   });
 });

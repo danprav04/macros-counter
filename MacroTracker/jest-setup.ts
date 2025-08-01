@@ -1,15 +1,10 @@
 // jest-setup.ts
 
 // This mock MUST BE at the top to be hoisted by Jest. It resolves a module
-// not found error in jest-expo@51 with Expo SDK 52. The jest-expo preset
-// attempts to require a file that no longer exists in newer Expo versions.
-// By mocking it here and loading this file via `setupFiles` in jest.config.js,
-// we ensure this mock is registered before the preset's scripts are executed.
+// not found error in jest-expo@51 with Expo SDK 52.
 jest.mock('expo-modules-core/build/Refs', () => ({}));
 
 // Mock react-navigation hooks globally.
-// This prevents "TypeError: Cannot redefine property: useNavigation"
-// and provides a consistent mock navigator for all tests.
 jest.mock('@react-navigation/native', () => {
     const actualNav = jest.requireActual('@react-navigation/native');
     return {
@@ -18,7 +13,7 @@ jest.mock('@react-navigation/native', () => {
             navigate: jest.fn(),
             goBack: jest.fn(),
             setParams: jest.fn(),
-            addListener: jest.fn(() => jest.fn()), // Prevents errors in components that listen to navigation events
+            addListener: jest.fn(() => jest.fn()),
             removeListener: jest.fn(),
         }),
         useRoute: () => ({
@@ -26,6 +21,34 @@ jest.mock('@react-navigation/native', () => {
         }),
     };
 });
+
+// --- FIXES FOR TEST FAILURES ---
+
+// 1. Mock react-native-webview to prevent native module errors in component tests
+jest.mock('react-native-webview', () => {
+    const { View } = require('react-native');
+    return { WebView: View };
+});
+
+// 2. Mock missing native functionality from react-native itself.
+// This prevents crashes related to 'SettingsManager', 'Platform', and 'I18nManager'.
+jest.mock('react-native', () => {
+    const rn = jest.requireActual('react-native');
+
+    // Mock for 'SettingsManager' which requires getConstants()
+    rn.NativeModules.SettingsManager = {
+        settings: {},
+        getConstants: () => ({}),
+    };
+
+    // Mocks for 'Platform.OS' and 'I18nManager.isRTL' used in i18n
+    rn.Platform.OS = 'ios';
+    rn.I18nManager.isRTL = false;
+    
+    return rn;
+});
+
+// --- END FIXES ---
 
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
@@ -50,39 +73,47 @@ jest.mock('react-native-toast-message', () => ({
   hide: jest.fn(),
 }));
 
-// --- CORRECTED MOCK ---
 // Mock expo-font without `requireActual` to prevent native code execution.
-// This resolves the crash when rendering @rneui/themed Icons.
 jest.mock('expo-font', () => ({
   loadAsync: jest.fn().mockResolvedValue(undefined),
   isLoaded: jest.fn().mockReturnValue(true),
-  // Add any other functions that might be called from expo-font if needed
 }));
-// --- END CORRECTED MOCK ---
 
 
 // Mock Expo Modules to prevent console warnings
-jest.mock('expo-constants', () => ({
-  expoConfig: {
-    extra: {
-      env: {
-        BACKEND_URL_DEVELOPMENT: 'http://mock-dev-url.com',
-        BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
-      },
-    },
-    // Mock appOwnership to control tokenStorage behavior in tests
-    appOwnership: 'standalone',
-  },
-  // Add a more complete manifest mock to prevent crashes in dependent libraries like expo-asset
-  manifest: {
-    ...require('expo-constants/package.json'), // Spread some defaults
-    name: 'test-app',
-    slug: 'test-app',
-    version: '1.0.0',
-    assetBundlePatterns: ['**/*'],
-  },
-  manifest2: {}, // For newer SDK versions that might look here
-}));
+jest.mock('expo-constants', () => {
+    const constants = jest.requireActual('expo-constants');
+    return {
+        ...constants,
+        expoConfig: {
+            ...constants.expoConfig,
+            extra: {
+                env: {
+                    BACKEND_URL_DEVELOPMENT: 'http://mock-dev-url.com',
+                    BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
+                },
+            },
+            // 3. FIX: Add scheme for expo-linking
+            scheme: 'macrosvisionai',
+        },
+        // 3. FIX: Add linking object for expo-linking
+        linking: {
+            hostname: 'expo.dev',
+            path: '',
+            schemes: ['macrosvisionai', 'exp'],
+        },
+        // appOwnership is now controlled by the specific test file that needs it.
+        // manifest and manifest2 are kept for compatibility.
+        manifest: {
+            ...require('expo-constants/package.json'),
+            name: 'test-app',
+            slug: 'test-app',
+            version: '1.0.0',
+            assetBundlePatterns: ['**/*'],
+        },
+        manifest2: {},
+    };
+});
 
 jest.mock('expo-localization', () => ({
     getLocales: () => [{
@@ -143,4 +174,3 @@ jest.mock('expo-image-manipulator', () => ({
         PNG: 'png',
     },
 }));
-// --- END ADDED MOCKS ---
