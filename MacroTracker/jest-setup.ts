@@ -18,6 +18,8 @@ jest.mock('@react-navigation/native', () => {
             navigate: jest.fn(),
             goBack: jest.fn(),
             setParams: jest.fn(),
+            addListener: jest.fn(() => jest.fn()), // Prevents errors in components that listen to navigation events
+            removeListener: jest.fn(),
         }),
         useRoute: () => ({
             params: {},

@@ -53,7 +53,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
                 disabled={isDisabled}
                 disabledStyle={styles.disabledButton}
             />
-            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled} accessibilityState={{ disabled: isDisabled }}>
+            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled}>
                 <Text h4 h4Style={[styles.dateText, isDisabled && styles.disabledText]}>
                     {displayDate}
                 </Text>

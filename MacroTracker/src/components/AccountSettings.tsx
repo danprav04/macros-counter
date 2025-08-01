@@ -38,7 +38,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             {__DEV__ && (
                 <>
                     <Button
-                        title={isAddingCoins ? '' : t('accountSettings.addTestCoins')}
+                        title={t('accountSettings.addTestCoins')}
                         onPress={onAddTestCoins}
                         buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
                         loading={isAddingCoins}

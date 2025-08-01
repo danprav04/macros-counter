@@ -1,178 +1,133 @@
-// src/utils/gradingUtils.ts
-import { Food } from '../types/food';
-import { Settings } from '../types/settings';
+// src/services/backendService.ts
+import { Alert } from 'react-native';
+import * as authService from './authService';
+import { getClientId } from './clientIDService';
+import { MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
+import { t } from '../localization/i18n';
 
-export type GradeLetter = 'A' | 'B' | 'C' | 'D' | 'F';
-
-export interface FoodGradeResult {
-    letter: GradeLetter;
-    color: string;
-    score: number; // Underlying score for potential adjustments
+// Custom Error for Backend Issues, includes HTTP status
+export class BackendError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'BackendError';
+  }
 }
 
-export const gradeColors: Record<GradeLetter, string> = {
-    A: '#4CAF50', // Green
-    B: '#8BC34A', // Light Green
-    C: '#FFC107', // Amber/Yellow
-    D: '#FF9800', // Orange
-    F: '#F44336', // Red
-};
+// Generic, robust fetch function for interacting with the backend API
+async function fetchBackend<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    retry = true
+): Promise<T> {
+    const url = `${authService.getApiUrl()}${endpoint}`;
+    const tokenData = await authService.getAuthToken();
+    const clientId = await getClientId();
 
-const mapScoreToGradeDetails = (score: number): FoodGradeResult => {
-    let letter: GradeLetter;
-    const clampedScore = Math.max(0, Math.min(100, Math.round(score))); // Ensure score is 0-100
-
-    if (clampedScore >= 90) letter = 'A';
-    else if (clampedScore >= 75) letter = 'B';
-    else if (clampedScore >= 60) letter = 'C';
-    else if (clampedScore >= 45) letter = 'D';
-    else letter = 'F';
-    return { letter, color: gradeColors[letter], score: clampedScore };
-};
-
-/**
- * Calculates a base grade for a food item (per 100g) based on refined heuristics.
- * @param food The food item (calories, protein, carbs, fat per 100g).
- * @returns FoodGradeResult or null if grading is not possible.
- */
-export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
-    if (!food || typeof food.calories !== 'number' || typeof food.protein !== 'number' || typeof food.carbs !== 'number' || typeof food.fat !== 'number') {
-        return null;
-    }
-
-    const { calories, protein, carbs, fat } = food;
-    let score = 70; // Start with a baseline score (e.g., C+ grade)
-
-    // --- 1. Calorie Density (per 100g) ---
-    if (calories < 100) score += 15; // Low density
-    else if (calories < 200) score += 7;
-    else if (calories > 350) score -= (calories - 350) * 0.08; // Penalize high density
-    if (calories > 500) score -= 20; // Further penalty for very high density
-
-    // --- 2. Protein Content (per 100g) ---
-    if (protein > 20) score += 18;
-    else if (protein > 10) score += 10;
-    else if (protein < 5 && calories > 150) score -= 10; // Low protein for moderate/high cal food
-
-    // --- 3. Fat Content & Type (Heuristic for "quality" based on balance) ---
-    const caloriesFromFat = fat * 9;
-    const percentageCaloriesFromFat = (calories > 0) ? (caloriesFromFat / calories) * 100 : 0;
-
-    if (fat > 25) { // High total fat
-        score -= (fat - 25) * 0.5;
-        if (protein < fat * 0.5 && protein < 10) { // High fat, low protein suggests less ideal source
-            score -= 10;
-        }
-    }
-    if (percentageCaloriesFromFat > 50) score -= 15;
-    else if (percentageCaloriesFromFat > 35) score -= 7;
-
-    // --- 4. Carbohydrate Content & Type (Heuristic) ---
-    const caloriesFromCarbs = carbs * 4;
-    const percentageCaloriesFromCarbs = (calories > 0) ? (caloriesFromCarbs / calories) * 100 : 0;
-    
-    if (carbs > 40 && calories > 100) { // High total carbs in non-trivial food
-        score -= (carbs - 40) * 0.3;
-        if (protein < carbs * 0.1 && protein < 7) { // High carb, very low protein suggests refined carbs
-            score -= 12;
-        }
-    }
-    if (percentageCaloriesFromCarbs > 60) score -= 15;
-    else if (percentageCaloriesFromCarbs > 50) score -= 7;
-
-    // --- 5. Macronutrient Balance & Synergy Adjustments ---
-    const caloriesFromProtein = protein * 4;
-    const percentageCaloriesFromProtein = (calories > 0) ? (caloriesFromProtein / calories) * 100 : 0;
-    let balanceBonus = 0;
-    if (percentageCaloriesFromProtein >= 15 && percentageCaloriesFromProtein <= 40) balanceBonus += 4;
-    if (percentageCaloriesFromFat >= 15 && percentageCaloriesFromFat <= 40) balanceBonus += 4;
-    if (percentageCaloriesFromCarbs >= 35 && percentageCaloriesFromCarbs <= 55) balanceBonus += 4;
-    if (balanceBonus >= 10) score += 10;
-    else if (balanceBonus >= 8) score += 5;
-
-    // Mitigate fat penalty for high-protein foods (like salmon)
-    if (protein > 18 && percentageCaloriesFromFat > 35) {
-        score += 20;
-    }
-    // Mitigate fat penalty for healthy-fat foods (like avocado)
-    if (fat > 10 && carbs < 10 && protein < 5) {
-        score += 20;
-    }
-
-    // Penalty for extreme imbalance if not already heavily penalized
-    if (protein < 5 && fat > 20 && carbs > 30 && calories > 200) {
-        score -= 15;
-    }
-
-    // Boost for low calorie, moderately balanced foods (like quinoa)
-    if (calories < 150 && protein > 3 && carbs > 15 && fat > 1) {
-        score += 15;
-    }
-
-    return mapScoreToGradeDetails(score);
-};
-
-/**
- * Calculates a grade for a specific daily entry, considering portion size and daily goals.
- * @param food The food item.
- * @param consumedGrams The amount of the food consumed in grams.
- * @param dailyGoals The user's daily macronutrient goals.
- * @returns FoodGradeResult or null if grading is not possible.
- */
-export const calculateDailyEntryGrade = (
-    food: Food,
-    consumedGrams: number,
-    dailyGoals: Settings['dailyGoals']
-): FoodGradeResult | null => {
-    const baseGradeResult = calculateBaseFoodGrade(food);
-    if (!baseGradeResult) return null;
-    if (consumedGrams <= 0) return baseGradeResult;
-
-    let currentScore = baseGradeResult.score;
-
-    const safeGoals = {
-        calories: Math.max(1, dailyGoals.calories || 2000),
-        protein: Math.max(1, dailyGoals.protein || 100),
-        carbs: Math.max(1, dailyGoals.carbs || 200),
-        fat: Math.max(1, dailyGoals.fat || 70),
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Client-ID': clientId,
+        ...(options.headers as Record<string, string> || {})
     };
 
-    const factor = consumedGrams / 100;
-    const consumedCalories = food.calories * factor;
-    const consumedProtein = food.protein * factor;
-    const consumedCarbs = food.carbs * factor;
-    const consumedFat = food.fat * factor;
-
-    const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
-    if (caloriePortionPercentage > 50) currentScore -= 25; // More aggressive penalty
-    else if (caloriePortionPercentage > 35) currentScore -= 15;
-
-    const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
-    if (fatPortionPercentage > 60) currentScore -= 15;
-    else if (fatPortionPercentage > 40) currentScore -= 7;
-
-    const carbPortionPercentage = (consumedCarbs / safeGoals.carbs) * 100;
-    if (carbPortionPercentage > 60) currentScore -= 10;
-    else if (carbPortionPercentage > 45) currentScore -= 5;
-
-    const proteinPortionPercentage = (consumedProtein / safeGoals.protein) * 100;
-    if (proteinPortionPercentage > 25 && caloriePortionPercentage < 30) {
-        currentScore += 10;
-    } else if (proteinPortionPercentage > 15 && caloriePortionPercentage < 20) {
-        currentScore += 5;
-    }
-    
-    // Mitigation for small portions of "F" grade foods
-    if (baseGradeResult.letter === 'F' && caloriePortionPercentage < 10) {
-        currentScore += 25;
-    } else if (baseGradeResult.letter === 'D' && caloriePortionPercentage < 7) {
-        currentScore += 7;
+    if (tokenData?.access_token) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
     }
 
-    // Penalize large (but not excessive) portions of A-grade foods
-    if (baseGradeResult.score >= 90 && caloriePortionPercentage > 25) {
-        currentScore -= 10;
-    }
+    try {
+        const response = await fetch(url, { ...options, headers });
 
-    return mapScoreToGradeDetails(currentScore);
+        // Handle token refresh on 401 Unauthorized
+        if (response.status === 401 && retry && tokenData?.refresh_token) {
+            console.log('Token expired, attempting refresh...');
+            const newTokens = await authService.refreshAuthToken(tokenData.refresh_token);
+            if (newTokens) {
+                await authService.setAuthToken(newTokens);
+                console.log('Token refreshed, retrying original request.');
+                return await fetchBackend(endpoint, options, false); // Retry only once
+            } else {
+                authService.triggerLogout();
+                throw new BackendError(t('backendService.errorAuthFailed'), 401);
+            }
+        }
+        
+        // Handle 204 No Content response
+        if (response.status === 204) {
+             return null as T;
+        }
+
+        const responseBody = await response.text();
+        let data;
+        try {
+            data = JSON.parse(responseBody);
+        } catch (e) {
+            if (!response.ok) {
+                 throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
+            }
+            return responseBody as T;
+        }
+
+        // Handle other non-successful responses
+        if (!response.ok) {
+            const detail = data?.detail;
+            let errorMessage: string;
+            switch (response.status) {
+                case 401: errorMessage = t('backendService.errorAuthFailed'); authService.triggerLogout(); break;
+                case 403: errorMessage = t('backendService.errorPermissionDenied'); break;
+                case 404: errorMessage = t('backendService.errorNotFound'); break;
+                case 429: errorMessage = t('backendService.errorTooManyRequests'); break;
+                case 402: errorMessage = t('backendService.errorInsufficientCoins'); break;
+                default:
+                    if (typeof detail === 'string') errorMessage = detail;
+                    else if (detail) errorMessage = t('backendService.errorRequestFailedDetailFormat', { status: response.status });
+                    else errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
+                    break;
+            }
+            throw new BackendError(errorMessage, response.status);
+        }
+        return data as T;
+    } catch (error) {
+        if (error instanceof BackendError) throw error;
+        
+        let networkErrorMessage = t('backendService.errorNetwork');
+        if (error instanceof Error) {
+            if (error.message.toLowerCase().includes('timeout')) networkErrorMessage += t('backendService.errorNetworkTimeout');
+            else if (error.message.toLowerCase().includes('network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
+            else networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
+        } else {
+             networkErrorMessage += t('backendService.errorNetworkUnknown');
+        }
+        throw new BackendError(networkErrorMessage, 0);
+    }
+}
+
+// --- EXPORTED API FUNCTIONS ---
+
+export const getUserStatus = (): Promise<{ coins: number }> => fetchBackend('/users/status');
+
+export const addCoinsToUser = (amount: number): Promise<{ coins: number }> => {
+    if (amount <= 0) {
+        return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
+    }
+    return fetchBackend('/users/add-coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };
+
+export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => 
+    fetchBackend('/macros/recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+
+export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
+    const response = await fetchBackend<{ grams: number }>('/macros/estimate-grams', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
+    if (typeof response?.grams !== 'number') {
+        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500);
+    }
+    return response.grams;
+};
+
+export const getMacrosForImageSingle = (base64Image: string, mimeType: string): Promise<MacrosWithFoodName> => 
+    fetchBackend('/macros/image-single', { method: 'POST', body: JSON.stringify({ base64_image: base64Image, mime_type: mimeType }) });
+
+export const getMacrosForImageMultiple = (base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> => 
+    fetchBackend('/macros/image-multiple', { method: 'POST', body: JSON.stringify({ base64_image: base64Image, mime_type: mimeType }) });
+
+export const getMacrosForTextMultiple = (text: string): Promise<EstimatedFoodItem[]> => 
+    fetchBackend('/macros/text-multiple', { method: 'POST', body: JSON.stringify({ text }) });

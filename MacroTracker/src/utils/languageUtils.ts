@@ -1,35 +1,35 @@
 // src/utils/languageUtils.ts
 import { LanguageCode } from '../types/settings';
 
-// Basic script detection character ranges
-const HEBREW_REGEX = /[\u0590-\u05FF]/;
-const CYRILLIC_REGEX = /[\u0400-\u04FF]/;
-const LATIN_REGEX = /[a-zA-Z]/;
+// Basic script detection character ranges with global flag
+const HEBREW_REGEX = /[\u0590-\u05FF]/g;
+const CYRILLIC_REGEX = /[\u0400-\u04FF]/g;
+const LATIN_REGEX = /[a-zA-Z]/g;
 
 /**
- * Detects the dominant language script in a given text.
- * It checks for the presence of Hebrew or Cyrillic characters first.
- * If neither script is found, it defaults to 'en' (representing Latin scripts).
- * This priority is effective for mixed-language strings where the non-Latin
- * script is the determining factor.
+ * Detects the dominant language script in a given text by character count.
+ * It checks for Hebrew, Cyrillic, and Latin characters and returns the code
+ * for the most prevalent script. Defaults to 'en' in case of a tie or if
+ * no identifiable characters are found.
  * @param text The text to analyze.
- * @returns LanguageCode ('he', 'ru', or 'en' as default).
+ * @returns LanguageCode ('he', 'ru', or 'en').
  */
 export const detectLanguageFromText = (text: string): LanguageCode => {
     if (!text || text.trim() === '') {
         return 'en'; // Default if no text
     }
 
-    // Prioritize non-Latin scripts as they are more distinctive identifiers.
-    if (HEBREW_REGEX.test(text)) {
+    const hebrewChars = (text.match(HEBREW_REGEX) || []).length;
+    const cyrillicChars = (text.match(CYRILLIC_REGEX) || []).length;
+    const latinChars = (text.match(LATIN_REGEX) || []).length;
+
+    if (hebrewChars > latinChars && hebrewChars > cyrillicChars) {
         return 'he';
     }
-    if (CYRILLIC_REGEX.test(text)) {
+    if (cyrillicChars > latinChars && cyrillicChars > hebrewChars) {
         return 'ru';
     }
     
-    // If no Hebrew or Cyrillic characters are found, default to 'en'.
-    // This serves as a catch-all for Latin-based languages (English, French, etc.)
-    // and correctly maps them to use the English tag set as a reliable fallback.
+    // Default to English if Latin is dominant, in case of a tie, or for other scripts
     return 'en';
 };
