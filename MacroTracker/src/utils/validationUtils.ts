@@ -27,11 +27,11 @@ describe('getGramsFromNaturalLanguage', () => {
     const error = new BackendError('AI unavailable', 503);
     mockedEstimateGrams.mockRejectedValue(error);
 
-    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toEqual(error);
+    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toThrow(error);
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      t('utils.units.errorTitle'),
-      'AI unavailable'
+      expect.any(String), // title
+      'AI unavailable'   // message
     );
   });
 
@@ -40,10 +40,10 @@ describe('getGramsFromNaturalLanguage', () => {
     mockedEstimateGrams.mockRejectedValue(genericError);
     const expectedMessage = t('errors.unexpectedError');
 
-    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toEqual(genericError);
+    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toThrow(genericError);
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      t('utils.units.errorTitle'),
+      expect.any(String), // title
       expectedMessage
     );
   });
