@@ -3,11 +3,13 @@
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
-    "baseUrl": "src"
+    "baseUrl": "src",
+    "types": ["jest", "@testing-library/jest-native"]
   },
   "include": [
     "src",
-    "__tests__"
+    "__tests__",
+    "jest-setup.ts"
   ],
   "exclude": [
     "node_modules"
