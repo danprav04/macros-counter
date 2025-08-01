@@ -113,14 +113,14 @@ export const addCoinsToUser = (amount: number): Promise<{ coins: number }> => {
     if (amount <= 0) {
         return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
     }
-    return fetchBackend('/users/add-coins', { method: 'POST', body: JSON.stringify({ amount }) });
+    return fetchBackend('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
 };
 
 export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => 
-    fetchBackend('/macros/recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
+    fetchBackend('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
-    const response = await fetchBackend<{ grams: number }>('/macros/estimate-grams', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
+    const response = await fetchBackend<{ grams: number }>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
     if (typeof response?.grams !== 'number') {
         throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500);
     }
@@ -128,10 +128,10 @@ export const estimateGramsNaturalLanguage = async (foodName: string, quantityDes
 };
 
 export const getMacrosForImageSingle = (base64Image: string, mimeType: string): Promise<MacrosWithFoodName> => 
-    fetchBackend('/macros/image-single', { method: 'POST', body: JSON.stringify({ base64_image: base64Image, mime_type: mimeType }) });
+    fetchBackend('/ai/macros_image_single', { method: 'POST', body: JSON.stringify({ image_base64: base64Image, mime_type: mimeType }) });
 
 export const getMacrosForImageMultiple = (base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> => 
-    fetchBackend('/macros/image-multiple', { method: 'POST', body: JSON.stringify({ base64_image: base64Image, mime_type: mimeType }) });
+    fetchBackend('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64: base64Image, mime_type: mimeType }) });
 
 export const getMacrosForTextMultiple = (text: string): Promise<EstimatedFoodItem[]> => 
-    fetchBackend('/macros/text-multiple', { method: 'POST', body: JSON.stringify({ text }) });
+    fetchBackend('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
