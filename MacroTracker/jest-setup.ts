@@ -32,6 +32,7 @@ jest.mock('react-native-webview', () => {
 
 // 2. Mock missing native functionality from react-native itself.
 // This prevents crashes related to 'SettingsManager', 'Platform', and 'I18nManager'.
+// Also includes a mock for Alert to fix matcher errors in tests.
 jest.mock('react-native', () => {
     const rn = jest.requireActual('react-native');
 
@@ -45,6 +46,11 @@ jest.mock('react-native', () => {
     rn.Platform.OS = 'ios';
     rn.I18nManager.isRTL = false;
     
+    // Add a mock for Alert to be available globally
+    rn.Alert = {
+        alert: jest.fn(),
+    };
+
     return rn;
 });
 
@@ -80,40 +86,46 @@ jest.mock('expo-font', () => ({
 }));
 
 
-// Mock Expo Modules to prevent console warnings
-jest.mock('expo-constants', () => {
-    const constants = jest.requireActual('expo-constants');
-    return {
-        ...constants,
-        expoConfig: {
-            ...constants.expoConfig,
-            extra: {
-                env: {
-                    BACKEND_URL_DEVELOPMENT: 'http://mock-dev-url.com',
-                    BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
-                },
-            },
-            // 3. FIX: Add scheme for expo-linking
-            scheme: 'macrosvisionai',
-        },
-        // 3. FIX: Add linking object for expo-linking
-        linking: {
-            hostname: 'expo.dev',
-            path: '',
-            schemes: ['macrosvisionai', 'exp'],
-        },
-        // appOwnership is now controlled by the specific test file that needs it.
-        // manifest and manifest2 are kept for compatibility.
-        manifest: {
-            ...require('expo-constants/package.json'),
-            name: 'test-app',
-            slug: 'test-app',
-            version: '1.0.0',
-            assetBundlePatterns: ['**/*'],
-        },
-        manifest2: {},
-    };
-});
+// Mock Expo Modules to prevent console warnings.
+// This is now a self-contained mock and does NOT use requireActual to avoid native code issues.
+jest.mock('expo-constants', () => ({
+  expoConfig: {
+    extra: {
+      env: {
+        BACKEND_URL_DEVELOPMENT: 'http://mock-dev-url.com',
+        BACKEND_URL_PRODUCTION: 'http://mock-prod-url.com',
+      },
+    },
+    // 3. FIX: Add scheme for expo-linking. This resolves multiple test failures.
+    scheme: 'macrosvisionai',
+    // appOwnership is now controlled by the specific test file that needs it by re-mocking this module.
+    appOwnership: 'expo', // Default to a safe value
+  },
+  // 3. FIX: Add linking object for expo-linking
+  linking: {
+      hostname: 'expo.dev',
+      path: '',
+      schemes: ['macrosvisionai', 'exp'],
+  },
+  manifest: {
+    ...require('expo-constants/package.json'),
+    name: 'test-app',
+    slug: 'test-app',
+    version: '1.0.0',
+    assetBundlePatterns: ['**/*'],
+  },
+  manifest2: {},
+  // Add other constants that might be used
+  statusBarHeight: 20,
+  platform: {
+      ios: {
+          buildNumber: '1',
+      },
+      android: {
+          versionCode: 1,
+      },
+  },
+}));
 
 jest.mock('expo-localization', () => ({
     getLocales: () => [{

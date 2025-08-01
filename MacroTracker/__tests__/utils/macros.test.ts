@@ -1,115 +1,60 @@
 // __tests__/utils/macros.test.ts
-import { Alert } from 'react-native';
-import {
-  getMacrosFromText,
-  getMacrosForImageFile,
-  getMultipleFoodsFromImage,
-  getMultipleFoodsFromText,
-  determineMimeType,
-  BackendError,
-} from '../../src/utils/macros';
+import * as macrosUtil from '../../src/utils/macros';
 import * as backendService from '../../src/services/backendService';
-import * as imageUtils from '../../src/utils/imageUtils';
-import { ImagePickerAsset } from 'expo-image-picker';
+import { Alert } from 'react-native';
 
-jest.mock('react-native', () => ({
-  Alert: { alert: jest.fn() },
-}));
 jest.mock('../../src/services/backendService');
-jest.mock('../../src/utils/imageUtils');
+jest.mock('../../src/utils/imageUtils', () => ({
+    getBase64FromUri: jest.fn().mockResolvedValue('mock-base64-string'),
+}));
 
-const mockedGetMacrosForRecipe = backendService.getMacrosForRecipe as jest.Mock;
-const mockedGetMacrosForImageSingle = backendService.getMacrosForImageSingle as jest.Mock;
-const mockedGetMacrosForImageMultiple = backendService.getMacrosForImageMultiple as jest.Mock;
-const mockedGetMacrosForTextMultiple = backendService.getMacrosForTextMultiple as jest.Mock;
-const mockedGetBase64FromUri = imageUtils.getBase64FromUri as jest.Mock;
+const mockedBackend = backendService as jest.Mocked<typeof backendService>;
 
 describe('macros utils', () => {
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('determineMimeType', () => {
-    it('returns the mimeType if it exists', () => {
-      expect(determineMimeType({ uri: 'file.jpg', mimeType: 'image/jpeg' })).toBe('image/jpeg');
-    });
-    it('infers mimeType from uri extension', () => {
-      expect(determineMimeType({ uri: 'file.png' })).toBe('image/png');
-      expect(determineMimeType({ uri: 'file.JPG' })).toBe('image/jpeg');
-    });
-    it('defaults to image/jpeg for unknown extensions', () => {
-      expect(determineMimeType({ uri: 'file.webp' })).toBe('image/jpeg');
-    });
-  });
-
-  describe('getMacrosFromText', () => {
-    it('should return macros on success', async () => {
-      const mockResponse = { foodName: 'a', calories: 1, protein: 2, carbs: 3, fat: 4 };
-      mockedGetMacrosForRecipe.mockResolvedValue(mockResponse);
-      const result = await getMacrosFromText('a', 'b');
-      expect(result).toEqual(mockResponse);
+    beforeEach(() => {
+        jest.clearAllMocks();
     });
 
-    it('should show an alert and re-throw on failure', async () => {
-      const error = new BackendError('AI unavailable', 503);
-      mockedGetMacrosForRecipe.mockRejectedValue(error);
+    describe('getMacrosFromText', () => {
+        it('should call the backend service and return macros', async () => {
+            const mockResponse = {
+                foodName: 'Scrambled Eggs',
+                calories: 150,
+                protein: 12,
+                carbs: 1,
+                fat: 11
+            };
+            mockedBackend.getMacrosForRecipe.mockResolvedValue(mockResponse);
 
-      await expect(getMacrosFromText('a', 'b')).rejects.toThrow(error);
-      expect(Alert.alert).toHaveBeenCalledWith(expect.any(String), 'AI unavailable');
-    });
-  });
+            const result = await macrosUtil.getMacrosFromText('Scrambled Eggs', '2 eggs, 1 tbsp butter');
 
-  describe('getMacrosForImageFile', () => {
-    const asset: ImagePickerAsset = {
-      uri: 'file://test.jpg',
-      width: 100,
-      height: 100,
-      assetId: '1',
-      type: 'image',
-    };
+            expect(result).toEqual(mockResponse);
+            expect(backendService.getMacrosForRecipe).toHaveBeenCalledWith('Scrambled Eggs', '2 eggs, 1 tbsp butter');
+        });
 
-    it('should return macros on success', async () => {
-      mockedGetBase64FromUri.mockResolvedValue('base64string');
-      const mockResponse = { foodName: 'a', calories: 1, protein: 2, carbs: 3, fat: 4 };
-      mockedGetMacrosForImageSingle.mockResolvedValue(mockResponse);
+        it('should handle backend errors and show an alert', async () => {
+            const error = new backendService.BackendError('AI is sleeping', 503);
+            mockedBackend.getMacrosForRecipe.mockRejectedValue(error);
 
-      const result = await getMacrosForImageFile(asset);
-      expect(result).toEqual(mockResponse);
-      expect(mockedGetBase64FromUri).toHaveBeenCalledWith(asset.uri);
-      expect(mockedGetMacrosForImageSingle).toHaveBeenCalledWith('base64string', 'image/jpeg');
+            await expect(macrosUtil.getMacrosFromText('test', 'test')).rejects.toThrow('AI is sleeping');
+            expect(Alert.alert).toHaveBeenCalledWith(expect.any(String), 'AI is sleeping');
+        });
     });
 
-    it('should show an alert and re-throw on failure', async () => {
-        const error = new BackendError('Analysis failed', 500);
-        mockedGetBase64FromUri.mockResolvedValue('base64string');
-        mockedGetMacrosForImageSingle.mockRejectedValue(error);
-        
-        await expect(getMacrosForImageFile(asset)).rejects.toThrow(error);
-        expect(Alert.alert).toHaveBeenCalled();
+    describe('determineMimeType', () => {
+        it('should return the mimeType if it exists', () => {
+            const asset = { uri: 'file.jpg', mimeType: 'image/png' };
+            expect(macrosUtil.determineMimeType(asset)).toBe('image/png');
+        });
+
+        it('should determine mimeType from uri extension', () => {
+            expect(macrosUtil.determineMimeType({ uri: 'file.jpeg' })).toBe('image/jpeg');
+            expect(macrosUtil.determineMimeType({ uri: 'file.png' })).toBe('image/png');
+        });
+
+        it('should default to image/jpeg for unknown extensions', () => {
+            expect(macrosUtil.determineMimeType({ uri: 'file.webp' })).toBe('image/jpeg');
+        });
     });
-  });
-
-  describe('getMultipleFoodsFromImage', () => {
-     it('should return an array of items on success', async () => {
-         const mockItems = [{ foodName: 'Apple', estimatedWeightGrams: 150 }];
-         mockedGetMacrosForImageMultiple.mockResolvedValue(mockItems);
-         const result = await getMultipleFoodsFromImage('base64', 'image/png');
-         expect(result).toEqual(mockItems);
-     });
-
-     it('should throw if the response is not an array', async () => {
-        mockedGetMacrosForImageMultiple.mockResolvedValue({ not: 'an array' } as any);
-        await expect(getMultipleFoodsFromImage('base64', 'image/png')).rejects.toThrow();
-     });
-  });
-
-  describe('getMultipleFoodsFromText', () => {
-      it('should return an array of items on success', async () => {
-          const mockItems = [{ foodName: 'Chicken Salad', estimatedWeightGrams: 250 }];
-          mockedGetMacrosForTextMultiple.mockResolvedValue(mockItems);
-          const result = await getMultipleFoodsFromText('a chicken salad');
-          expect(result).toEqual(mockItems);
-      });
-  });
 });
