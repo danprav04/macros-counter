@@ -28,6 +28,22 @@ jest.mock('@react-navigation/native', () => {
 });
 
 import '@testing-library/jest-native/extend-expect';
+
+// --- ADDED MOCK for Platform and I18nManager ---
+// Mocks react-native's native modules that are not available in Jest's environment.
+// This is crucial for components and modules that rely on device-specific info like OS or RTL layout.
+jest.mock('react-native/Libraries/Utilities/Platform', () => ({
+    OS: 'android',
+    select: (specs: Record<string, any>) => specs.android,
+}));
+
+jest.mock('react-native/Libraries/ReactNative/I18nManager', () => ({
+    isRTL: false,
+    allowRTL: jest.fn(),
+    forceRTL: jest.fn(),
+}));
+// --- END ADDED MOCK ---
+
 import 'react-native-get-random-values';
 
 // Mock react-native-uuid and uuid to ensure consistent ID generation in tests
