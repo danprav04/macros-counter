@@ -2,40 +2,51 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { ThemeProvider, createTheme } from '@rneui/themed';
-import ConfirmationModal from 'components/ConfirmationModal';
+import ConfirmationModal from '../../src/components/ConfirmationModal';
+import { lightThemeColors } from '../../src/navigation/AppNavigator';
 
-const theme = createTheme();
+// Mock translation function
+jest.mock('../../src/localization/i18n', () => ({
+    t: (key: string) => {
+        const translations: { [key: string]: string } = {
+            'confirmationModal.confirm': 'Confirm',
+            'confirmationModal.cancel': 'Cancel'
+        };
+        return translations[key] || key;
+    }
+}));
+
+
+const theme = createTheme({
+    lightColors: lightThemeColors,
+    darkColors: {}, // Not needed for this test
+});
+
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
-const mockProps = {
-  isVisible: true,
-  onCancel: jest.fn(),
-  onConfirm: jest.fn(),
-  confirmationText: '',
-  setConfirmationText: jest.fn(),
-  title: 'Test Title',
-  message: 'Test Message',
-  inputPlaceholder: 'Test Placeholder',
-};
-
 describe('ConfirmationModal', () => {
+  const mockProps = {
+    isVisible: true,
+    onCancel: jest.fn(),
+    onConfirm: jest.fn(),
+    confirmationText: '',
+    setConfirmationText: jest.fn(),
+    title: 'Test Title',
+    message: 'Test message',
+    inputPlaceholder: 'Type here'
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders with correct title, message, and placeholder', () => {
+  it('renders correctly with given props', () => {
     const { getByText, getByPlaceholderText } = render(<ConfirmationModal {...mockProps} />, { wrapper: TestWrapper });
     expect(getByText('Test Title')).toBeTruthy();
-    expect(getByText('Test Message')).toBeTruthy();
-    expect(getByPlaceholderText('Test Placeholder')).toBeTruthy();
-  });
-
-  it('calls onCancel when the cancel button is pressed', () => {
-    const { getByText } = render(<ConfirmationModal {...mockProps} />, { wrapper: TestWrapper });
-    fireEvent.press(getByText('Cancel'));
-    expect(mockProps.onCancel).toHaveBeenCalledTimes(1);
+    expect(getByText('Test message')).toBeTruthy();
+    expect(getByPlaceholderText('Type here')).toBeTruthy();
   });
 
   it('disables the confirm button when confirmationText is empty', () => {
@@ -56,10 +67,15 @@ describe('ConfirmationModal', () => {
     expect(mockProps.onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('calls setConfirmationText when input text changes', () => {
+  it('calls onCancel when the cancel button is pressed', () => {
+    const { getByText } = render(<ConfirmationModal {...mockProps} />, { wrapper: TestWrapper });
+    fireEvent.press(getByText('Cancel'));
+    expect(mockProps.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls setConfirmationText when the input text changes', () => {
     const { getByPlaceholderText } = render(<ConfirmationModal {...mockProps} />, { wrapper: TestWrapper });
-    const input = getByPlaceholderText('Test Placeholder');
-    fireEvent.changeText(input, 'New Text');
-    expect(mockProps.setConfirmationText).toHaveBeenCalledWith('New Text');
+    fireEvent.changeText(getByPlaceholderText('Type here'), 'new text');
+    expect(mockProps.setConfirmationText).toHaveBeenCalledWith('new text');
   });
 });

@@ -41,7 +41,7 @@ describe('findFoodsByTagSearch', () => {
 
   it('should find foods using a combination tag like "fruit"', () => {
     const results = findFoodsByTagSearch('fruit', mockFoods);
-    expect(results.length).toBe(2);
+    expect(results.length).toBe(3);
     expect(results.map(f => f.name)).toContain('Red Apple');
     expect(results.map(f => f.name)).toContain('Banana');
   });

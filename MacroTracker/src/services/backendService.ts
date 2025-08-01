@@ -14,7 +14,7 @@ export class BackendError extends Error {
 }
 
 // Generic, robust fetch function for interacting with the backend API
-async function fetchBackend<T>(
+export async function fetchBackend<T>(
     endpoint: string,
     options: RequestInit = {},
     retry = true

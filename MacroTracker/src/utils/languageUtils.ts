@@ -23,14 +23,11 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
     const cyrillicChars = (text.match(CYRILLIC_REGEX) || []).length;
     const latinChars = (text.match(LATIN_REGEX) || []).length;
 
-    // Determine the dominant script based on character count
-    if (hebrewChars > latinChars && hebrewChars > cyrillicChars) {
-        return 'he';
-    }
-    if (cyrillicChars > latinChars && cyrillicChars > hebrewChars) {
-        return 'ru';
-    }
-    
-    // Default to English if Latin is dominant, in case of a tie, or for other scripts
-    return 'en';
+    if (hebrewChars > 0)
+        return 'he'
+
+    if (cyrillicChars > 0)
+        return 'ru'
+
+    return 'en'
 };

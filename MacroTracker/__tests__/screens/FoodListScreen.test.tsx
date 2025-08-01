@@ -2,12 +2,12 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ThemeProvider, createTheme } from '@rneui/themed';
-import FoodListScreen from 'screens/FoodListScreen';
-import * as foodService from 'services/foodService';
-import { Food } from 'types/food';
+import FoodListScreen from '../../src/screens/FoodListScreen';
+import { getFoods, deleteFood } from '../../src/services/foodService';
+import { lightThemeColors } from '../../src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-
+import * as foodIconMatcher from '../../src/utils/foodIconMatcher';
 
 jest.mock('services/foodService');
 jest.mock('expo-constants', () => ({
@@ -18,41 +18,39 @@ jest.mock('expo-constants', () => ({
         }
     }
 }));
+jest.mock('../../src/utils/foodIconMatcher');
 
+const mockedGetFoods = getFoods as jest.Mock;
+const mockedDeleteFood = deleteFood as jest.Mock;
 
-const mockedGetFoods = foodService.getFoods as jest.Mock;
-const mockedDeleteFood = foodService.deleteFood as jest.Mock;
-
-const mockFoods: Food[] = [
+const mockFoods = [
   { id: '1', name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2, createdAt: '2023-01-01T12:00:00.000Z' },
-  { id: '2', name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3, createdAt: '2023-01-03T12:00:00.000Z' },
+  { id: '2', name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3, createdAt: '2023-01-02T12:00:00.000Z' },
 ];
 
-const theme = createTheme();
-const Tab = createBottomTabNavigator();
+const theme = createTheme({
+    lightColors: lightThemeColors,
+    darkColors: {},
+});
 
+const Tab = createBottomTabNavigator();
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <ThemeProvider theme={theme}>
-        <NavigationContainer>
-            <Tab.Navigator>
-                <Tab.Screen name="FoodListRoute" component={() => children as React.ReactElement} />
-                 <Tab.Screen name="DailyEntryRoute" component={() => <></>} />
-            </Tab.Navigator>
-        </NavigationContainer>
-    </ThemeProvider>
+  <ThemeProvider theme={theme}>
+      <NavigationContainer>
+          <Tab.Navigator>
+              <Tab.Screen name="FoodListRoute" component={() => children as React.ReactElement} />
+              <Tab.Screen name="DailyEntryRoute" component={() => <></>} />
+          </Tab.Navigator>
+      </NavigationContainer>
+  </ThemeProvider>
 );
 
 describe('FoodListScreen', () => {
 
     beforeEach(() => {
-        jest.useFakeTimers();
-        mockedGetFoods.mockResolvedValue({ items: mockFoods, total: mockFoods.length });
-        mockedDeleteFood.mockResolvedValue(undefined);
-    });
-    
-    afterEach(() => {
-        jest.useRealTimers();
         jest.clearAllMocks();
+        mockedGetFoods.mockResolvedValue({ items: mockFoods, total: mockFoods.length });
+        (foodIconMatcher.findBestIcon as jest.Mock).mockReturnValue('🍎');
     });
 
     it('renders loading state initially', () => {
@@ -70,12 +68,14 @@ describe('FoodListScreen', () => {
     it('filters the list based on search input', async () => {
         const { getByPlaceholderText, getByText, queryByText } = render(<FoodListScreen />, { wrapper: TestWrapper });
         await waitFor(() => expect(getByText('Apple')).toBeTruthy());
-        
+
         const searchBar = getByPlaceholderText('Search Your Food Library...');
-        fireEvent.changeText(searchBar, 'Apple');
-        
-        expect(getByText('Apple')).toBeTruthy();
-        expect(queryByText('Banana')).toBeNull();
+        fireEvent.changeText(searchBar, 'Bana');
+
+        await waitFor(() => {
+            expect(queryByText('Apple')).toBeNull();
+            expect(getByText('Banana')).toBeTruthy();
+        });
     });
 
     it('shows an empty state message when no foods are available', async () => {
@@ -85,35 +85,14 @@ describe('FoodListScreen', () => {
     });
 
     it('opens the AddFoodModal when the FAB is pressed', async () => {
-        const { getByTestId, findByText } = render(<FoodListScreen />, { wrapper: TestWrapper });
+        const { findByText, getByTestId } = render(<FoodListScreen />, { wrapper: TestWrapper });
         await findByText('Apple'); // wait for list to load
-        
-        // FAB doesn't have a default testID, need to be creative or add one.
-        // Let's assume we can find it by some property. For now, let's just test that the modal appears.
-        // A better way would be to add a testID to the FAB component.
-        
-        // For the sake of this example, let's assume the modal is NOT visible initially
-        // then we press the FAB and it becomes visible.
-        
-        // This is harder to test without modifying the source. Let's just verify the add logic.
-        // We can test that the `toggleOverlay` function opens the modal which we tested separately.
-    });
 
-    it('deletes an item with an undo toast', async () => {
-        jest.useFakeTimers();
-        const { findByText, getByText, queryByText } = render(<FoodListScreen />, { wrapper: TestWrapper });
+        // The FAB component from RNEUI renders a touchable with a role of "button"
+        const fabButton = getByTestId('RNE_FAB');
+        fireEvent.press(fabButton);
 
-        const appleItem = await findByText('Apple');
-        // This is tricky without access to the swipeable container.
-        // Let's assume we have a "delete" button for testing purposes.
-        // Since we can't simulate a swipe easily, this part of the test would be better
-        // in an end-to-end testing framework like Detox or Maestro.
-
-        // However, we can test the logic of the delete handler.
-        // We can't call it directly from here, but we tested the service.
-        // A full integration test would be needed for the swipe action.
-
-        // A simplified test: verify the toast mechanism works as intended
-        // by calling the handler manually if we could, but we can't from here.
+        // Check if the modal title is now visible
+        await waitFor(() => expect(findByText('Add New Food')).toBeTruthy());
     });
 });

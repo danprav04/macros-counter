@@ -440,8 +440,11 @@ jest.mock('@react-navigation/native', () => {
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
-// Mock react-native-uuid
+// Mock react-native-uuid and uuid to ensure consistent ID generation in tests
 jest.mock('react-native-uuid', () => ({
+  v4: () => 'mock-uuid',
+}));
+jest.mock('uuid', () => ({
   v4: () => 'mock-uuid',
 }));
 
@@ -520,6 +523,21 @@ jest.mock('expo-asset', () => ({
         })),
     },
 }));
+
+jest.mock('expo-file-system', () => ({
+    readAsStringAsync: jest.fn(async (uri, options) => {
+      if (options && options.encoding === 'base64') {
+        return 'mock-base64-string';
+      }
+      return 'mock file content';
+    }),
+    writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
+    documentDirectory: 'file:///mock-dir/',
+    EncodingType: {
+      Base64: 'base64',
+      UTF8: 'utf8',
+    },
+  }));
 
 jest.mock('expo-image-manipulator', () => ({
     manipulateAsync: jest.fn(async (uri, actions, options) => {
@@ -780,32 +798,32 @@ export const combinationTags: Record<string, string[]> = {
   "fruit": [
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
   "fruits": [
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
   "фрукт": [ // Russian for fruit (singular)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
   "фрукты": [ // Russian for fruits (plural)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
   "פרי": [ // Hebrew for fruit (singular)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
   "פירות": [ // Hebrew for fruits (plural)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut"
+    "peachNectarine", "cherry", "pear", "coconut"
   ],
 
   // --- MEATS ---
@@ -2666,7 +2684,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             color="error"
             buttonStyle={styles.button}
             disabled={isConfirmDisabled}
-            accessibilityState={{ disabled: isConfirmDisabled }}
           />
         </View>
       </View>
@@ -4926,7 +4943,7 @@ export default i18n;
     "manualInput": "Manual Input",
     "aiAssist": "AI Assist",
     "ingredientsLabel": "Food Description / Ingredients",
-    "ingredientsPlaceholder": "e.g.,\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil",
+    "ingredientsPlaceholder": "e.g., 100g Chicken Breast, 50g Rice, 1 tbsp Olive Oil",
     "analyzeTextButton": "Analyze Text",
     "analyzeImageButton": "Analyze from Image",
     "orDivider": "OR",
@@ -5413,7 +5430,7 @@ export default i18n;
     "manualInput": "הזנה ידנית",
     "aiAssist": "עזרת AI",
     "ingredientsLabel": "תיאור המאכל / רכיבים",
-    "ingredientsPlaceholder": "למשל,\n100ג חזה עוף\n50ג אורז\n1 כף שמן זית",
+    "ingredientsPlaceholder": "למשל, 100ג חזה עוף, 50ג אורז, 1 כף שמן זית",
     "analyzeTextButton": "ניתוח טקסט",
     "analyzeImageButton": "ניתוח מתמונה",
     "orDivider": "או",
@@ -5638,7 +5655,6 @@ export default i18n;
     "unknownFood": ["לא ידוע", "לא מזוהה", "אחר"]
   }
 }
-
 ---------- END he.json ----------
 
 
@@ -5901,7 +5917,7 @@ export default i18n;
     "manualInput": "Ручной ввод",
     "aiAssist": "ИИ-помощник",
     "ingredientsLabel": "Описание / Ингредиенты",
-    "ingredientsPlaceholder": "например,\n100г куриной грудки\n50г риса\n1 ст.л. оливкового масла",
+    "ingredientsPlaceholder": "например, 100г куриной грудки, 50г риса, 1 ст.л. оливкового масла",
     "analyzeTextButton": "Анализ текста",
     "analyzeImageButton": "Анализ по изображению",
     "orDivider": "ИЛИ",
@@ -6204,8 +6220,8 @@ const linking = {
 declare module "@rneui/themed" {
   export interface Colors { text: string; card: string; successLight: string; primaryLight: string; }
 }
-const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", primaryLight: '#eaf5fd' };
-const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#495057", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#8899a6", greyOutline: "#8899a6", searchBg: "#1e1e1e", primaryLight: '#2a3b4c' };
+export const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", primaryLight: '#eaf5fd' };
+export const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#495057", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#8899a6", greyOutline: "#8899a6", searchBg: "#1e1e1e", primaryLight: '#2a3b4c' };
 
 // Settings Stack Navigator Component
 function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
@@ -8788,7 +8804,7 @@ export class BackendError extends Error {
 }
 
 // Generic, robust fetch function for interacting with the backend API
-async function fetchBackend<T>(
+export async function fetchBackend<T>(
     endpoint: string,
     options: RequestInit = {},
     retry = true
@@ -8831,18 +8847,19 @@ async function fetchBackend<T>(
         if (response.status === 204) {
              return null as T;
         }
-
-        const responseBodyText = await response.text();
+        
         let data;
         try {
-            data = JSON.parse(responseBodyText);
+            data = await response.json();
         } catch (e) {
-            if (!response.ok) {
-                 throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
+            if (response.ok) {
+                // OK status but no or invalid JSON body. Can happen.
+                return null as T;
             }
-            // If parsing fails but response is ok, it might be plain text
-            return responseBodyText as T;
+            // Not OK status and also not valid JSON.
+            throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
         }
+
 
         // Handle other non-successful responses
         if (!response.ok) {
@@ -8856,7 +8873,7 @@ async function fetchBackend<T>(
                 case 402: errorMessage = t('backendService.errorInsufficientCoins'); break;
                 default:
                     if (typeof detail === 'string') errorMessage = detail;
-                    else if (detail) errorMessage = t('backendService.errorRequestFailedDetailFormat', { status: response.status });
+                    else if (detail) errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
                     else errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
                     break;
             }
@@ -9206,13 +9223,14 @@ const TOKEN_KEY = '@MacroTracker:authToken';
 /**
  * Checks if the app is running in a development environment where SecureStore might
  * not be ideal or available (like Expo Go). In these cases, we fall back to AsyncStorage.
- * In production builds, this will be false, and SecureStore will be used.
+ * In production builds (appOwnership === 'standalone'), this will be false, and SecureStore will be used.
  */
-const USE_ASYNC_STORAGE = __DEV__;
+const USE_ASYNC_STORAGE = __DEV__ && (Constants.expoConfig as any)?.appOwnership !== 'standalone';
+
 
 if (__DEV__) {
   console.log(
-    `[TokenStorage] Running in Development. ` +
+    `[TokenStorage] Running in Development (appOwnership: ${(Constants.expoConfig as any)?.appOwnership}). ` +
     `Using ${USE_ASYNC_STORAGE ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
   );
 }
@@ -9768,17 +9786,17 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
     }
 
     const { calories, protein, carbs, fat } = food;
-    let score = 70; // Start with a baseline score (e.g., B- grade)
+    let score = 75; // Start with a baseline score (e.g., C+/B- grade)
 
     // --- 1. Calorie Density (per 100g) ---
     if (calories < 100) score += 15; // Low density
     else if (calories < 200) score += 7;
-    else if (calories > 350) score -= (calories - 350) * 0.08; // Penalize high density
+    else if (calories > 300) score -= (calories - 300) * 0.1; // Penalize high density
     if (calories > 500) score -= 20; // Further penalty for very high density
 
     // --- 2. Protein Content (per 100g) ---
-    if (protein > 20) score += 18;
-    else if (protein > 10) score += 10;
+    if (protein > 20) score += 20;
+    else if (protein > 10) score += 8;
     else if (protein < 5 && calories > 150) score -= 10; // Low protein for moderate/high cal food
 
     // --- 3. Fat Content & Type (Heuristic for "quality" based on balance) ---
@@ -9833,7 +9851,7 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
 
     // Boost for low calorie, moderately balanced foods (like quinoa)
     if (calories <= 120 && protein >= 4 && carbs >= 20 && fat >= 2) {
-        score += 20;
+        score += 25;
     }
 
 
@@ -9898,7 +9916,7 @@ export const calculateDailyEntryGrade = (
     }
 
     // Penalize large (but not excessive) portions of A-grade foods
-    if (baseGradeResult.score >= 85 && caloriePortionPercentage > 25) {
+    if (baseGradeResult.score >= 85 && caloriePortionPercentage > 24) {
         currentScore -= 10;
     }
 
@@ -10048,20 +10066,13 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
     const cyrillicChars = (text.match(CYRILLIC_REGEX) || []).length;
     const latinChars = (text.match(LATIN_REGEX) || []).length;
 
-    // Prioritize non-Latin scripts if they are substantially present
-    if (hebrewChars > 2) return 'he';
-    if (cyrillicChars > 3) return 'ru';
-    
-    // Fallback to majority character count
-    if (hebrewChars > latinChars && hebrewChars > cyrillicChars) {
-        return 'he';
-    }
-    if (cyrillicChars > latinChars && cyrillicChars > hebrewChars) {
-        return 'ru';
-    }
-    
-    // Default to English if Latin is dominant, in case of a tie, or for other scripts
-    return 'en';
+    if (hebrewChars > 0)
+        return 'he'
+
+    if (cyrillicChars > 0)
+        return 'ru'
+
+    return 'en'
 };
 ---------- END languageUtils.ts ----------
 
@@ -10239,16 +10250,56 @@ export async function getGramsFromNaturalLanguage(
 
 
 ---------- validationUtils.ts ----------
-// utils/validationUtils.ts
+// __tests__/utils/units.test.ts
+import { Alert } from 'react-native';
+import { getGramsFromNaturalLanguage } from '../../src/utils/units';
+import { estimateGramsNaturalLanguage, BackendError } from '../../src/services/backendService';
+import { t } from '../../src/localization/i18n';
 
-export const isValidNumberInput = (value: string): boolean => {
-    if (typeof value !== 'string') return false;
-    return /^[0-9]*(\.[0-9]*)?$/.test(value) && !isNaN(parseFloat(value));
-  };
-  
-  export const isNotEmpty = (value: string): boolean => {
-    return typeof value === 'string' && value.trim() !== '';
-  };
+jest.mock('react-native', () => ({
+  Alert: { alert: jest.fn() },
+}));
+jest.mock('../../src/services/backendService');
+
+const mockedEstimateGrams = estimateGramsNaturalLanguage as jest.Mock;
+
+describe('getGramsFromNaturalLanguage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return the correct number of grams on success', async () => {
+    mockedEstimateGrams.mockResolvedValue(150);
+    const grams = await getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet');
+    expect(grams).toBe(150);
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('should show an alert and re-throw a BackendError on failure', async () => {
+    const error = new BackendError('AI unavailable', 503);
+    mockedEstimateGrams.mockRejectedValue(error);
+
+    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toThrow(error);
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      expect.any(String), // title
+      'AI unavailable'   // message
+    );
+  });
+
+  it('should show a generic alert for non-BackendError failures', async () => {
+    const genericError = new Error('Something went wrong');
+    mockedEstimateGrams.mockRejectedValue(genericError);
+    const expectedMessage = t('errors.unexpectedError');
+
+    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toThrow(genericError);
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      expect.any(String), // title
+      expectedMessage
+    );
+  });
+});
 ---------- END validationUtils.ts ----------
 
 
@@ -10259,7 +10310,7 @@ export const isValidNumberInput = (value: string): boolean => {
     "strict": true,
     "esModuleInterop": true,
     "baseUrl": "src",
-    "types": ["jest", "@testing-library/jest-native"]
+    "types": ["jest", "@testing-library/jest-native", "node"]
   },
   "include": [
     "src",
