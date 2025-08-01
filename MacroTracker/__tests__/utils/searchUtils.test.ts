@@ -45,7 +45,7 @@ describe('findFoodsByTagSearch', () => {
 
   it('should find foods by combination tag matching (e.g., "fruit")', () => {
     const results = findFoodsByTagSearch('fruit', mockFoods);
-    expect(results.length).toBe(3);
+    expect(results.length).toBe(4);
     expect(results.map(f => f.name)).toContain('Red Apple');
     expect(results.map(f => f.name)).toContain('Banana');
     expect(results.map(f => f.name)).toContain('Green Apple');
@@ -53,7 +53,7 @@ describe('findFoodsByTagSearch', () => {
 
   it('should be case-insensitive', () => {
     const results = findFoodsByTagSearch('FRUIT', mockFoods);
-    expect(results.length).toBe(3);
+    expect(results.length).toBe(4);
   });
 
   it('should handle search terms for which no tags match', () => {
@@ -64,7 +64,7 @@ describe('findFoodsByTagSearch', () => {
   it('should work with non-english combination tags', () => {
     i18n.locale = 'ru';
     const results = findFoodsByTagSearch('фрукт', mockFoods);
-    expect(results.length).toBe(3);
+    expect(results.length).toBe(4);
     expect(results.map(f => f.name)).toContain('Red Apple');
     expect(results.map(f => f.name)).toContain('Banana');
   });

@@ -172,7 +172,7 @@ export const calculateDailyEntryGrade = (
 
     // Penalize large (but not excessive) portions of A-grade foods
     if (baseGradeResult.score >= 85 && caloriePortionPercentage > 24) {
-        currentScore -= 10;
+        currentScore -= 5;
     }
 
     return mapScoreToGradeDetails(currentScore);
