@@ -256,7 +256,7 @@
     "manualInput": "Ручной ввод",
     "aiAssist": "ИИ-помощник",
     "ingredientsLabel": "Описание / Ингредиенты",
-    "ingredientsPlaceholder": "например,\n100г куриной грудки\n50г риса\n1 ст.л. оливкового масла",
+    "ingredientsPlaceholder": "например, 100г куриной грудки, 50г риса, 1 ст.л. оливкового масла",
     "analyzeTextButton": "Анализ текста",
     "analyzeImageButton": "Анализ по изображению",
     "orDivider": "ИЛИ",

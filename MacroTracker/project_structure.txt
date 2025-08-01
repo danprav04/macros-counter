@@ -440,6 +440,12 @@ jest.mock('@react-navigation/native', () => {
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
+// Mock react-native-uuid
+jest.mock('react-native-uuid', () => ({
+  v4: () => 'mock-uuid',
+}));
+
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -503,6 +509,33 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(() => Promise.resolve()),
   deleteItemAsync: jest.fn(() => Promise.resolve()),
 }));
+
+// --- ADDED MOCKS for Expo modules causing crashes ---
+jest.mock('expo-asset', () => ({
+    ...jest.requireActual('expo-asset'),
+    Asset: {
+        fromModule: jest.fn(() => ({
+            downloadAsync: jest.fn(),
+            uri: 'test-uri',
+        })),
+    },
+}));
+
+jest.mock('expo-image-manipulator', () => ({
+    manipulateAsync: jest.fn(async (uri, actions, options) => {
+        return {
+            uri: `manipulated-${uri}`,
+            width: 50,
+            height: 50,
+            base64: 'manipulated-base64',
+        };
+    }),
+    SaveFormat: {
+        JPEG: 'jpeg',
+        PNG: 'png',
+    },
+}));
+// --- END ADDED MOCKS ---
 ---------- END jest-setup.ts ----------
 
 
@@ -826,9 +859,9 @@ export const foodIconDefinitions: FoodIconDefinition[] = [
   { icon: '🍐', tagKey: 'pear', priority: 10 },
   { icon: '🥑', tagKey: 'avocado', priority: 10 },
   { icon: '🥥', tagKey: 'coconut', priority: 10 },
-  { icon: '🍅', tagKey: 'tomato', priority: 9 }, // Often culinary vegetable
 
   // Vegetables
+  { icon: '🍅', tagKey: 'tomato', priority: 9 }, // Often culinary vegetable
   { icon: '🥕', tagKey: 'carrot', priority: 10 },
   { icon: '🥦', tagKey: 'broccoli', priority: 10 },
   { icon: '🥬', tagKey: 'leafyGreen', priority: 10 },
@@ -961,9 +994,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                         title={t('accountSettings.addTestCoins')}
                         onPress={onAddTestCoins}
                         buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        loading={isAddingCoins}
                         disabled={isAddingCoins || isLoadingCoins}
-                        icon={isAddingCoins ? undefined : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
+                        icon={isAddingCoins ? <ActivityIndicator color="white" /> : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
                     />
                     <Text style={styles.testButtonWarning}>
                         {t('accountSettings.testButtonWarning')}
@@ -2634,6 +2666,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             color="error"
             buttonStyle={styles.button}
             disabled={isConfirmDisabled}
+            accessibilityState={{ disabled: isConfirmDisabled }}
           />
         </View>
       </View>
@@ -3238,7 +3271,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
                 disabled={isDisabled}
                 disabledStyle={styles.disabledButton}
             />
-            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled}>
+            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled} accessibilityState={{ disabled: isDisabled }}>
                 <Text h4 h4Style={[styles.dateText, isDisabled && styles.disabledText]}>
                     {displayDate}
                 </Text>
@@ -8779,17 +8812,19 @@ async function fetchBackend<T>(
         const response = await fetch(url, { ...options, headers });
 
         // Handle token refresh on 401 Unauthorized
-        if (response.status === 401 && retry && tokenData?.refresh_token) {
-            console.log('Token expired, attempting refresh...');
-            const newTokens = await authService.refreshAuthToken(tokenData.refresh_token);
-            if (newTokens) {
-                await authService.setAuthToken(newTokens);
-                console.log('Token refreshed, retrying original request.');
-                return await fetchBackend(endpoint, options, false); // Retry only once
-            } else {
-                authService.triggerLogout();
-                throw new BackendError(t('backendService.errorAuthFailed'), 401);
+        if (response.status === 401 && retry) {
+            if (tokenData?.refresh_token){
+                console.log('Token expired, attempting refresh...');
+                const newTokens = await authService.refreshAuthToken(tokenData.refresh_token);
+                if (newTokens) {
+                    await authService.setAuthToken(newTokens);
+                    console.log('Token refreshed, retrying original request.');
+                    return await fetchBackend(endpoint, options, false); // Retry only once
+                }
             }
+            // If refresh fails or no refresh token, trigger logout
+            authService.triggerLogout();
+            throw new BackendError(t('backendService.errorAuthFailed'), 401);
         }
         
         // Handle 204 No Content response
@@ -8797,15 +8832,16 @@ async function fetchBackend<T>(
              return null as T;
         }
 
-        const responseBody = await response.text();
+        const responseBodyText = await response.text();
         let data;
         try {
-            data = JSON.parse(responseBody);
+            data = JSON.parse(responseBodyText);
         } catch (e) {
             if (!response.ok) {
                  throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
             }
-            return responseBody as T;
+            // If parsing fails but response is ok, it might be plain text
+            return responseBodyText as T;
         }
 
         // Handle other non-successful responses
@@ -9168,17 +9204,16 @@ import { Token } from '../types/token';
 const TOKEN_KEY = '@MacroTracker:authToken';
 
 /**
- * Checks if the app is running inside the generic Expo Go client.
- * SecureStore is not truly secure in Expo Go because the app shares a generic
- * bundle identifier. We fall back to AsyncStorage in this specific case.
- * In development builds and production, this will be false.
+ * Checks if the app is running in a development environment where SecureStore might
+ * not be ideal or available (like Expo Go). In these cases, we fall back to AsyncStorage.
+ * In production builds, this will be false, and SecureStore will be used.
  */
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const USE_ASYNC_STORAGE = __DEV__;
 
 if (__DEV__) {
   console.log(
-    `[TokenStorage] Running in ${IS_EXPO_GO ? 'Expo Go' : 'Development Build/Production'}. ` +
-    `Using ${IS_EXPO_GO ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
+    `[TokenStorage] Running in Development. ` +
+    `Using ${USE_ASYNC_STORAGE ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
   );
 }
 
@@ -9188,7 +9223,7 @@ if (__DEV__) {
  */
 export async function saveToken(token: Token): Promise<void> {
   const tokenJson = JSON.stringify(token);
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     await AsyncStorage.setItem(TOKEN_KEY, tokenJson);
   } else {
     await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
@@ -9201,7 +9236,7 @@ export async function saveToken(token: Token): Promise<void> {
  */
 export async function getToken(): Promise<Token | null> {
   let tokenJson: string | null = null;
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     tokenJson = await AsyncStorage.getItem(TOKEN_KEY);
   } else {
     tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -9225,7 +9260,7 @@ export async function getToken(): Promise<Token | null> {
  * Deletes the authentication token from the appropriate storage.
  */
 export async function deleteToken(): Promise<void> {
-  if (IS_EXPO_GO) {
+  if (USE_ASYNC_STORAGE) {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } else {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
@@ -9797,9 +9832,10 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
     }
 
     // Boost for low calorie, moderately balanced foods (like quinoa)
-    if (calories < 150 && protein > 3 && carbs > 15 && fat > 1) {
-        score += 15;
+    if (calories <= 120 && protein >= 4 && carbs >= 20 && fat >= 2) {
+        score += 20;
     }
+
 
     return mapScoreToGradeDetails(score);
 };
@@ -9836,8 +9872,8 @@ export const calculateDailyEntryGrade = (
     const consumedFat = food.fat * factor;
 
     const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
-    if (caloriePortionPercentage > 50) currentScore -= 25; // More aggressive penalty
-    else if (caloriePortionPercentage > 35) currentScore -= 15;
+    if (caloriePortionPercentage > 50) currentScore -= 30; // More aggressive penalty
+    else if (caloriePortionPercentage > 35) currentScore -= 20;
 
     const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
     if (fatPortionPercentage > 60) currentScore -= 15;
@@ -10012,6 +10048,11 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
     const cyrillicChars = (text.match(CYRILLIC_REGEX) || []).length;
     const latinChars = (text.match(LATIN_REGEX) || []).length;
 
+    // Prioritize non-Latin scripts if they are substantially present
+    if (hebrewChars > 2) return 'he';
+    if (cyrillicChars > 3) return 'ru';
+    
+    // Fallback to majority character count
     if (hebrewChars > latinChars && hebrewChars > cyrillicChars) {
         return 'he';
     }

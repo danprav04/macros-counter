@@ -41,17 +41,17 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
     }
 
     const { calories, protein, carbs, fat } = food;
-    let score = 70; // Start with a baseline score (e.g., B- grade)
+    let score = 75; // Start with a baseline score (e.g., C+/B- grade)
 
     // --- 1. Calorie Density (per 100g) ---
     if (calories < 100) score += 15; // Low density
     else if (calories < 200) score += 7;
-    else if (calories > 350) score -= (calories - 350) * 0.08; // Penalize high density
+    else if (calories > 300) score -= (calories - 300) * 0.1; // Penalize high density
     if (calories > 500) score -= 20; // Further penalty for very high density
 
     // --- 2. Protein Content (per 100g) ---
-    if (protein > 20) score += 18;
-    else if (protein > 10) score += 10;
+    if (protein > 20) score += 20;
+    else if (protein > 10) score += 8;
     else if (protein < 5 && calories > 150) score -= 10; // Low protein for moderate/high cal food
 
     // --- 3. Fat Content & Type (Heuristic for "quality" based on balance) ---
@@ -106,7 +106,7 @@ export const calculateBaseFoodGrade = (food: Food): FoodGradeResult | null => {
 
     // Boost for low calorie, moderately balanced foods (like quinoa)
     if (calories <= 120 && protein >= 4 && carbs >= 20 && fat >= 2) {
-        score += 20;
+        score += 25;
     }
 
 
@@ -171,7 +171,7 @@ export const calculateDailyEntryGrade = (
     }
 
     // Penalize large (but not excessive) portions of A-grade foods
-    if (baseGradeResult.score >= 85 && caloriePortionPercentage > 25) {
+    if (baseGradeResult.score >= 85 && caloriePortionPercentage > 24) {
         currentScore -= 10;
     }
 

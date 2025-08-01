@@ -256,7 +256,7 @@
     "manualInput": "הזנה ידנית",
     "aiAssist": "עזרת AI",
     "ingredientsLabel": "תיאור המאכל / רכיבים",
-    "ingredientsPlaceholder": "למשל,\n100ג חזה עוף\n50ג אורז\n1 כף שמן זית",
+    "ingredientsPlaceholder": "למשל, 100ג חזה עוף, 50ג אורז, 1 כף שמן זית",
     "analyzeTextButton": "ניתוח טקסט",
     "analyzeImageButton": "ניתוח מתמונה",
     "orDivider": "או",

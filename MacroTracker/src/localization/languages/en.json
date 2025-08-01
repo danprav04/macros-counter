@@ -256,7 +256,7 @@
     "manualInput": "Manual Input",
     "aiAssist": "AI Assist",
     "ingredientsLabel": "Food Description / Ingredients",
-    "ingredientsPlaceholder": "e.g.,\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil",
+    "ingredientsPlaceholder": "e.g., 100g Chicken Breast, 50g Rice, 1 tbsp Olive Oil",
     "analyzeTextButton": "Analyze Text",
     "analyzeImageButton": "Analyze from Image",
     "orDivider": "OR",

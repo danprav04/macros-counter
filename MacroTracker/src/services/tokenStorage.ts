@@ -10,13 +10,14 @@ const TOKEN_KEY = '@MacroTracker:authToken';
 /**
  * Checks if the app is running in a development environment where SecureStore might
  * not be ideal or available (like Expo Go). In these cases, we fall back to AsyncStorage.
- * In production builds, this will be false, and SecureStore will be used.
+ * In production builds (appOwnership === 'standalone'), this will be false, and SecureStore will be used.
  */
-const USE_ASYNC_STORAGE = __DEV__;
+const USE_ASYNC_STORAGE = __DEV__ && (Constants.expoConfig as any)?.appOwnership !== 'standalone';
+
 
 if (__DEV__) {
   console.log(
-    `[TokenStorage] Running in Development. ` +
+    `[TokenStorage] Running in Development (appOwnership: ${(Constants.expoConfig as any)?.appOwnership}). ` +
     `Using ${USE_ASYNC_STORAGE ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
   );
 }

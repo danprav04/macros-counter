@@ -57,18 +57,19 @@ async function fetchBackend<T>(
         if (response.status === 204) {
              return null as T;
         }
-
-        const responseBodyText = await response.text();
+        
         let data;
         try {
-            data = JSON.parse(responseBodyText);
+            data = await response.json();
         } catch (e) {
-            if (!response.ok) {
-                 throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
+            if (response.ok) {
+                // OK status but no or invalid JSON body. Can happen.
+                return null as T;
             }
-            // If parsing fails but response is ok, it might be plain text
-            return responseBodyText as T;
+            // Not OK status and also not valid JSON.
+            throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
         }
+
 
         // Handle other non-successful responses
         if (!response.ok) {
@@ -82,7 +83,7 @@ async function fetchBackend<T>(
                 case 402: errorMessage = t('backendService.errorInsufficientCoins'); break;
                 default:
                     if (typeof detail === 'string') errorMessage = detail;
-                    else if (detail) errorMessage = t('backendService.errorRequestFailedDetailFormat', { status: response.status });
+                    else if (detail) errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
                     else errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
                     break;
             }

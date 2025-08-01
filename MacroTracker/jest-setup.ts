@@ -30,8 +30,11 @@ jest.mock('@react-navigation/native', () => {
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-get-random-values';
 
-// Mock react-native-uuid
+// Mock react-native-uuid and uuid to ensure consistent ID generation in tests
 jest.mock('react-native-uuid', () => ({
+  v4: () => 'mock-uuid',
+}));
+jest.mock('uuid', () => ({
   v4: () => 'mock-uuid',
 }));
 
@@ -110,6 +113,21 @@ jest.mock('expo-asset', () => ({
         })),
     },
 }));
+
+jest.mock('expo-file-system', () => ({
+    readAsStringAsync: jest.fn(async (uri, options) => {
+      if (options && options.encoding === 'base64') {
+        return 'mock-base64-string';
+      }
+      return 'mock file content';
+    }),
+    writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
+    documentDirectory: 'file:///mock-dir/',
+    EncodingType: {
+      Base64: 'base64',
+      UTF8: 'utf8',
+    },
+  }));
 
 jest.mock('expo-image-manipulator', () => ({
     manipulateAsync: jest.fn(async (uri, actions, options) => {
