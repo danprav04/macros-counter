@@ -38,12 +38,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             {__DEV__ && (
                 <>
                     <Button
-                        title={t('accountSettings.addTestCoins')}
+                        title={isAddingCoins ? '' : t('accountSettings.addTestCoins')}
                         onPress={onAddTestCoins}
                         buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        icon={<Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
                         loading={isAddingCoins}
                         disabled={isAddingCoins || isLoadingCoins}
+                        icon={isAddingCoins ? undefined : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
                     />
                     <Text style={styles.testButtonWarning}>
                         {t('accountSettings.testButtonWarning')}

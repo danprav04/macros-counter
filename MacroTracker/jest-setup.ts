@@ -62,6 +62,15 @@ jest.mock('expo-constants', () => ({
     // Mock appOwnership to control tokenStorage behavior in tests
     appOwnership: 'standalone',
   },
+  // Add a more complete manifest mock to prevent crashes in dependent libraries like expo-asset
+  manifest: {
+    ...require('expo-constants/package.json'), // Spread some defaults
+    name: 'test-app',
+    slug: 'test-app',
+    version: '1.0.0',
+    assetBundlePatterns: ['**/*'],
+  },
+  manifest2: {}, // For newer SDK versions that might look here
 }));
 
 jest.mock('expo-localization', () => ({

@@ -42,32 +42,32 @@ export const combinationTags: Record<string, string[]> = {
   "fruit": [
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
   "fruits": [
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
   "фрукт": [ // Russian for fruit (singular)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
   "фрукты": [ // Russian for fruits (plural)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
   "פרי": [ // Hebrew for fruit (singular)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
   "פירות": [ // Hebrew for fruits (plural)
     "apple", "banana", "grapes", "strawberry", "blueberry", "orange",
     "lemonLime", "watermelon", "pineapple", "mango", "kiwi",
-    "peachNectarine", "cherry", "pear", "avocado", "coconut", "genericFruit"
+    "peachNectarine", "cherry", "pear", "avocado", "coconut"
   ],
 
   // --- MEATS ---

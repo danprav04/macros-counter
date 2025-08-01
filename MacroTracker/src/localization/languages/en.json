@@ -330,7 +330,7 @@
     "errorNetworkDetails": " Details: %{error}",
     "errorNetworkUnknown": " An unknown network error occurred.",
     "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
-    "errorAddCoinsPositive": "Amount to add must be positive."
+    "errorAddCoinsPositive": "Amount must be positive."
   },
   "statisticsChart": {
     "intake": "Intake",

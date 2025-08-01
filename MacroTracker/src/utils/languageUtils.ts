@@ -4,13 +4,14 @@ import { LanguageCode } from '../types/settings';
 // Basic script detection character ranges
 const HEBREW_REGEX = /[\u0590-\u05FF]/;
 const CYRILLIC_REGEX = /[\u0400-\u04FF]/;
-// Basic Latin check - very broad, English will be the default for this
 const LATIN_REGEX = /[a-zA-Z]/;
 
 /**
  * Detects the dominant language script in a given text.
- * Prioritizes Hebrew, then Cyrillic. If neither is dominant,
- * defaults to 'en' (representing Latin script languages for icon tag purposes).
+ * It checks for the presence of Hebrew or Cyrillic characters first.
+ * If neither script is found, it defaults to 'en' (representing Latin scripts).
+ * This priority is effective for mixed-language strings where the non-Latin
+ * script is the determining factor.
  * @param text The text to analyze.
  * @returns LanguageCode ('he', 'ru', or 'en' as default).
  */
@@ -19,34 +20,16 @@ export const detectLanguageFromText = (text: string): LanguageCode => {
         return 'en'; // Default if no text
     }
 
-    let hebrewChars = 0;
-    let cyrillicChars = 0;
-    let latinChars = 0;
-    let otherChars = 0;
-
-    for (const char of text) {
-        if (HEBREW_REGEX.test(char)) {
-            hebrewChars++;
-        } else if (CYRILLIC_REGEX.test(char)) {
-            cyrillicChars++;
-        } else if (LATIN_REGEX.test(char)) {
-            latinChars++;
-        } else {
-            otherChars++;
-        }
-    }
-
-    // Simple dominance check
-    // Give a higher weight or lower threshold for Hebrew/Cyrillic if names are often short
-    if (hebrewChars > latinChars / 2 && hebrewChars > cyrillicChars) { // If Hebrew chars are significant
+    // Prioritize non-Latin scripts as they are more distinctive identifiers.
+    if (HEBREW_REGEX.test(text)) {
         return 'he';
     }
-    if (cyrillicChars > latinChars / 2 && cyrillicChars > hebrewChars) { // If Cyrillic chars are significant
+    if (CYRILLIC_REGEX.test(text)) {
         return 'ru';
     }
     
-    // If primarily Latin, or mixed with no clear non-Latin dominance, default to 'en'
-    // This 'en' will then correctly use English tags.
-    // If the text was, e.g., French and we default to 'en', English tags are a reasonable fallback.
+    // If no Hebrew or Cyrillic characters are found, default to 'en'.
+    // This serves as a catch-all for Latin-based languages (English, French, etc.)
+    // and correctly maps them to use the English tag set as a reliable fallback.
     return 'en';
 };

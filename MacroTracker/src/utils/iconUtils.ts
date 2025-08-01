@@ -8,8 +8,9 @@ const MAX_CACHE_SIZE = 300;
 
 /**
  * Synchronously gets the icon identifier (e.g., emoji) for a food item.
- * It first detects the language of the food name, then uses an in-memory cache.
- * Relies on `findBestIcon` which uses localized tags based on the detected language.
+ * It uses an in-memory cache to quickly return results for previously seen items.
+ * If not cached, it detects the language of the food name and then finds the best
+ * icon using localized tags.
  *
  * @param foodName The name of the food item.
  * @returns An icon string (emoji) or null if not found or an error occurred.
@@ -19,30 +20,31 @@ export const getFoodIconUrl = (foodName: string): string | null => {
     return null;
   }
 
-  const detectedLocale = detectLanguageFromText(foodName);
+  // Use a language-agnostic key for caching, assuming one food name string
+  // consistently maps to one icon. This avoids re-detecting language for cached items.
   const normalizedNameForCache = foodName.toLowerCase().trim();
-  const cacheKey = `${detectedLocale}_${normalizedNameForCache}`;
 
-  if (syncMemoryCache.has(cacheKey)) {
-    const cachedIcon = syncMemoryCache.get(cacheKey)!;
-    // console.log(`[getFoodIconUrl] CACHE HIT for key "${cacheKey}". Food: "${foodName}", Detected Locale: ${detectedLocale}, Icon: ${cachedIcon}`);
-    return cachedIcon;
+  if (syncMemoryCache.has(normalizedNameForCache)) {
+    return syncMemoryCache.get(normalizedNameForCache)!;
   }
-  // console.log(`[getFoodIconUrl] CACHE MISS for key "${cacheKey}". Food: "${foodName}", Detected Locale: ${detectedLocale}. Calling findBestIcon.`);
 
+  // --- Cache Miss ---
+  // Now perform the more expensive operations
+  const detectedLocale = detectLanguageFromText(foodName);
   const iconIdentifier = findBestIcon(foodName, detectedLocale);
 
+  // Manage cache size before adding the new item
   if (syncMemoryCache.size >= MAX_CACHE_SIZE) {
+    // Evict a portion of the cache randomly to make space
     const keys = Array.from(syncMemoryCache.keys());
     for (let i = 0; i < Math.floor(MAX_CACHE_SIZE / 4); i++) {
         const randomIndex = Math.floor(Math.random() * keys.length);
         const keyToRemove = keys.splice(randomIndex, 1)[0];
         if(keyToRemove) syncMemoryCache.delete(keyToRemove);
     }
-    // console.log(`[getFoodIconUrl] Food icon memory cache partially cleared. New size: ${syncMemoryCache.size}`);
   }
-  syncMemoryCache.set(cacheKey, iconIdentifier);
-  // console.log(`[getFoodIconUrl] Cached new icon for key "${cacheKey}". Food: "${foodName}", Icon: ${iconIdentifier}`);
+  
+  syncMemoryCache.set(normalizedNameForCache, iconIdentifier);
 
   return iconIdentifier;
 };
