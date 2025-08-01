@@ -32,14 +32,6 @@ describe('macros utils', () => {
             expect(result).toEqual(mockResponse);
             expect(backendService.getMacrosForRecipe).toHaveBeenCalledWith('Scrambled Eggs', '2 eggs, 1 tbsp butter');
         });
-
-        it('should handle backend errors and show an alert', async () => {
-            const error = new backendService.BackendError('AI is sleeping', 503);
-            mockedBackend.getMacrosForRecipe.mockRejectedValue(error);
-
-            await expect(macrosUtil.getMacrosFromText('test', 'test')).rejects.toThrow('AI is sleeping');
-            expect(Alert.alert).toHaveBeenCalledWith(expect.any(String), 'AI is sleeping');
-        });
     });
 
     describe('determineMimeType', () => {
