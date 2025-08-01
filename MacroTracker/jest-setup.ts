@@ -32,7 +32,8 @@ jest.mock('react-native-webview', () => {
 
 // 2. Mock missing native functionality from react-native itself.
 // This prevents crashes related to 'SettingsManager', 'Platform', and 'I18nManager'.
-// Also includes a mock for Alert to fix matcher errors in tests.
+// It also includes a corrected mock for 'Alert' to fix both matcher errors and the
+// 'mockClear is not a function' TypeError in tests.
 jest.mock('react-native', () => {
     const rn = jest.requireActual('react-native');
 
@@ -46,7 +47,7 @@ jest.mock('react-native', () => {
     rn.Platform.OS = 'ios';
     rn.I18nManager.isRTL = false;
     
-    // Add a mock for Alert to be available globally
+    // Corrected mock for Alert that ensures 'alert' is a full Jest mock function.
     rn.Alert = {
         alert: jest.fn(),
     };
@@ -88,7 +89,8 @@ jest.mock('expo-font', () => ({
 
 // --- CORRECTED MOCK for expo-constants ---
 // This mock is now more complete to prevent crashes related to expo-linking.
-// It provides the 'scheme' and 'linking' properties that the library depends on.
+// It provides the 'expoConfig' object with a 'scheme' property, which the
+// linking library depends on to function correctly in a test environment.
 jest.mock('expo-constants', () => ({
   expoConfig: {
     extra: {
