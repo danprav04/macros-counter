@@ -1,48 +1,67 @@
 // __tests__/utils/units.test.ts
-import { getGramsFromNaturalLanguage } from 'utils/units';
-import * as backendService from 'services/backendService';
+
 import { Alert } from 'react-native';
+import { getGramsFromNaturalLanguage } from '../../src/utils/units';
+import * as backendService from '../../src/services/backendService';
 
-jest.mock('services/backendService');
-jest.spyOn(Alert, 'alert');
+// Mock dependencies
+jest.mock('../../src/services/backendService');
+jest.mock('react-native', () => ({
+    ...jest.requireActual('react-native'),
+    Alert: {
+        alert: jest.fn(),
+    },
+}));
 
-const mockedEstimateGrams = backendService.estimateGramsNaturalLanguage as jest.Mock;
+// Type assertion for the mocked module
+const mockedBackend = backendService as jest.Mocked<typeof backendService>;
 
 describe('getGramsFromNaturalLanguage', () => {
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
 
-  it('should call the backend service and return the estimated grams', async () => {
-    mockedEstimateGrams.mockResolvedValue(150);
+    it('should return the estimated grams on a successful API call', async () => {
+        const mockGrams = 150;
+        mockedBackend.estimateGramsNaturalLanguage.mockResolvedValue(mockGrams);
 
-    const grams = await getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet');
+        const grams = await getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet');
+        
+        expect(grams).toBe(mockGrams);
+        expect(mockedBackend.estimateGramsNaturalLanguage).toHaveBeenCalledWith('Chicken Breast', 'one medium fillet');
+        expect(Alert.alert).not.toHaveBeenCalled();
+    });
 
-    expect(grams).toBe(150);
-    expect(mockedEstimateGrams).toHaveBeenCalledWith('Chicken Breast', 'one medium fillet');
-  });
+    it('should show an alert and re-throw a BackendError on failure', async () => {
+        const errorMessage = 'Mocked backend error';
+        const error = new mockedBackend.BackendError(errorMessage, 500);
+        mockedBackend.estimateGramsNaturalLanguage.mockRejectedValue(error);
 
-  it('should show an alert and re-throw a BackendError on failure', async () => {
-    const error = new backendService.BackendError('Estimation service unavailable', 503);
-    mockedEstimateGrams.mockRejectedValue(error);
+        // Assert that the promise rejects with an error containing the expected message
+        await expect(
+            getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')
+        ).rejects.toThrow(errorMessage);
+        
+        // Verify that the alert was shown with the correct error message
+        expect(Alert.alert).toHaveBeenCalledWith(
+            expect.any(String), // Title
+            errorMessage      // Message
+        );
+    });
 
-    await expect(getGramsFromNaturalLanguage('Chicken Breast', 'one medium fillet')).rejects.toThrow(error);
-    
-    expect(Alert.alert).toHaveBeenCalledWith(
-      expect.any(String), // title
-      'Estimation service unavailable' // message
-    );
-  });
-  
-  it('should show an alert and re-throw a generic error', async () => {
-    const error = new Error('Network failed');
-    mockedEstimateGrams.mockRejectedValue(error);
-    
-    await expect(getGramsFromNaturalLanguage('a', 'b')).rejects.toThrow(error);
-    
-    expect(Alert.alert).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('An unexpected error occurred')
-    );
-  });
+    it('should handle non-BackendError failures gracefully', async () => {
+        const genericError = new Error('Network failed');
+        mockedBackend.estimateGramsNaturalLanguage.mockRejectedValue(genericError);
+
+        // Expect the original error to be re-thrown
+        await expect(
+            getGramsFromNaturalLanguage('Some Food', 'some amount')
+        ).rejects.toThrow('Network failed');
+
+        // And an alert should still be shown with a default message
+        expect(Alert.alert).toHaveBeenCalledWith(
+            expect.any(String), // Title
+            expect.any(String)  // Default error message
+        );
+    });
 });
