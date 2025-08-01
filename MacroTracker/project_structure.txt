@@ -1427,6 +1427,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     } catch (error) { Toast.show({ type: 'error', text1: t('addEntryModal.toastErrorSavingToLibrary'), position: 'bottom' }); setSavingState(false); }
   }, [foods, onCommitFoodToLibrary, resolveAndSetIcon, t]);
 
+  const handleBackFromQuickAdd = useCallback(() => {
+    setModalMode("normal");
+    setQuickAddTextInput("");
+  }, []);
+
   const modalTitle = modalMode === "quickAddSelect" ? (editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit') : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing') : t('addEntryModal.titleQuickAddSelect'))
                     : modalMode === "quickAddText" ? t('addEntryModal.titleQuickAddFromText')
                     : isEditMode ? t('addEntryModal.titleEdit') : t('addEntryModal.titleAdd');
@@ -1448,10 +1453,31 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             isMultiAddButtonDisabled={isMultiAddButtonDisabled} isQuickAddConfirmDisabled={isQuickAddConfirmDisabled} isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
             isQuickAddTextButtonDisabled={isQuickAddTextButtonDisabled} isAiLoading={isAiLoading} toggleOverlay={toggleOverlay} onAddOrUpdateSingleEntry={handleAddOrUpdateSingleEntry}
             onConfirmAddMultipleSelected={handleConfirmAddMultipleSelected} onConfirmQuickAdd={handleConfirmQuickAdd} onQuickAddImage={handleQuickAddImage} onQuickAddText={handleQuickAddText}
-            onBackFromQuickAdd={() => { setModalMode("normal"); setQuickAddTextInput(""); }}
+            onBackFromQuickAdd={handleBackFromQuickAdd}
           />
           {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} recentServings={recentServings} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
-          {modalMode === 'quickAddText' && <View style={styles.quickAddTextView}><Input placeholder={t('addEntryModal.textQuickAdd.placeholder')} multiline numberOfLines={6} value={quickAddTextInput} onChangeText={setQuickAddTextInput} inputStyle={styles.quickAddTextArea} inputContainerStyle={styles.quickAddTextAreaContainer} containerStyle={{ paddingHorizontal: 0 }} autoFocus /><Button title={t('addEntryModal.textQuickAdd.analyzeButton')} onPress={handleAnalyzeText} loading={isTextQuickAddLoading} disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} buttonStyle={styles.analyzeButton} /></View>}
+          {modalMode === 'quickAddText' && (
+            <View style={styles.quickAddTextView}>
+                <Input 
+                    placeholder={t('addEntryModal.textQuickAdd.placeholder')} 
+                    multiline 
+                    numberOfLines={6} 
+                    value={quickAddTextInput} 
+                    onChangeText={setQuickAddTextInput} 
+                    inputStyle={styles.quickAddTextArea} 
+                    inputContainerStyle={styles.quickAddTextAreaContainer} 
+                    containerStyle={{ paddingHorizontal: 0 }} 
+                />
+                <Button 
+                    title={t('addEntryModal.textQuickAdd.analyzeButton')} 
+                    onPress={handleAnalyzeText} 
+                    loading={isTextQuickAddLoading} 
+                    disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} 
+                    icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} 
+                    buttonStyle={styles.analyzeButton} 
+                />
+            </View>
+          )}
           {modalMode === 'quickAddSelect' && <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={quickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} />}
           <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
         </View>
@@ -2214,7 +2240,7 @@ export default FoodSelectionList;
 
 ---------- ModalHeader.tsx ----------
 // src/components/AddEntryModal/ModalHeader.tsx
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Keyboard } from 'react-native';
 import { Text, Icon, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
@@ -2262,6 +2288,12 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         Keyboard.dismiss();
         toggleOverlay();
     };
+    
+    const handleBackPress = useCallback(() => {
+        if (isActionDisabled) return;
+        Keyboard.dismiss();
+        onBackFromQuickAdd();
+    }, [isActionDisabled, onBackFromQuickAdd]);
 
     const isBackButtonVisible = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
 
@@ -2270,7 +2302,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
             {isBackButtonVisible ? (
                 <Button
                     type="clear"
-                    onPress={() => { if (isActionDisabled) return; Keyboard.dismiss(); onBackFromQuickAdd(); }}
+                    onPress={handleBackPress}
                     icon={<Icon name="arrow-back" type="ionicon" size={24} color={isActionDisabled ? theme.colors.grey3 : theme.colors.primary} />}
                     containerStyle={styles.closeIconContainer}
                     disabled={isActionDisabled}

@@ -67,7 +67,7 @@ export async function fetchBackend<T>(
                 return null as T;
             }
             // Not OK status and also not valid JSON.
-            throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
+            throw new BackendError(t('backendService.errorServerUnreadable'), response.status);
         }
 
 
@@ -77,31 +77,39 @@ export async function fetchBackend<T>(
             let errorMessage: string;
             switch (response.status) {
                 case 401: errorMessage = t('backendService.errorAuthFailed'); authService.triggerLogout(); break;
-                case 403: errorMessage = t('backendService.errorPermissionDenied'); break;
+                case 403:
+                    if (typeof detail === 'string' && (detail.includes('not activated') || detail.includes('not verified'))) {
+                        errorMessage = t('backendService.errorEmailNotVerified');
+                    } else {
+                        errorMessage = t('backendService.errorPermissionDenied');
+                    }
+                    break;
                 case 404: errorMessage = t('backendService.errorNotFound'); break;
                 case 429: errorMessage = t('backendService.errorTooManyRequests'); break;
                 case 402: errorMessage = t('backendService.errorInsufficientCoins'); break;
+                case 500: case 503: case 504:
+                    errorMessage = typeof detail === 'string' && detail ? detail : t('backendService.errorServer');
+                    break;
                 default:
-                    if (typeof detail === 'string') errorMessage = detail;
-                    else if (detail) errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
-                    else errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
+                    errorMessage = typeof detail === 'string' && detail ? detail : t('backendService.errorGeneric');
                     break;
             }
             throw new BackendError(errorMessage, response.status);
         }
         return data as T;
     } catch (error) {
-        if (error instanceof BackendError) throw error;
-        
-        let networkErrorMessage = t('backendService.errorNetwork');
-        if (error instanceof Error) {
-            if (error.message.toLowerCase().includes('timeout')) networkErrorMessage += t('backendService.errorNetworkTimeout');
-            else if (error.message.toLowerCase().includes('network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
-            else networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
-        } else {
-             networkErrorMessage += t('backendService.errorNetworkUnknown');
+        if (error instanceof BackendError) {
+            throw error;
         }
-        throw new BackendError(networkErrorMessage, 0);
+
+        let userFriendlyMessage: string;
+        if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
+            userFriendlyMessage = t('backendService.errorTimeout');
+        } else {
+            userFriendlyMessage = t('backendService.errorNetwork');
+        }
+        
+        throw new BackendError(userFriendlyMessage, 0); // 0 indicates a client-side/network error
     }
 }
 
@@ -122,7 +130,7 @@ export const getMacrosForRecipe = (foodName: string, ingredients: string): Promi
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
     const response = await fetchBackend<{ grams: number }>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
     if (typeof response?.grams !== 'number') {
-        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500);
+        throw new BackendError(t('utils.units.invalidResponse'), 500);
     }
     return response.grams;
 };

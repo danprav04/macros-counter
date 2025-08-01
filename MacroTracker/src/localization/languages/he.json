@@ -302,11 +302,13 @@
     "macros": {
       "errorTitle": "ניתוח AI נכשל",
       "multiItemErrorTitle": "הוספה מהירה נכשלה",
-      "errorMessage": "לא ניתן היה לקבל תגובה מה-AI. אנא נסה שוב.",
-      "invalidResponse": "ה-AI נתן תגובה בפורמט לא צפוי. אנא נסה שוב או נסח מחדש את בקשתך."
+      "apiError": "שירות ה-AI אינו זמין כעת. אנא נסה שוב מאוחר יותר.",
+      "invalidResponse": "ה-AI החזיר תגובה לא צפויה. אנא נסה לנסח מחדש את בקשתך או השתמש בתמונה אחרת."
     },
     "units": {
-      "errorTitle": "הערכת AI נכשלה"
+      "errorTitle": "הערכת AI נכשלה",
+      "apiError": "שירות ה-AI לא הצליח להעריך את המשקל. אנא נסה שוב.",
+      "invalidResponse": "הערכת המשקל של ה-AI לא הייתה בפורמט חוקי. אנא נסה לנסח מחדש."
     },
     "image": {
       "alertCompressionError": "שגיאת דחיסה",
@@ -315,22 +317,18 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "מזהה לקוח לא חוקי. אנא הפעל מחדש את האפליקציה.",
-    "errorRequestFailedParse": "השרת שלח תגובה לא קריאה (סטטוס %{status}).",
-    "errorRequestFailedDetailFormat": "השרת שלח תגובה בפורמט לא צפוי (סטטוס %{status}).",
-    "errorRequestFailedWithServerMsg": "השרת החזיר שגיאה (סטטוס %{status}).",
-    "errorAuthFailed": "האימות מול השרת נכשל. אנא הפעל מחדש את האפליקציה.",
-    "errorPermissionDenied": "הגישה נדחתה על ידי השרת.",
-    "errorNotFound": "המשאב המבוקש לא נמצא בשרת.",
+    "errorAuthFailed": "תוקף הסשן שלך פג. אנא התחבר שוב.",
+    "errorEmailNotVerified": "חשבונך לא הופעל. אנא בדוק את תיבת הדואר האלקטרוני שלך עבור קישור האימות.",
+    "errorPermissionDenied": "אין לך הרשאה לפעולה זו.",
+    "errorNotFound": "הפריט המבוקש לא נמצא בשרת.",
     "errorTooManyRequests": "אתה מבצע זאת מהר מדי! אנא המתן רגע ונסה שוב.",
     "errorInsufficientCoins": "אין לך מספיק מטבעות AI לפעולה זו. עוד יהיו זמינים בקרוב!",
-    "errorNetwork": "לא ניתן להתחבר לשרת.",
-    "errorNetworkTimeout": "לשרת לוקח יותר מדי זמן להגיב. אנא נסה שוב בעוד מספר רגעים.",
-    "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
-    "errorNetworkDetails": " פרטים: %{error}",
-    "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
-    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב תגובת שרת לא צפויה.",
-    "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
+    "errorServer": "אירעה שגיאה בשרת. אנא נסה שוב מאוחר יותר.",
+    "errorServerUnreadable": "השרת שלח תגובה שלא ניתן היה לקרוא. אנא נסה שוב.",
+    "errorNetwork": "לא ניתן להתחבר לשרת. אנא בדוק את חיבור האינטרנט שלך ונסה שוב.",
+    "errorTimeout": "לשרת לוקח יותר מדי זמן להגיב. ייתכן שזו בעיה זמנית.",
+    "errorAddCoinsPositive": "הסכום חייב להיות מספר חיובי.",
+    "errorGeneric": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
   "statisticsChart": {
     "intake": "צריכה",

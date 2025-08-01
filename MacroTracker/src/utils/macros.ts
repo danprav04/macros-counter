@@ -17,7 +17,7 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
 }
 
 const handleError = (error: unknown, title: string) => {
-    const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+    const message = error instanceof BackendError ? error.message : t('errors.unexpectedError');
     Alert.alert(title, message);
     // The calling function is now responsible for re-throwing the error
 }
