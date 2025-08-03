@@ -56,11 +56,13 @@
     }
   },
   "accountSettings": {
+    "email": "אימייל",
+    "badges": "תגים",
     "coinBalance": "מאזן מטבעות",
     "addTestCoins": "הוסף 10 מטבעות (בדיקה)",
     "testButtonWarning": "הערה: כפתור \"הוסף מטבעות\" מיועד לבדיקה/פיתוח בלבד ויש להסירו או לאבטחו בגרסאות ייצור.",
     "notApplicable": "לא זמין",
-    "errorLoadCoins": "לא ניתן היה לטעון את מאזן המטבעות",
+    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש",
     "errorAddCoins": "נכשל בהוספת מטבעות",
     "coinsAdded": "מטבעות נוספו!"
   },

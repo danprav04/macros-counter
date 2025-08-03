@@ -4,6 +4,7 @@ import * as authService from './authService';
 import { getClientId } from './clientIDService';
 import { MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { t } from '../localization/i18n';
+import { User } from '../types/user';
 
 // Custom Error for Backend Issues, includes HTTP status
 export class BackendError extends Error {
@@ -115,9 +116,9 @@ export async function fetchBackend<T>(
 
 // --- EXPORTED API FUNCTIONS ---
 
-export const getUserStatus = (): Promise<{ coins: number }> => fetchBackend('/users/status');
+export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 
-export const addCoinsToUser = (amount: number): Promise<{ coins: number }> => {
+export const addCoinsToUser = (amount: number): Promise<User> => {
     if (amount <= 0) {
         return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
     }

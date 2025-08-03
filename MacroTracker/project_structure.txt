@@ -5067,11 +5067,13 @@ export default i18n;
     "macros": {
       "errorTitle": "AI Analysis Failed",
       "multiItemErrorTitle": "Quick Add Failed",
-      "errorMessage": "Could not get a response from the AI. Please try again.",
-      "invalidResponse": "The AI gave a response in an unexpected format. Please try again or rephrase your request."
+      "apiError": "The AI service is currently unavailable. Please try again later.",
+      "invalidResponse": "The AI gave an unusual response. Please try rephrasing your request or use a different image."
     },
     "units": {
-      "errorTitle": "AI Estimation Failed"
+      "errorTitle": "AI Estimation Failed",
+      "apiError": "The AI service couldn't estimate the weight. Please try again.",
+      "invalidResponse": "The AI's weight estimation was not in a valid format. Please try rephrasing."
     },
     "image": {
       "alertCompressionError": "Compression Error",
@@ -5080,22 +5082,18 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Invalid client ID. Please restart the app.",
-    "errorRequestFailedParse": "The server sent an unreadable response (Status %{status}).",
-    "errorRequestFailedDetailFormat": "The server sent a response with an unexpected format (Status %{status}).",
-    "errorRequestFailedWithServerMsg": "The server returned an error (Status %{status}).",
-    "errorAuthFailed": "Authentication with the server failed. Please restart the app.",
-    "errorPermissionDenied": "Permission denied by server.",
-    "errorNotFound": "The requested resource was not found on the server.",
+    "errorAuthFailed": "Your session has expired. Please log in again.",
+    "errorEmailNotVerified": "Your account has not been activated. Please check your email for the verification link.",
+    "errorPermissionDenied": "You don't have permission for this action.",
+    "errorNotFound": "The requested item was not found on the server.",
     "errorTooManyRequests": "You're doing that too fast! Please wait a moment and try again.",
     "errorInsufficientCoins": "You don't have enough AI coins for this action. More will be available soon!",
-    "errorNetwork": "Could not connect to the server.",
-    "errorNetworkTimeout": "The server is taking too long to respond. Please try again in a few moments.",
-    "errorNetworkConnection": " Please check your internet connection.",
-    "errorNetworkDetails": " Details: %{error}",
-    "errorNetworkUnknown": " An unknown network error occurred.",
-    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
-    "errorAddCoinsPositive": "Amount must be positive."
+    "errorServer": "An error occurred on the server. Please try again later.",
+    "errorServerUnreadable": "The server sent a response that could not be read. Please try again.",
+    "errorNetwork": "Could not connect to the server. Please check your internet connection and try again.",
+    "errorTimeout": "The server is taking too long to respond. This might be a temporary issue.",
+    "errorAddCoinsPositive": "Amount must be a positive number.",
+    "errorGeneric": "An unexpected error occurred. Please try again."
   },
   "statisticsChart": {
     "intake": "Intake",
@@ -5554,11 +5552,13 @@ export default i18n;
     "macros": {
       "errorTitle": "ניתוח AI נכשל",
       "multiItemErrorTitle": "הוספה מהירה נכשלה",
-      "errorMessage": "לא ניתן היה לקבל תגובה מה-AI. אנא נסה שוב.",
-      "invalidResponse": "ה-AI נתן תגובה בפורמט לא צפוי. אנא נסה שוב או נסח מחדש את בקשתך."
+      "apiError": "שירות ה-AI אינו זמין כעת. אנא נסה שוב מאוחר יותר.",
+      "invalidResponse": "ה-AI החזיר תגובה לא צפויה. אנא נסה לנסח מחדש את בקשתך או השתמש בתמונה אחרת."
     },
     "units": {
-      "errorTitle": "הערכת AI נכשלה"
+      "errorTitle": "הערכת AI נכשלה",
+      "apiError": "שירות ה-AI לא הצליח להעריך את המשקל. אנא נסה שוב.",
+      "invalidResponse": "הערכת המשקל של ה-AI לא הייתה בפורמט חוקי. אנא נסה לנסח מחדש."
     },
     "image": {
       "alertCompressionError": "שגיאת דחיסה",
@@ -5567,22 +5567,18 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "מזהה לקוח לא חוקי. אנא הפעל מחדש את האפליקציה.",
-    "errorRequestFailedParse": "השרת שלח תגובה לא קריאה (סטטוס %{status}).",
-    "errorRequestFailedDetailFormat": "השרת שלח תגובה בפורמט לא צפוי (סטטוס %{status}).",
-    "errorRequestFailedWithServerMsg": "השרת החזיר שגיאה (סטטוס %{status}).",
-    "errorAuthFailed": "האימות מול השרת נכשל. אנא הפעל מחדש את האפליקציה.",
-    "errorPermissionDenied": "הגישה נדחתה על ידי השרת.",
-    "errorNotFound": "המשאב המבוקש לא נמצא בשרת.",
+    "errorAuthFailed": "תוקף הסשן שלך פג. אנא התחבר שוב.",
+    "errorEmailNotVerified": "חשבונך לא הופעל. אנא בדוק את תיבת הדואר האלקטרוני שלך עבור קישור האימות.",
+    "errorPermissionDenied": "אין לך הרשאה לפעולה זו.",
+    "errorNotFound": "הפריט המבוקש לא נמצא בשרת.",
     "errorTooManyRequests": "אתה מבצע זאת מהר מדי! אנא המתן רגע ונסה שוב.",
     "errorInsufficientCoins": "אין לך מספיק מטבעות AI לפעולה זו. עוד יהיו זמינים בקרוב!",
-    "errorNetwork": "לא ניתן להתחבר לשרת.",
-    "errorNetworkTimeout": "לשרת לוקח יותר מדי זמן להגיב. אנא נסה שוב בעוד מספר רגעים.",
-    "errorNetworkConnection": " אנא בדוק את חיבור הרשת שלך.",
-    "errorNetworkDetails": " פרטים: %{error}",
-    "errorNetworkUnknown": " אירעה שגיאת רשת לא ידועה.",
-    "errorEstimateGramsUnexpectedResponse": "קבלת הערכת גרמים נכשלה עקב תגובת שרת לא צפויה.",
-    "errorAddCoinsPositive": "הסכום להוספה חייב להיות חיובי."
+    "errorServer": "אירעה שגיאה בשרת. אנא נסה שוב מאוחר יותר.",
+    "errorServerUnreadable": "השרת שלח תגובה שלא ניתן היה לקרוא. אנא נסה שוב.",
+    "errorNetwork": "לא ניתן להתחבר לשרת. אנא בדוק את חיבור האינטרנט שלך ונסה שוב.",
+    "errorTimeout": "לשרת לוקח יותר מדי זמן להגיב. ייתכן שזו בעיה זמנית.",
+    "errorAddCoinsPositive": "הסכום חייב להיות מספר חיובי.",
+    "errorGeneric": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
   "statisticsChart": {
     "intake": "צריכה",
@@ -6041,11 +6037,13 @@ export default i18n;
     "macros": {
       "errorTitle": "Ошибка анализа ИИ",
       "multiItemErrorTitle": "Ошибка быстрого добавления",
-      "errorMessage": "Не удалось получить ответ от ИИ. Пожалуйста, попробуйте еще раз.",
-      "invalidResponse": "ИИ дал ответ в неожиданном формате. Пожалуйста, попробуйте еще раз или перефразируйте свой запрос."
+      "apiError": "Сервис ИИ в данный момент недоступен. Пожалуйста, попробуйте позже.",
+      "invalidResponse": "ИИ дал необычный ответ. Пожалуйста, перефразируйте запрос или используйте другое изображение."
     },
     "units": {
-      "errorTitle": "Ошибка оценки ИИ"
+      "errorTitle": "Ошибка оценки ИИ",
+      "apiError": "Сервис ИИ не смог оценить вес. Пожалуйста, попробуйте снова.",
+      "invalidResponse": "Оценка веса от ИИ была в неверном формате. Пожалуйста, попробуйте перефразировать."
     },
     "image": {
       "alertCompressionError": "Ошибка сжатия",
@@ -6054,22 +6052,18 @@ export default i18n;
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Неверный идентификатор клиента. Пожалуйста, перезапустите приложение.",
-    "errorRequestFailedParse": "Сервер отправил нечитаемый ответ (Статус %{status}).",
-    "errorRequestFailedDetailFormat": "Сервер отправил ответ в неожиданном формате (Статус %{status}).",
-    "errorRequestFailedWithServerMsg": "Сервер вернул ошибку (Статус %{status}).",
-    "errorAuthFailed": "Ошибка аутентификации на сервере. Пожалуйста, перезапустите приложение.",
-    "errorPermissionDenied": "Доступ запрещен сервером.",
-    "errorNotFound": "Запрошенный ресурс не найден на сервере.",
+    "errorAuthFailed": "Ваша сессия истекла. Пожалуйста, войдите снова.",
+    "errorEmailNotVerified": "Ваша учетная запись не активирована. Пожалуйста, проверьте свою электронную почту на наличие ссылки для подтверждения.",
+    "errorPermissionDenied": "У вас нет разрешения на это действие.",
+    "errorNotFound": "Запрошенный элемент не найден на сервере.",
     "errorTooManyRequests": "Вы делаете это слишком быстро! Пожалуйста, подождите немного и попробуйте снова.",
     "errorInsufficientCoins": "У вас недостаточно монет ИИ для этого действия. Скоро будет больше!",
-    "errorNetwork": "Не удалось подключиться к серверу.",
-    "errorNetworkTimeout": "Сервер слишком долго отвечает. Пожалуйста, повторите попытку через несколько секунд.",
-    "errorNetworkConnection": " Пожалуйста, проверьте ваше интернет-соединение.",
-    "errorNetworkDetails": " Детали: %{error}",
-    "errorNetworkUnknown": " Произошла неизвестная сетевая ошибка.",
-    "errorEstimateGramsUnexpectedResponse": "Не удалось оценить граммы из-за неожиданного ответа сервера.",
-    "errorAddCoinsPositive": "Сумма для добавления должна быть положительной."
+    "errorServer": "Произошла ошибка на сервере. Пожалуйста, попробуйте позже.",
+    "errorServerUnreadable": "Сервер отправил ответ, который не удалось прочитать. Пожалуйста, попробуйте снова.",
+    "errorNetwork": "Не удалось подключиться к серверу. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
+    "errorTimeout": "Сервер слишком долго отвечает. Возможно, это временная проблема.",
+    "errorAddCoinsPositive": "Сумма должна быть положительным числом.",
+    "errorGeneric": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   },
   "statisticsChart": {
     "intake": "Потребление",
@@ -8935,7 +8929,7 @@ export async function fetchBackend<T>(
                 return null as T;
             }
             // Not OK status and also not valid JSON.
-            throw new BackendError(t('backendService.errorRequestFailedParse', { status: response.status }), response.status);
+            throw new BackendError(t('backendService.errorServerUnreadable'), response.status);
         }
 
 
@@ -8945,31 +8939,39 @@ export async function fetchBackend<T>(
             let errorMessage: string;
             switch (response.status) {
                 case 401: errorMessage = t('backendService.errorAuthFailed'); authService.triggerLogout(); break;
-                case 403: errorMessage = t('backendService.errorPermissionDenied'); break;
+                case 403:
+                    if (typeof detail === 'string' && (detail.includes('not activated') || detail.includes('not verified'))) {
+                        errorMessage = t('backendService.errorEmailNotVerified');
+                    } else {
+                        errorMessage = t('backendService.errorPermissionDenied');
+                    }
+                    break;
                 case 404: errorMessage = t('backendService.errorNotFound'); break;
                 case 429: errorMessage = t('backendService.errorTooManyRequests'); break;
                 case 402: errorMessage = t('backendService.errorInsufficientCoins'); break;
+                case 500: case 503: case 504:
+                    errorMessage = typeof detail === 'string' && detail ? detail : t('backendService.errorServer');
+                    break;
                 default:
-                    if (typeof detail === 'string') errorMessage = detail;
-                    else if (detail) errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
-                    else errorMessage = t('backendService.errorRequestFailedWithServerMsg', { status: response.status });
+                    errorMessage = typeof detail === 'string' && detail ? detail : t('backendService.errorGeneric');
                     break;
             }
             throw new BackendError(errorMessage, response.status);
         }
         return data as T;
     } catch (error) {
-        if (error instanceof BackendError) throw error;
-        
-        let networkErrorMessage = t('backendService.errorNetwork');
-        if (error instanceof Error) {
-            if (error.message.toLowerCase().includes('timeout')) networkErrorMessage += t('backendService.errorNetworkTimeout');
-            else if (error.message.toLowerCase().includes('network request failed')) networkErrorMessage += t('backendService.errorNetworkConnection');
-            else networkErrorMessage += t('backendService.errorNetworkDetails', { error: error.message });
-        } else {
-             networkErrorMessage += t('backendService.errorNetworkUnknown');
+        if (error instanceof BackendError) {
+            throw error;
         }
-        throw new BackendError(networkErrorMessage, 0);
+
+        let userFriendlyMessage: string;
+        if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
+            userFriendlyMessage = t('backendService.errorTimeout');
+        } else {
+            userFriendlyMessage = t('backendService.errorNetwork');
+        }
+        
+        throw new BackendError(userFriendlyMessage, 0); // 0 indicates a client-side/network error
     }
 }
 
@@ -8990,7 +8992,7 @@ export const getMacrosForRecipe = (foodName: string, ingredients: string): Promi
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
     const response = await fetchBackend<{ grams: number }>('/ai/grams_natural_language', { method: 'POST', body: JSON.stringify({ food_name: foodName, quantity_description: quantityDescription }) });
     if (typeof response?.grams !== 'number') {
-        throw new BackendError(t('backendService.errorEstimateGramsUnexpectedResponse'), 500);
+        throw new BackendError(t('utils.units.invalidResponse'), 500);
     }
     return response.grams;
 };
@@ -10181,7 +10183,7 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
 }
 
 const handleError = (error: unknown, title: string) => {
-    const message = error instanceof BackendError ? error.message : t('utils.macros.errorMessage');
+    const message = error instanceof BackendError ? error.message : t('errors.unexpectedError');
     Alert.alert(title, message);
     // The calling function is now responsible for re-throwing the error
 }

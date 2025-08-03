@@ -18,6 +18,7 @@ import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
+import { User } from "../types/user";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -59,8 +60,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [userCoins, setUserCoins] = useState<number | null>(null);
-  const [isLoadingCoins, setIsLoadingCoins] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true); 
 
@@ -144,14 +145,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [getStatisticsData]);
 
   const fetchUserStatus = useCallback(async () => {
-    setIsLoadingCoins(true);
+    setIsLoadingUser(true);
     try { 
       const status = await getUserStatus(); 
-      setUserCoins(status.coins); 
+      setUser(status); 
     }
     catch (error) {
-      setUserCoins(null);
-      const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+      setUser(null);
+      const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
       Toast.show({ 
         type: 'error', 
         text1: t('accountSettings.errorLoadCoins'), 
@@ -159,7 +160,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         position: 'bottom', 
       });
     }
-    finally { setIsLoadingCoins(false); }
+    finally { setIsLoadingUser(false); }
   }, [t]);
 
   useFocusEffect( useCallback(() => {
@@ -228,12 +229,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         setIsAddingCoins(true);
         try { 
             const amount = 10; 
-            const updatedStatus = await addCoinsToUser(amount); 
-            setUserCoins(updatedStatus.coins); 
-            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); 
+            const updatedUser = await addCoinsToUser(amount); 
+            setUser(updatedUser); 
+            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedUser.coins}`, position: 'bottom' }); 
         }
         catch (error) { 
-            const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+            const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
             Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
         }
         finally { setIsAddingCoins(false); }
@@ -273,13 +274,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
         <AccountSettings
-             userCoins={userCoins}
-             isLoadingCoins={isLoadingCoins}
+             user={user}
+             isLoading={isLoadingUser}
              isAddingCoins={isAddingCoins}
              onAddTestCoins={handleAddTestCoins}
         />
-
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
             <ListItem.Content>

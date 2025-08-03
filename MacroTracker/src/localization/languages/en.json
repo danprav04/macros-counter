@@ -56,11 +56,13 @@
     }
   },
   "accountSettings": {
+    "email": "Email",
+    "badges": "Badges",
     "coinBalance": "Coin Balance",
     "addTestCoins": "Add 10 Coins (Test)",
     "testButtonWarning": "Note: The \"Add Coins\" button is for testing/development only and should be removed or secured for production releases.",
     "notApplicable": "N/A",
-    "errorLoadCoins": "Could not load coin balance",
+    "errorLoadCoins": "Could not load user status",
     "errorAddCoins": "Failed to Add Coins",
     "coinsAdded": "Coins Added!"
   },
