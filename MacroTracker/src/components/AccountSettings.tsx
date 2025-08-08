@@ -1,7 +1,7 @@
 // src/components/AccountSettings.tsx
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Text, makeStyles, Button, Icon, ListItem, useTheme } from '@rneui/themed';
+import { Text, makeStyles, Icon, ListItem, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
 import UserBadge from './UserBadge';
@@ -9,15 +9,11 @@ import UserBadge from './UserBadge';
 interface AccountSettingsProps {
     user: User | null;
     isLoading: boolean;
-    isAddingCoins: boolean;
-    onAddTestCoins: () => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({
     user,
     isLoading,
-    isAddingCoins,
-    onAddTestCoins,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -59,21 +55,6 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                      </View>
                  </ListItem>
             )}
-
-            {__DEV__ && (
-                <>
-                    <Button
-                        title={t('accountSettings.addTestCoins')}
-                        onPress={onAddTestCoins}
-                        buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        disabled={isAddingCoins || isLoading}
-                        icon={isAddingCoins ? <ActivityIndicator color="white" /> : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
-                    />
-                    <Text style={styles.testButtonWarning}>
-                        {t('accountSettings.testButtonWarning')}
-                    </Text>
-                </>
-            )}
         </View>
     );
 };
@@ -103,19 +84,6 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'flex-end',
         flex: 1,
         marginLeft: 10,
-    },
-    button: {
-        marginBottom: 10,
-        borderRadius: 8,
-    },
-    testButtonWarning: {
-        fontSize: 12,
-        color: theme.colors.grey3,
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginTop: 0,
-        marginBottom: 15,
-        marginHorizontal: 10,
     },
 }));
 

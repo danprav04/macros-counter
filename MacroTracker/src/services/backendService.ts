@@ -118,13 +118,6 @@ export async function fetchBackend<T>(
 
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 
-export const addCoinsToUser = (amount: number): Promise<User> => {
-    if (amount <= 0) {
-        return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
-    }
-    return fetchBackend('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
-};
-
 export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => 
     fetchBackend('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 

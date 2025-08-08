@@ -39,6 +39,7 @@ src/
     QuickAddList.tsx
     StatisticsChart.tsx
     ThemeSwitch.tsx
+    UserBadge.tsx
   context/
     AuthContext.tsx
   localization/
@@ -72,6 +73,7 @@ src/
     questionnaire.ts
     settings.ts
     token.ts
+    user.ts
   utils/
     dateUtils.ts
     foodIconMatcher.ts
@@ -1020,17 +1022,19 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Text, makeStyles, Button, Icon, ListItem, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
+import { User } from '../types/user';
+import UserBadge from './UserBadge';
 
 interface AccountSettingsProps {
-    userCoins: number | null;
-    isLoadingCoins: boolean;
+    user: User | null;
+    isLoading: boolean;
     isAddingCoins: boolean;
     onAddTestCoins: () => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({
-    userCoins,
-    isLoadingCoins,
+    user,
+    isLoading,
     isAddingCoins,
     onAddTestCoins,
 }) => {
@@ -1040,25 +1044,48 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
     return (
         <View>
             <ListItem bottomDivider containerStyle={styles.listItem}>
+                <Icon name="email-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content>
+                    <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.email')}</ListItem.Title>
+                </ListItem.Content>
+                {isLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                    <Text style={styles.valueText}>{user?.email || t('accountSettings.notApplicable')}</Text>
+                )}
+            </ListItem>
+
+            <ListItem bottomDivider containerStyle={styles.listItem}>
                 <Icon name="database" type="material-community" color={theme.colors.warning} />
                 <ListItem.Content>
                     <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.coinBalance')}</ListItem.Title>
                 </ListItem.Content>
-                {isLoadingCoins ? (
+                {isLoading ? (
                     <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : (
-                    <Text style={styles.coinValue}>{userCoins !== null ? userCoins : t('accountSettings.notApplicable')}</Text>
+                    <Text style={[styles.valueText, styles.coinValue]}>{user?.coins ?? t('accountSettings.notApplicable')}</Text>
                 )}
             </ListItem>
 
-            {/* This button and its warning are only available in development builds */}
+            {user?.badges && user.badges.length > 0 && (
+                 <ListItem bottomDivider containerStyle={styles.listItem}>
+                    <Icon name="shield-star-outline" type="material-community" color={theme.colors.success} />
+                    <ListItem.Content>
+                        <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.badges')}</ListItem.Title>
+                    </ListItem.Content>
+                     <View style={styles.badgesContainer}>
+                         {user.badges.map(badge => <UserBadge key={badge.id} badge={badge} />)}
+                     </View>
+                 </ListItem>
+            )}
+
             {__DEV__ && (
                 <>
                     <Button
                         title={t('accountSettings.addTestCoins')}
                         onPress={onAddTestCoins}
                         buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        disabled={isAddingCoins || isLoadingCoins}
+                        disabled={isAddingCoins || isLoading}
                         icon={isAddingCoins ? <ActivityIndicator color="white" /> : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
                     />
                     <Text style={styles.testButtonWarning}>
@@ -1080,10 +1107,21 @@ const useStyles = makeStyles((theme) => ({
         fontWeight: '500',
         textAlign: 'left',
     },
+    valueText: {
+        color: theme.colors.text,
+        fontSize: 14,
+    },
     coinValue: {
         color: theme.colors.primary,
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    badgesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end',
+        flex: 1,
+        marginLeft: 10,
     },
     button: {
         marginBottom: 10,
@@ -4585,6 +4623,67 @@ export default ThemeSwitch;
 ---------- END ThemeSwitch.tsx ----------
 
 
+---------- UserBadge.tsx ----------
+// src/components/UserBadge.tsx
+import React from 'react';
+import { View } from 'react-native';
+import { Text, Icon, useTheme, makeStyles } from '@rneui/themed';
+import { Badge } from '../types/user';
+import { t } from '../localization/i18n';
+
+interface UserBadgeProps {
+  badge: Badge;
+}
+
+const UserBadge: React.FC<UserBadgeProps> = ({ badge }) => {
+  const styles = useStyles();
+  const { theme } = useTheme();
+
+  const getIconName = (icon?: string) => {
+    switch (icon) {
+      case 'science':
+        return 'flask-outline';
+      default:
+        return 'shield-star-outline';
+    }
+  };
+  
+  const getBadgeDisplayName = (name: string) => {
+    // Simple mapping for display purposes. Can be moved to i18n later.
+    return name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  return (
+    <View style={styles.badgeContainer}>
+      <Icon name={getIconName(badge.icon)} type="material-community" size={16} color={theme.colors.primary} />
+      <Text style={styles.badgeText}>{getBadgeDisplayName(badge.name)}</Text>
+    </View>
+  );
+};
+
+const useStyles = makeStyles((theme) => ({
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  badgeText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+    fontSize: 12,
+    marginLeft: 5,
+  },
+}));
+
+export default UserBadge;
+---------- END UserBadge.tsx ----------
+
+
 ---------- AuthContext.tsx ----------
 // src/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
@@ -4821,11 +4920,13 @@ export default i18n;
     }
   },
   "accountSettings": {
+    "email": "Email",
+    "badges": "Badges",
     "coinBalance": "Coin Balance",
     "addTestCoins": "Add 10 Coins (Test)",
     "testButtonWarning": "Note: The \"Add Coins\" button is for testing/development only and should be removed or secured for production releases.",
     "notApplicable": "N/A",
-    "errorLoadCoins": "Could not load coin balance",
+    "errorLoadCoins": "Could not load user status",
     "errorAddCoins": "Failed to Add Coins",
     "coinsAdded": "Coins Added!"
   },
@@ -5306,11 +5407,13 @@ export default i18n;
     }
   },
   "accountSettings": {
+    "email": "אימייל",
+    "badges": "תגים",
     "coinBalance": "מאזן מטבעות",
     "addTestCoins": "הוסף 10 מטבעות (בדיקה)",
     "testButtonWarning": "הערה: כפתור \"הוסף מטבעות\" מיועד לבדיקה/פיתוח בלבד ויש להסירו או לאבטחו בגרסאות ייצור.",
     "notApplicable": "לא זמין",
-    "errorLoadCoins": "לא ניתן היה לטעון את מאזן המטבעות",
+    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש",
     "errorAddCoins": "נכשל בהוספת מטבעות",
     "coinsAdded": "מטבעות נוספו!"
   },
@@ -5791,11 +5894,13 @@ export default i18n;
     }
   },
   "accountSettings": {
+    "email": "Электронная почта",
+    "badges": "Значки",
     "coinBalance": "Баланс монет",
     "addTestCoins": "Добавить 10 монет (Тест)",
     "testButtonWarning": "Примечание: Кнопка \"Добавить монеты\" предназначена только для тестирования/разработки и должна быть удалена или защищена в релизных версиях.",
     "notApplicable": "Н/Д",
-    "errorLoadCoins": "Не удалось загрузить баланс монет",
+    "errorLoadCoins": "Не удалось загрузить статус пользователя",
     "errorAddCoins": "Не удалось добавить монеты",
     "coinsAdded": "Монеты добавлены!"
   },
@@ -8282,6 +8387,7 @@ import Toast from "react-native-toast-message";
 import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
+import { User } from "../types/user";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -8323,8 +8429,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     calories: [], protein: [], carbs: [], fat: [],
   });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [userCoins, setUserCoins] = useState<number | null>(null);
-  const [isLoadingCoins, setIsLoadingCoins] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isAddingCoins, setIsAddingCoins] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true); 
 
@@ -8408,14 +8514,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [getStatisticsData]);
 
   const fetchUserStatus = useCallback(async () => {
-    setIsLoadingCoins(true);
+    setIsLoadingUser(true);
     try { 
       const status = await getUserStatus(); 
-      setUserCoins(status.coins); 
+      setUser(status); 
     }
     catch (error) {
-      setUserCoins(null);
-      const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+      setUser(null);
+      const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
       Toast.show({ 
         type: 'error', 
         text1: t('accountSettings.errorLoadCoins'), 
@@ -8423,7 +8529,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         position: 'bottom', 
       });
     }
-    finally { setIsLoadingCoins(false); }
+    finally { setIsLoadingUser(false); }
   }, [t]);
 
   useFocusEffect( useCallback(() => {
@@ -8492,12 +8598,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         setIsAddingCoins(true);
         try { 
             const amount = 10; 
-            const updatedStatus = await addCoinsToUser(amount); 
-            setUserCoins(updatedStatus.coins); 
-            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); 
+            const updatedUser = await addCoinsToUser(amount); 
+            setUser(updatedUser); 
+            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedUser.coins}`, position: 'bottom' }); 
         }
         catch (error) { 
-            const message = error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection');
+            const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
             Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
         }
         finally { setIsAddingCoins(false); }
@@ -8537,13 +8643,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
         <AccountSettings
-             userCoins={userCoins}
-             isLoadingCoins={isLoadingCoins}
+             user={user}
+             isLoading={isLoadingUser}
              isAddingCoins={isAddingCoins}
              onAddTestCoins={handleAddTestCoins}
         />
-
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
             <ListItem.Content>
@@ -8866,6 +8970,7 @@ import * as authService from './authService';
 import { getClientId } from './clientIDService';
 import { MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { t } from '../localization/i18n';
+import { User } from '../types/user';
 
 // Custom Error for Backend Issues, includes HTTP status
 export class BackendError extends Error {
@@ -8977,9 +9082,9 @@ export async function fetchBackend<T>(
 
 // --- EXPORTED API FUNCTIONS ---
 
-export const getUserStatus = (): Promise<{ coins: number }> => fetchBackend('/users/status');
+export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 
-export const addCoinsToUser = (amount: number): Promise<{ coins: number }> => {
+export const addCoinsToUser = (amount: number): Promise<User> => {
     if (amount <= 0) {
         return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
     }
@@ -9628,6 +9733,27 @@ export interface Token {
     token_type: string;
 }
 ---------- END token.ts ----------
+
+
+---------- user.ts ----------
+// src/types/user.ts
+export interface Badge {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+}
+
+export interface User {
+  client_id: string; // uuid
+  email: string;
+  coins: number;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string; // ISO date string
+  badges: Badge[];
+}
+---------- END user.ts ----------
 
 
 ---------- dateUtils.ts ----------

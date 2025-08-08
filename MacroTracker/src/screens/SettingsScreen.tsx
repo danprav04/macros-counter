@@ -15,7 +15,7 @@ import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
-import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
+import { getUserStatus, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
 import { User } from "../types/user";
@@ -62,7 +62,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-  const [isAddingCoins, setIsAddingCoins] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true); 
 
   const { theme } = useTheme();
@@ -225,21 +224,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     finally { setIsDataLoading(false); }
   }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation, t]);
 
-    const handleAddTestCoins = useCallback(async () => {
-        setIsAddingCoins(true);
-        try { 
-            const amount = 10; 
-            const updatedUser = await addCoinsToUser(amount); 
-            setUser(updatedUser); 
-            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedUser.coins}`, position: 'bottom' }); 
-        }
-        catch (error) { 
-            const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
-            Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
-        }
-        finally { setIsAddingCoins(false); }
-    }, [t]);
-
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage); 
@@ -276,8 +260,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         <AccountSettings
              user={user}
              isLoading={isLoadingUser}
-             isAddingCoins={isAddingCoins}
-             onAddTestCoins={handleAddTestCoins}
         />
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
