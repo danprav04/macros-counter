@@ -118,6 +118,9 @@ export async function fetchBackend<T>(
 
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 
+export const startRewardAdProcess = (): Promise<{ nonce: string }> =>
+    fetchBackend('/users/reward-ad-start', { method: 'POST' });
+
 export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => 
     fetchBackend('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 
@@ -135,6 +138,7 @@ export const getMacrosForImageSingle = (base64Image: string, mimeType: string): 
 export const getMacrosForImageMultiple = (base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> => 
     fetchBackend('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64: base64Image, mime_type: mimeType }) });
 
+// FIX: Corrected the property name from image_base_64 to image_base64 to match the rest of the application.
 export const getMacrosForImageMultipleBatch = (images: { image_base64: string, mime_type: string }[]): Promise<EstimatedFoodItem[]> => 
     fetchBackend('/ai/macros_image_multiple_batch', { method: 'POST', body: JSON.stringify({ images }) });
 

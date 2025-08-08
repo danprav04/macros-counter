@@ -328,6 +328,19 @@
     "errorTimeout": "The server is taking too long to respond. This might be a temporary issue.",
     "errorGeneric": "An unexpected error occurred. Please try again."
   },
+  "ads": {
+    "getFreeCoins": "Get Free Coins",
+    "watchAdPromptTitle": "Out of Coins",
+    "watchAdPromptMessage": "Watch a short video to get more coins and continue?",
+    "watchAdButton": "Watch Ad",
+    "error": {
+      "title": "Ad Error",
+      "sdkFailed": "The ad service could not be initialized. Please try again later.",
+      "loadFailed": "No ads are available at the moment. Please try again in a while.",
+      "showFailed": "The ad could not be shown. Please try again.",
+      "unknown": "An unexpected error occurred with the ad service."
+    }
+  },
   "statisticsChart": {
     "intake": "Intake",
     "goal": "Goal",

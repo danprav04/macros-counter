@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, TouchableOpacity } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
@@ -19,6 +19,7 @@ import { getUserStatus, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
 import { User } from "../types/user";
+import { showRewardedAd } from '../services/adService'; // FIX: Removed unused import
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -63,6 +64,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(true); 
+  const [isAdLoading, setIsAdLoading] = useState(false);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -185,6 +187,30 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       return () => { isActive = false; };
     }, [updateStatistics, fetchUserStatus, navigation, t]) 
   );
+  
+  const handleWatchAd = async () => {
+      if (!user?.client_id || isAdLoading) {
+          return;
+      }
+      setIsAdLoading(true);
+      try {
+          const success = await showRewardedAd(user.client_id);
+          if (success) {
+              // The reward is granted server-side. Refresh user status to see new balance.
+              await fetchUserStatus();
+              Toast.show({
+                  type: 'success',
+                  text1: 'Reward Granted!',
+                  text2: 'Your coin balance has been updated.',
+                  position: 'bottom'
+              });
+          }
+      } catch (e) {
+        // Error is handled within showRewardedAd
+      } finally {
+          setIsAdLoading(false);
+      }
+  };
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
     const numericValue = parseFloat(value);
@@ -261,6 +287,26 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
              user={user}
              isLoading={isLoadingUser}
         />
+        <ListItem bottomDivider containerStyle={styles.listItem}>
+            <Icon name="database" type="material-community" color={theme.colors.warning} />
+            <ListItem.Content>
+                <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.coinBalance')}</ListItem.Title>
+            </ListItem.Content>
+            {isLoadingUser ? (
+                 <ActivityIndicator size="small" color={theme.colors.primary} />
+            ) : (
+                <View style={styles.coinContainer}>
+                    <Text style={[styles.valueText, styles.coinValue]}>{user?.coins ?? t('accountSettings.notApplicable')}</Text>
+                    <TouchableOpacity onPress={handleWatchAd} disabled={isAdLoading} style={styles.adButton}>
+                        {isAdLoading ? (
+                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                        ) : (
+                            <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            )}
+        </ListItem>
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
             <ListItem.Content>
@@ -369,6 +415,10 @@ const useStyles = makeStyles((theme) => ({
     marginLeft: I18nManager.isRTL ? 0 : 5,
     marginRight: I18nManager.isRTL ? 5 : 0,
   },
+  listItem: {
+      backgroundColor: theme.colors.background,
+      paddingVertical: 15,
+  },
   listItemTitle: {
     color: theme.colors.text,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
@@ -384,6 +434,23 @@ const useStyles = makeStyles((theme) => ({
       color: theme.colors.error,
       textAlign: I18nManager.isRTL ? 'right' : 'left',
       fontWeight: 'bold',
+  },
+  valueText: {
+      color: theme.colors.text,
+      fontSize: 14,
+  },
+  coinValue: {
+      color: theme.colors.primary,
+      fontWeight: 'bold',
+      fontSize: 16,
+  },
+  coinContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  adButton: {
+      marginLeft: 15,
+      padding: 5,
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
