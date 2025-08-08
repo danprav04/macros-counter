@@ -1,6 +1,6 @@
 // src/utils/macros.ts
 import { Alert } from 'react-native';
-import { getMacrosForRecipe, getMacrosForImageSingle, getMacrosForImageMultiple, getMacrosForTextMultiple, BackendError } from '../services/backendService';
+import { getMacrosForRecipe, getMacrosForImageSingle, getMacrosForImageMultiple, getMacrosForTextMultiple, getMacrosForImageMultipleBatch, BackendError } from '../services/backendService';
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { getBase64FromUri } from './imageUtils';
@@ -52,6 +52,20 @@ export async function getMultipleFoodsFromImage(base64Image: string, mimeType: s
         throw error;
     }
 }
+
+export async function getMultipleFoodsFromMultipleImages(images: { image_base64: string, mime_type: string }[]): Promise<EstimatedFoodItem[]> {
+    try {
+        const results = await getMacrosForImageMultipleBatch(images);
+        if (!Array.isArray(results)) {
+            throw new Error(t('utils.macros.invalidResponse'));
+        }
+        return results;
+    } catch (error) {
+        handleError(error, t('utils.macros.multiItemErrorTitle'));
+        throw error;
+    }
+}
+
 
 export async function getMultipleFoodsFromText(text: string): Promise<EstimatedFoodItem[]> {
     try {

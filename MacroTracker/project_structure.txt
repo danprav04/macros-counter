@@ -1020,7 +1020,7 @@ export const foodIconDefinitions: FoodIconDefinition[] = [
 // src/components/AccountSettings.tsx
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Text, makeStyles, Button, Icon, ListItem, useTheme } from '@rneui/themed';
+import { Text, makeStyles, Icon, ListItem, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
 import UserBadge from './UserBadge';
@@ -1028,15 +1028,11 @@ import UserBadge from './UserBadge';
 interface AccountSettingsProps {
     user: User | null;
     isLoading: boolean;
-    isAddingCoins: boolean;
-    onAddTestCoins: () => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({
     user,
     isLoading,
-    isAddingCoins,
-    onAddTestCoins,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -1078,21 +1074,6 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                      </View>
                  </ListItem>
             )}
-
-            {__DEV__ && (
-                <>
-                    <Button
-                        title={t('accountSettings.addTestCoins')}
-                        onPress={onAddTestCoins}
-                        buttonStyle={[styles.button, { backgroundColor: theme.colors.success, marginTop: 10 }]}
-                        disabled={isAddingCoins || isLoading}
-                        icon={isAddingCoins ? <ActivityIndicator color="white" /> : <Icon name="plus-circle-outline" type="material-community" color="white" size={20} style={{ marginRight: 8 }} />}
-                    />
-                    <Text style={styles.testButtonWarning}>
-                        {t('accountSettings.testButtonWarning')}
-                    </Text>
-                </>
-            )}
         </View>
     );
 };
@@ -1122,19 +1103,6 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'flex-end',
         flex: 1,
         marginLeft: 10,
-    },
-    button: {
-        marginBottom: 10,
-        borderRadius: 8,
-    },
-    testButtonWarning: {
-        fontSize: 12,
-        color: theme.colors.grey3,
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginTop: 0,
-        marginBottom: 15,
-        marginHorizontal: 10,
     },
 }));
 
@@ -4923,12 +4891,8 @@ export default i18n;
     "email": "Email",
     "badges": "Badges",
     "coinBalance": "Coin Balance",
-    "addTestCoins": "Add 10 Coins (Test)",
-    "testButtonWarning": "Note: The \"Add Coins\" button is for testing/development only and should be removed or secured for production releases.",
     "notApplicable": "N/A",
-    "errorLoadCoins": "Could not load user status",
-    "errorAddCoins": "Failed to Add Coins",
-    "coinsAdded": "Coins Added!"
+    "errorLoadCoins": "Could not load user status"
   },
   "themeSwitch": {
     "darkMode": "Dark Mode"
@@ -5193,7 +5157,6 @@ export default i18n;
     "errorServerUnreadable": "The server sent a response that could not be read. Please try again.",
     "errorNetwork": "Could not connect to the server. Please check your internet connection and try again.",
     "errorTimeout": "The server is taking too long to respond. This might be a temporary issue.",
-    "errorAddCoinsPositive": "Amount must be a positive number.",
     "errorGeneric": "An unexpected error occurred. Please try again."
   },
   "statisticsChart": {
@@ -5410,12 +5373,8 @@ export default i18n;
     "email": "אימייל",
     "badges": "תגים",
     "coinBalance": "מאזן מטבעות",
-    "addTestCoins": "הוסף 10 מטבעות (בדיקה)",
-    "testButtonWarning": "הערה: כפתור \"הוסף מטבעות\" מיועד לבדיקה/פיתוח בלבד ויש להסירו או לאבטחו בגרסאות ייצור.",
     "notApplicable": "לא זמין",
-    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש",
-    "errorAddCoins": "נכשל בהוספת מטבעות",
-    "coinsAdded": "מטבעות נוספו!"
+    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש"
   },
   "themeSwitch": {
     "darkMode": "מצב כהה"
@@ -5680,7 +5639,6 @@ export default i18n;
     "errorServerUnreadable": "השרת שלח תגובה שלא ניתן היה לקרוא. אנא נסה שוב.",
     "errorNetwork": "לא ניתן להתחבר לשרת. אנא בדוק את חיבור האינטרנט שלך ונסה שוב.",
     "errorTimeout": "לשרת לוקח יותר מדי זמן להגיב. ייתכן שזו בעיה זמנית.",
-    "errorAddCoinsPositive": "הסכום חייב להיות מספר חיובי.",
     "errorGeneric": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
   "statisticsChart": {
@@ -5897,12 +5855,8 @@ export default i18n;
     "email": "Электронная почта",
     "badges": "Значки",
     "coinBalance": "Баланс монет",
-    "addTestCoins": "Добавить 10 монет (Тест)",
-    "testButtonWarning": "Примечание: Кнопка \"Добавить монеты\" предназначена только для тестирования/разработки и должна быть удалена или защищена в релизных версиях.",
     "notApplicable": "Н/Д",
-    "errorLoadCoins": "Не удалось загрузить статус пользователя",
-    "errorAddCoins": "Не удалось добавить монеты",
-    "coinsAdded": "Монеты добавлены!"
+    "errorLoadCoins": "Не удалось загрузить статус пользователя"
   },
   "themeSwitch": {
     "darkMode": "Темный режим"
@@ -6167,7 +6121,6 @@ export default i18n;
     "errorServerUnreadable": "Сервер отправил ответ, который не удалось прочитать. Пожалуйста, попробуйте снова.",
     "errorNetwork": "Не удалось подключиться к серверу. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
     "errorTimeout": "Сервер слишком долго отвечает. Возможно, это временная проблема.",
-    "errorAddCoinsPositive": "Сумма должна быть положительным числом.",
     "errorGeneric": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   },
   "statisticsChart": {
@@ -8384,7 +8337,7 @@ import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
-import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
+import { getUserStatus, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
 import { User } from "../types/user";
@@ -8431,7 +8384,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-  const [isAddingCoins, setIsAddingCoins] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true); 
 
   const { theme } = useTheme();
@@ -8594,21 +8546,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     finally { setIsDataLoading(false); }
   }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation, t]);
 
-    const handleAddTestCoins = useCallback(async () => {
-        setIsAddingCoins(true);
-        try { 
-            const amount = 10; 
-            const updatedUser = await addCoinsToUser(amount); 
-            setUser(updatedUser); 
-            Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedUser.coins}`, position: 'bottom' }); 
-        }
-        catch (error) { 
-            const message = error instanceof BackendError ? error.message : t('backendService.errorNetwork');
-            Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: message, position: 'bottom' }); 
-        }
-        finally { setIsAddingCoins(false); }
-    }, [t]);
-
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage); 
@@ -8645,8 +8582,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         <AccountSettings
              user={user}
              isLoading={isLoadingUser}
-             isAddingCoins={isAddingCoins}
-             onAddTestCoins={handleAddTestCoins}
         />
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
@@ -9083,13 +9018,6 @@ export async function fetchBackend<T>(
 // --- EXPORTED API FUNCTIONS ---
 
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
-
-export const addCoinsToUser = (amount: number): Promise<User> => {
-    if (amount <= 0) {
-        return Promise.reject(new BackendError(t('backendService.errorAddCoinsPositive'), 400));
-    }
-    return fetchBackend('/users/add_coins', { method: 'POST', body: JSON.stringify({ amount }) });
-};
 
 export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => 
     fetchBackend('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });

@@ -9,7 +9,7 @@ import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
-import { EstimatedFoodItem, getMultipleFoodsFromImage, getMultipleFoodsFromText, BackendError, determineMimeType } from "../../utils/macros";
+import { EstimatedFoodItem, getMultipleFoodsFromMultipleImages, getMultipleFoodsFromText, BackendError, determineMimeType } from "../../utils/macros";
 import { compressImageIfNeeded, getBase64FromUri } from "../../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "../QuickAddList";
@@ -37,6 +37,7 @@ interface AddEntryModalProps {
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
 const MAX_RECENT_FOODS = 15;
 const MAX_SERVINGS_PER_FOOD = 4;
+const MAX_QUICK_ADD_IMAGES = 10; // Configurable on the frontend as well for immediate feedback
 
 type UnitMode = "grams" | "auto";
 type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
@@ -197,15 +198,32 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     try {
       permissionResult = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) throw new Error("Permission denied");
-      pickerResult = source === "camera" ? await ImagePicker.launchCameraAsync({ quality: 1 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+
+      if (source === 'camera') {
+        pickerResult = await ImagePicker.launchCameraAsync({ quality: 1 });
+      } else {
+        pickerResult = await ImagePicker.launchImageLibraryAsync({ 
+          mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+          quality: 1,
+          allowsMultipleSelection: true,
+          selectionLimit: MAX_QUICK_ADD_IMAGES,
+        });
+      }
+
       if (pickerResult.canceled) throw new Error("User cancelled");
 
-      const asset = pickerResult.assets?.[0]; if (!asset) throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
-      const compressed = await compressImageIfNeeded(asset);
-      const assetForAnalysis = compressed ? { ...asset, uri: compressed.uri, mimeType: 'image/jpeg' } : asset;
-      const base64 = await getBase64FromUri(assetForAnalysis.uri);
-      const mimeType = determineMimeType(assetForAnalysis);
-      const results = await getMultipleFoodsFromImage(base64, mimeType);
+      const assets = pickerResult.assets;
+      if (!assets || assets.length === 0) throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
+      
+      const imagePayloads = await Promise.all(assets.map(async (asset) => {
+          const compressed = await compressImageIfNeeded(asset);
+          const assetForAnalysis = compressed ? { ...asset, uri: compressed.uri, mimeType: 'image/jpeg' } : asset;
+          const base64 = await getBase64FromUri(assetForAnalysis.uri);
+          const mimeType = determineMimeType(assetForAnalysis);
+          return { image_base64: base64, mime_type: mimeType };
+      }));
+
+      const results = await getMultipleFoodsFromMultipleImages(imagePayloads);
 
       if (results.length === 0) {
         Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
@@ -215,7 +233,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         results.forEach(item => resolveAndSetIcon(item.foodName));
       }
     } catch (error: any) {
-      if (error.message !== "User cancelled" && error.message !== "Permission denied" && !(error instanceof BackendError)) Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
+      if (error.message !== "User cancelled" && error.message !== "Permission denied" && !(error instanceof BackendError)) {
+        Alert.alert(t('addEntryModal.alertQuickAddError'), error.message || t('addEntryModal.alertQuickAddErrorMessage'));
+      }
       setModalMode("normal");
     } finally {
       setQuickAddLoading(false);
@@ -225,7 +245,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleQuickAddImage = useCallback(() => {
     Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
     if (editingQuickAddItemIndex !== null) return Alert.alert(t('addEntryModal.alertQuickAddFinishEditing'), t('addEntryModal.alertQuickAddFinishEditingSaveOrCancel'));
-    Alert.alert(t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessage'), [
+    Alert.alert(t('addEntryModal.alertQuickAddFromImageTitle'), t('addEntryModal.alertQuickAddFromImageMessageBatch'), [
         { text: t('addEntryModal.cancel'), style: "cancel" },
         { text: t('addEntryModal.camera'), onPress: () => pickImageAndAnalyze("camera") },
         { text: t('addEntryModal.gallery'), onPress: () => pickImageAndAnalyze("gallery") },
