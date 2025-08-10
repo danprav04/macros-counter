@@ -58,10 +58,7 @@
             "DEFAULT"
           ]
         }
-      ],
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~3347511713"
-      }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -93,6 +90,9 @@
         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
+    },
+    "react-native-google-mobile-ads": {
+        "android_app_id": "ca-app-pub-3940256099942544~3347511713"
     }
   }
 }
