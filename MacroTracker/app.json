@@ -6,6 +6,7 @@
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "entryPoint": "./index.ts",
     "scheme": "macrosvisionai",
     "userInterfaceStyle": "automatic",
     "splash": {
