@@ -2,50 +2,50 @@
 name: EAS Development Build (Local)
 
 on:
-  # This workflow is triggered manually from the GitHub Actions tab.
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Development Client (Local)
-    # We use macos-latest as it provides a robust environment for mobile builds.
     runs-on: macos-latest
+    
+    # This is the fix. It sets the working directory for all subsequent steps.
+    # The directory name matches your repository name.
+    defaults:
+      run:
+        working-directory: ./macros-counter # <--- ADD THIS BLOCK
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # We check out the code into a directory named after the repo.
+          path: macros-counter
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # Use a Node.js version compatible with your Expo SDK. 18.x is a stable choice.
           node-version: 18.x
 
       - name: Set up Bun for faster dependency installation
         uses: oven-sh/setup-bun@v1
 
       - name: Install project dependencies
+        # This will now run inside the 'macros-counter' directory
         run: bun install
 
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
 
       - name: Log in to Expo using a secret token
-        # Make sure to add an EXPO_TOKEN secret to your GitHub repository settings.
-        run: eas login --token ${{ secrets.EXPO_TOKEN_DEV }}
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
 
       - name: Build development client locally for Android
-        # --profile development: Uses the 'development' profile defined in eas.json.
-        # --platform android: Specifies the target platform.
-        # --local: Executes the build on the CI worker instead of the EAS cloud.
-        # --non-interactive: Prevents any prompts, which is essential for CI environments.
-        # --output: Defines the path and filename for the resulting build artifact.
         run: eas build --profile development --platform android --local --non-interactive --output builds/MacrosVisionAI-dev.apk
 
       - name: Upload build artifact
-        # This step uploads the generated APK, making it available for download
-        # from the summary page of the GitHub Actions run.
         uses: actions/upload-artifact@v4
         with:
           name: macrosvisionai-dev-apk
-          path: builds/MacrosVisionAI-dev.apk
+          # The path is now relative to the working directory
+          path: macros-counter/builds/MacrosVisionAI-dev.apk
