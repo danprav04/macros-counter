@@ -8,8 +8,8 @@ on:
 jobs:
   build:
     name: Build Development Client (Local)
-    # We use macos-latest as it provides a robust environment for mobile builds.
-    runs-on: macos-latest
+    # Use ubuntu-latest to stay consistent with your production workflow.
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
@@ -18,33 +18,39 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # Use a Node.js version compatible with your Expo SDK. 18.x is a stable choice.
-          node-version: 18.x
+          # Match the Node.js version and caching strategy from your production workflow.
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: 'MacroTracker/package-lock.json'
 
-      - name: Set up Bun for faster dependency installation
-        uses: oven-sh/setup-bun@v1
+      - name: Set up Java Development Kit (JDK)
+        # This step is required for local Android builds.
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        # This step is also required for local Android builds.
+        uses: android-actions/setup-android@v3
 
       - name: Install project dependencies
-        run: bun install
+        # THIS IS THE FIX: Use 'npm ci' and specify the correct working directory.
+        # This now matches your working production workflow exactly.
+        working-directory: ./MacroTracker
+        run: npm ci
 
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
 
-      - name: Log in to Expo using a secret token
-        # Make sure to add an EXPO_TOKEN secret to your GitHub repository settings.
-        run: eas login --token ${{ secrets.EXPO_TOKEN_DEV }}
-
       - name: Build development client locally for Android
-        # --profile development: Uses the 'development' profile defined in eas.json.
-        # --platform android: Specifies the target platform.
-        # --local: Executes the build on the CI worker instead of the EAS cloud.
-        # --non-interactive: Prevents any prompts, which is essential for CI environments.
-        # --output: Defines the path and filename for the resulting build artifact.
-        run: eas build --profile development --platform android --local --non-interactive --output builds/MacrosVisionAI-dev.apk
+        working-directory: ./MacroTracker
+        # The output path is relative to the repository root.
+        run: eas build --profile development --platform android --local --non-interactive --output ../builds/MacrosVisionAI-dev.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN_DEV }}
 
       - name: Upload build artifact
-        # This step uploads the generated APK, making it available for download
-        # from the summary page of the GitHub Actions run.
         uses: actions/upload-artifact@v4
         with:
           name: macrosvisionai-dev-apk
