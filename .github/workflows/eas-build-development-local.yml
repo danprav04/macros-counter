@@ -2,50 +2,60 @@
 name: EAS Development Build (Local)
 
 on:
+  # This workflow is triggered manually from the GitHub Actions tab.
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Development Client (Local)
-    runs-on: macos-latest
-    
-    # This is the fix. It sets the working directory for all subsequent steps.
-    # The directory name matches your repository name.
-    defaults:
-      run:
-        working-directory: ./macros-counter # <--- ADD THIS BLOCK
+    # Use ubuntu-latest to stay consistent with your production workflow.
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          # We check out the code into a directory named after the repo.
-          path: macros-counter
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          # Match the Node.js version from your production workflow for consistency.
+          node-version: 20.x
+          # Use npm for caching, as your production workflow uses npm.
+          cache: 'npm'
+          cache-dependency-path: 'MacroTracker/package-lock.json'
 
-      - name: Set up Bun for faster dependency installation
-        uses: oven-sh/setup-bun@v1
+      - name: Set up Java Development Kit (JDK)
+        # This step is required for local Android builds.
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        # This step is also required for local Android builds.
+        uses: android-actions/setup-android@v3
 
       - name: Install project dependencies
-        # This will now run inside the 'macros-counter' directory
-        run: bun install
+        # Set the working directory to where your package.json is located.
+        # 'npm ci' is used for reliable installs in CI environments.
+        working-directory: ./MacroTracker
+        run: npm ci
 
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
 
-      - name: Log in to Expo using a secret token
-        run: eas login --token ${{ secrets.EXPO_TOKEN }}
-
       - name: Build development client locally for Android
-        run: eas build --profile development --platform android --local --non-interactive --output builds/MacrosVisionAI-dev.apk
+        # Run the build command from within the project's root directory.
+        working-directory: ./MacroTracker
+        # The output path '../builds/' places the APK in a 'builds' folder at the repository root.
+        run: eas build --profile development --platform android --local --non-interactive --output ../builds/MacrosVisionAI-dev.apk
+        env:
+          # Use the new secret name for the development token.
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN_DEV }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: macrosvisionai-dev-apk
-          # The path is now relative to the working directory
-          path: macros-counter/builds/MacrosVisionAI-dev.apk
+          # The path to the artifact, relative to the repository root.
+          path: builds/MacrosVisionAI-dev.apk
