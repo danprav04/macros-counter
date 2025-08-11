@@ -31,8 +31,6 @@ export const getApiUrl = (): string => {
     return baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/api/v1`;
 };
 
-const API_URL = getApiUrl();
-
 // --- Auth Event Emitter for 401 Handling ---
 type LogoutListener = (() => void) | null;
 let onLogout: LogoutListener = null;
@@ -60,7 +58,7 @@ export {
 
 // --- API Calls ---
 async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_URL}/auth${endpoint}`;
+    const url = `${getApiUrl()}/auth${endpoint}`;
     
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -102,7 +100,7 @@ export const loginUser = async (email: string, password: string): Promise<Token>
         .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
         .join('&');
 
-    const url = `${API_URL}/auth/login`;
+    const url = `${getApiUrl()}/auth/login`;
 
     try {
         const response = await fetch(url, {
