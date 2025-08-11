@@ -19,6 +19,7 @@ import { Settings } from '../../types/settings';
 import ModalHeader from './ModalHeader';
 import FoodSelectionList from './FoodSelectionList';
 import AmountInputSection from './AmountInputSection';
+import { useAuth, AuthContextType } from '../../context/AuthContext';
 
 interface AddEntryModalProps {
   isVisible: boolean;
@@ -37,7 +38,7 @@ interface AddEntryModalProps {
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 80 : 0;
 const MAX_RECENT_FOODS = 15;
 const MAX_SERVINGS_PER_FOOD = 4;
-const MAX_QUICK_ADD_IMAGES = 10; // Configurable on the frontend as well for immediate feedback
+const MAX_QUICK_ADD_IMAGES = 10;
 
 type UnitMode = "grams" | "auto";
 type ModalMode = "normal" | "quickAddSelect" | "quickAddText";
@@ -48,6 +49,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
+  const { user, refreshUser } = useAuth() as AuthContextType;
 
   const [internalSelectedFood, setInternalSelectedFood] = useState<Food | null>(null);
   const [internalGrams, setInternalGrams] = useState("");
@@ -105,13 +107,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         if (initialSelectedFoodForEdit?.name) resolveAndSetIcon(initialSelectedFoodForEdit.name);
     } 
     
-    // Always load recents for non-edit scenarios.
     if (!isEditMode) {
         loadRecentFoods().then(setRecentFoods);
         loadRecentServings().then(setRecentServings);
     }
   }, []); 
-
 
   useEffect(() => { recentFoods.forEach(food => resolveAndSetIcon(food.name)); }, [recentFoods, resolveAndSetIcon]);
 
@@ -155,11 +155,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
     setIsAiLoading(true);
     try {
-      const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput);
+      const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput, user?.client_id, refreshUser);
       const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams); setUnitMode("grams"); setAutoInput("");
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom" });
     } catch (error) { /* Handled by getGramsFromNaturalLanguage */ } finally { setIsAiLoading(false); }
-  }, [internalSelectedFood, autoInput, isAiLoading, t]);
+  }, [internalSelectedFood, autoInput, isAiLoading, t, user, refreshUser]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
     Keyboard.dismiss(); if (!internalSelectedFood?.id) return Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
@@ -223,7 +223,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           return { image_base64: base64, mime_type: mimeType };
       }));
 
-      const results = await getMultipleFoodsFromMultipleImages(imagePayloads);
+      const results = await getMultipleFoodsFromMultipleImages(imagePayloads, user?.client_id, refreshUser);
 
       if (results.length === 0) {
         Toast.show({type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom'});
@@ -240,7 +240,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     } finally {
       setQuickAddLoading(false);
     }
-  }, [isEditMode, resolveAndSetIcon, t]);
+  }, [isEditMode, resolveAndSetIcon, t, user, refreshUser]);
 
   const handleQuickAddImage = useCallback(() => {
     Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
@@ -264,7 +264,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     Keyboard.dismiss();
     setQuickAddLoading(true); setIsTextQuickAddLoading(true);
     try {
-        const results = await getMultipleFoodsFromText(textToAnalyze);
+        const results = await getMultipleFoodsFromText(textToAnalyze, user?.client_id, refreshUser);
         if (results.length === 0) {
             Toast.show({ type: 'info', text1: t('addEntryModal.noQuickAddResults'), position: 'bottom' });
         } else {

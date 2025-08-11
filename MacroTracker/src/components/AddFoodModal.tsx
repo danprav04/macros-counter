@@ -20,7 +20,6 @@ import {
     ButtonGroup,
 } from "@rneui/themed";
 import { Food } from "../types/food";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import {
     getMacrosFromText,
@@ -31,8 +30,8 @@ import { ImagePickerResult } from 'expo-image-picker';
 import { compressImageIfNeeded } from '../utils/imageUtils';
 import FoodFormFields from "./FoodFormFields";
 import { t } from '../localization/i18n';
+import { useAuth, AuthContextType } from '../context/AuthContext';
 
-// Use a specific type for the form data
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
 
@@ -69,6 +68,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const { user, refreshUser } = useAuth() as AuthContextType;
+
     const [loading, setLoading] = useState(false);
     const [inputMode, setInputMode] = useState<InputMode>('manual');
     const [ingredients, setIngredients] = useState("");
@@ -109,14 +110,12 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         try {
             if (isUpdate) {
                 await handleUpdateFood();
-                Toast.show({ type: "success", text1: t('foodListScreen.foodUpdated', { foodName: dataToValidate.name }), position: 'bottom' });
             } else {
                 await handleCreateFood();
-                Toast.show({ type: "success", text1: t('foodListScreen.foodAdded', { foodName: dataToValidate.name }), position: 'bottom' });
             }
             toggleOverlay();
         } catch (error: any) {
-            Alert.alert(t('foodListScreen.errorLoad'), error.message || t(isUpdate ? 'foodListScreen.errorUpdateMessage' : 'foodListScreen.errorCreateMessage'));
+            // Errors are handled by the calling screen's implementation
         } finally { setLoading(false); }
     };
 
@@ -130,7 +129,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     
         setAiTextLoading(true);
         try {
-            const macros = await getMacrosFromText(foodName, textToAnalyze);
+            const macros = await getMacrosFromText(foodName, textToAnalyze, user?.client_id, refreshUser);
             const isUpdate = !!editFood;
     
             if (macros.foodName) {
@@ -165,7 +164,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 try {
                      const compressedResult = await compressImageIfNeeded(originalAsset);
                      const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
-                     const result = await getMacrosForImageFile(assetForAnalysis);
+                     const result = await getMacrosForImageFile(assetForAnalysis, user?.client_id, refreshUser);
                      const isUpdate = !!editFood;
                      handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
                      handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
@@ -219,7 +218,6 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                             />
                         )}
 
-                        {/* START: MODIFICATION FOR CONSISTENT HEIGHT */}
                         <View style={styles.contentContainer}>
                             {inputMode === 'manual' ? (
                                 <View>
@@ -268,7 +266,6 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                 </View>
                             )}
                         </View>
-                        {/* END: MODIFICATION */}
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
@@ -308,12 +305,10 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.grey1,
         fontWeight: 'bold',
     },
-    // START: ADDED STYLE FOR CONSISTENT HEIGHT
     contentContainer: {
         minHeight: 500,
         justifyContent: 'flex-start',
     },
-    // END: ADDED STYLE
 }));
 
 export default AddFoodModal;

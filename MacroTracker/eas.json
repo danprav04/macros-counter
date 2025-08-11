@@ -8,8 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+        "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     },
     "preview": {
@@ -17,8 +17,8 @@
         "buildType": "apk"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.185:8000"
+        "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     },
     "production": {

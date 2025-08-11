@@ -2,19 +2,19 @@
 import { Alert } from 'react-native';
 import { estimateGramsNaturalLanguage, BackendError } from '../services/backendService';
 import { t } from '../localization/i18n';
-import { showRewardedAd } from '../services/adService'; // Import the ad service
+import { showRewardedAd } from '../services/adService';
 
 export async function getGramsFromNaturalLanguage(
     foodName: string,
     quantityDescription: string,
-    userId: string | null, // Add userId
-    onReward: () => void // Add onReward callback
+    userId?: string | null,
+    onReward?: () => void
 ): Promise<number> {
     try {
         const grams = await estimateGramsNaturalLanguage(foodName, quantityDescription);
         return grams;
     } catch (error) {
-        if (error instanceof BackendError && error.status === 402 && userId) {
+        if (error instanceof BackendError && error.status === 402 && userId && onReward) {
             Alert.alert(
                 t('ads.watchAdPromptTitle'),
                 t('ads.watchAdPromptMessage'),
@@ -24,7 +24,7 @@ export async function getGramsFromNaturalLanguage(
                         text: t('ads.watchAdButton'),
                         onPress: async () => {
                             const success = await showRewardedAd(userId);
-                            if (success) {
+                            if (success && onReward) {
                                 onReward();
                             }
                         },
