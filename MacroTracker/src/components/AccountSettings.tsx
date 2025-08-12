@@ -1,6 +1,6 @@
 // src/components/AccountSettings.tsx
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text, makeStyles, Icon, ListItem, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
@@ -9,11 +9,15 @@ import UserBadge from './UserBadge';
 interface AccountSettingsProps {
     user: User | null;
     isLoading: boolean;
+    isAdLoading: boolean;
+    onWatchAd: () => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({
     user,
     isLoading,
+    isAdLoading,
+    onWatchAd,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -40,7 +44,16 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 {isLoading ? (
                     <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : (
-                    <Text style={[styles.valueText, styles.coinValue]}>{user?.coins ?? t('accountSettings.notApplicable')}</Text>
+                    <View style={styles.coinContainer}>
+                        <Text style={[styles.valueText, styles.coinValue]}>{user?.coins ?? t('accountSettings.notApplicable')}</Text>
+                        <TouchableOpacity onPress={onWatchAd} disabled={isAdLoading} style={styles.adButton}>
+                            {isAdLoading ? (
+                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                            ) : (
+                                <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 )}
             </ListItem>
 
@@ -77,6 +90,14 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.primary,
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    coinContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    adButton: {
+        marginLeft: 15,
+        padding: 5,
     },
     badgesContainer: {
         flexDirection: 'row',

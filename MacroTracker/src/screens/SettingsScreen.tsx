@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, TouchableOpacity } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
@@ -15,10 +15,8 @@ import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
-import { BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
-import { User } from "../types/user";
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 
@@ -209,27 +207,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
-        <AccountSettings user={user} isLoading={!user && isDataLoading} />
-        <ListItem bottomDivider containerStyle={styles.listItem}>
-            <Icon name="database" type="material-community" color={theme.colors.warning} />
-            <ListItem.Content>
-                <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.coinBalance')}</ListItem.Title>
-            </ListItem.Content>
-            {isDataLoading && !user ? (
-                 <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : (
-                <View style={styles.coinContainer}>
-                    <Text style={[styles.valueText, styles.coinValue]}>{user?.coins ?? t('accountSettings.notApplicable')}</Text>
-                    <TouchableOpacity onPress={handleWatchAd} disabled={isAdLoading} style={styles.adButton}>
-                        {isAdLoading ? (
-                            <ActivityIndicator size="small" color={theme.colors.primary} />
-                        ) : (
-                            <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
-                        )}
-                    </TouchableOpacity>
-                </View>
-            )}
-        </ListItem>
+        <AccountSettings
+          user={user}
+          isLoading={!user && isDataLoading}
+          isAdLoading={isAdLoading}
+          onWatchAd={handleWatchAd}
+        />
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
             <ListItem.Content>
