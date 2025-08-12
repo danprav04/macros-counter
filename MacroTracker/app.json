@@ -41,7 +41,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "intentFilters": [
         {
@@ -94,6 +95,6 @@
     }
   },
   "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-5977125521868950~5744485886"
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713"
   }
 }
