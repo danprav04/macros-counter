@@ -12,8 +12,8 @@ import { t } from '../localization/i18n';
 const adUnitId = __DEV__
   ? TestIds.REWARDED
   : Platform.OS === 'ios'
-  ? 'YOUR_IOS_REWARDED_AD_UNIT_ID'
-  : 'YOUR_ANDROID_REWARDED_AD_UNIT_ID';
+  ? 'ca-app-pub-5977125521868950/6021803585'
+  : 'ca-app-pub-5977125521868950/6021803585';
 
 let isAdShowing = false;
 
