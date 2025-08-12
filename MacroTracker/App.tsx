@@ -7,7 +7,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Text, TextInput } from "react-native";
 import { AuthProvider } from "./src/context/AuthContext";
 import { initializeAds } from './src/services/adService';
-import Constants from 'expo-constants';
 
 // --- FONT SCALING PATCH ---
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
@@ -18,10 +17,7 @@ if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {
 
 const App = () => {
   useEffect(() => {
-    // Log the AdMob App ID from the current build's configuration
-    const adMobAppId = Constants.expoConfig?.['react-native-google-mobile-ads']?.android_app_id;
-    console.log('Current AdMob App ID (Android):', adMobAppId || 'Not Found');
-    
+    // Initialize the ad service when the app starts.
     initializeAds();
   }, []);
 
