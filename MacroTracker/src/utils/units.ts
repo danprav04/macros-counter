@@ -14,7 +14,14 @@ export async function getGramsFromNaturalLanguage(
         const grams = await estimateGramsNaturalLanguage(foodName, quantityDescription);
         return grams;
     } catch (error) {
-        if (error instanceof BackendError && error.status === 402 && userId && onReward) {
+        if (error instanceof BackendError && error.status === 402 && userId) {
+            // Define the retry function here for clarity
+            const retryAction = () => {
+                // The onReward function passed in is what refreshes the user state
+                // to get new coins before retrying the operation.
+                if(onReward) onReward();
+            };
+
             Alert.alert(
                 t('ads.watchAdPromptTitle'),
                 t('ads.watchAdPromptMessage'),
@@ -24,8 +31,8 @@ export async function getGramsFromNaturalLanguage(
                         text: t('ads.watchAdButton'),
                         onPress: async () => {
                             const success = await showRewardedAd(userId);
-                            if (success && onReward) {
-                                onReward();
+                            if (success) {
+                                retryAction();
                             }
                         },
                     },

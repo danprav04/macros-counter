@@ -144,32 +144,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleWatchAd = async () => {
     if (!user?.client_id || isAdLoading) return;
     setIsAdLoading(true);
-  
-    showRewardedAd(user.client_id, (rewardEarned) => {
-      // This callback is executed when the ad is closed.
-      setIsAdLoading(false);
-  
-      if (rewardEarned) {
-        // The user earned the reward on the client side.
-        // The server will be notified via SSV to grant the coins.
-        // We can show a message and refresh the user's status after a short delay
-        // to give the server time to process the callback.
-        Toast.show({
-          type: 'info',
-          text1: 'Verification Pending',
-          text2: 'Your coin balance will update shortly.',
-          position: 'bottom'
-        });
-  
-        // Refresh user status after a delay to allow SSV to complete
-        setTimeout(() => {
-          refreshUser?.();
-        }, 5000); // 5-second delay
-      } else {
-        // User closed the ad before completion or an error occurred.
-        console.log("Ad closed without earning a reward.");
-      }
-    });
+
+    const rewardEarned = await showRewardedAd(user.client_id);
+    setIsAdLoading(false);
+
+    if (rewardEarned) {
+      // --- FIX: Improved user-facing message ---
+      Toast.show({
+        type: 'success',
+        text1: 'Reward Earned!',
+        text2: 'Your coin balance will update on your next action.',
+        position: 'bottom'
+      });
+
+      setTimeout(() => {
+        refreshUser?.();
+      }, 3000); // 3-second delay is plenty
+    } else {
+      console.log("Ad was closed without earning a reward.");
+    }
   };
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {

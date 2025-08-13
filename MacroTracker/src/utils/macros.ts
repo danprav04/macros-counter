@@ -43,9 +43,11 @@ const handleError = (error: unknown, title: string, userId?: string | null, onRe
 
 export async function getMacrosFromText(foodName: string, ingredients: string, userId?: string | null, onReward?: () => void): Promise<MacrosWithFoodName> {
     try {
+        const onRetry = () => getMacrosFromText(foodName, ingredients, userId, onReward);
         return await getMacrosForRecipe(foodName, ingredients);
     } catch (error) {
-        handleError(error, t('utils.macros.errorTitle'), userId, onReward);
+        const onRetry = () => getMacrosFromText(foodName, ingredients, userId, onReward);
+        handleError(error, t('utils.macros.errorTitle'), userId, onRetry);
         throw error;
     }
 }
@@ -56,7 +58,8 @@ export async function getMacrosForImageFile(asset: ImagePickerAsset, userId?: st
         const mimeType = determineMimeType(asset);
         return await getMacrosForImageSingle(base64File, mimeType);
     } catch (error) {
-        handleError(error, t('utils.macros.errorTitle'), userId, onReward);
+        const onRetry = () => getMacrosForImageFile(asset, userId, onReward);
+        handleError(error, t('utils.macros.errorTitle'), userId, onRetry);
         throw error;
     }
 }
@@ -69,7 +72,8 @@ export async function getMultipleFoodsFromMultipleImages(images: { image_base64:
         }
         return results;
     } catch (error) {
-        handleError(error, t('utils.macros.multiItemErrorTitle'), userId, onReward);
+        const onRetry = () => getMultipleFoodsFromMultipleImages(images, userId, onReward);
+        handleError(error, t('utils.macros.multiItemErrorTitle'), userId, onRetry);
         throw error;
     }
 }
@@ -81,7 +85,8 @@ export async function getMultipleFoodsFromText(text: string, userId?: string | n
         if (!Array.isArray(results)) throw new Error(t('utils.macros.invalidResponse'));
         return results;
     } catch (error) {
-        handleError(error, t('utils.macros.multiItemErrorTitle'), userId, onReward);
+        const onRetry = () => getMultipleFoodsFromText(text, userId, onReward);
+        handleError(error, t('utils.macros.multiItemErrorTitle'), userId, onRetry);
         throw error;
     }
 }
