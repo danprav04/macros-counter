@@ -10,22 +10,28 @@ import mobileAds, {
 import { startRewardAdProcess } from './backendService';
 import { t } from '../localization/i18n';
 
-const adUnitId = __DEV__
-  ? TestIds.REWARDED
-  : Platform.OS === 'ios'
-  ? 'ca-app-pub-5977125521868950/6021803585'
-  : 'ca-app-pub-5977125521868950/6021803585';
+// --- PRODUCTION-READY AD UNIT ID LOGIC ---
+// We will now ALWAYS use the real Ad Unit ID.
+// AdMob automatically serves safe, non-revenue generating "test ads" to devices
+// that have been added to the "Test Devices" list in the AdMob console.
+// Using the real ID is the ONLY way to test the Server-Side Verification (SSV) flow.
+const adUnitId = 'ca-app-pub-5977125521868950/6021803585';
 
 let isAdShowing = false;
 let isSdkInitialized = false;
 
 export const initializeAds = (): void => {
+  if (__DEV__) {
+      console.warn(
+          '--- Ad Service Notice --- Using real Ad Unit ID for testing SSV. ' +
+          'Ensure your device is registered as a test device in the AdMob console to avoid policy violations.'
+      );
+  }
   mobileAds()
     .initialize()
     .then((adapterStatuses: AdapterStatus[]) => {
       console.log('Google Mobile Ads SDK initialization status:', adapterStatuses);
       
-      // Find the status for the main Google Mobile Ads adapter from the array.
       const googleAdapterStatus = adapterStatuses.find(
         (adapter) => adapter.name === 'com.google.android.gms.ads.MobileAds'
       );
@@ -44,60 +50,70 @@ export const initializeAds = (): void => {
 };
 
 
-export const showRewardedAd = (userId: string): Promise<boolean> => {
-  return new Promise(async (resolve) => {
+/**
+ * Shows a rewarded ad.
+ * @param userId The current user's client_id for SSV.
+ * @param onAdClosed A callback function that is triggered when the ad is closed. It receives a boolean indicating if the user earned a reward on the client-side.
+ */
+export const showRewardedAd = (userId: string, onAdClosed: (rewardEarned: boolean) => void): void => {
     if (isAdShowing) {
       console.warn('An ad is already being shown.');
-      return resolve(false);
+      onAdClosed(false);
+      return;
     }
 
     if (!isSdkInitialized) {
       Alert.alert(t('ads.error.title'), t('ads.error.sdkFailed'));
       console.error('Attempted to show ad before SDK was initialized and ready.');
-      return resolve(false);
+      onAdClosed(false);
+      return;
     }
 
-    try {
-      isAdShowing = true;
-      
-      const { nonce } = await startRewardAdProcess();
-      const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
-        serverSideVerificationOptions: {
-          userId: userId,
-          customData: nonce,
-        },
-      });
+    const processAd = async () => {
+        try {
+            isAdShowing = true;
+            
+            const { nonce } = await startRewardAdProcess();
+            const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
+                serverSideVerificationOptions: {
+                    userId: userId,
+                    customData: nonce,
+                },
+            });
 
-      let rewardEarned = false;
+            let rewardEarned = false;
 
-      const listeners = [
-        rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
-          rewardedAd.show();
-        }),
-        rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward) => {
-          console.log(`AdMob: User earned reward of ${reward.amount} ${reward.type}.`);
-          rewardEarned = true;
-        }),
-        rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
-          isAdShowing = false;
-          listeners.forEach(unsubscribe => unsubscribe());
-          resolve(rewardEarned);
-        }),
-        rewardedAd.addAdEventListener(AdEventType.ERROR, (error) => {
-          const errorMessage = error?.message || t('ads.error.loadFailed');
-          Alert.alert(t('ads.error.title'), errorMessage);
-          isAdShowing = false;
-          listeners.forEach(unsubscribe => unsubscribe());
-          resolve(false);
-        })
-      ];
+            const listeners = [
+                rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+                    rewardedAd.show();
+                }),
+                rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward) => {
+                    console.log(`AdMob Client Event: User earned reward of ${reward.amount} ${reward.type}. Waiting for server verification.`);
+                    rewardEarned = true;
+                }),
+                rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
+                    isAdShowing = false;
+                    listeners.forEach(unsubscribe => unsubscribe());
+                    onAdClosed(rewardEarned);
+                }),
+                rewardedAd.addAdEventListener(AdEventType.ERROR, (error) => {
+                    console.error('Ad failed to load or show:', error);
+                    const errorMessage = error?.message || t('ads.error.loadFailed');
+                    Alert.alert(t('ads.error.title'), errorMessage);
+                    isAdShowing = false;
+                    listeners.forEach(unsubscribe => unsubscribe());
+                    onAdClosed(false);
+                })
+            ];
 
-      rewardedAd.load();
+            rewardedAd.load();
 
-    } catch (error: any) {
-      Alert.alert(t('ads.error.title'), error.message || t('ads.error.unknown'));
-      isAdShowing = false;
-      resolve(false);
-    }
-  });
+        } catch (error: any) {
+            Alert.alert(t('ads.error.title'), error.message || t('ads.error.unknown'));
+            isAdShowing = false;
+            onAdClosed(false);
+        }
+    };
+    
+    processAd();
 };

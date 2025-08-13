@@ -28,7 +28,7 @@
         "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
-        "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511"
+        "GADApplicationIdentifier": "ca-app-pub-5977125521868950~5744485886"
       }
     },
     "android": {
