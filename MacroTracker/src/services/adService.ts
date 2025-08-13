@@ -10,11 +10,6 @@ import mobileAds, {
 import { startRewardAdProcess } from './backendService';
 import { t } from '../localization/i18n';
 
-// --- PRODUCTION-READY AD UNIT ID LOGIC ---
-// We will now ALWAYS use the real Ad Unit ID.
-// AdMob automatically serves safe, non-revenue generating "test ads" to devices
-// that have been added to the "Test Devices" list in the AdMob console.
-// Using the real ID is the ONLY way to test the Server-Side Verification (SSV) flow.
 const adUnitId = 'ca-app-pub-5977125521868950/6021803585';
 
 let isAdShowing = false;
@@ -31,30 +26,20 @@ export const initializeAds = (): void => {
     .initialize()
     .then((adapterStatuses: AdapterStatus[]) => {
       console.log('Google Mobile Ads SDK initialization status:', adapterStatuses);
+      // Check if any of the adapters in the array are in the READY state (state code 1).
+      isSdkInitialized = adapterStatuses.some(status => status.state === 1);
       
-      const googleAdapterStatus = adapterStatuses.find(
-        (adapter) => adapter.name === 'com.google.android.gms.ads.MobileAds'
-      );
-
-      if (googleAdapterStatus && googleAdapterStatus.state === 1) { // State 1 means READY
-          isSdkInitialized = true;
-          console.log('Ad service is ready.');
+      if (isSdkInitialized) {
+        console.log('Ad service is ready.');
       } else {
-          console.warn('Ad service initialized but not ready. Ads may fail to load.', googleAdapterStatus);
+        console.warn('Ad service initialized but no adapters are ready.');
       }
     })
     .catch(error => {
       console.error('Error initializing Google Mobile Ads SDK:', error);
-      Alert.alert(t('ads.error.title'), t('ads.error.sdkFailed'));
     });
 };
 
-
-/**
- * Shows a rewarded ad.
- * @param userId The current user's client_id for SSV.
- * @param onAdClosed A callback function that is triggered when the ad is closed. It receives a boolean indicating if the user earned a reward on the client-side.
- */
 export const showRewardedAd = (userId: string, onAdClosed: (rewardEarned: boolean) => void): void => {
     if (isAdShowing) {
       console.warn('An ad is already being shown.');
@@ -73,7 +58,10 @@ export const showRewardedAd = (userId: string, onAdClosed: (rewardEarned: boolea
         try {
             isAdShowing = true;
             
+            // Step 1: Get the unique nonce from your server *before* creating the ad request.
             const { nonce } = await startRewardAdProcess();
+
+            // Step 2: Create the ad instance, passing the SSV options at creation time.
             const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
                 serverSideVerificationOptions: {
                     userId: userId,
@@ -84,7 +72,10 @@ export const showRewardedAd = (userId: string, onAdClosed: (rewardEarned: boolea
             let rewardEarned = false;
 
             const listeners = [
+                // Step 3: Listen for the ad to load.
                 rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+                    console.log('Rewarded ad loaded, now showing.');
+                    // Step 4: Show the ad only after it has successfully loaded.
                     rewardedAd.show();
                 }),
                 rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward) => {
@@ -106,6 +97,7 @@ export const showRewardedAd = (userId: string, onAdClosed: (rewardEarned: boolea
                 })
             ];
 
+            // Step 5: Start the loading process.
             rewardedAd.load();
 
         } catch (error: any) {
