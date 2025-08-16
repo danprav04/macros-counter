@@ -35,8 +35,6 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install project dependencies
-        # THIS IS THE FIX: Use 'npm ci' and specify the correct working directory.
-        # This now matches your working production workflow exactly.
         working-directory: ./MacroTracker
         run: npm ci
 
