@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
         if (tokenData?.access_token) {
           setAuthState({ authenticated: true, token: tokenData.access_token });
-          await refreshUser();
+          // refreshUser is now handled by the dedicated useEffect below
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -70,12 +70,20 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     };
 
     loadAuthData();
-  }, [refreshUser]);
+  }, []); // This effect runs once on mount
+
+  // This new useEffect handles refreshing the user whenever the authentication state becomes true.
+  // This decouples the user fetch from the login and initial load logic, making the flow more robust.
+  useEffect(() => {
+    if (authState.authenticated && authState.token) {
+      refreshUser();
+    }
+  }, [authState.authenticated, authState.token, refreshUser]);
 
   const login = async (tokenData: Token) => {
     await authService.setAuthToken(tokenData);
+    // Only update the state. The side effect of refreshing the user is handled by the useEffect above.
     setAuthState({ authenticated: true, token: tokenData.access_token });
-    await refreshUser();
   };
 
   const logout = async () => {
