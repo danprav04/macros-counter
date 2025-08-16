@@ -1,11 +1,8 @@
 // src/services/storageService.ts
-// services/storageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyEntry } from '../types/dailyEntry';
 import { Food } from '../types/food';
-import { Settings, LanguageCode } from '../types/settings'; // Import LanguageCode
-import { formatISO, parseISO } from 'date-fns';
-
+import { Settings, LanguageCode } from '../types/settings';
 
 const DAILY_ENTRIES_KEY = 'dailyEntries';
 const FOODS_KEY = 'foods';
@@ -13,8 +10,7 @@ const SETTINGS_KEY = 'settings';
 const RECENT_FOODS_KEY = 'recentFoods';
 const RECENT_SERVINGS_KEY = 'recentServings';
 
-
-export type RecentServings = { [foodId: string]: number[] }; // Type for recent servings
+export type RecentServings = { [foodId: string]: number[] };
 
 export const saveDailyEntries = async (entries: DailyEntry[]): Promise<void> => {
   try {
@@ -30,7 +26,8 @@ export const loadDailyEntries = async (): Promise<DailyEntry[]> => {
     const entriesJson = await AsyncStorage.getItem(DAILY_ENTRIES_KEY);
     return entriesJson ? JSON.parse(entriesJson) : [];
   } catch (error) {
-    console.error('Error loading daily entries:', error);
+    console.error('Failed to parse daily entries from AsyncStorage. Clearing corrupted data.', error);
+    await AsyncStorage.removeItem(DAILY_ENTRIES_KEY);
     return [];
   }
 };
@@ -40,7 +37,7 @@ export const saveFoods = async (foods: Food[]): Promise<void> => {
     await AsyncStorage.setItem(FOODS_KEY, JSON.stringify(foods));
   } catch (error) {
     console.error('Error saving foods:', error);
-    throw error; // Re-throw the error
+    throw error;
   }
 };
 
@@ -57,12 +54,11 @@ export const loadFoods = async (offset: number = 0, limit?: number): Promise<{ i
     const paginatedFoods = allFoods.slice(offset, offset + limit);
     return { items: paginatedFoods, total };
   } catch (error) {
-    console.error('Error loading foods:', error);
-    return { items: [], total: 0 }; // Return an empty array and 0 total on error
+    console.error('Failed to parse foods from AsyncStorage. Clearing corrupted data.', error);
+    await AsyncStorage.removeItem(FOODS_KEY);
+    return { items: [], total: 0 };
   }
 };
-
-
 
 export const saveSettings = async (settings: Settings): Promise<void> => {
   try {
@@ -74,52 +70,36 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 };
 
 export const loadSettings = async (): Promise<Settings> => {
+  const defaultSettings: Settings = {
+    theme: 'system',
+    language: 'system',
+    dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+    settingsHistory: []
+  };
+
   try {
     const settingsJson = await AsyncStorage.getItem(SETTINGS_KEY);
-    const loadedSettings = settingsJson ? JSON.parse(settingsJson) : {};
-
-    // Apply defaults and ensure structure
-    const defaultSettings: Settings = {
-      theme: 'system',
-      language: 'system', // Default language
-      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: [] // Ensure settingsHistory exists
-    };
-
+    if (!settingsJson) return defaultSettings;
+    
+    const loadedSettings = JSON.parse(settingsJson);
 
     return {
-      ...defaultSettings, // Start with defaults
-        ...loadedSettings, // Override with loaded values
-        dailyGoals: {
-          ...defaultSettings.dailyGoals,  //ensure no fields missing from daily goals
-            ...(loadedSettings.dailyGoals || {}) // And override *those* with any loaded dailyGoals
-        }
-    };
-
-  } catch (error: any) {
-    console.error('Error loading settings:', error);
-
-    if (error.message.includes('Row too big')) {
-      console.warn('Detected oversized settings data. Clearing settings.');
-      try {
-        await AsyncStorage.removeItem(SETTINGS_KEY);
-      } catch (clearError) {
-        console.error('Error clearing oversized settings:', clearError);
+      ...defaultSettings,
+      ...loadedSettings,
+      dailyGoals: {
+        ...defaultSettings.dailyGoals,
+        ...(loadedSettings.dailyGoals || {})
       }
-    }
-
-    return {
-      theme: 'system',
-      language: 'system', // Default language on error
-      dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
-      settingsHistory: []
     };
+  } catch (error) {
+    console.error('Failed to parse settings from AsyncStorage. Clearing corrupted data and returning defaults.', error);
+    await AsyncStorage.removeItem(SETTINGS_KEY);
+    return defaultSettings;
   }
 };
 
 export const clearAllData = async (): Promise<void> => {
   try {
-    // Keep clientID and auth token, clear everything else
     const clientIdKey = '@MacroTracker:clientId';
     const authTokenKey = '@MacroTracker:authToken';
     const [clientId, authToken] = await AsyncStorage.multiGet([clientIdKey, authTokenKey]);
@@ -154,7 +134,8 @@ export const loadRecentFoods = async (): Promise<Food[]> => {
         const foodsJson = await AsyncStorage.getItem(RECENT_FOODS_KEY);
         return foodsJson ? JSON.parse(foodsJson) : [];
     } catch (error) {
-        console.error('Error loading recent foods:', error);
+        console.error('Failed to parse recent foods from AsyncStorage. Clearing corrupted data.', error);
+        await AsyncStorage.removeItem(RECENT_FOODS_KEY);
         return [];
     }
 };
@@ -173,7 +154,8 @@ export const loadRecentServings = async (): Promise<RecentServings> => {
         const servingsJson = await AsyncStorage.getItem(RECENT_SERVINGS_KEY);
         return servingsJson ? JSON.parse(servingsJson) : {};
     } catch (error) {
-        console.error('Error loading recent servings:', error);
+        console.error('Failed to parse recent servings from AsyncStorage. Clearing corrupted data.', error);
+        await AsyncStorage.removeItem(RECENT_SERVINGS_KEY);
         return {};
     }
 };

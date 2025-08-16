@@ -26,7 +26,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const [displayDate, setDisplayDate] = React.useState(t('dateNavigator.invalidDate'));
+    const [displayDate, setDisplayDate] = React.useState<string>(t('dateNavigator.invalidDate'));
 
     React.useEffect(() => {
         const updateDisplayDate = async () => {
@@ -53,7 +53,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
                 disabled={isDisabled}
                 disabledStyle={styles.disabledButton}
             />
-            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled}>
+            <TouchableOpacity onPress={onShowDatePicker} disabled={isDisabled} accessibilityState={{ disabled: isDisabled }}>
                 <Text h4 h4Style={[styles.dateText, isDisabled && styles.disabledText]}>
                     {displayDate}
                 </Text>

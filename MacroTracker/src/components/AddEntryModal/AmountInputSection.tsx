@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/AmountInputSection.tsx
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Keyboard } from 'react-native';
 import { Text, Input, Icon, ButtonGroup, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
@@ -44,6 +44,17 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const gramsInputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (isEditMode && unitMode === "grams") {
+            const timer = setTimeout(() => {
+                gramsInputRef.current?.focus();
+            }, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [isEditMode, unitMode]);
+
 
     const handleGramsChange = (text: string) => {
         const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1");
@@ -61,23 +72,25 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         </Text>
                     )}
                 </View>
-                <ButtonGroup
-                    buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
-                    selectedIndex={unitMode === "grams" ? 0 : 1}
-                    onPress={(index) => {
-                        if (!isActionDisabled) {
-                            setUnitMode(index === 0 ? "grams" : "auto");
-                            Keyboard.dismiss();
-                        }
-                    }}
-                    containerStyle={styles.buttonGroupContainer}
-                    selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-                    textStyle={styles.buttonGroupText}
-                    selectedTextStyle={{ color: theme.colors.white }}
-                    disabled={isEditMode ? [1] : isActionDisabled ? [0, 1] : []}
-                    disabledStyle={styles.disabledButtonGroup}
-                    disabledTextStyle={{ color: theme.colors.grey3 }}
-                />
+                {!isEditMode && (
+                    <ButtonGroup
+                        buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
+                        selectedIndex={unitMode === "grams" ? 0 : 1}
+                        onPress={(index) => {
+                            if (!isActionDisabled) {
+                                setUnitMode(index === 0 ? "grams" : "auto");
+                                Keyboard.dismiss();
+                            }
+                        }}
+                        containerStyle={styles.buttonGroupContainer}
+                        selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                        textStyle={styles.buttonGroupText}
+                        selectedTextStyle={{ color: theme.colors.white }}
+                        disabled={isActionDisabled ? [0, 1] : []}
+                        disabledStyle={styles.disabledButtonGroup}
+                        disabledTextStyle={{ color: theme.colors.grey3 }}
+                    />
+                )}
             </View>
             {unitMode === "grams" && (
                 <>
@@ -104,6 +117,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         </View>
                     )}
                     <Input
+                        ref={gramsInputRef}
                         placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
                         keyboardType="numeric"
                         value={grams}
@@ -116,8 +130,8 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                         containerStyle={{ paddingHorizontal: 0 }}
                         key={`grams-input-${selectedFood.id}-${isEditMode}`}
                         disabled={isActionDisabled}
-                        autoFocus={!isEditMode} // autofocus only when adding new, not editing
-                        selectTextOnFocus={!isEditMode}
+                        autoFocus={!isEditMode}
+                        selectTextOnFocus={true}
                     />
                 </>
             )}
@@ -223,7 +237,7 @@ const useStyles = makeStyles((theme) => ({
         flexGrow: 0,
     },
     servingSizeButton: {
-        backgroundColor: theme.colors.grey4,
+        backgroundColor: theme.colors.primaryLight,
         borderRadius: 15,
         marginRight: 8,
         paddingHorizontal: 12,
@@ -233,8 +247,9 @@ const useStyles = makeStyles((theme) => ({
         height: 30,
     },
     servingSizeButtonTitle: {
-        color: theme.colors.text,
+        color: theme.colors.primary,
         fontSize: 13,
+        fontWeight: '500',
     },
     gramInputStyle: {
         color: theme.colors.text,

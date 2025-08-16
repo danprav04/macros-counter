@@ -1,25 +1,29 @@
 // src/services/authService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { Alert } from 'react-native';
+import Constants from 'expo-constants';
+import { Token } from '../types/token';
+import { t } from '../localization/i18n';
+import { getToken, saveToken, deleteToken } from './tokenStorage';
 
 // --- Centralized API URL Configuration ---
 const getBackendUrl = (): string => {
-    // EAS Build's process.env takes precedence
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL_PRODUCTION;
-    if (envUrl) {
-        return envUrl;
+    const env = Constants.expoConfig?.extra?.env;
+
+    if (__DEV__) {
+        if (env?.BACKEND_URL_DEVELOPMENT) {
+            return env.BACKEND_URL_DEVELOPMENT;
+        }
+        console.warn(
+            "BACKEND_URL_DEVELOPMENT not found in app.json. Falling back to a default."
+        );
+        return 'http://127.0.0.1:8000';
+    } else {
+        if (env?.BACKEND_URL_PRODUCTION) {
+            return env.BACKEND_URL_PRODUCTION;
+        }
+        console.error("FATAL: BACKEND_URL_PRODUCTION is not defined in app.json extra.env.");
+        return 'https://api.example.com/not-configured';
     }
-    // Fallback for older expo-constants approach or local dev without .env
-    const configUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION;
-    if (configUrl) {
-        return configUrl;
-    }
-    // Final fallback to a default development URL
-    console.warn(
-        "Production backend URL not found in process.env or app.json. Falling back to default development URL."
-    );
-    return 'http://192.168.1.15:8000'; // Default dev URL
 };
 
 export const getApiUrl = (): string => {
@@ -27,46 +31,34 @@ export const getApiUrl = (): string => {
     return baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/api/v1`;
 };
 
-const API_URL = getApiUrl();
-
 // --- Auth Event Emitter for 401 Handling ---
-type LogoutListener = () => void;
-let onLogout: LogoutListener | null = null;
+type LogoutListener = (() => void) | null;
+let onLogout: LogoutListener = null;
 
 export const setLogoutListener = (listener: LogoutListener) => {
     onLogout = listener;
 };
 
 export const triggerLogout = () => {
+    console.log("Global logout triggered.");
+    deleteToken(); // Use the new abstracted function
     if (onLogout) {
         onLogout();
     } else {
-        console.warn('Logout triggered, but no listener was set. A full app reload might be required.');
-        // Fallback behavior if the listener isn't set for some reason
-        removeAuthToken();
+        console.warn('Logout triggered, but no UI listener was set.');
     }
 };
 
-
-// --- Token Management ---
-const AUTH_TOKEN_KEY = '@MacroTracker:authToken';
-
-export const getAuthToken = async (): Promise<string | null> => {
-  return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+// --- Token Management using the abstraction layer ---
+export {
+  getToken as getAuthToken,
+  saveToken as setAuthToken,
+  deleteToken as removeAuthToken,
 };
-
-export const setAuthToken = async (token: string): Promise<void> => {
-  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
-};
-
-export const removeAuthToken = async (): Promise<void> => {
-  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-};
-
 
 // --- API Calls ---
 async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_URL}/auth${endpoint}`;
+    const url = `${getApiUrl()}/auth${endpoint}`;
     
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -77,10 +69,8 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     try {
         const response = await fetch(url, { ...options, headers });
 
-        // For 202 Accepted, the body might be empty or contain a message.
-        // We handle it as a success case.
-        if (response.status === 202) {
-            return (await response.json()) as T;
+        if (response.status === 204) {
+             return {} as T;
         }
 
         const responseBody = await response.json();
@@ -97,22 +87,20 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     }
 }
 
-export const registerUser = async (email: string, password: string): Promise<any> => {
-    return fetchAuthApi('/register', {
+export const registerUser = async (email: string, password: string): Promise<{message: string}> => {
+    return fetchAuthApi<{message: string}>('/register', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
     });
 };
 
-export const loginUser = async (email: string, password: string): Promise<{access_token: string}> => {
+export const loginUser = async (email: string, password: string): Promise<Token> => {
     const details = { 'username': email, 'password': password };
-    
-    // Corrected: Use Object.entries for a type-safe way to build form data
     const formBody = Object.entries(details)
         .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
         .join('&');
 
-    const url = `${API_URL}/auth/login`;
+    const url = `${getApiUrl()}/auth/login`;
 
     try {
         const response = await fetch(url, {
@@ -132,6 +120,35 @@ export const loginUser = async (email: string, password: string): Promise<{acces
         throw error;
     }
 };
+
+export const refreshAuthToken = async (refreshToken: string): Promise<Token | null> => {
+    try {
+        const newTokens = await fetchAuthApi<Token>('/refresh-token', {
+             method: 'POST',
+             body: JSON.stringify({ refresh_token: refreshToken })
+        });
+        return newTokens;
+    } catch (error) {
+        console.error("Token refresh failed:", error);
+        return null;
+    }
+};
+
+export const logoutUser = async (): Promise<void> => {
+    try {
+        const tokenData = await getToken();
+        if (tokenData?.access_token) {
+            await fetchAuthApi('/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+            });
+        }
+    } catch (error) {
+        console.warn("Logout API call failed, but logging out locally anyway.", error);
+    } finally {
+        await deleteToken();
+    }
+}
 
 export const requestPasswordReset = async (email: string): Promise<{message: string}> => {
     return fetchAuthApi<{message: string}>('/request-password-reset', {

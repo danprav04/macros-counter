@@ -30,8 +30,7 @@ const ForgotPasswordScreen: React.FC = () => {
                 [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
         } catch (error: any) {
-            // The service shows a generic error, which is fine.
-            // No need to show another one here unless we want to be more specific.
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }

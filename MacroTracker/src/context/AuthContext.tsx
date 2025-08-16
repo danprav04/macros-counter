@@ -1,7 +1,11 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { loadSettings, saveSettings } from '../services/storageService';
-import { getAuthToken, removeAuthToken, setAuthToken } from '../services/authService';
+import * as authService from '../services/authService';
+import { getUserStatus } from '../services/backendService';
 import { Settings, LanguageCode } from '../types/settings';
+import { Token } from '../types/token';
+import { User } from '../types/user';
 
 export interface AuthState {
   authenticated: boolean;
@@ -11,14 +15,16 @@ export interface AuthState {
 export interface AuthContextType {
   authState: AuthState;
   settings: Settings;
+  user: User | null;
   isLoading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (tokenData: Token) => Promise<void>;
   logout: () => Promise<void>;
   changeTheme: (theme: 'light' | 'dark' | 'system') => void;
   changeLocale: (locale: LanguageCode) => void;
+  refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<Partial<AuthContextType>>({});
+export const AuthContext = createContext<Partial<AuthContextType>>({});
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -31,17 +37,30 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     language: 'system',
     dailyGoals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
   });
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const status = await getUserStatus();
+      setUser(status);
+    } catch (e) {
+      console.warn("Could not refresh user status in AuthContext", e);
+      // Don't nullify user on a failed refresh, might be a network blip
+    }
+  }, []);
 
   useEffect(() => {
     const loadAuthData = async () => {
+      setIsLoading(true);
       try {
-        const token = await getAuthToken();
+        const tokenData = await authService.getAuthToken();
         const loadedSettings = await loadSettings();
         setSettings(loadedSettings);
 
-        if (token) {
-          setAuthState({ authenticated: true, token });
+        if (tokenData?.access_token) {
+          setAuthState({ authenticated: true, token: tokenData.access_token });
+          await refreshUser();
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -51,39 +70,46 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     };
 
     loadAuthData();
-  }, []);
+  }, [refreshUser]);
 
-  const login = async (token: string) => {
-    await setAuthToken(token);
-    setAuthState({ authenticated: true, token });
+  const login = async (tokenData: Token) => {
+    await authService.setAuthToken(tokenData);
+    setAuthState({ authenticated: true, token: tokenData.access_token });
+    await refreshUser();
   };
 
   const logout = async () => {
-    await removeAuthToken();
+    await authService.logoutUser();
     setAuthState({ authenticated: false, token: null });
+    setUser(null);
   };
 
   const changeTheme = useCallback(async (theme: 'light' | 'dark' | 'system') => {
-    const newSettings = { ...settings, theme };
-    setSettings(newSettings);
-    await saveSettings(newSettings);
-  }, [settings]);
+    setSettings(prev => {
+        const newSettings = { ...prev, theme };
+        saveSettings(newSettings);
+        return newSettings;
+    });
+  }, []);
 
   const changeLocale = useCallback(async (locale: LanguageCode) => {
-    const newSettings = { ...settings, language: locale };
-    setSettings(newSettings);
-    await saveSettings(newSettings);
-  }, [settings]);
-
+    setSettings(prev => {
+        const newSettings = { ...prev, language: locale };
+        saveSettings(newSettings);
+        return newSettings;
+    });
+  }, []);
 
   const value: AuthContextType = {
     authState,
     settings,
+    user,
     isLoading,
     login,
     logout,
     changeTheme,
     changeLocale,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

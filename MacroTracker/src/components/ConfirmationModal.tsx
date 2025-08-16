@@ -31,6 +31,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const modalTitle = title || t('confirmationModal.defaultTitle');
   const modalMessage = message || t('confirmationModal.defaultMessage');
   const modalPlaceholder = inputPlaceholder || t('confirmationModal.enterTextPlaceholder');
+  const isConfirmDisabled = confirmationText === "";
 
 
   return (
@@ -59,7 +60,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             onPress={onConfirm}
             color="error"
             buttonStyle={styles.button}
-            disabled={confirmationText === ""}
+            disabled={isConfirmDisabled}
           />
         </View>
       </View>

@@ -22,11 +22,28 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// Polyfill for atob/btoa if not available, crucial for deep link data decoding.
 if (typeof atob === 'undefined') {
-  global.atob = (str: string): string => Buffer.from(str, 'base64').toString('binary');
+  global.atob = (str: string): string => {
+    try {
+      const { Buffer } = require('buffer');
+      return Buffer.from(str, 'base64').toString('binary');
+    } catch (e) {
+      console.error("Failed to polyfill atob:", e);
+      return '';
+    }
+  };
 }
 if (typeof btoa === 'undefined') {
-  global.btoa = (str: string): string => Buffer.from(str, 'binary').toString('base64');
+  global.btoa = (str: string): string => {
+     try {
+       const { Buffer } = require('buffer');
+       return Buffer.from(str, 'binary').toString('base64');
+     } catch (e) {
+       console.error("Failed to polyfill btoa:", e);
+       return '';
+     }
+  };
 }
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
@@ -191,18 +208,35 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
         if (params.foodData && typeof params.foodData === 'string') {
           try {
+            // URL-safe Base64 decoding
             let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
             const binaryString = atob(b64);
             const utf8Bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
             const decodedJson = new TextDecoder().decode(utf8Bytes);
-            const sharedFood: SharedFoodData = JSON.parse(decodedJson);
-            if (sharedFood && typeof sharedFood.name === 'string') {
-              setNewFood({ ...sharedFood });
-              setEditFood(null); setIsOverlayVisible(true);
-            } else { Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData')); }
-          } catch (e) { Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
-          } finally { navigation.setParams({ foodData: undefined }); }
+            const potentialFood: any = JSON.parse(decodedJson);
+            
+            // **SECURITY IMPLEMENTATION: Sanitize and validate incoming data**
+            const sanitizedFood: Omit<Food, "id" | "createdAt"> = {
+                name: String(potentialFood.name || "").substring(0, 100).trim(),
+                calories: Math.max(0, Number(potentialFood.calories) || 0),
+                protein: Math.max(0, Number(potentialFood.protein) || 0),
+                carbs: Math.max(0, Number(potentialFood.carbs) || 0),
+                fat: Math.max(0, Number(potentialFood.fat) || 0),
+            };
+
+            if (sanitizedFood.name) {
+              setNewFood(sanitizedFood);
+              setEditFood(null); 
+              setIsOverlayVisible(true);
+            } else { 
+              Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData')); 
+            }
+          } catch (e) { 
+            Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
+          } finally { 
+            navigation.setParams({ foodData: undefined }); 
+          }
         }
       }
     }, [route.params, isOverlayVisible, toggleOverlay, navigation, t]);
@@ -311,7 +345,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const utf8Bytes = new TextEncoder().encode(jsonString);
             let binaryString = '';
             utf8Bytes.forEach((byte) => { binaryString += String.fromCharCode(byte); });
-            const base64Data = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_');
+            const base64Data = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
             await Share.share({ message: shareUrl, title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}), });
@@ -463,7 +497,7 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 20,
-        backgroundColor: theme.colors.grey5,
+        backgroundColor: theme.colors.primaryLight,
     },
     sortButtonText: {
         color: theme.colors.primary,

@@ -15,9 +15,10 @@ import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Toast from "react-native-toast-message";
-import { getUserStatus, addCoinsToUser, BackendError } from "../services/backendService";
 import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { showRewardedAd } from '../services/adService';
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -46,27 +47,17 @@ const calculateMovingAverage = (data: MacroData[], windowSize: number): MacroDat
     return movingAverageData;
 };
 
-
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocaleChange, onDataOperation, onLogout }) => {
-  const [settings, setSettings] = useState<Settings>({
-    theme: "system",
-    language: "system",
-    dailyGoals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    settingsHistory: [],
-  });
-
-  const [statistics, setStatistics] = useState<Statistics>({
-    calories: [], protein: [], carbs: [], fat: [],
-  });
-  const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [userCoins, setUserCoins] = useState<number | null>(null);
-  const [isLoadingCoins, setIsLoadingCoins] = useState(false);
-  const [isAddingCoins, setIsAddingCoins] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true); 
-
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<SettingsNavigationProp>(); 
+  const { user, settings: authSettings, refreshUser } = useAuth() as AuthContextType;
+
+  const [settings, setSettings] = useState<Settings>(authSettings);
+  const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
+  const [chartUpdateKey, setChartUpdateKey] = useState(0);
+  const [isDataLoading, setIsDataLoading] = useState(true); 
+  const [isAdLoading, setIsAdLoading] = useState(false);
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -79,12 +70,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     dailyEntries.forEach((entry) => {
       try {
         const entryDate = parseISO(entry.date);
-        if (!isValid(entryDate)) {
-          console.warn(`Invalid date in getStatisticsData: ${entry.date}`);
-          return;
-        }
+        if (!isValid(entryDate)) return;
         const entryTimestamp = startOfDay(entryDate).getTime();
-
         let intakeValue = 0;
         if (entry.items && Array.isArray(entry.items)) {
           intakeValue = entry.items.reduce((total, item) => {
@@ -109,51 +96,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
     const sortedTimestamps = Array.from(new Set([...intakeDataMap.keys(), ...goalDataMap.keys()])).sort((a,b) => a - b);
     
-    const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({
-        x: ts,
-        y: intakeDataMap.get(ts) || 0
-    }));
-
+    const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({ x: ts, y: intakeDataMap.get(ts) || 0 }));
     const movingAverageData = calculateMovingAverage(finalIntakeData, 7);
 
     if (macro === "calories") {
-        const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({
-            x: ts,
-            y: goalDataMap.get(ts) || currentGoals[macro] || 0
-        }));
+        const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({ x: ts, y: goalDataMap.get(ts) || currentGoals[macro] || 0 }));
         return [finalIntakeData, movingAverageData, finalGoalData];
     }
     return [finalIntakeData, movingAverageData];
   }, []);
 
-
   const updateStatistics = useCallback(async (currentGoals: { [key in MacroType]: number }) => {
-    console.log("SettingsScreen: Updating statistics with goals:", currentGoals);
     try {
         const loadedEntries = await loadDailyEntries();
-        const updatedStats: Statistics = {
-            calories: [], protein: [], carbs: [], fat: []
-        };
+        const updatedStats: Statistics = { calories: [], protein: [], carbs: [], fat: [] };
         (macroKeysSetting as readonly MacroType[]).forEach(macro => {
             updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
         });
         setStatistics(updatedStats);
         setChartUpdateKey((prevKey) => prevKey + 1);
-        console.log("SettingsScreen: Statistics updated.");
     } catch (error) {
         console.error("SettingsScreen: Failed to update statistics:", error);
     }
   }, [getStatisticsData]);
-
-  const fetchUserStatus = useCallback(async () => {
-    setIsLoadingCoins(true);
-    try { const status = await getUserStatus(); setUserCoins(status.coins); }
-    catch (error) {
-      setUserCoins(null);
-      Toast.show({ type: 'error', text1: t('accountSettings.errorLoadCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom', });
-    }
-    finally { setIsLoadingCoins(false); }
-  }, []);
 
   useFocusEffect( useCallback(() => {
       let isActive = true;
@@ -164,20 +129,41 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           if (!isActive) return;
           setSettings(loadedSettings);
           navigation.setOptions({ title: t('settingsScreen.title') });
-          await fetchUserStatus();
           await updateStatistics(loadedSettings.dailyGoals);
         } catch (error) {
-          if (isActive) {
-            Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
-          }
+          if (isActive) Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
         } finally {
           if (isActive) setIsDataLoading(false);
         }
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, fetchUserStatus, navigation]) 
+    }, [updateStatistics, navigation, t]) 
   );
+  
+  const handleWatchAd = async () => {
+    if (!user?.client_id || isAdLoading) return;
+    setIsAdLoading(true);
+
+    const rewardEarned = await showRewardedAd(user.client_id);
+    setIsAdLoading(false);
+
+    if (rewardEarned) {
+      // --- FIX: Improved user-facing message ---
+      Toast.show({
+        type: 'success',
+        text1: 'Reward Earned!',
+        text2: 'Your coin balance will update on your next action.',
+        position: 'bottom'
+      });
+
+      setTimeout(() => {
+        refreshUser?.();
+      }, 3000); // 3-second delay is plenty
+    } else {
+      console.log("Ad was closed without earning a reward.");
+    }
+  };
 
   const handleGoalChange = useCallback(async (goalType: MacroType, value: string) => {
     const numericValue = parseFloat(value);
@@ -188,16 +174,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals };
       
       saveSettings(updatedSettings)
-        .then(() => {
-          updateStatistics(updatedSettings.dailyGoals);
-        })
-        .catch((error) => {
-          Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage'));
-        });
+        .then(() => { updateStatistics(updatedSettings.dailyGoals); })
+        .catch(() => { Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage')); });
       return updatedSettings;
     });
-  }, [updateStatistics]);
-
+  }, [updateStatistics, t]);
 
   const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
@@ -205,45 +186,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       const reloadedSettings = await loadSettings();
       setSettings(reloadedSettings);
       await updateStatistics(reloadedSettings.dailyGoals);
-      await fetchUserStatus();
+      await refreshUser?.();
       onThemeChange(reloadedSettings.theme); 
       onLocaleChange(reloadedSettings.language); 
-      
       onDataOperation(); 
-
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
-    }
-    catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
+    } catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
     finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, fetchUserStatus, onDataOperation]);
-
-    const handleAddTestCoins = useCallback(async () => {
-        setIsAddingCoins(true);
-        try { const amount = 10; const updatedStatus = await addCoinsToUser(amount); setUserCoins(updatedStatus.coins); Toast.show({ type: 'success', text1: t('accountSettings.coinsAdded'), text2: `${t('accountSettings.coinBalance')}: ${updatedStatus.coins}`, position: 'bottom' }); }
-        catch (error) { Toast.show({ type: 'error', text1: t('accountSettings.errorAddCoins'), text2: error instanceof BackendError ? error.message : t('backendService.errorNetworkConnection'), position: 'bottom' }); }
-        finally { setIsAddingCoins(false); }
-    }, []);
+  }, [updateStatistics, onThemeChange, onLocaleChange, refreshUser, onDataOperation, t]);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage); 
   };
 
-  const handleNavigateToQuestionnaire = () => {
-    navigation.navigate('Questionnaire');
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-        t('settingsScreen.account.logoutConfirmTitle'),
-        t('settingsScreen.account.logoutConfirmMessage'),
-        [
-            { text: t('confirmationModal.cancel'), style: 'cancel' },
-            { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout },
-        ],
-        { cancelable: true }
-    );
-  };
+  const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
+  const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
   if (isDataLoading) {
     return (
@@ -258,13 +216,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
         <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
         <AccountSettings
-             userCoins={userCoins}
-             isLoadingCoins={isLoadingCoins}
-             isAddingCoins={isAddingCoins}
-             onAddTestCoins={handleAddTestCoins}
+          user={user}
+          isLoading={!user && isDataLoading}
+          isAdLoading={isAdLoading}
+          onWatchAd={handleWatchAd}
         />
-
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.actions')}</Text>
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />
             <ListItem.Content>
@@ -373,6 +329,10 @@ const useStyles = makeStyles((theme) => ({
     marginLeft: I18nManager.isRTL ? 0 : 5,
     marginRight: I18nManager.isRTL ? 5 : 0,
   },
+  listItem: {
+      backgroundColor: theme.colors.background,
+      paddingVertical: 15,
+  },
   listItemTitle: {
     color: theme.colors.text,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
@@ -388,6 +348,23 @@ const useStyles = makeStyles((theme) => ({
       color: theme.colors.error,
       textAlign: I18nManager.isRTL ? 'right' : 'left',
       fontWeight: 'bold',
+  },
+  valueText: {
+      color: theme.colors.text,
+      fontSize: 14,
+  },
+  coinValue: {
+      color: theme.colors.primary,
+      fontWeight: 'bold',
+      fontSize: 16,
+  },
+  coinContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  adButton: {
+      marginLeft: 15,
+      padding: 5,
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },

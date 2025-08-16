@@ -2,7 +2,7 @@
   "expo": {
     "name": "MacrosVisionAI",
     "slug": "MacroTracker",
-    "version": "2.0.2",
+    "version": "2.1.0",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,7 +27,8 @@
       "infoPlist": {
         "UIStatusBarStyle": "UIStatusBarStyleAutomatic",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis."
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
+        "GADApplicationIdentifier": "ca-app-pub-5977125521868950~5744485886"
       }
     },
     "android": {
@@ -40,7 +41,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "intentFilters": [
         {
@@ -63,6 +65,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       [
         "expo-document-picker",
         {
@@ -73,18 +76,25 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select food images for macro analysis.",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of food for macro analysis.",
+          "microphonePermission": false
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-localization",
+      "react-native-google-mobile-ads"
     ],
     "extra": {
       "eas": {
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-         "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
-         "BACKEND_URL_DEVELOPMENT": "http://192.168.1.15:8000"
+        "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
+        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-5977125521868950~5744485886"
   }
 }

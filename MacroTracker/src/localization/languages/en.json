@@ -56,13 +56,11 @@
     }
   },
   "accountSettings": {
+    "email": "Email",
+    "badges": "Badges",
     "coinBalance": "Coin Balance",
-    "addTestCoins": "Add 10 Coins (Test)",
-    "testButtonWarning": "Note: The \"Add Coins\" button is for testing/development only and should be removed or secured for production releases.",
     "notApplicable": "N/A",
-    "errorLoadCoins": "Could not load coin balance",
-    "errorAddCoins": "Failed to Add Coins",
-    "coinsAdded": "Coins Added!"
+    "errorLoadCoins": "Could not load user status"
   },
   "themeSwitch": {
     "darkMode": "Dark Mode"
@@ -214,13 +212,14 @@
     "alertQuickAddCameraPermission": "Camera access needed.",
     "alertQuickAddGalleryPermission": "Gallery access needed.",
     "alertQuickAddUserCancelled": "User cancelled",
-    "alertQuickAddCouldNotSelect": "Could not select image.",
+    "alertQuickAddCouldNotSelect": "Could not select image(s).",
     "alertQuickAddError": "Error",
     "alertQuickAddErrorMessage": "An unexpected error occurred.",
     "alertQuickAddFinishEditing": "Finish Editing",
     "alertQuickAddFinishEditingSaveOrCancel": "Please save or cancel the current edit first.",
-    "alertQuickAddFromImageTitle": "Quick Add from Image",
-    "alertQuickAddFromImageMessage": "Identify multiple foods from an image.",
+    "alertQuickAddFromImageTitle": "Quick Add from Image(s)",
+    "alertQuickAddFromImageMessage": "Identify multiple foods from a single image.",
+    "alertQuickAddFromImageMessageBatch": "Identify foods from one or more images (up to 10).",
     "alertQuickAddInvalidName": "Invalid Name",
     "alertQuickAddInvalidNameMessage": "Food name cannot be empty.",
     "alertQuickAddInvalidGrams": "Invalid Grams",
@@ -253,19 +252,18 @@
     "titleEdit": "Edit Food",
     "buttonAdd": "Add",
     "buttonUpdate": "Update",
-    "getFromImage": "Get from Image",
-    "ingredientsOptional": "Ingredients (Optional)",
-    "ingredientsPlaceholder": "e.g.\n100g Chicken Breast\n50g Rice\n1 tbsp Olive Oil",
-    "backToManual": "Back to Manual Input",
-    "aiCalculateRecipe": "Calculate with AI (Recipe/Text)",
-    "aiGetFromIngredients": "Get Macros from Ingredients",
-    "aiGetFromNameOnly": "Get Macros from Name Only",
-    "barcodeComingSoon": "Barcode Input (Coming Soon)",
-    "alertInputNeeded": "Input Needed",
-    "alertInputNeededMessage": "Please enter a food name or ingredients to analyze.",
+    "manualInput": "Manual Input",
+    "aiAssist": "AI Assist",
+    "ingredientsLabel": "Food Description / Ingredients",
+    "ingredientsPlaceholder": "e.g., 100g Chicken Breast, 50g Rice, 1 tbsp Olive Oil",
+    "analyzeTextButton": "Analyze Text",
+    "analyzeImageButton": "Analyze from Image",
+    "orDivider": "OR",
     "macrosEstimatedText": "Macros estimated from text.",
     "foodIdentified": "Food Identified!",
     "foodIdentifiedMessage": "Identified as %{foodName}. Macros estimated.",
+    "alertInputNeeded": "Input Needed",
+    "alertInputNeededMessage": "Please enter a food name or ingredients to analyze.",
     "errorGetImage": "Get Image",
     "errorGetImageMessage": "Choose a source for the food image:",
     "errorCamera": "Camera Error",
@@ -303,11 +301,13 @@
     "macros": {
       "errorTitle": "AI Analysis Failed",
       "multiItemErrorTitle": "Quick Add Failed",
-      "errorMessage": "Could not get a response from the AI. Please try again.",
-      "invalidResponse": "The AI gave a response in an unexpected format. Please try again or rephrase your request."
+      "apiError": "The AI service is currently unavailable. Please try again later.",
+      "invalidResponse": "The AI gave an unusual response. Please try rephrasing your request or use a different image."
     },
     "units": {
-      "errorTitle": "AI Estimation Failed"
+      "errorTitle": "AI Estimation Failed",
+      "apiError": "The AI service couldn't estimate the weight. Please try again.",
+      "invalidResponse": "The AI's weight estimation was not in a valid format. Please try rephrasing."
     },
     "image": {
       "alertCompressionError": "Compression Error",
@@ -316,22 +316,30 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Invalid client ID. Please restart the app.",
-    "errorRequestFailedParse": "The server sent an unreadable response (Status %{status}).",
-    "errorRequestFailedDetailFormat": "The server sent a response with an unexpected format (Status %{status}).",
-    "errorRequestFailedWithServerMsg": "The server returned an error (Status %{status}).",
-    "errorAuthFailed": "Authentication with the server failed. Please restart the app.",
-    "errorPermissionDenied": "Permission denied by server.",
-    "errorNotFound": "The requested resource was not found on the server.",
+    "errorAuthFailed": "Your session has expired. Please log in again.",
+    "errorEmailNotVerified": "Your account has not been activated. Please check your email for the verification link.",
+    "errorPermissionDenied": "You don't have permission for this action.",
+    "errorNotFound": "The requested item was not found on the server.",
     "errorTooManyRequests": "You're doing that too fast! Please wait a moment and try again.",
     "errorInsufficientCoins": "You don't have enough AI coins for this action. More will be available soon!",
-    "errorNetwork": "Could not connect to the server.",
-    "errorNetworkTimeout": "The server is taking too long to respond. Please try again in a few moments.",
-    "errorNetworkConnection": " Please check your internet connection.",
-    "errorNetworkDetails": " Details: %{error}",
-    "errorNetworkUnknown": " An unknown network error occurred.",
-    "errorEstimateGramsUnexpectedResponse": "Failed to get grams estimation due to an unexpected server response.",
-    "errorAddCoinsPositive": "Amount to add must be positive."
+    "errorServer": "An error occurred on the server. Please try again later.",
+    "errorServerUnreadable": "The server sent a response that could not be read. Please try again.",
+    "errorNetwork": "Could not connect to the server. Please check your internet connection and try again.",
+    "errorTimeout": "The server is taking too long to respond. This might be a temporary issue.",
+    "errorGeneric": "An unexpected error occurred. Please try again."
+  },
+  "ads": {
+    "getFreeCoins": "Get Free Coins",
+    "watchAdPromptTitle": "Out of Coins",
+    "watchAdPromptMessage": "Watch a short video to get more coins and continue?",
+    "watchAdButton": "Watch Ad",
+    "error": {
+      "title": "Ad Error",
+      "sdkFailed": "The ad service could not be initialized. Please try again later.",
+      "loadFailed": "No ads are available at the moment. Please try again in a while.",
+      "showFailed": "The ad could not be shown. Please try again.",
+      "unknown": "An unexpected error occurred with the ad service."
+    }
   },
   "statisticsChart": {
     "intake": "Intake",

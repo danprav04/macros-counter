@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/ModalHeader.tsx
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Keyboard } from 'react-native';
 import { Text, Icon, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
@@ -47,6 +47,12 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         Keyboard.dismiss();
         toggleOverlay();
     };
+    
+    const handleBackPress = useCallback(() => {
+        if (isActionDisabled) return;
+        Keyboard.dismiss();
+        onBackFromQuickAdd();
+    }, [isActionDisabled, onBackFromQuickAdd]);
 
     const isBackButtonVisible = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
 
@@ -55,7 +61,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
             {isBackButtonVisible ? (
                 <Button
                     type="clear"
-                    onPress={() => { if (isActionDisabled) return; Keyboard.dismiss(); onBackFromQuickAdd(); }}
+                    onPress={handleBackPress}
                     icon={<Icon name="arrow-back" type="ionicon" size={24} color={isActionDisabled ? theme.colors.grey3 : theme.colors.primary} />}
                     containerStyle={styles.closeIconContainer}
                     disabled={isActionDisabled}

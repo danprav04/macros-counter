@@ -56,13 +56,11 @@
     }
   },
   "accountSettings": {
+    "email": "Электронная почта",
+    "badges": "Значки",
     "coinBalance": "Баланс монет",
-    "addTestCoins": "Добавить 10 монет (Тест)",
-    "testButtonWarning": "Примечание: Кнопка \"Добавить монеты\" предназначена только для тестирования/разработки и должна быть удалена или защищена в релизных версиях.",
     "notApplicable": "Н/Д",
-    "errorLoadCoins": "Не удалось загрузить баланс монет",
-    "errorAddCoins": "Не удалось добавить монеты",
-    "coinsAdded": "Монеты добавлены!"
+    "errorLoadCoins": "Не удалось загрузить статус пользователя"
   },
   "themeSwitch": {
     "darkMode": "Темный режим"
@@ -214,13 +212,14 @@
     "alertQuickAddCameraPermission": "Необходим доступ к камере.",
     "alertQuickAddGalleryPermission": "Необходим доступ к галерее.",
     "alertQuickAddUserCancelled": "Отменено пользователем",
-    "alertQuickAddCouldNotSelect": "Не удалось выбрать изображение.",
+    "alertQuickAddCouldNotSelect": "Не удалось выбрать изображение(я).",
     "alertQuickAddError": "Ошибка",
     "alertQuickAddErrorMessage": "Произошла непредвиденная ошибка.",
     "alertQuickAddFinishEditing": "Завершите редактирование",
     "alertQuickAddFinishEditingSaveOrCancel": "Пожалуйста, сначала сохраните или отмените текущее редактирование.",
-    "alertQuickAddFromImageTitle": "Быстрое добавление с изображения",
-    "alertQuickAddFromImageMessage": "Определите несколько продуктов с изображения.",
+    "alertQuickAddFromImageTitle": "Быстрое добавление с изображения(й)",
+    "alertQuickAddFromImageMessage": "Определите несколько продуктов с одного изображения.",
+    "alertQuickAddFromImageMessageBatch": "Определите продукты с одного или нескольких изображений (до 10).",
     "alertQuickAddInvalidName": "Неверное имя",
     "alertQuickAddInvalidNameMessage": "Название продукта не может быть пустым.",
     "alertQuickAddInvalidGrams": "Неверные граммы",
@@ -253,19 +252,18 @@
     "titleEdit": "Изменить продукт",
     "buttonAdd": "Добавить",
     "buttonUpdate": "Обновить",
-    "getFromImage": "Получить с изображения",
-    "ingredientsOptional": "Ингредиенты (необязательно)",
-    "ingredientsPlaceholder": "например\n100г куриной грудки\n50г риса\n1 ст.л. оливкового масла",
-    "backToManual": "Назад к ручному вводу",
-    "aiCalculateRecipe": "Рассчитать с помощью ИИ (Рецепт/Текст)",
-    "aiGetFromIngredients": "Получить макросы из ингредиентов",
-    "aiGetFromNameOnly": "Получить макросы только по названию",
-    "barcodeComingSoon": "Ввод штрих-кода (скоро)",
-    "alertInputNeeded": "Требуется ввод",
-    "alertInputNeededMessage": "Пожалуйста, введите название продукта или ингредиенты для анализа.",
+    "manualInput": "Ручной ввод",
+    "aiAssist": "ИИ-помощник",
+    "ingredientsLabel": "Описание / Ингредиенты",
+    "ingredientsPlaceholder": "например, 100г куриной грудки, 50г риса, 1 ст.л. оливкового масла",
+    "analyzeTextButton": "Анализ текста",
+    "analyzeImageButton": "Анализ по изображению",
+    "orDivider": "ИЛИ",
     "macrosEstimatedText": "Макросы оценены по тексту.",
     "foodIdentified": "Продукт определен!",
     "foodIdentifiedMessage": "Определено как %{foodName}. Макросы оценены.",
+    "alertInputNeeded": "Требуется ввод",
+    "alertInputNeededMessage": "Пожалуйста, введите название продукта или ингредиенты для анализа.",
     "errorGetImage": "Получить изображение",
     "errorGetImageMessage": "Выберите источник изображения продукта:",
     "errorCamera": "Ошибка камеры",
@@ -303,11 +301,13 @@
     "macros": {
       "errorTitle": "Ошибка анализа ИИ",
       "multiItemErrorTitle": "Ошибка быстрого добавления",
-      "errorMessage": "Не удалось получить ответ от ИИ. Пожалуйста, попробуйте еще раз.",
-      "invalidResponse": "ИИ дал ответ в неожиданном формате. Пожалуйста, попробуйте еще раз или перефразируйте свой запрос."
+      "apiError": "Сервис ИИ в данный момент недоступен. Пожалуйста, попробуйте позже.",
+      "invalidResponse": "ИИ дал необычный ответ. Пожалуйста, перефразируйте запрос или используйте другое изображение."
     },
     "units": {
-      "errorTitle": "Ошибка оценки ИИ"
+      "errorTitle": "Ошибка оценки ИИ",
+      "apiError": "Сервис ИИ не смог оценить вес. Пожалуйста, попробуйте снова.",
+      "invalidResponse": "Оценка веса от ИИ была в неверном формате. Пожалуйста, попробуйте перефразировать."
     },
     "image": {
       "alertCompressionError": "Ошибка сжатия",
@@ -316,22 +316,17 @@
     }
   },
   "backendService": {
-    "errorInvalidClientId": "Неверный идентификатор клиента. Пожалуйста, перезапустите приложение.",
-    "errorRequestFailedParse": "Сервер отправил нечитаемый ответ (Статус %{status}).",
-    "errorRequestFailedDetailFormat": "Сервер отправил ответ в неожиданном формате (Статус %{status}).",
-    "errorRequestFailedWithServerMsg": "Сервер вернул ошибку (Статус %{status}).",
-    "errorAuthFailed": "Ошибка аутентификации на сервере. Пожалуйста, перезапустите приложение.",
-    "errorPermissionDenied": "Доступ запрещен сервером.",
-    "errorNotFound": "Запрошенный ресурс не найден на сервере.",
+    "errorAuthFailed": "Ваша сессия истекла. Пожалуйста, войдите снова.",
+    "errorEmailNotVerified": "Ваша учетная запись не активирована. Пожалуйста, проверьте свою электронную почту на наличие ссылки для подтверждения.",
+    "errorPermissionDenied": "У вас нет разрешения на это действие.",
+    "errorNotFound": "Запрошенный элемент не найден на сервере.",
     "errorTooManyRequests": "Вы делаете это слишком быстро! Пожалуйста, подождите немного и попробуйте снова.",
     "errorInsufficientCoins": "У вас недостаточно монет ИИ для этого действия. Скоро будет больше!",
-    "errorNetwork": "Не удалось подключиться к серверу.",
-    "errorNetworkTimeout": "Сервер слишком долго отвечает. Пожалуйста, повторите попытку через несколько секунд.",
-    "errorNetworkConnection": " Пожалуйста, проверьте ваше интернет-соединение.",
-    "errorNetworkDetails": " Детали: %{error}",
-    "errorNetworkUnknown": " Произошла неизвестная сетевая ошибка.",
-    "errorEstimateGramsUnexpectedResponse": "Не удалось оценить граммы из-за неожиданного ответа сервера.",
-    "errorAddCoinsPositive": "Сумма для добавления должна быть положительной."
+    "errorServer": "Произошла ошибка на сервере. Пожалуйста, попробуйте позже.",
+    "errorServerUnreadable": "Сервер отправил ответ, который не удалось прочитать. Пожалуйста, попробуйте снова.",
+    "errorNetwork": "Не удалось подключиться к серверу. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
+    "errorTimeout": "Сервер слишком долго отвечает. Возможно, это временная проблема.",
+    "errorGeneric": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   },
   "statisticsChart": {
     "intake": "Потребление",

@@ -1,2 +1,7 @@
 MacroTracker/build-1748897315990.apk
 *.apk
+/MacroTracker/coverage
+MacroTracker/testOtp.txt
+MacroTracker/project_structure.txt
+/MacroTracker/ios
+/MacroTracker/android

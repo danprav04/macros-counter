@@ -1,52 +1,33 @@
 // src/utils/languageUtils.ts
 import { LanguageCode } from '../types/settings';
 
-// Basic script detection character ranges
-const HEBREW_REGEX = /[\u0590-\u05FF]/;
-const CYRILLIC_REGEX = /[\u0400-\u04FF]/;
-// Basic Latin check - very broad, English will be the default for this
-const LATIN_REGEX = /[a-zA-Z]/;
+// Basic script detection character ranges with global flag
+const HEBREW_REGEX = /[\u0590-\u05FF]/g;
+const CYRILLIC_REGEX = /[\u0400-\u04FF]/g;
+const LATIN_REGEX = /[a-zA-Z]/g;
 
 /**
- * Detects the dominant language script in a given text.
- * Prioritizes Hebrew, then Cyrillic. If neither is dominant,
- * defaults to 'en' (representing Latin script languages for icon tag purposes).
+ * Detects the dominant language script in a given text by character count.
+ * It checks for Hebrew, Cyrillic, and Latin characters and returns the code
+ * for the most prevalent script. Defaults to 'en' in case of a tie or if
+ * no identifiable characters are found.
  * @param text The text to analyze.
- * @returns LanguageCode ('he', 'ru', or 'en' as default).
+ * @returns LanguageCode ('he', 'ru', or 'en').
  */
 export const detectLanguageFromText = (text: string): LanguageCode => {
     if (!text || text.trim() === '') {
         return 'en'; // Default if no text
     }
 
-    let hebrewChars = 0;
-    let cyrillicChars = 0;
-    let latinChars = 0;
-    let otherChars = 0;
+    const hebrewChars = (text.match(HEBREW_REGEX) || []).length;
+    const cyrillicChars = (text.match(CYRILLIC_REGEX) || []).length;
+    const latinChars = (text.match(LATIN_REGEX) || []).length;
 
-    for (const char of text) {
-        if (HEBREW_REGEX.test(char)) {
-            hebrewChars++;
-        } else if (CYRILLIC_REGEX.test(char)) {
-            cyrillicChars++;
-        } else if (LATIN_REGEX.test(char)) {
-            latinChars++;
-        } else {
-            otherChars++;
-        }
-    }
+    if (hebrewChars > 0)
+        return 'he'
 
-    // Simple dominance check
-    // Give a higher weight or lower threshold for Hebrew/Cyrillic if names are often short
-    if (hebrewChars > latinChars / 2 && hebrewChars > cyrillicChars) { // If Hebrew chars are significant
-        return 'he';
-    }
-    if (cyrillicChars > latinChars / 2 && cyrillicChars > hebrewChars) { // If Cyrillic chars are significant
-        return 'ru';
-    }
-    
-    // If primarily Latin, or mixed with no clear non-Latin dominance, default to 'en'
-    // This 'en' will then correctly use English tags.
-    // If the text was, e.g., French and we default to 'en', English tags are a reasonable fallback.
-    return 'en';
+    if (cyrillicChars > 0)
+        return 'ru'
+
+    return 'en'
 };

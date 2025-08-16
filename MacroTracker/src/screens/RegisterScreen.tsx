@@ -1,5 +1,6 @@
+// src/screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,23 +21,27 @@ const RegisterScreen: React.FC = () => {
             Alert.alert('Missing Fields', 'Please fill in all fields.');
             return;
         }
+        if (password.length < 8) {
+            Alert.alert('Password Too Short', 'Password must be at least 8 characters long.');
+            return;
+        }
         setIsLoading(true);
         try {
-            await registerUser(email, password);
+            const response = await registerUser(email, password);
             Alert.alert(
-                'Registration Successful',
-                'A verification email has been sent to your address. Please check your inbox to activate your account.',
+                'Check Your Email',
+                response.message,
                 [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
             );
         } catch (error: any) {
-            // The service now handles the alert, so we just catch to stop the loader
+            // Error is handled and alerted by the authService
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Text h2 style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
             <Input
                 placeholder="Email"
@@ -67,7 +72,7 @@ const RegisterScreen: React.FC = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                 <Text style={[styles.switchText, { color: theme.colors.primary }]}>Already have an account? Log In</Text>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 };
 

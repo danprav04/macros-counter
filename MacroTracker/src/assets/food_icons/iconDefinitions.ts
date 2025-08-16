@@ -27,9 +27,9 @@ export const foodIconDefinitions: FoodIconDefinition[] = [
   { icon: '🍐', tagKey: 'pear', priority: 10 },
   { icon: '🥑', tagKey: 'avocado', priority: 10 },
   { icon: '🥥', tagKey: 'coconut', priority: 10 },
-  { icon: '🍅', tagKey: 'tomato', priority: 9 }, // Often culinary vegetable
 
   // Vegetables
+  { icon: '🍅', tagKey: 'tomato', priority: 9 }, // Often culinary vegetable
   { icon: '🥕', tagKey: 'carrot', priority: 10 },
   { icon: '🥦', tagKey: 'broccoli', priority: 10 },
   { icon: '🥬', tagKey: 'leafyGreen', priority: 10 },

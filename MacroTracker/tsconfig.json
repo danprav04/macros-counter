@@ -2,6 +2,16 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "baseUrl": "src",
+    "types": ["jest", "@testing-library/jest-native", "node"]
+  },
+  "include": [
+    "src",
+    "__tests__",
+    "jest-setup.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
