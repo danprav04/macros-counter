@@ -89,7 +89,7 @@
         "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
       },
       "env": {
-        "BACKEND_URL_PRODUCTION": "https://macros-vision-ai.xyz",
+        "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
