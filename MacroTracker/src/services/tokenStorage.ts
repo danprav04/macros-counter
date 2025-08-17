@@ -4,27 +4,23 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Token } from '../types/token';
+import { Alert } from 'react-native';
 
-const TOKEN_KEY = '@MacroTracker:authToken';
+// FIX: The key has been changed to a valid format that SecureStore accepts.
+// It no longer contains invalid characters like '@' or ':'.
+const TOKEN_KEY = 'macrosvisionai.authToken';
 
 /**
  * Determines at runtime if the app should use AsyncStorage instead of SecureStore.
- * This is typically true for development environments like Expo Go where SecureStore might not be available.
- * In production builds (appOwnership === 'standalone'), this will return false.
- * @returns {boolean} True if AsyncStorage should be used, false for SecureStore.
+ * For production security and effective debugging, this is now hardcoded to always
+ * return false, ensuring SecureStore is used across all builds.
+ * @returns {boolean} Always returns false.
  */
 const isUsingAsyncStorage = (): boolean => {
-  const shouldUseAsync = __DEV__ && (Constants.expoConfig as any)?.appOwnership !== 'standalone';
-  
-  // This log is useful for debugging which storage is being used during tests.
-  if (process.env.JEST_WORKER_ID !== undefined) { 
-      console.log(
-        `[TokenStorage] Running in test (appOwnership: ${(Constants.expoConfig as any)?.appOwnership}). ` +
-        `Using ${shouldUseAsync ? 'AsyncStorage (unsafe)' : 'SecureStore (secure)'} for tokens.`
-      );
-  }
-
-  return shouldUseAsync;
+  // Forcing SecureStore in all environments, including development,
+  // to ensure consistent behavior and to expose any configuration
+  // issues with SecureStore during the development phase.
+  return false;
 };
 
 
@@ -35,9 +31,20 @@ const isUsingAsyncStorage = (): boolean => {
 export async function saveToken(token: Token): Promise<void> {
   const tokenJson = JSON.stringify(token);
   if (isUsingAsyncStorage()) {
+    // This branch is currently unused but kept for potential future debugging needs.
     await AsyncStorage.setItem(TOKEN_KEY, tokenJson);
   } else {
-    await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
+    try {
+      await SecureStore.setItemAsync(TOKEN_KEY, tokenJson);
+    } catch (error: any) {
+      console.error('SecureStore Save Error:', error);
+      Alert.alert(
+        'Critical Storage Error',
+        `Failed to save session token securely: ${error.message}`
+      );
+      // Re-throw the error to ensure the calling function knows the operation failed.
+      throw error;
+    }
   }
 }
 
@@ -48,9 +55,20 @@ export async function saveToken(token: Token): Promise<void> {
 export async function getToken(): Promise<Token | null> {
   let tokenJson: string | null = null;
   if (isUsingAsyncStorage()) {
+     // This branch is currently unused.
     tokenJson = await AsyncStorage.getItem(TOKEN_KEY);
   } else {
-    tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
+    try {
+      tokenJson = await SecureStore.getItemAsync(TOKEN_KEY);
+    } catch (error: any) {
+      console.error('SecureStore Get Error:', error);
+       Alert.alert(
+        'Critical Storage Error',
+        `Failed to retrieve session token securely: ${error.message}`
+      );
+      // On read failure, assume no token is available.
+      return null;
+    }
   }
 
   if (!tokenJson) {
@@ -74,6 +92,14 @@ export async function deleteToken(): Promise<void> {
   if (isUsingAsyncStorage()) {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } else {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    try {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+    } catch (error: any) {
+        console.error('SecureStore Delete Error:', error);
+        Alert.alert(
+            'Storage Error',
+            `Failed to clear session token: ${error.message}`
+        );
+    }
   }
 }

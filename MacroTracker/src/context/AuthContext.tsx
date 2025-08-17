@@ -60,7 +60,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
         if (tokenData?.access_token) {
           setAuthState({ authenticated: true, token: tokenData.access_token });
-          // refreshUser is now handled by the dedicated useEffect below
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -70,10 +69,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     };
 
     loadAuthData();
-  }, []); // This effect runs once on mount
+  }, []);
 
-  // This new useEffect handles refreshing the user whenever the authentication state becomes true.
-  // This decouples the user fetch from the login and initial load logic, making the flow more robust.
   useEffect(() => {
     if (authState.authenticated && authState.token) {
       refreshUser();
@@ -81,9 +78,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   }, [authState.authenticated, authState.token, refreshUser]);
 
   const login = async (tokenData: Token) => {
-    await authService.setAuthToken(tokenData);
-    // Only update the state. The side effect of refreshing the user is handled by the useEffect above.
-    setAuthState({ authenticated: true, token: tokenData.access_token });
+    try {
+      await authService.setAuthToken(tokenData);
+      setAuthState({ authenticated: true, token: tokenData.access_token });
+    } catch (error) {
+      console.error("Login failed: Could not save the token.", error);
+      // Do not update auth state if token saving fails. The alert from
+      // tokenStorage will inform the user of the critical error.
+      // We clear any potentially lingering bad state here.
+      setAuthState({ authenticated: false, token: null });
+      setUser(null);
+    }
   };
 
   const logout = async () => {
