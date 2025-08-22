@@ -144,21 +144,23 @@ export const calculateDailyEntryGrade = (
     const consumedCarbs = food.carbs * factor;
     const consumedFat = food.fat * factor;
 
+    // --- Penalties for Excessive Portion Size (Now More Lenient) ---
     const caloriePortionPercentage = (consumedCalories / safeGoals.calories) * 100;
-    if (caloriePortionPercentage > 50) currentScore -= 30; // More aggressive penalty
-    else if (caloriePortionPercentage > 35) currentScore -= 20;
+    if (caloriePortionPercentage > 55) currentScore -= 25; // Higher threshold, slightly lower penalty
+    else if (caloriePortionPercentage > 40) currentScore -= 15; // Higher threshold, lower penalty
 
     const fatPortionPercentage = (consumedFat / safeGoals.fat) * 100;
-    if (fatPortionPercentage > 60) currentScore -= 15;
-    else if (fatPortionPercentage > 40) currentScore -= 7;
+    if (fatPortionPercentage > 65) currentScore -= 12; // Higher threshold, lower penalty
+    else if (fatPortionPercentage > 45) currentScore -= 5; // Higher threshold, lower penalty
 
     const carbPortionPercentage = (consumedCarbs / safeGoals.carbs) * 100;
-    if (carbPortionPercentage > 60) currentScore -= 10;
-    else if (carbPortionPercentage > 45) currentScore -= 5;
+    if (carbPortionPercentage > 65) currentScore -= 8; // Higher threshold, lower penalty
+    else if (carbPortionPercentage > 50) currentScore -= 4; // Higher threshold, lower penalty
 
+    // --- Bonuses and Mitigations ---
     const proteinPortionPercentage = (consumedProtein / safeGoals.protein) * 100;
     if (proteinPortionPercentage > 25 && caloriePortionPercentage < 30) {
-        currentScore += 10;
+        currentScore += 10; // Bonus for high-protein, moderate-calorie portions
     } else if (proteinPortionPercentage > 15 && caloriePortionPercentage < 20) {
         currentScore += 5;
     }

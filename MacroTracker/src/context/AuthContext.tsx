@@ -21,6 +21,8 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   changeTheme: (theme: 'light' | 'dark' | 'system') => void;
   changeLocale: (locale: LanguageCode) => void;
+  changeDailyGoals: (goals: Settings['dailyGoals']) => void;
+  reloadSettings: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -50,13 +52,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   }, []);
 
+  const reloadSettings = useCallback(async () => {
+    const loadedSettings = await loadSettings();
+    setSettings(loadedSettings);
+  }, []);
+
   useEffect(() => {
     const loadAuthData = async () => {
       setIsLoading(true);
       try {
         const tokenData = await authService.getAuthToken();
-        const loadedSettings = await loadSettings();
-        setSettings(loadedSettings);
+        await reloadSettings(); // Use the new function to load settings
 
         if (tokenData?.access_token) {
           setAuthState({ authenticated: true, token: tokenData.access_token });
@@ -69,7 +75,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     };
 
     loadAuthData();
-  }, []);
+  }, [reloadSettings]);
 
   useEffect(() => {
     if (authState.authenticated && authState.token) {
@@ -113,6 +119,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     });
   }, []);
 
+  const changeDailyGoals = useCallback((goals: Settings['dailyGoals']) => {
+    setSettings(prev => {
+        const newSettings = { ...prev, dailyGoals: goals };
+        saveSettings(newSettings);
+        return newSettings;
+    });
+  }, []);
+
   const value: AuthContextType = {
     authState,
     settings,
@@ -122,6 +136,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     logout,
     changeTheme,
     changeLocale,
+    changeDailyGoals,
+    reloadSettings,
     refreshUser,
   };
 
