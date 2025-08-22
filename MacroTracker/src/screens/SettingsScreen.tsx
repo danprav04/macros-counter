@@ -123,7 +123,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setIsDataLoading(true);
       const loadAndProcessData = async () => {
         try {
-          if (isActive && reloadSettings) {
+          if (!isActive) return;
+          // Refresh user data (including coins) every time the screen is focused.
+          if (refreshUser) {
+              await refreshUser();
+          }
+          if (reloadSettings) {
             await reloadSettings();
           }
         } catch (error) {
@@ -134,7 +139,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [reloadSettings, t]) 
+    }, [reloadSettings, refreshUser, t]) 
   );
   
   useEffect(() => {
