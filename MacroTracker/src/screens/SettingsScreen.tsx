@@ -51,9 +51,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<SettingsNavigationProp>(); 
-  const { user, settings: authSettings, refreshUser } = useAuth() as AuthContextType;
+  const { user, settings, refreshUser, changeDailyGoals, reloadSettings } = useAuth() as AuthContextType;
 
-  const [settings, setSettings] = useState<Settings>(authSettings);
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [isDataLoading, setIsDataLoading] = useState(true); 
@@ -114,7 +113,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
         });
         setStatistics(updatedStats);
-        setChartUpdateKey((prevKey) => prevKey + 1);
     } catch (error) {
         console.error("SettingsScreen: Failed to update statistics:", error);
     }
@@ -125,11 +123,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       setIsDataLoading(true);
       const loadAndProcessData = async () => {
         try {
-          const loadedSettings = await loadSettings();
-          if (!isActive) return;
-          setSettings(loadedSettings);
-          navigation.setOptions({ title: t('settingsScreen.title') });
-          await updateStatistics(loadedSettings.dailyGoals);
+          if (isActive && reloadSettings) {
+            await reloadSettings();
+          }
         } catch (error) {
           if (isActive) Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
         } finally {
@@ -138,8 +134,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       };
       loadAndProcessData();
       return () => { isActive = false; };
-    }, [updateStatistics, navigation, t]) 
+    }, [reloadSettings, t]) 
   );
+  
+  useEffect(() => {
+    if (settings) {
+        updateStatistics(settings.dailyGoals);
+        navigation.setOptions({ title: t('settingsScreen.title') });
+        setChartUpdateKey(prev => prev + 1);
+    }
+  }, [settings, updateStatistics, navigation, t]);
   
   const handleWatchAd = async () => {
     if (!user?.client_id || isAdLoading) return;
@@ -149,7 +153,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     setIsAdLoading(false);
 
     if (rewardEarned) {
-      // --- FIX: Improved user-facing message ---
       Toast.show({
         type: 'success',
         text1: 'Reward Earned!',
@@ -159,7 +162,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
       setTimeout(() => {
         refreshUser?.();
-      }, 3000); // 3-second delay is plenty
+      }, 3000); 
     } else {
       console.log("Ad was closed without earning a reward.");
     }
@@ -169,41 +172,36 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     const numericValue = parseFloat(value);
     const validatedValue = isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
 
-    setSettings((prevSettings) => {
-      const updatedGoals = { ...prevSettings.dailyGoals, [goalType]: validatedValue };
-      const updatedSettings: Settings = { ...prevSettings, dailyGoals: updatedGoals };
-      
-      saveSettings(updatedSettings)
-        .then(() => { updateStatistics(updatedSettings.dailyGoals); })
-        .catch(() => { Alert.alert(t('dailyEntryScreen.errorSave'), t('dailyEntryScreen.errorSaveMessage')); });
-      return updatedSettings;
-    });
-  }, [updateStatistics, t]);
+    if (changeDailyGoals) {
+      const updatedGoals = { ...settings.dailyGoals, [goalType]: validatedValue };
+      changeDailyGoals(updatedGoals);
+    }
+  }, [settings.dailyGoals, changeDailyGoals]);
 
   const localDataOperationHandler = useCallback(async () => {
     setIsDataLoading(true);
     try {
-      const reloadedSettings = await loadSettings();
-      setSettings(reloadedSettings);
-      await updateStatistics(reloadedSettings.dailyGoals);
+      if (reloadSettings) {
+        await reloadSettings();
+      }
       await refreshUser?.();
-      onThemeChange(reloadedSettings.theme); 
-      onLocaleChange(reloadedSettings.language); 
       onDataOperation(); 
       Toast.show({ type: 'info', text1: t('dataManagement.dataReloaded'), position: 'bottom'});
-    } catch (error) { Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); }
-    finally { setIsDataLoading(false); }
-  }, [updateStatistics, onThemeChange, onLocaleChange, refreshUser, onDataOperation, t]);
+    } catch (error) { 
+        Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); 
+    } finally { 
+        setIsDataLoading(false); 
+    }
+  }, [reloadSettings, refreshUser, onDataOperation, t]);
 
   const handleLanguageChange = (newLanguage: LanguageCode) => {
-    setSettings(prev => ({...prev, language: newLanguage}));
     onLocaleChange(newLanguage); 
   };
 
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
-  if (isDataLoading) {
+  if (isDataLoading || !settings) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
