@@ -459,7 +459,7 @@
     "otherGrains": ["quinoa", "couscous", "barley", "bulgur", "farro", "spelt", "millet", "ancient grain"],
     "flatbread": ["tortilla", "wrap", "pita", "naan", "flatbread", "chapati", "roti"],
     "beansLegumes": ["beans", "black beans", "kidney beans", "chickpeas", "garbanzo beans", "lentils", "peas", "legume", "edamame", "soybeans", "lima beans", "pinto beans"],
-    "peanut": ["peanut", "peanuts", "peanut butter"],
+    "peanut": ["peanut", "peanuts"],
     "nuts": ["nuts", "almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "brazil nut", "macadamia nut", "mixed nuts"],
     "seeds": ["seeds", "sunflower seeds", "pumpkin seeds", "chia seeds", "flax seeds", "sesame seeds", "hemp seeds"],
     "donut": ["donut", "doughnut", "pastry", "fritter"],
@@ -480,13 +480,18 @@
     "pizza": ["pizza", "margherita pizza", "pepperoni pizza", "hawaiian pizza", "vegetarian pizza", "deep dish pizza"],
     "burger": ["burger", "hamburger", "cheeseburger", "veggie burger", "chicken burger", "slider"],
     "tacoBurrito": ["taco", "burrito", "quesadilla", "fajita", "enchilada", "mexican food"],
-    "sandwich": ["sandwich", "sub", "blt", "club sandwich", "panini", "grilled cheese", "wrap sandwich"],
-    "soupStew": ["soup", "stew", "broth", "chowder", "pho", "consomme", "minestrone", "chili con carne"],
+    "sandwich": ["sandwich", "sub", "blt", "club sandwich", "panini", "grilled cheese", "wrap sandwich", "wrap", "baguette", "toastie", "hoagie"],
+    "soupStew": ["soup", "stew", "broth", "chowder", "consomme", "cream soup", "clear soup", "puree soup", "goulash", "chili"],
     "salad": ["salad", "caesar salad", "greek salad", "garden salad", "cobb salad", "fruit salad", "pasta salad", "potato salad"],
     "noodleDish": ["ramen noodles", "pho noodles", "noodle soup", "pad thai", "chow mein", "lo mein", "soba", "udon"],
     "genericFruit": ["fruit", "tropical fruit", "stone fruit", "citrus fruit", "berries"],
     "genericVegetable": ["vegetable", "veg", "root vegetable", "cruciferous", "greens"],
     "genericMeal": ["food", "meal", "dish", "plate", "entrée", "main course", "snack", "lunch", "dinner", "breakfast", "generic food", "cooked food", "leftovers"],
-    "unknownFood": ["unknown", "unidentified"]
+    "unknownFood": ["unknown", "unidentified"],
+    "tofu": ["tofu", "soy protein", "bean curd", "tempeh"],
+    "pancakeWaffle": ["pancake", "waffle", "crepe", "flapjack", "blini"],
+    "sauce": ["sauce", "dressing", "ketchup", "mayonnaise", "mustard", "marinara", "gravy", "salsa", "pesto", "hummus"],
+    "dessert": ["dessert", "sweet", "pudding", "pie", "tart", "pastry", "gelatin", "custard"],
+    "nutButter": ["nut butter", "peanut butter", "almond butter", "cashew butter", "tahini", "spread"]
   }
 }
