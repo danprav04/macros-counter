@@ -1,7 +1,7 @@
 // src/components/AccountSettings.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Text, makeStyles, Icon, ListItem, useTheme } from '@rneui/themed';
+import { Text, makeStyles, Icon, ListItem, useTheme, Button } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
 import UserBadge from './UserBadge';
@@ -11,6 +11,7 @@ interface AccountSettingsProps {
     isLoading: boolean;
     isAdLoading: boolean;
     onWatchAd: () => void;
+    onResendVerification: () => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({
@@ -18,9 +19,43 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
     isLoading,
     isAdLoading,
     onWatchAd,
+    onResendVerification,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const [cooldown, setCooldown] = useState(0);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout | undefined = undefined;
+        if (user && !user.is_verified && user.verification_email_sent_at) {
+            const sentAt = new Date(user.verification_email_sent_at).getTime();
+            const COOLDOWN_SECONDS = 60; // This should ideally come from a shared config
+            const now = Date.now();
+            const diffSeconds = Math.round((now - sentAt) / 1000);
+            const remaining = COOLDOWN_SECONDS - diffSeconds;
+
+            if (remaining > 0) {
+                setCooldown(remaining);
+                interval = setInterval(() => {
+                    setCooldown(prev => {
+                        if (prev <= 1) {
+                            if (interval) clearInterval(interval);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+            } else {
+                setCooldown(0);
+            }
+        }
+        return () => {
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
+    }, [user]);
+
 
     return (
         <View>
@@ -36,8 +71,26 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 )}
             </ListItem>
 
+            {!user?.is_verified && (
+                <ListItem bottomDivider containerStyle={[styles.listItem, styles.warningItem]}>
+                    <Icon name="email-alert-outline" type="material-community" color={theme.colors.warning} />
+                    <ListItem.Content>
+                        <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.warning}]}>Account Verification</ListItem.Title>
+                        <ListItem.Subtitle style={styles.listItemSubtitle}>Your account is not verified.</ListItem.Subtitle>
+                    </ListItem.Content>
+                    <Button
+                        title={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Email'}
+                        onPress={onResendVerification}
+                        disabled={cooldown > 0 || isLoading}
+                        type="outline"
+                        buttonStyle={{borderColor: theme.colors.warning}}
+                        titleStyle={{color: theme.colors.warning, fontSize: 14}}
+                    />
+                </ListItem>
+            )}
+
             <ListItem bottomDivider containerStyle={styles.listItem}>
-                <Icon name="database" type="material-community" color={theme.colors.warning} />
+                <Icon name="database" type="material-community" color={theme.colors.primary} />
                 <ListItem.Content>
                     <ListItem.Title style={styles.listItemTitle}>{t('accountSettings.coinBalance')}</ListItem.Title>
                 </ListItem.Content>
@@ -77,9 +130,17 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.colors.background,
         paddingVertical: 15,
     },
+    warningItem: {
+        backgroundColor: theme.mode === 'light' ? '#fffbeb' : '#2c1d02',
+    },
     listItemTitle: {
         color: theme.colors.text,
         fontWeight: '500',
+        textAlign: 'left',
+    },
+    listItemSubtitle: {
+        color: theme.colors.grey2,
+        fontSize: 12,
         textAlign: 'left',
     },
     valueText: {

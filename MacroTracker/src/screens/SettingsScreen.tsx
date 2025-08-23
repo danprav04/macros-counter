@@ -19,6 +19,7 @@ import { t } from "../localization/i18n";
 import i18n from '../localization/i18n';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
+import { resendVerificationEmail } from "../services/backendService";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -202,6 +203,24 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleLanguageChange = (newLanguage: LanguageCode) => {
     onLocaleChange(newLanguage); 
   };
+  
+  const handleResendVerification = useCallback(async () => {
+    try {
+        const response = await resendVerificationEmail();
+        Toast.show({
+            type: 'success',
+            text1: 'Request Sent',
+            text2: response.message,
+            position: 'bottom'
+        });
+        if (refreshUser) {
+            setTimeout(() => refreshUser(), 1000);
+        }
+    } catch (error) {
+        // Error is handled by backendService which shows an alert
+        console.error("Failed to resend verification email:", error);
+    }
+  }, [refreshUser]);
 
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
@@ -223,6 +242,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           isLoading={!user && isDataLoading}
           isAdLoading={isAdLoading}
           onWatchAd={handleWatchAd}
+          onResendVerification={handleResendVerification}
         />
         <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
             <Icon name="logout" type="material-community" color={theme.colors.error} />

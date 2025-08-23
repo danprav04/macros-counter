@@ -13,5 +13,6 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   created_at: string; // ISO date string
+  verification_email_sent_at?: string; // ISO date string, optional
   badges: Badge[];
 }

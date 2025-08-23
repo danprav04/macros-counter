@@ -104,6 +104,7 @@ export async function fetchBackend<T>(
 }
 
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
+export const resendVerificationEmail = (): Promise<{ message: string }> => fetchBackend('/users/resend-verification-email', { method: 'POST' });
 export const startRewardAdProcess = (): Promise<{ nonce: string }> => fetchBackend('/users/reward-ad-start', { method: 'POST' });
 export const getMacrosForRecipe = (foodName: string, ingredients: string): Promise<MacrosWithFoodName> => fetchBackend('/ai/macros_recipe', { method: 'POST', body: JSON.stringify({ food_name: foodName, ingredients }) });
 export const estimateGramsNaturalLanguage = async (foodName: string, quantityDescription: string): Promise<number> => {
