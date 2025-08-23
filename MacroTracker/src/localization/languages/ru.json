@@ -60,7 +60,12 @@
     "badges": "Значки",
     "coinBalance": "Баланс монет",
     "notApplicable": "Н/Д",
-    "errorLoadCoins": "Не удалось загрузить статус пользователя"
+    "errorLoadCoins": "Не удалось загрузить статус пользователя",
+    "verificationTitle": "Подтверждение аккаунта",
+    "verificationMessage": "Ваш аккаунт не подтвержден.",
+    "resendInSeconds": "Отправить через %{cooldown}с",
+    "resendEmailButton": "Отправить письмо повторно",
+    "requestSent": "Запрос отправлен"
   },
   "themeSwitch": {
     "darkMode": "Темный режим"

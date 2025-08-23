@@ -75,11 +75,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 <ListItem bottomDivider containerStyle={[styles.listItem, styles.warningItem]}>
                     <Icon name="email-alert-outline" type="material-community" color={theme.colors.warning} />
                     <ListItem.Content>
-                        <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.warning}]}>Account Verification</ListItem.Title>
-                        <ListItem.Subtitle style={styles.listItemSubtitle}>Your account is not verified.</ListItem.Subtitle>
+                        <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.warning}]}>{t('accountSettings.verificationTitle')}</ListItem.Title>
+                        <ListItem.Subtitle style={styles.listItemSubtitle}>{t('accountSettings.verificationMessage')}</ListItem.Subtitle>
                     </ListItem.Content>
                     <Button
-                        title={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Email'}
+                        title={cooldown > 0 ? t('accountSettings.resendInSeconds', { cooldown }) : t('accountSettings.resendEmailButton')}
                         onPress={onResendVerification}
                         disabled={cooldown > 0 || isLoading}
                         type="outline"

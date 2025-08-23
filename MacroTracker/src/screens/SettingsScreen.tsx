@@ -23,7 +23,7 @@ import { resendVerificationEmail } from "../services/backendService";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
-  onLocaleChange: (locale: LanguageCode) => void;
+  onLocaleChange: (locale: LanguageCode) => void; 
   onDataOperation: () => void; 
   onLogout: () => void;
 }
@@ -209,7 +209,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         const response = await resendVerificationEmail();
         Toast.show({
             type: 'success',
-            text1: 'Request Sent',
+            text1: t('accountSettings.requestSent'),
             text2: response.message,
             position: 'bottom'
         });
@@ -220,7 +220,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         // Error is handled by backendService which shows an alert
         console.error("Failed to resend verification email:", error);
     }
-  }, [refreshUser]);
+  }, [refreshUser, t]);
 
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });

@@ -60,7 +60,12 @@
     "badges": "תגים",
     "coinBalance": "מאזן מטבעות",
     "notApplicable": "לא זמין",
-    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש"
+    "errorLoadCoins": "לא ניתן היה לטעון את סטטוס המשתמש",
+    "verificationTitle": "אימות חשבון",
+    "verificationMessage": "חשבונך אינו מאומת.",
+    "resendInSeconds": "שלח שוב בעוד %{cooldown}שנ'",
+    "resendEmailButton": "שלח אימייל שוב",
+    "requestSent": "הבקשה נשלחה"
   },
   "themeSwitch": {
     "darkMode": "מצב כהה"

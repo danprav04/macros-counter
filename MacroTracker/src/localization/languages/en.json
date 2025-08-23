@@ -60,7 +60,12 @@
     "badges": "Badges",
     "coinBalance": "Coin Balance",
     "notApplicable": "N/A",
-    "errorLoadCoins": "Could not load user status"
+    "errorLoadCoins": "Could not load user status",
+    "verificationTitle": "Account Verification",
+    "verificationMessage": "Your account is not verified.",
+    "resendInSeconds": "Resend in %{cooldown}s",
+    "resendEmailButton": "Resend Email",
+    "requestSent": "Request Sent"
   },
   "themeSwitch": {
     "darkMode": "Dark Mode"
