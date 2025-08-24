@@ -2,7 +2,7 @@
   "expo": {
     "name": "MacrosVisionAI",
     "slug": "MacroTracker",
-    "version": "2.1.0",
+    "version": "3.0.0",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,6 +37,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.macrosvisionai.app",
+      "versionCode": 1,
       "userInterfaceStyle": "automatic",
       "permissions": [
         "android.permission.CAMERA",
