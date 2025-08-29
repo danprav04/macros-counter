@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import * as Localization from 'expo-localization';
+import Constants from 'expo-constants';
 
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
@@ -17,12 +18,15 @@ import QuestionnaireScreen from '../screens/QuestionnaireScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import UpdateRequiredModal from '../components/UpdateRequiredModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
 import { setLogoutListener } from '../services/authService';
+import { getAppConfig } from '../services/backendService';
+import { compareVersions } from '../utils/versionUtils';
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -144,6 +148,31 @@ function AuthNavigator() {
 function AppContent() {
   const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
+  const [isUpdateRequired, setIsUpdateRequired] = useState(false);
+  const [storeUrl, setStoreUrl] = useState('');
+
+  React.useEffect(() => {
+    const checkVersion = async () => {
+        try {
+            const remoteConfig = await getAppConfig();
+            const currentVersion = Constants.expoConfig?.version;
+            const requiredVersion = remoteConfig.current_version;
+
+            if (currentVersion && requiredVersion && compareVersions(currentVersion, requiredVersion) < 0) {
+                const links = Constants.expoConfig?.extra?.storeLinks;
+                const platformUrl = Platform.OS === 'ios' ? links?.ios : links?.android;
+                if (platformUrl) {
+                    setStoreUrl(platformUrl);
+                    setIsUpdateRequired(true);
+                }
+            }
+        } catch (error) {
+            console.warn("Could not check for app updates:", error);
+        }
+    };
+    checkVersion();
+  }, []);
+
 
   React.useEffect(() => {
     if (logout) {
@@ -206,6 +235,7 @@ function AppContent() {
                     )}
                 </RootStack.Navigator>
             </NavigationContainer>
+            <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
         </SafeAreaView>
     </ThemeProvider>
   );

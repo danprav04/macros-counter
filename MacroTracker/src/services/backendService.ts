@@ -103,6 +103,9 @@ export async function fetchBackend<T>(
     }
 }
 
+// App configuration endpoint
+export const getAppConfig = (): Promise<{ current_version: string }> => fetchBackend('/app/version', {}, false);
+
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 export const resendVerificationEmail = (): Promise<{ message: string }> => fetchBackend('/users/resend-verification-email', { method: 'POST' });
 export const startRewardAdProcess = (): Promise<{ nonce: string }> => fetchBackend('/users/reward-ad-start', { method: 'POST' });
