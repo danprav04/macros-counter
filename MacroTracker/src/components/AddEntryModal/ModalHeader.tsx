@@ -4,6 +4,8 @@ import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Keyboard } from 
 import { Text, Icon, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { t } from '../../localization/i18n';
+import { useCosts } from '../../context/CostsContext';
+import PriceTag from '../PriceTag';
 
 type ModalMode = 'normal' | 'quickAddSelect' | 'quickAddText';
 
@@ -42,6 +44,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
+    const { costs } = useCosts();
 
     const handleClose = () => {
         Keyboard.dismiss();
@@ -81,20 +84,30 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                     <>
                         {!isEditMode && !selectedFood && (
                             <View style={styles.quickAddIconsContainer}>
-                                <TouchableOpacity onPress={onQuickAddText} disabled={isQuickAddTextButtonDisabled} style={styles.headerIcon}>
-                                    {quickAddLoading && textQuickAddLoading ? (
-                                        <ActivityIndicator size="small" color={theme.colors.primary} />
-                                    ) : (
-                                        <Icon name="text-box-search-outline" type="material-community" size={26} color={isQuickAddTextButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                <View style={styles.iconWrapper}>
+                                    <TouchableOpacity onPress={onQuickAddText} disabled={isQuickAddTextButtonDisabled} style={styles.headerIcon}>
+                                        {quickAddLoading && textQuickAddLoading ? (
+                                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                                        ) : (
+                                            <Icon name="text-box-search-outline" type="material-community" size={26} color={isQuickAddTextButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                    {costs?.cost_macros_text_multiple != null && (
+                                        <PriceTag amount={costs.cost_macros_text_multiple} type="cost" />
                                     )}
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon}>
-                                    {quickAddLoading && !textQuickAddLoading ? (
-                                        <ActivityIndicator size="small" color={theme.colors.primary} />
-                                    ) : (
-                                        <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                </View>
+                                <View style={styles.iconWrapper}>
+                                    <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon}>
+                                        {quickAddLoading && !textQuickAddLoading ? (
+                                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                                        ) : (
+                                            <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                    {costs?.cost_macros_image_multiple != null && (
+                                        <PriceTag amount={costs.cost_macros_image_multiple} type="cost" />
                                     )}
-                                </TouchableOpacity>
+                                </View>
                             </View>
                         )}
                         {isEditMode ? (
@@ -122,8 +135,12 @@ const useStyles = makeStyles((theme) => ({
     overlayTitle: { color: theme.colors.text, fontWeight: 'bold', fontSize: 20, textAlign: 'center', flex: 1, marginHorizontal: 5 },
     editModeTitle: { color: theme.colors.warning },
     headerActionsContainer: { flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'flex-end' },
-    quickAddIconsContainer: { flexDirection: 'row-reverse', alignItems: 'center' },
-    headerIcon: { paddingHorizontal: 6, marginHorizontal: 2 },
+    quickAddIconsContainer: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
+    iconWrapper: {
+        alignItems: 'center',
+        marginHorizontal: 4,
+    },
+    headerIcon: { paddingHorizontal: 6, paddingBottom: 2 },
     actionButton: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, minWidth: 70, marginLeft: 5, backgroundColor: theme.colors.primary },
     updateButton: { backgroundColor: theme.colors.warning },
     buttonTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 14 },

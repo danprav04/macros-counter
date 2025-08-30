@@ -6,6 +6,8 @@ import { Food } from '../../types/food';
 import { FoodGradeResult } from '../../utils/gradingUtils';
 import { isValidNumberInput } from '../../utils/validationUtils';
 import { t } from '../../localization/i18n';
+import { useCosts } from '../../context/CostsContext';
+import PriceTag from '../PriceTag';
 
 type UnitMode = "grams" | "auto";
 
@@ -45,6 +47,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
     const gramsInputRef = useRef<any>(null);
+    const { costs } = useCosts();
 
     useEffect(() => {
         if (isEditMode && unitMode === "grams") {
@@ -73,23 +76,28 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                     )}
                 </View>
                 {!isEditMode && (
-                    <ButtonGroup
-                        buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
-                        selectedIndex={unitMode === "grams" ? 0 : 1}
-                        onPress={(index) => {
-                            if (!isActionDisabled) {
-                                setUnitMode(index === 0 ? "grams" : "auto");
-                                Keyboard.dismiss();
-                            }
-                        }}
-                        containerStyle={styles.buttonGroupContainer}
-                        selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-                        textStyle={styles.buttonGroupText}
-                        selectedTextStyle={{ color: theme.colors.white }}
-                        disabled={isActionDisabled ? [0, 1] : []}
-                        disabledStyle={styles.disabledButtonGroup}
-                        disabledTextStyle={{ color: theme.colors.grey3 }}
-                    />
+                    <View style={styles.buttonGroupWrapper}>
+                        <ButtonGroup
+                            buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
+                            selectedIndex={unitMode === "grams" ? 0 : 1}
+                            onPress={(index) => {
+                                if (!isActionDisabled) {
+                                    setUnitMode(index === 0 ? "grams" : "auto");
+                                    Keyboard.dismiss();
+                                }
+                            }}
+                            containerStyle={styles.buttonGroupContainer}
+                            selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                            textStyle={styles.buttonGroupText}
+                            selectedTextStyle={{ color: theme.colors.white }}
+                            disabled={isActionDisabled ? [0, 1] : []}
+                            disabledStyle={styles.disabledButtonGroup}
+                            disabledTextStyle={{ color: theme.colors.grey3 }}
+                        />
+                        {unitMode === 'auto' && costs?.cost_grams_natural_language != null && (
+                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" containerStyle={{ marginLeft: 8 }} />
+                        )}
+                    </View>
                 )}
             </View>
             {unitMode === "grams" && (
@@ -205,8 +213,14 @@ const useStyles = makeStyles((theme) => ({
         textTransform: "uppercase",
         textAlign: 'left',
     },
-    buttonGroupContainer: {
+    buttonGroupWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
         flex: 0.7,
+        justifyContent: 'flex-end',
+    },
+    buttonGroupContainer: {
+        flex: 1,
         maxWidth: 220,
         height: 35,
         borderRadius: 8,

@@ -1,5 +1,4 @@
 // src/types/settings.ts
-// types/settings.ts
 export const macros = ["calories", "protein", "carbs", "fat"] as const;
 export type MacroType = (typeof macros)[number];
 
@@ -28,5 +27,15 @@ export interface Settings {
 
 export interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
-  onLocaleChange: (locale: LanguageCode) => void; // Added for language change
+  onLocaleChange: (locale: LanguageCode) => void; 
+}
+
+export interface AppCosts {
+    reward_ad_coins_amount: number;
+    cost_grams_natural_language: number;
+    cost_macros_recipe: number;
+    cost_macros_image_single: number;
+    cost_macros_image_multiple: number;
+    cost_macros_text_multiple: number;
+    cost_per_additional_image: number;
 }

@@ -6,6 +6,7 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Text, TextInput } from "react-native";
 import { AuthProvider } from "./src/context/AuthContext";
+import { CostsProvider } from "./src/context/CostsContext";
 import { initializeAds } from './src/services/adService';
 
 // --- FONT SCALING PATCH ---
@@ -23,10 +24,12 @@ const App = () => {
 
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <AppNavigator />
-        <Toast />
-      </SafeAreaProvider>
+      <CostsProvider>
+        <SafeAreaProvider>
+          <AppNavigator />
+          <Toast />
+        </SafeAreaProvider>
+      </CostsProvider>
     </AuthProvider>
   );
 };

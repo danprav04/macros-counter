@@ -31,6 +31,8 @@ import { compressImageIfNeeded } from '../utils/imageUtils';
 import FoodFormFields from "./FoodFormFields";
 import { t } from '../localization/i18n';
 import { useAuth, AuthContextType } from '../context/AuthContext';
+import { useCosts } from '../context/CostsContext';
+import PriceTag from './PriceTag';
 
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
@@ -69,6 +71,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
     const { user, refreshUser } = useAuth() as AuthContextType;
+    const { costs } = useCosts();
 
     const [loading, setLoading] = useState(false);
     const [inputMode, setInputMode] = useState<InputMode>('manual');
@@ -244,25 +247,35 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         placeholderTextColor={theme.colors.grey3}
                                         disabled={isAnyLoading}
                                     />
-                                    <Button
-                                        title={t('addFoodModal.analyzeTextButton')}
-                                        onPress={handleAnalyzeText}
-                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
-                                        titleStyle={styles.aiButtonTitle}
-                                        loading={aiTextLoading}
-                                        disabled={isAnyLoading}
-                                        icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                    />
+                                    <View style={styles.aiButtonWithPrice}>
+                                        <Button
+                                            title={t('addFoodModal.analyzeTextButton')}
+                                            onPress={handleAnalyzeText}
+                                            buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                            titleStyle={styles.aiButtonTitle}
+                                            loading={aiTextLoading}
+                                            disabled={isAnyLoading}
+                                            icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                        />
+                                        {costs?.cost_macros_recipe && (
+                                            <PriceTag amount={costs.cost_macros_recipe} type="cost" containerStyle={{ marginLeft: 10 }} />
+                                        )}
+                                    </View>
                                     <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
-                                    <Button
-                                        title={t('addFoodModal.analyzeImageButton')}
-                                        onPress={handleGetImageAndAnalyze}
-                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
-                                        titleStyle={styles.aiButtonTitle}
-                                        loading={aiImageLoading}
-                                        disabled={isAnyLoading}
-                                        icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                    />
+                                    <View style={styles.aiButtonWithPrice}>
+                                        <Button
+                                            title={t('addFoodModal.analyzeImageButton')}
+                                            onPress={handleGetImageAndAnalyze}
+                                            buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                            titleStyle={styles.aiButtonTitle}
+                                            loading={aiImageLoading}
+                                            disabled={isAnyLoading}
+                                            icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
+                                        />
+                                        {costs?.cost_macros_image_single && (
+                                            <PriceTag amount={costs.cost_macros_image_single} type="cost" containerStyle={{ marginLeft: 10 }} />
+                                        )}
+                                    </View>
                                 </View>
                             )}
                         </View>
@@ -289,7 +302,8 @@ const useStyles = makeStyles((theme) => ({
     buttonContainer: { },
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
-    aiButton: { paddingVertical: 12, borderRadius: 8, },
+    aiButtonWithPrice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    aiButton: { flex: 1, paddingVertical: 12, borderRadius: 8 },
     aiButtonTitle: { fontWeight: "600", fontSize: 15, textAlign: 'center', },
     inputModeButtonGroup: {
         marginBottom: 20,

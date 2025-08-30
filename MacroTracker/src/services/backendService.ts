@@ -5,6 +5,7 @@ import { getClientId } from './clientIDService';
 import { MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
+import { AppCosts } from '../types/settings';
 
 export class BackendError extends Error {
   constructor(message: string, public status: number) {
@@ -105,6 +106,9 @@ export async function fetchBackend<T>(
 
 // App configuration endpoint
 export const getAppConfig = (): Promise<{ current_version: string }> => fetchBackend('/app/version', {}, false);
+
+// App costs endpoint
+export const getAppCosts = (): Promise<AppCosts> => fetchBackend('/app/costs', {}, false);
 
 export const getUserStatus = (): Promise<User> => fetchBackend('/users/status');
 export const resendVerificationEmail = (): Promise<{ message: string }> => fetchBackend('/users/resend-verification-email', { method: 'POST' });

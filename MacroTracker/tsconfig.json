@@ -9,7 +9,9 @@
   "include": [
     "src",
     "__tests__",
-    "jest-setup.ts"
+    "jest-setup.ts",
+    "App.tsx",
+    "index.ts"
   ],
   "exclude": [
     "node_modules"

@@ -5,6 +5,8 @@ import { Text, makeStyles, Icon, ListItem, useTheme, Button } from '@rneui/theme
 import { t } from '../localization/i18n';
 import { User } from '../types/user';
 import UserBadge from './UserBadge';
+import { useCosts } from '../context/CostsContext';
+import PriceTag from './PriceTag';
 
 interface AccountSettingsProps {
     user: User | null;
@@ -24,6 +26,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
     const { theme } = useTheme();
     const styles = useStyles();
     const [cooldown, setCooldown] = useState(0);
+    const { costs } = useCosts();
 
     useEffect(() => {
         let interval: NodeJS.Timeout | undefined = undefined;
@@ -103,7 +106,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                             {isAdLoading ? (
                                 <ActivityIndicator size="small" color={theme.colors.primary} />
                             ) : (
-                                <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
+                                <View style={styles.adButtonContent}>
+                                    <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
+                                    {costs?.reward_ad_coins_amount && (
+                                        <PriceTag amount={costs.reward_ad_coins_amount} type="reward" containerStyle={{ marginLeft: 8 }} />
+                                    )}
+                                </View>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -159,6 +167,10 @@ const useStyles = makeStyles((theme) => ({
     adButton: {
         marginLeft: 15,
         padding: 5,
+    },
+    adButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     badgesContainer: {
         flexDirection: 'row',
