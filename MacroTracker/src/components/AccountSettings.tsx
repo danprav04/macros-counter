@@ -109,7 +109,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                                 <View style={styles.adButtonContent}>
                                     <Icon name="movie-play-outline" type="material-community" color={theme.colors.primary} size={26} />
                                     {costs?.reward_ad_coins_amount && (
-                                        <PriceTag amount={costs.reward_ad_coins_amount} type="reward" containerStyle={{ marginLeft: 8 }} />
+                                        <PriceTag amount={costs.reward_ad_coins_amount} type="reward" style={{ marginLeft: 8 }} />
                                     )}
                                 </View>
                             )}

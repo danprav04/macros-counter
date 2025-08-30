@@ -247,35 +247,31 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         placeholderTextColor={theme.colors.grey3}
                                         disabled={isAnyLoading}
                                     />
-                                    <View style={styles.aiButtonWithPrice}>
-                                        <Button
-                                            title={t('addFoodModal.analyzeTextButton')}
-                                            onPress={handleAnalyzeText}
-                                            buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
-                                            titleStyle={styles.aiButtonTitle}
-                                            loading={aiTextLoading}
-                                            disabled={isAnyLoading}
-                                            icon={<Icon name="text-box-search-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                        />
-                                        {costs?.cost_macros_recipe && (
-                                            <PriceTag amount={costs.cost_macros_recipe} type="cost" containerStyle={{ marginLeft: 10 }} />
+                                    <Button
+                                        onPress={handleAnalyzeText}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        disabled={isAnyLoading}
+                                        loading={aiTextLoading}
+                                    >
+                                        <Icon name="text-box-search-outline" type="material-community" size={20} color="white" />
+                                        <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeTextButton')}</Text>
+                                        {costs?.cost_macros_recipe != null && !aiTextLoading && (
+                                            <PriceTag amount={costs.cost_macros_recipe} type="cost" style={styles.priceTagInButton} />
                                         )}
-                                    </View>
+                                    </Button>
                                     <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
-                                    <View style={styles.aiButtonWithPrice}>
-                                        <Button
-                                            title={t('addFoodModal.analyzeImageButton')}
-                                            onPress={handleGetImageAndAnalyze}
-                                            buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
-                                            titleStyle={styles.aiButtonTitle}
-                                            loading={aiImageLoading}
-                                            disabled={isAnyLoading}
-                                            icon={<Icon name="camera-enhance-outline" type="material-community" size={20} color="white" style={{ marginRight: 8 }} />}
-                                        />
-                                        {costs?.cost_macros_image_single && (
-                                            <PriceTag amount={costs.cost_macros_image_single} type="cost" containerStyle={{ marginLeft: 10 }} />
+                                    <Button
+                                        onPress={handleGetImageAndAnalyze}
+                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        disabled={isAnyLoading}
+                                        loading={aiImageLoading}
+                                    >
+                                        <Icon name="camera-enhance-outline" type="material-community" size={20} color="white" />
+                                        <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeImageButton')}</Text>
+                                        {costs?.cost_macros_image_single != null && !aiImageLoading && (
+                                            <PriceTag amount={costs.cost_macros_image_single} type="cost" style={styles.priceTagInButton} />
                                         )}
-                                    </View>
+                                    </Button>
                                 </View>
                             )}
                         </View>
@@ -302,9 +298,24 @@ const useStyles = makeStyles((theme) => ({
     buttonContainer: { },
     button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
     buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
-    aiButtonWithPrice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    aiButton: { flex: 1, paddingVertical: 12, borderRadius: 8 },
-    aiButtonTitle: { fontWeight: "600", fontSize: 15, textAlign: 'center', },
+    aiButton: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    aiButtonTitle: {
+        color: 'white',
+        fontWeight: "600",
+        fontSize: 15,
+        textAlign: 'center',
+        marginLeft: 8,
+        flex: 1,
+    },
+    priceTagInButton: {
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
     inputModeButtonGroup: {
         marginBottom: 20,
         borderRadius: 8,

@@ -95,7 +95,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                             disabledTextStyle={{ color: theme.colors.grey3 }}
                         />
                         {unitMode === 'auto' && costs?.cost_grams_natural_language != null && (
-                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" containerStyle={{ marginLeft: 8 }} />
+                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" style={{ marginLeft: 8 }} />
                         )}
                     </View>
                 )}

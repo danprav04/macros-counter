@@ -6,28 +6,30 @@ import { Text, Icon, useTheme } from '@rneui/themed';
 interface PriceTagProps {
   amount: number;
   type: 'cost' | 'reward';
-  containerStyle?: ViewStyle;
+  style?: ViewStyle;
+  size?: 'default' | 'small';
 }
 
-const PriceTag: React.FC<PriceTagProps> = ({ amount, type, containerStyle }) => {
+const PriceTag: React.FC<PriceTagProps> = ({ amount, type, style, size = 'default' }) => {
   const { theme } = useTheme();
   const isCost = type === 'cost';
+  const isSmall = size === 'small';
 
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 6,
-      paddingVertical: 3,
+      paddingHorizontal: isSmall ? 5 : 6,
+      paddingVertical: isSmall ? 2 : 3,
       borderRadius: 10,
       backgroundColor: isCost ? theme.colors.grey5 : theme.colors.successLight,
-      ...containerStyle,
+      ...style,
     },
     text: {
       fontWeight: 'bold',
-      fontSize: 12,
+      fontSize: isSmall ? 11 : 12,
       color: isCost ? theme.colors.secondary : theme.colors.success,
-      marginLeft: 4,
+      marginLeft: isSmall ? 3 : 4,
     },
   });
 
@@ -36,7 +38,7 @@ const PriceTag: React.FC<PriceTagProps> = ({ amount, type, containerStyle }) => 
       <Icon
         name="database"
         type="material-community"
-        size={14}
+        size={isSmall ? 12 : 14}
         color={isCost ? theme.colors.secondary : theme.colors.success}
       />
       <Text style={styles.text}>
