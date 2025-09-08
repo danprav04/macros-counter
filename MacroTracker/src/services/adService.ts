@@ -10,23 +10,17 @@ import mobileAds, {
 import { startRewardAdProcess } from './backendService';
 import { t } from '../localization/i18n';
 
-const adUnitIdForSsvTesting = 'ca-app-pub-5977125521868950/6021803585';
-const adUnitId = __DEV__ ? adUnitIdForSsvTesting : 'ca-app-pub-5977125521868950/6021803585';
-
+// Use the official test ID for development to prevent policy violations.
+// Replace the placeholder with your actual production Ad Unit ID from AdMob.
+const productionAdUnitId = 'ca-app-pub-5977125521868950/6021803585'; // <-- REPLACE THIS
+const adUnitId = __DEV__ ? TestIds.REWARDED : productionAdUnitId;
 
 let isAdShowing = false;
 let isSdkInitialized = false;
 
 export const initializeAds = (): void => {
-  if (__DEV__ && adUnitId === adUnitIdForSsvTesting) {
-    console.warn(
-      '--- Ad Service Notice --- Using real Ad Unit ID for testing SSV. ' +
-      'Ensure your device is registered as a test device in the AdMob console ' +
-      'to avoid policy violations. Non-test devices serving real ads in debug ' +
-      'builds can lead to account suspension.'
-    );
-  } else if (__DEV__) {
-    console.log('--- Ad Service Notice --- Using Test Ad Unit ID for development. SSV will not trigger.');
+  if (__DEV__) {
+    console.log('--- Ad Service Notice --- Using Test Ad Unit ID for development. Real SSV will not trigger.');
   }
 
   mobileAds()
