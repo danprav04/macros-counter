@@ -8,7 +8,7 @@ import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
-import DeleteAccountModal from "components/DeleteAccountModal";
+import DeleteAccountModal from "../components/DeleteAccountModal"; // Import the new modal
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
 import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
@@ -323,7 +323,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   );
 };
 
-// ... (styles remain the same)
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.background, },
   loadingContainer: {
@@ -370,10 +369,6 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: '600',
     marginLeft: I18nManager.isRTL ? 0 : 5,
     marginRight: I18nManager.isRTL ? 5 : 0,
-  },
-  listItem: {
-      backgroundColor: theme.colors.background,
-      paddingVertical: 15,
   },
   listItemTitle: {
     color: theme.colors.text,
