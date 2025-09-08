@@ -4,10 +4,6 @@ name: EAS Android Preview Build (Local)
 # This workflow runs on pushes to the main/master branch, or can be triggered manually.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
 
 jobs:
   build:
