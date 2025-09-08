@@ -125,3 +125,4 @@ export const getMacrosForImageSingle = (base64Image: string, mimeType: string): 
 export const getMacrosForImageMultiple = (base64Image: string, mimeType: string): Promise<EstimatedFoodItem[]> => fetchBackend('/ai/macros_image_multiple', { method: 'POST', body: JSON.stringify({ image_base64: base64Image, mime_type: mimeType }) });
 export const getMacrosForImageMultipleBatch = (images: { image_base64: string, mime_type: string }[]): Promise<EstimatedFoodItem[]> => fetchBackend('/ai/macros_image_multiple_batch', { method: 'POST', body: JSON.stringify({ images }) });
 export const getMacrosForTextMultiple = (text: string): Promise<EstimatedFoodItem[]> => fetchBackend('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
+export const deleteCurrentUserAccount = (password: string): Promise<null> => fetchBackend('/users/me', { method: 'DELETE', body: JSON.stringify({ password }) });

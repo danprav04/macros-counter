@@ -8,6 +8,7 @@ import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
+import DeleteAccountModal from "components/DeleteAccountModal";
 import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
 import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
@@ -58,6 +59,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   const [isDataLoading, setIsDataLoading] = useState(true); 
   const [isAdLoading, setIsAdLoading] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // State for delete modal
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -235,76 +237,93 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
-        <AccountSettings
-          user={user}
-          isLoading={!user && isDataLoading}
-          isAdLoading={isAdLoading}
-          onWatchAd={handleWatchAd}
-          onResendVerification={handleResendVerification}
-        />
-        <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.logoutItem}>
-            <Icon name="logout" type="material-community" color={theme.colors.error} />
-            <ListItem.Content>
-                <ListItem.Title style={styles.logoutTitle}>
-                    {t('settingsScreen.account.logout')}
-                </ListItem.Title>
-            </ListItem.Content>
-            <ListItem.Chevron color={theme.colors.error} />
-        </ListItem>
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
+          <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
+          <AccountSettings
+            user={user}
+            isLoading={!user && isDataLoading}
+            isAdLoading={isAdLoading}
+            onWatchAd={handleWatchAd}
+            onResendVerification={handleResendVerification}
+          />
+          <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
+              <Icon name="logout" type="material-community" color={theme.colors.primary} />
+              <ListItem.Content>
+                  <ListItem.Title style={styles.actionItemTitle}>
+                      {t('settingsScreen.account.logout')}
+                  </ListItem.Title>
+              </ListItem.Content>
+              <ListItem.Chevron color={theme.colors.primary} />
+          </ListItem>
+          <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
+              <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
+              <ListItem.Content>
+                  <ListItem.Title style={styles.deleteTitle}>
+                      Delete Account
+                  </ListItem.Title>
+              </ListItem.Content>
+              <ListItem.Chevron color={theme.colors.error} />
+          </ListItem>
 
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
-        <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
+          <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
+          <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
-        <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
-            <ListItem.Content>
-                <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
-            </ListItem.Content>
-        </ListItem>
-        <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
-             <Picker
-                selectedValue={settings.language}
-                onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
-                style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
-                itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
-                dropdownIconColor={theme.colors.text}
-            >
-                <Picker.Item label={t('settingsScreen.language.system')} value="system" />
-                <Picker.Item label={t('settingsScreen.language.english')} value="en" />
-                <Picker.Item label={t('settingsScreen.language.russian')} value="ru" />
-                <Picker.Item label={t('settingsScreen.language.hebrew')} value="he" />
-            </Picker>
-        </View>
+          <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
+              <ListItem.Content>
+                  <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
+              </ListItem.Content>
+          </ListItem>
+          <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
+               <Picker
+                  selectedValue={settings.language}
+                  onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
+                  style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
+                  itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
+                  dropdownIconColor={theme.colors.text}
+              >
+                  <Picker.Item label={t('settingsScreen.language.system')} value="system" />
+                  <Picker.Item label={t('settingsScreen.language.english')} value="en" />
+                  <Picker.Item label={t('settingsScreen.language.russian')} value="ru" />
+                  <Picker.Item label={t('settingsScreen.language.hebrew')} value="he" />
+              </Picker>
+          </View>
 
-        <View style={styles.sectionHeaderWithButton}>
-            <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
-            <Button
-                title={t('settingsScreen.goals.estimateButton')}
-                type="outline"
-                onPress={handleNavigateToQuestionnaire}
-                buttonStyle={styles.estimateButton}
-                titleStyle={styles.estimateButtonTitle}
-                icon={<Icon name="calculator-variant" type="material-community" color={theme.colors.primary} size={18} />}
-            />
-        </View>
-        <View style={styles.inputGroup}>
-            <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
-        </View>
+          <View style={styles.sectionHeaderWithButton}>
+              <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
+              <Button
+                  title={t('settingsScreen.goals.estimateButton')}
+                  type="outline"
+                  onPress={handleNavigateToQuestionnaire}
+                  buttonStyle={styles.estimateButton}
+                  titleStyle={styles.estimateButtonTitle}
+                  icon={<Icon name="calculator-variant" type="material-community" color={theme.colors.primary} size={18} />}
+              />
+          </View>
+          <View style={styles.inputGroup}>
+              <DailyGoalsInput dailyGoals={settings.dailyGoals} onGoalChange={handleGoalChange} />
+          </View>
 
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
-        <View style={styles.chartContainer}>
-            <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
-        </View>
+          <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
+          <View style={styles.chartContainer}>
+              <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
+          </View>
 
-        <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
-        <View style={styles.buttonGroup}>
-            <DataManagementButtons onDataOperation={localDataOperationHandler} />
-        </View>
-    </ScrollView>
+          <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
+          <View style={styles.buttonGroup}>
+              <DataManagementButtons onDataOperation={localDataOperationHandler} />
+          </View>
+      </ScrollView>
+      <DeleteAccountModal
+        isVisible={isDeleteModalVisible}
+        onClose={() => setIsDeleteModalVisible(false)}
+        onAccountDeleted={onLogout}
+      />
+    </>
   );
 };
 
+// ... (styles remain the same)
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.background, },
   loadingContainer: {
@@ -361,37 +380,23 @@ const useStyles = makeStyles((theme) => ({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     fontWeight: '500',
   },
-  logoutItem: {
-    backgroundColor: theme.colors.background,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.divider,
+  actionItem: {
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderColor: theme.colors.divider,
   },
-  logoutTitle: {
+  actionItemTitle: {
+      color: theme.colors.primary,
+      textAlign: I18nManager.isRTL ? 'right' : 'left',
+      fontWeight: 'bold',
+  },
+  deleteTitle: {
       color: theme.colors.error,
       textAlign: I18nManager.isRTL ? 'right' : 'left',
       fontWeight: 'bold',
   },
-  valueText: {
-      color: theme.colors.text,
-      fontSize: 14,
-  },
-  coinValue: {
-      color: theme.colors.primary,
-      fontWeight: 'bold',
-      fontSize: 16,
-  },
-  coinContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-  },
-  adButton: {
-      marginLeft: 15,
-      padding: 5,
-  },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
-  button: { marginBottom: 10, borderRadius: 8, },
   chartContainer: {
     marginBottom: 20,
   },
