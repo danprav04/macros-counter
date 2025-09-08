@@ -53,6 +53,11 @@
             {
               "scheme": "macrosvisionai",
               "host": "open-add-food-modal"
+            },
+            {
+              "scheme": "https",
+              "host": "v1.macros-vision-ai.xyz",
+              "pathPrefix": "/share/food"
             }
           ],
           "category": [

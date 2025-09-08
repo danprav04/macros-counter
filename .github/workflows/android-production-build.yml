@@ -1,0 +1,42 @@
+# .github/workflows/android-production-build.yml
+name: EAS Android Production Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android Production AAB
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: 'MacroTracker/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./MacroTracker
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build with EAS (Managed)
+        working-directory: ./MacroTracker
+        run: eas build --platform android --profile production --non-interactive --wait --output=./production-build.aab
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
+
+      - name: Upload AAB as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macros-vision-ai-production-aab
+          path: ./MacroTracker/production-build.aab
