@@ -37,10 +37,8 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.macrosvisionai.app",
-      "versionCode": 4,
+      "versionCode": 6,
       "userInterfaceStyle": "automatic",
-      "compileSdkVersion": 35,
-      "targetSdkVersion": 35,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -73,6 +71,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
+        }
+      ],
       "./plugins/withAndroidProguard.js",
       "expo-dev-client",
       [
