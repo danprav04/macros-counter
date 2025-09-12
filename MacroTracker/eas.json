@@ -24,7 +24,8 @@
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "minifyEnabled": true
       }
     }
   },

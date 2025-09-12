@@ -37,7 +37,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.macrosvisionai.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "userInterfaceStyle": "automatic",
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
