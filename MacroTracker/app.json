@@ -73,6 +73,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/withAndroidProguard.js",
       "expo-dev-client",
       [
         "expo-document-picker",
