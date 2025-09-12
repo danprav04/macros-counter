@@ -22,7 +22,12 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "minify": true,
+        "proguardRules": "./proguard-rules.pro"
+      }
     }
   },
   "submit": {
