@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, Linking } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
@@ -21,6 +21,8 @@ import i18n from '../localization/i18n';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
+import Constants from 'expo-constants';
+
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -224,6 +226,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }
   }, [refreshUser, t]);
 
+  const handlePrivacyPolicyPress = () => {
+      const privacyUrl = `${Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION}/privacy-policy`;
+      Linking.openURL(privacyUrl).catch(err => Alert.alert("Error", "Could not open privacy policy."));
+  };
+
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
@@ -288,6 +295,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                   <Picker.Item label={t('settingsScreen.language.hebrew')} value="he" />
               </Picker>
           </View>
+          <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
+                <Icon name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content>
+                    <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
+                        {t('settingsScreen.general.privacyPolicy')}
+                    </ListItem.Title>
+                </ListItem.Content>
+                <ListItem.Chevron color={theme.colors.secondary} />
+            </ListItem>
 
           <View style={styles.sectionHeaderWithButton}>
               <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>

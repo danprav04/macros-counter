@@ -234,6 +234,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                 </View>
                             ) : (
                                 <View style={styles.aiContainer}>
+                                    <View style={styles.aiDisclaimerContainer}>
+                                        <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                                        <Text style={styles.aiDisclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                                    </View>
                                     <Input
                                         label={t('addFoodModal.ingredientsLabel')}
                                         labelStyle={styles.inputLabel}
@@ -323,6 +327,20 @@ const useStyles = makeStyles((theme) => ({
     },
     aiContainer: {
         paddingTop: 10,
+    },
+    aiDisclaimerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+        marginBottom: 15,
+        opacity: 0.8,
+    },
+    aiDisclaimerText: {
+        marginLeft: 5,
+        fontSize: 12,
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+        flexShrink: 1,
     },
     orDividerText: {
         textAlign: 'center',

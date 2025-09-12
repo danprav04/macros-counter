@@ -13,6 +13,9 @@
     "aiGramsProcessingError": "The AI couldn't process the quantity. Please try phrasing it differently (e.g., '1 cup' instead of 'a cup').",
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
+  "disclaimers": {
+    "aiWarning": "AI can make mistakes. Please verify important information."
+  },
   "forgotPasswordScreen": {
     "title": "Reset Password",
     "instructions": "Enter your account's email address and we will send you a link to reset your password.",
@@ -32,7 +35,8 @@
       "logoutConfirmMessage": "Are you sure you want to log out?"
     },
     "general": {
-      "title": "General"
+      "title": "General",
+      "privacyPolicy": "Privacy Policy"
     },
     "dailyGoals": {
       "title": "Daily Goals"

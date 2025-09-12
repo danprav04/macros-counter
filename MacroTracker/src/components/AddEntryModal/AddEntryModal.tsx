@@ -1,7 +1,7 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
-import { Overlay, makeStyles, useTheme, Button, Input } from "@rneui/themed";
+import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
 import { loadRecentFoods, saveRecentFoods, RecentServings, loadRecentServings, saveRecentServings } from "../../services/storageService";
@@ -369,6 +369,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onBackFromQuickAdd={handleBackFromQuickAdd}
           />
           {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} recentServings={recentServings} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={isAiLoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
+          {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect') && (
+                <View style={styles.aiDisclaimerContainer}>
+                    <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                    <Text style={styles.aiDisclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                </View>
+          )}
           {modalMode === 'quickAddText' && (
             <View style={styles.quickAddTextView}>
                 <Input 
@@ -404,8 +410,22 @@ const useStyles = makeStyles((theme) => ({
     overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1 },
     keyboardAvoidingView: { width: "100%", height: "100%" },
     normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
+    aiDisclaimerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+        paddingBottom: 10,
+        opacity: 0.8,
+    },
+    aiDisclaimerText: {
+        marginLeft: 5,
+        fontSize: 12,
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+        flexShrink: 1,
+    },
     quickAddListStyle: { flex: 1 },
-    quickAddTextView: { flex: 1, justifyContent: 'flex-start', paddingTop: 10 },
+    quickAddTextView: { flex: 1, justifyContent: 'flex-start' },
     quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
     quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
     analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },

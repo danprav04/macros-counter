@@ -100,6 +100,12 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                     </View>
                 )}
             </View>
+            {unitMode === 'auto' && !isEditMode && (
+                 <View style={styles.aiDisclaimerContainer}>
+                    <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                    <Text style={styles.aiDisclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                </View>
+            )}
             {unitMode === "grams" && (
                 <>
                     {!isEditMode && servingSizeSuggestions.length > 0 && (
@@ -234,6 +240,20 @@ const useStyles = makeStyles((theme) => ({
     },
     disabledButtonGroup: {
         backgroundColor: theme.colors.grey5,
+    },
+    aiDisclaimerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+        marginBottom: 12,
+        opacity: 0.8,
+    },
+    aiDisclaimerText: {
+        marginLeft: 5,
+        fontSize: 12,
+        color: theme.colors.grey2,
+        fontStyle: 'italic',
+        flexShrink: 1,
     },
     servingSizeRow: {
         flexDirection: "row",
