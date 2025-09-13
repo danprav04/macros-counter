@@ -218,7 +218,7 @@ function AppContent() {
 
   return (
     <ThemeProvider theme={createTheme(currentThemeConfig)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
+        <View style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
             <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
             <NavigationContainer 
                 linking={linking} 
@@ -236,7 +236,7 @@ function AppContent() {
                 </RootStack.Navigator>
             </NavigationContainer>
             <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
-        </SafeAreaView>
+        </View>
     </ThemeProvider>
   );
 }
