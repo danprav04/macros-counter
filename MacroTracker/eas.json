@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "credentialsSource": "local"
+      },
       "env": {
         "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
         "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"

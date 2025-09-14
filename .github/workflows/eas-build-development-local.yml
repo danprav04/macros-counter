@@ -46,15 +46,26 @@ jobs:
           echo "Keystore decoded to $KEYSTORE_PATH"
           echo "keystore_path=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
 
+      - name: Create credentials.json
+        working-directory: ./MacroTracker
+        run: |
+          echo '{
+            "android": {
+              "keystore": {
+                "keystorePath": "${{ steps.decode_keystore.outputs.keystore_path }}",
+                "keystorePassword": "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}",
+                "keyAlias": "${{ secrets.ANDROID_KEYSTORE_ALIAS }}",
+                "keyPassword": "${{ secrets.ANDROID_KEY_PASSWORD }}"
+              }
+            }
+          }' > credentials.json
+          echo "credentials.json created successfully."
+
       - name: Build development client locally for Android
         working-directory: ./MacroTracker
         run: eas build --profile development --platform android --local --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_BUILD_ANDROID_KEYSTORE_PATH: ${{ steps.decode_keystore.outputs.keystore_path }}
-          EAS_BUILD_ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          EAS_BUILD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          EAS_BUILD_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Find APK
         id: find_apk
