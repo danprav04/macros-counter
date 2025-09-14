@@ -8,8 +8,6 @@ jobs:
   build:
     name: Build Development Client (Local)
     runs-on: ubuntu-latest
-    # CHANGE 1: Use the 'Production' environment to access keystore secrets.
-    # This does not make it a production build; it only grants access to the secrets.
     environment: Production
 
     steps:
@@ -38,8 +36,7 @@ jobs:
 
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
-      
-      # CHANGE 2: Add the step to decode your production keystore.
+
       - name: Decode Android Keystore
         id: decode_keystore
         working-directory: ./MacroTracker
@@ -51,18 +48,14 @@ jobs:
 
       - name: Build development client locally for Android
         working-directory: ./MacroTracker
-        # CHANGE 3: The --output flag is removed in favor of a more robust "Find APK" step later.
         run: eas build --profile development --platform android --local --non-interactive
         env:
-          # CHANGE 4: Use your primary EXPO_TOKEN. Providing the keystore explicitly fixes the auth issue.
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          # CHANGE 5: Pass the decoded keystore credentials to the build command.
           EAS_BUILD_ANDROID_KEYSTORE_PATH: ${{ steps.decode_keystore.outputs.keystore_path }}
           EAS_BUILD_ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           EAS_BUILD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           EAS_BUILD_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # CHANGE 6: Add a robust step to find the generated APK.
       - name: Find APK
         id: find_apk
         run: |
@@ -78,5 +71,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macrosvisionai-dev-apk
-          # Use the path found by the previous step.
           path: ${{ steps.find_apk.outputs.path }}
