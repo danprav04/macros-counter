@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MacrosVisionAI",
+    "name": "devMacrosVisionAI",
     "slug": "MacroTracker",
     "version": "3.1.1",
     "owner": "danprav",
@@ -36,7 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.macrosvisionai.app",
+      "package": "com.devmacrosvisionai.app",
       "versionCode": 6,
       "userInterfaceStyle": "automatic",
       "androidNavigationBar": {
