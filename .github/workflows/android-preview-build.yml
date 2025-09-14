@@ -1,7 +1,6 @@
 # .github/workflows/android-preview-build.yml
 name: EAS Android Preview Build (Local)
 
-# This workflow runs on pushes to the main/master branch, or can be triggered manually.
 on:
   workflow_dispatch:
 
@@ -9,15 +8,12 @@ jobs:
   build:
     name: Build Android Preview APK
     runs-on: ubuntu-latest
-    # CHANGE 1: Assign the job to the 'Production' environment to access its secrets.
     environment: Production
 
     steps:
-      # Step 1: Check out your repository code
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up the Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -25,53 +21,57 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'MacroTracker/package-lock.json'
 
-      # Step 3: Set up the Java Development Kit
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # Step 4: Set up the Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Step 5: Install project dependencies
       - name: Install dependencies
         working-directory: ./MacroTracker
         run: npm ci
 
-      # Step 6: Install the EAS CLI globally
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      # CHANGE 2: The 'EAS Login' step has been REMOVED. It's not needed.
+      # Decode the production keystore from secrets to use for signing
+      - name: Decode Android Keystore
+        id: decode_keystore
+        working-directory: ./MacroTracker
+        run: |
+          KEYSTORE_PATH="${PWD}/production.keystore"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
+          echo "Keystore decoded to $KEYSTORE_PATH"
+          echo "keystore_path=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
 
-      # Step 7: Start the EAS Build process
+      # Build the APK using the preview profile and the decoded keystore
       - name: Build with EAS
         working-directory: ./MacroTracker
         run: eas build --platform android --profile preview --non-interactive --local
         env:
-          # CHANGE 3: Pass the token directly to the command that needs it.
-          # The EAS CLI automatically uses this environment variable for authentication.
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
+          EAS_BUILD_ANDROID_KEYSTORE_PATH: ${{ steps.decode_keystore.outputs.keystore_path }}
+          EAS_BUILD_ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          EAS_BUILD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          EAS_BUILD_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # Step 8: Find the generated APK file
+      # Find the generated APK file
       - name: Find APK
         id: find_apk
         run: |
-          # CHANGE 4: Search for the APK in the './MacroTracker' directory, not './MacroTracker/android'.
-          # The -maxdepth 1 flag prevents 'find' from searching in subdirectories like node_modules, making it faster.
           APK_PATH=$(find ./MacroTracker -maxdepth 1 -type f -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
-            echo "APK not found!"
+            echo "APK not found in ./MacroTracker directory!"
             exit 1
           fi
           echo "Found APK at: $APK_PATH"
           echo "path=$APK_PATH" >> $GITHUB_OUTPUT
 
-      # Step 9: Upload the APK as a build artifact
+      # Upload the APK as a build artifact for easy download
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
