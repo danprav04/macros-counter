@@ -253,11 +253,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     />
                                     <Button
                                         onPress={handleAnalyzeText}
-                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        buttonStyle={styles.aiButton}
                                         disabled={isAnyLoading}
                                         loading={aiTextLoading}
                                     >
-                                        <Icon name="text-box-search-outline" type="material-community" size={20} color="white" />
+                                        <Icon name="text-box-search-outline" type="material-community" size={20} color={theme.colors.text} />
                                         <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeTextButton')}</Text>
                                         {costs?.cost_macros_recipe != null && !aiTextLoading && (
                                             <PriceTag amount={costs.cost_macros_recipe} type="cost" style={styles.priceTagInButton} />
@@ -266,11 +266,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
                                     <Button
                                         onPress={handleGetImageAndAnalyze}
-                                        buttonStyle={[styles.aiButton, { backgroundColor: theme.colors.grey0 }]}
+                                        buttonStyle={styles.aiButton}
                                         disabled={isAnyLoading}
                                         loading={aiImageLoading}
                                     >
-                                        <Icon name="camera-enhance-outline" type="material-community" size={20} color="white" />
+                                        <Icon name="camera-enhance-outline" type="material-community" size={20} color={theme.colors.text} />
                                         <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeImageButton')}</Text>
                                         {costs?.cost_macros_image_single != null && !aiImageLoading && (
                                             <PriceTag amount={costs.cost_macros_image_single} type="cost" style={styles.priceTagInButton} />
@@ -308,9 +308,10 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         paddingVertical: 12,
         borderRadius: 8,
+        backgroundColor: theme.colors.grey5,
     },
     aiButtonTitle: {
-        color: 'white',
+        color: theme.colors.text,
         fontWeight: "600",
         fontSize: 15,
         textAlign: 'center',

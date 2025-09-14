@@ -2,7 +2,7 @@
   "expo": {
     "name": "MacrosVisionAI",
     "slug": "MacroTracker",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -51,12 +51,21 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "autoVerify": true,
           "data": [
             {
               "scheme": "macrosvisionai",
               "host": "open-add-food-modal"
-            },
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
             {
               "scheme": "https",
               "host": "v1.macros-vision-ai.xyz",
@@ -105,7 +114,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
+        "projectId": "25ac2bcf-78a3-4fcaae7b93f1"
       },
       "storeLinks": {
         "ios": "https://apps.apple.com/app/your-app-id",
