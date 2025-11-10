@@ -74,6 +74,7 @@ export const loadSettings = async (): Promise<Settings> => {
     theme: 'system',
     language: 'system',
     dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
+    foodSortPreference: 'name',
     settingsHistory: []
   };
 

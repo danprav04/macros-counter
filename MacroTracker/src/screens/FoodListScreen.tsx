@@ -17,6 +17,8 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import Constants from 'expo-constants';
 import { findFoodsByTagSearch } from "../utils/searchUtils";
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import { SortOptionValue } from '../types/settings';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -48,8 +50,6 @@ if (typeof btoa === 'undefined') {
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
 
-type SortOptionValue = 'name' | 'newest' | 'oldest';
-
 type FoodListScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'FoodListRoute'>;
 type FoodListScreenRouteProp = RouteProp<MainTabParamList, 'FoodListRoute'>;
 
@@ -72,13 +72,12 @@ const getBackendShareBaseUrl = (): string => {
 };
 
 const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
+    const { settings, changeFoodSortPreference } = useAuth() as AuthContextType;
     const [masterFoods, setMasterFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
     const [search, setSearch] = useState("");
-    const [sortOption, setSortOption] = useState<SortOptionValue>('name');
-    const [sortIndex, setSortIndex] = useState(0);
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -101,10 +100,16 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         { label: t('foodListScreen.sortByOldest'), value: 'oldest' },
     ], [t]);
 
+    const sortOption = useMemo(() => settings.foodSortPreference || 'name', [settings.foodSortPreference]);
+    const sortIndex = useMemo(() => {
+        const index = sortOptions.findIndex(opt => opt.value === sortOption);
+        return index > -1 ? index : 0;
+    }, [sortOption, sortOptions]);
+
     const handleSortChange = (index: number) => {
-        if (isLoading || isSaving) return;
-        setSortIndex(index);
-        setSortOption(sortOptions[index].value);
+        if (isLoading || isSaving || !changeFoodSortPreference) return;
+        const newSortOption = sortOptions[index].value;
+        changeFoodSortPreference(newSortOption);
         setIsSortMenuVisible(false);
     };
     

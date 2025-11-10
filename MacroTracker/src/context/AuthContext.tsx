@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { loadSettings, saveSettings } from '../services/storageService';
 import * as authService from '../services/authService';
 import { getUserStatus } from '../services/backendService';
-import { Settings, LanguageCode } from '../types/settings';
+import { Settings, LanguageCode, SortOptionValue } from '../types/settings';
 import { Token } from '../types/token';
 import { User } from '../types/user';
 
@@ -22,6 +22,7 @@ export interface AuthContextType {
   changeTheme: (theme: 'light' | 'dark' | 'system') => void;
   changeLocale: (locale: LanguageCode) => void;
   changeDailyGoals: (goals: Settings['dailyGoals']) => void;
+  changeFoodSortPreference: (sortPreference: SortOptionValue) => void;
   reloadSettings: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     theme: 'system',
     language: 'system',
     dailyGoals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
+    foodSortPreference: 'name',
   });
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,6 +128,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         return newSettings;
     });
   }, []);
+  
+  const changeFoodSortPreference = useCallback((sortPreference: SortOptionValue) => {
+    setSettings(prev => {
+        const newSettings = { ...prev, foodSortPreference: sortPreference };
+        saveSettings(newSettings);
+        return newSettings;
+    });
+  }, []);
+
 
   const value: AuthContextType = {
     authState,
@@ -137,6 +148,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     changeTheme,
     changeLocale,
     changeDailyGoals,
+    changeFoodSortPreference,
     reloadSettings,
     refreshUser,
   };

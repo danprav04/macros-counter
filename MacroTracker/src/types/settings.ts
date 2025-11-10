@@ -4,6 +4,8 @@ export type MacroType = (typeof macros)[number];
 
 export type LanguageCode = 'en' | 'ru' | 'he' | 'system';
 
+export type SortOptionValue = 'name' | 'newest' | 'oldest';
+
 export interface MacroData {
   x: number; // Timestamp
   y: number; // Macro value
@@ -22,6 +24,7 @@ export interface Settings {
   dailyGoals: {
     [key in MacroType]: number;
   };
+  foodSortPreference?: SortOptionValue;
   settingsHistory?: { date: number; dailyGoals: { [key in MacroType]: number } }[];
 }
 
