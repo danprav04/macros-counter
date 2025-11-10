@@ -15,4 +15,6 @@ export interface User {
   created_at: string; // ISO date string
   verification_email_sent_at?: string; // ISO date string, optional
   badges: Badge[];
+  ad_streak_count: number;
+  ads_watched_today: number;
 }

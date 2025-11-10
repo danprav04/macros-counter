@@ -41,4 +41,10 @@ export interface AppCosts {
     cost_macros_image_multiple: number;
     cost_macros_text_multiple: number;
     cost_per_additional_image: number;
+    ad_streak_start_reward: number;
+    ad_streak_formula: 'linear' | 'exponential';
+    ad_streak_linear_step: number;
+    ad_streak_exponential_base: number;
+    ad_streak_max_reward: number;
+    ad_streak_ads_per_day: number;
 }
