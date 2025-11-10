@@ -403,7 +403,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 round
             />
             <View style={styles.controlsContainer}>
-                <Text style={styles.resultsCount}>{`${displayedFoods.length} foods`}</Text>
+                <Text style={styles.resultsCount}>{t('foodListScreen.foodsCount', { count: displayedFoods.length })}</Text>
                 
                 <TouchableOpacity ref={sortButtonRef} style={styles.sortButton} onPress={toggleSortMenu}>
                     <RNEIcon name="sort" type="material-community" size={18} color={theme.colors.primary} />

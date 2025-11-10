@@ -32,7 +32,8 @@
       "actions": "Account Actions",
       "logout": "Logout",
       "logoutConfirmTitle": "Confirm Logout",
-      "logoutConfirmMessage": "Are you sure you want to log out?"
+      "logoutConfirmMessage": "Are you sure you want to log out?",
+      "deleteAccount": "Delete Account"
     },
     "general": {
       "title": "General",
@@ -59,6 +60,19 @@
       "restartMessage": "Language changed. Restart the app for full effect."
     }
   },
+  "deleteAccountModal": {
+    "title": "Delete Account",
+    "irreversibleWarning": "This action is irreversible. All your data, including entries and food items, will be permanently deleted.",
+    "passwordPlaceholder": "Enter your password to confirm",
+    "buttonCancel": "Cancel",
+    "buttonConfirm": "Confirm Delete",
+    "alertPasswordRequiredTitle": "Password Required",
+    "alertPasswordRequiredMessage": "Please enter your password to confirm.",
+    "alertSuccessTitle": "Account Deleted",
+    "alertSuccessMessage": "Your account and all associated data have been successfully deleted.",
+    "alertFailedTitle": "Deletion Failed",
+    "alertFailedMessage": "An unexpected error occurred. Please try again."
+  },
   "accountSettings": {
     "email": "Email",
     "badges": "Badges",
@@ -69,7 +83,12 @@
     "verificationMessage": "Your account is not verified.",
     "resendInSeconds": "Resend in %{cooldown}s",
     "resendEmailButton": "Resend Email",
-    "requestSent": "Request Sent"
+    "requestSent": "Request Sent",
+    "streakTitle": "Ad Watching Streak",
+    "streakSubtitle": "Increases with each ad, up to %{cap} per day (%{watched}/%{cap} today). Resets if a day is missed.",
+    "nextRewards": "Next Rewards:",
+    "day": "Day",
+    "days": "Days"
   },
   "themeSwitch": {
     "darkMode": "Dark Mode"
@@ -179,7 +198,8 @@
     "sortBy": "Sort by",
     "sortByName": "Name",
     "sortByNewest": "Newest",
-    "sortByOldest": "Oldest"
+    "sortByOldest": "Oldest",
+    "foodsCount": "%{count} foods"
   },
   "addEntryModal": {
     "titleAdd": "Add Entry",

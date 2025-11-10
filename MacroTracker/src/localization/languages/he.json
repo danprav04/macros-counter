@@ -32,7 +32,8 @@
       "actions": "פעולות חשבון",
       "logout": "התנתק",
       "logoutConfirmTitle": "אישור התנתקות",
-      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?"
+      "logoutConfirmMessage": "האם אתה בטוח שברצונך להתנתק?",
+      "deleteAccount": "מחק חשבון"
     },
     "general": {
       "title": "כללי",
@@ -59,6 +60,19 @@
       "restartMessage": "השפה שונתה. הפעל מחדש את האפליקציה להשפעה מלאה."
     }
   },
+  "deleteAccountModal": {
+    "title": "מחק חשבון",
+    "irreversibleWarning": "פעולה זו אינה הפיכה. כל הנתונים שלך, כולל רשומות ופריטי מזון, יימחקו לצמיתות.",
+    "passwordPlaceholder": "הזן את סיסמתך לאישור",
+    "buttonCancel": "ביטול",
+    "buttonConfirm": "אשר מחיקה",
+    "alertPasswordRequiredTitle": "נדרשת סיסמה",
+    "alertPasswordRequiredMessage": "אנא הזן את סיסמתך כדי לאשר.",
+    "alertSuccessTitle": "החשבון נמחק",
+    "alertSuccessMessage": "חשבונך וכל הנתונים המשויכים אליו נמחקו בהצלחה.",
+    "alertFailedTitle": "המחיקה נכשלה",
+    "alertFailedMessage": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
+  },
   "accountSettings": {
     "email": "אימייל",
     "badges": "תגים",
@@ -69,7 +83,12 @@
     "verificationMessage": "חשבונך אינו מאומת.",
     "resendInSeconds": "שלח שוב בעוד %{cooldown}שנ'",
     "resendEmailButton": "שלח אימייל שוב",
-    "requestSent": "הבקשה נשלחה"
+    "requestSent": "הבקשה נשלחה",
+    "streakTitle": "רצף צפייה במודעות",
+    "streakSubtitle": "התגמול עולה עם כל מודעה, עד %{cap} ביום (%{watched}/%{cap} היום). הרצף מתאפס אם מדלגים על יום.",
+    "nextRewards": "תגמולים הבאים:",
+    "day": "יום",
+    "days": "ימים"
   },
   "themeSwitch": {
     "darkMode": "מצב כהה"
@@ -179,7 +198,8 @@
     "sortBy": "מיין לפי",
     "sortByName": "שם",
     "sortByNewest": "החדש ביותר",
-    "sortByOldest": "הישן ביותר"
+    "sortByOldest": "הישן ביותר",
+    "foodsCount": "%{count} מאכלים"
   },
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",

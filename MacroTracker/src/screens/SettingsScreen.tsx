@@ -267,7 +267,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
               <ListItem.Content>
                   <ListItem.Title style={styles.deleteTitle}>
-                      Delete Account
+                      {t('settingsScreen.account.deleteAccount')}
                   </ListItem.Title>
               </ListItem.Content>
               <ListItem.Chevron color={theme.colors.error} />

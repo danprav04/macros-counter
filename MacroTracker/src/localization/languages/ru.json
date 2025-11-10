@@ -32,7 +32,8 @@
       "actions": "Действия с аккаунтом",
       "logout": "Выйти",
       "logoutConfirmTitle": "Подтвердите выход",
-      "logoutConfirmMessage": "Вы уверены, что хотите выйти?"
+      "logoutConfirmMessage": "Вы уверены, что хотите выйти?",
+      "deleteAccount": "Удалить аккаунт"
     },
     "general": {
       "title": "Общие",
@@ -59,6 +60,19 @@
       "restartMessage": "Язык изменен. Перезапустите приложение для полного эффекта."
     }
   },
+  "deleteAccountModal": {
+    "title": "Удалить аккаунт",
+    "irreversibleWarning": "Это действие необратимо. Все ваши данные, включая записи и продукты, будут удалены навсегда.",
+    "passwordPlaceholder": "Введите пароль для подтверждения",
+    "buttonCancel": "Отмена",
+    "buttonConfirm": "Подтвердить удаление",
+    "alertPasswordRequiredTitle": "Требуется пароль",
+    "alertPasswordRequiredMessage": "Пожалуйста, введите ваш пароль для подтверждения.",
+    "alertSuccessTitle": "Аккаунт удален",
+    "alertSuccessMessage": "Ваш аккаунт и все связанные с ним данные были успешно удалены.",
+    "alertFailedTitle": "Ошибка удаления",
+    "alertFailedMessage": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
+  },
   "accountSettings": {
     "email": "Электронная почта",
     "badges": "Значки",
@@ -69,7 +83,12 @@
     "verificationMessage": "Ваш аккаунт не подтвержден.",
     "resendInSeconds": "Отправить через %{cooldown}с",
     "resendEmailButton": "Отправить письмо повторно",
-    "requestSent": "Запрос отправлен"
+    "requestSent": "Запрос отправлен",
+    "streakTitle": "Серия просмотров рекламы",
+    "streakSubtitle": "Награда растет с каждой рекламой, до %{cap} в день (%{watched}/%{cap} сегодня). Сбрасывается при пропуске дня.",
+    "nextRewards": "Следующие награды:",
+    "day": "День",
+    "days": "Дней"
   },
   "themeSwitch": {
     "darkMode": "Темный режим"
@@ -179,7 +198,8 @@
     "sortBy": "Сортировать по",
     "sortByName": "Имени",
     "sortByNewest": "Новые",
-    "sortByOldest": "Старые"
+    "sortByOldest": "Старые",
+    "foodsCount": "%{count} продуктов"
   },
   "addEntryModal": {
     "titleAdd": "Добавить запись",

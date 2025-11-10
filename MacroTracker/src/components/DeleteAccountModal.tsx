@@ -4,6 +4,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { Overlay, Button, Input, Text, useTheme, Icon } from '@rneui/themed';
 import { deleteCurrentUserAccount } from '../services/backendService';
 import { BackendError } from '../services/backendService';
+import { t } from '../localization/i18n';
 
 interface DeleteAccountModalProps {
   isVisible: boolean;
@@ -23,23 +24,23 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
 
   const handleConfirmDelete = async () => {
     if (!password) {
-      Alert.alert('Password Required', 'Please enter your password to confirm.');
+      Alert.alert(t('deleteAccountModal.alertPasswordRequiredTitle'), t('deleteAccountModal.alertPasswordRequiredMessage'));
       return;
     }
     setIsLoading(true);
     try {
       await deleteCurrentUserAccount(password);
       Alert.alert(
-        'Account Deleted',
-        'Your account and all associated data have been successfully deleted.',
+        t('deleteAccountModal.alertSuccessTitle'),
+        t('deleteAccountModal.alertSuccessMessage'),
         [{ text: 'OK', onPress: onAccountDeleted }]
       );
       onClose();
     } catch (error) {
       if (error instanceof BackendError) {
-        Alert.alert('Deletion Failed', error.message);
+        Alert.alert(t('deleteAccountModal.alertFailedTitle'), error.message);
       } else {
-        Alert.alert('Deletion Failed', 'An unexpected error occurred. Please try again.');
+        Alert.alert(t('deleteAccountModal.alertFailedTitle'), t('deleteAccountModal.alertFailedMessage'));
       }
     } finally {
       setIsLoading(false);
@@ -61,13 +62,13 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
       <View style={styles.container}>
         <Icon name="alert-circle-outline" type="material-community" size={40} color={theme.colors.error} />
         <Text h4 h4Style={[styles.title, { color: theme.colors.error }]}>
-          Delete Account
+          {t('deleteAccountModal.title')}
         </Text>
         <Text style={[styles.message, { color: theme.colors.text }]}>
-          This action is irreversible. All your data, including entries and food items, will be permanently deleted.
+          {t('deleteAccountModal.irreversibleWarning')}
         </Text>
         <Input
-          placeholder="Enter your password to confirm"
+          placeholder={t('deleteAccountModal.passwordPlaceholder')}
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!isPasswordVisible}
@@ -85,9 +86,9 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
           }
         />
         <View style={styles.buttonContainer}>
-          <Button title="Cancel" onPress={handleCancel} type="outline" buttonStyle={styles.button} />
+          <Button title={t('deleteAccountModal.buttonCancel')} onPress={handleCancel} type="outline" buttonStyle={styles.button} />
           <Button
-            title="Confirm Delete"
+            title={t('deleteAccountModal.buttonConfirm')}
             onPress={handleConfirmDelete}
             color="error"
             buttonStyle={styles.button}
