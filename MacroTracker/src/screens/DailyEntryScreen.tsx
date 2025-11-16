@@ -511,6 +511,7 @@ const DailyEntryScreen: React.FC = () => {
         }}
         onDelete={handleDeleteFromDetails}
         item={selectedEntryForDetails?.item || null}
+        dailyGoals={dailyGoals}
       />
     </SafeAreaView>
   );

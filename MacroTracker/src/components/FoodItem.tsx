@@ -1,6 +1,6 @@
 // src/components/FoodItem.tsx
 import React, { forwardRef, memo, useMemo, useEffect } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, Pressable } from "react-native";
 import { ListItem, Icon as RNEIcon, useTheme, Button, makeStyles, Text } from "@rneui/themed";
 import { Food } from "../types/food";
 import { t } from '../localization/i18n';
@@ -9,7 +9,6 @@ import { getFoodIconUrl } from "../utils/iconUtils";
 
 interface FoodItemProps {
   food: Food;
-  onEdit: (food: Food) => void;
   onDelete: (foodId: string) => void;
   onQuickAdd: (food: Food) => void;
   onShare: (food: Food) => void;
@@ -19,7 +18,7 @@ interface FoodItemProps {
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onQuickAdd, onShare, onView, foodIconUrl, setFoodIconForName }, ref) => {
+  ({ food, onDelete, onQuickAdd, onShare, onView, foodIconUrl, setFoodIconForName }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
 
@@ -55,43 +54,49 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         ref={ref}
         bottomDivider
         onPress={() => onView(food)}
-        leftContent={(reset) => (
-          <Button title={t('foodListScreen.edit')} onPress={() => { onEdit(food); reset(); }} icon={{ name: "edit", color: theme.colors.white }} buttonStyle={styles.swipeButtonEdit} titleStyle={styles.swipeButtonTitle} />
-        )}
         rightContent={(reset) => (
           <Button title={t('foodListScreen.delete')} onPress={() => { onDelete(food.id); reset(); }} icon={{ name: "delete", color: theme.colors.white }} buttonStyle={styles.swipeButtonDelete} titleStyle={styles.swipeButtonTitle} />
         )}
         containerStyle={styles.listItemContainer}
       >
-        {renderIcon()}
-        <ListItem.Content>
-          <View style={styles.titleContainer}>
-            {gradeResult && (
-                <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
-                    {gradeResult.letter}
-                </Text>
-            )}
-            <ListItem.Title style={styles.title} numberOfLines={2} ellipsizeMode="tail">
-                {food.name}
-            </ListItem.Title>
-          </View>
-          <ListItem.Subtitle style={styles.subtitle}>
-            {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
-          </ListItem.Subtitle>
-        </ListItem.Content>
-        <TouchableOpacity onPress={() => onShare(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
-            <RNEIcon name="share-variant-outline" type="material-community" color={theme.colors.primary} size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
-            <RNEIcon name="add-circle-outline" type="ionicon" color={theme.colors.primary} size={26} />
-        </TouchableOpacity>
+        <Pressable onPress={() => onView(food)} style={styles.pressableContent}>
+            {renderIcon()}
+            <ListItem.Content>
+              <View style={styles.titleContainer}>
+                {gradeResult && (
+                    <Text style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                        {gradeResult.letter}
+                    </Text>
+                )}
+                <ListItem.Title style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+                    {food.name}
+                </ListItem.Title>
+              </View>
+              <ListItem.Subtitle style={styles.subtitle}>
+                {`100g: Cal: ${Math.round(food.calories)} P: ${Math.round(food.protein)} C: ${Math.round(food.carbs)} F: ${Math.round(food.fat)}`}
+              </ListItem.Subtitle>
+            </ListItem.Content>
+            <TouchableOpacity onPress={() => onShare(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+                <RNEIcon name="share-variant-outline" type="material-community" color={theme.colors.primary} size={24} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+                <RNEIcon name="add-circle-outline" type="ionicon" color={theme.colors.primary} size={26} />
+            </TouchableOpacity>
+        </Pressable>
       </ListItem.Swipeable>
     );
   }
 ));
 
 const useStyles = makeStyles((theme) => ({
-    listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
+    listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 0, paddingHorizontal: 0, borderBottomColor: theme.colors.divider, },
+    pressableContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 15,
+      backgroundColor: 'transparent',
+    },
     titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
     gradePill: {
         fontSize: 12, fontWeight: 'bold', color: theme.colors.white, 
@@ -100,7 +105,6 @@ const useStyles = makeStyles((theme) => ({
     },
     title: { color: theme.colors.text, fontWeight: "600", fontSize: 16, flexShrink: 1, textAlign: 'left', }, 
     subtitle: { color: theme.colors.secondary, fontSize: 13, marginTop: 2, textAlign: 'left', },
-    swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
     foodIconEmoji: {

@@ -77,12 +77,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [masterFoods, setMasterFoods] = useState<Food[]>([]);
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
     const [isLoading, setIsLoading] = useState(true);
-    const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+    const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
     const [selectedFoodForDetails, setSelectedFoodForDetails] = useState<Food | null>(null);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
-    const [editFood, setEditFood] = useState<Food | null>(null);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isSortMenuVisible, setIsSortMenuVisible] = useState(false);
@@ -194,34 +193,27 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         return items;
     }, [masterFoods, search, sortOption]);
 
-    const handleViewFoodDetails = useCallback((food: Food) => {
+    const handleViewFood = useCallback((food: Food) => {
         setSelectedFoodForDetails(food);
         setIsDetailsModalVisible(true);
     }, []);
 
-    const toggleOverlay = useCallback((foodToEdit?: Food) => {
+    const toggleAddOverlay = useCallback(() => {
         if (isSaving) return;
-        if (foodToEdit) {
-            setEditFood({ ...foodToEdit });
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
-        } else {
-            setEditFood(null);
-            setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
-        }
+        setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         setErrors({});
-        setIsOverlayVisible(prev => !prev);
+        setIsAddModalVisible(prev => !prev);
     }, [isSaving]);
 
     useEffect(() => {
       const params = route.params;
       if (params) {
-        if (params.openAddFoodModal && !isOverlayVisible) {
-          toggleOverlay();
+        if (params.openAddFoodModal && !isAddModalVisible) {
+          toggleAddOverlay();
           navigation.setParams({ openAddFoodModal: undefined });
         }
         if (params.foodData && typeof params.foodData === 'string') {
           try {
-            // URL-safe Base64 decoding
             let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
             const binaryString = atob(b64);
             const utf8Bytes = new Uint8Array(binaryString.length);
@@ -229,7 +221,6 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const decodedJson = new TextDecoder().decode(utf8Bytes);
             const potentialFood: any = JSON.parse(decodedJson);
             
-            // **SECURITY IMPLEMENTATION: Sanitize and validate incoming data**
             const sanitizedFood: Omit<Food, "id" | "createdAt"> = {
                 name: String(potentialFood.name || "").substring(0, 100).trim(),
                 calories: Math.max(0, Number(potentialFood.calories) || 0),
@@ -240,8 +231,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
             if (sanitizedFood.name) {
               setNewFood(sanitizedFood);
-              setEditFood(null); 
-              setIsOverlayVisible(true);
+              setIsAddModalVisible(true);
             } else { 
               Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData')); 
             }
@@ -252,7 +242,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
           }
         }
       }
-    }, [route.params, isOverlayVisible, toggleOverlay, navigation, t]);
+    }, [route.params, isAddModalVisible, toggleAddOverlay, navigation, t]);
 
     const handleUndoDelete = useCallback((foodToRestore: Food) => {
         Toast.hide();
@@ -274,6 +264,9 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const handleDeleteFood = useCallback((foodId: string) => {
         const foodToDelete = masterFoods.find(f => f.id === foodId);
         if (!foodToDelete) return;
+
+        setIsDetailsModalVisible(false);
+        setSelectedFoodForDetails(null);
         
         if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
         
@@ -325,25 +318,24 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const created = await createFood(trimmedFood);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMasterFoods(prev => [...prev, created]);
-            setIsOverlayVisible(false); onFoodChange?.();
+            setIsAddModalVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
         } finally { setIsSaving(false); }
     };
 
-    const handleUpdateFood = async () => {
-        if (!editFood) return;
-        const trimmedFood = { ...editFood, name: editFood.name.trim() };
-        if (validateFood(trimmedFood)) { Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
+    const handleUpdateFood = async (foodToUpdate: Food) => {
+        const trimmedFood = { ...foodToUpdate, name: foodToUpdate.name.trim() };
         setIsSaving(true);
         try {
             const updated = await updateFood(trimmedFood);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMasterFoods(prev => prev.map(f => (f.id === updated.id ? updated : f)));
-            setIsOverlayVisible(false); onFoodChange?.();
+            setIsDetailsModalVisible(false);
+            onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
-            setEditFood(null);
+            setSelectedFoodForDetails(null);
         } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
         } finally { setIsSaving(false); }
     };
@@ -365,7 +357,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         } catch (error) { Alert.alert(t('foodListScreen.shareErrorTitle'), t('foodListScreen.shareErrorMessage')); }
     }, [t]);
 
-    const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string, isEdit: boolean) => {
+    const handleInputChange = (key: keyof Omit<Food, "id" | "createdAt">, value: string) => {
         const numericKeys: (keyof Omit<Food, "id" | "createdAt">)[] = ['calories', 'protein', 'carbs', 'fat'];
         let processedValue: string | number = value;
         if (numericKeys.includes(key)) {
@@ -377,7 +369,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             let finalValue: string | number = numericKeys.includes(key) ? ((processedValue === "" || processedValue === ".") ? 0 : parseFloat(processedValue as string) || 0) : processedValue;
             return { ...prevState, [key]: finalValue };
         };
-        if (isEdit) setEditFood(updateState); else setNewFood(updateState);
+        setNewFood(updateState);
     };
     
     const setFoodIconForName = useCallback((name: string, icon: string | null) => {
@@ -440,11 +432,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 renderItem={({ item }) => (
                     <FoodItem
                         food={item}
-                        onEdit={toggleOverlay}
                         onDelete={handleDeleteFood}
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
-                        onView={handleViewFoodDetails}
+                        onView={handleViewFood}
                         foodIconUrl={foodIcons[item.name]}
                         setFoodIconForName={setFoodIconForName}
                     />
@@ -465,21 +456,21 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}
                 color={theme.colors.primary}
-                onPress={() => !isSaving && toggleOverlay()}
+                onPress={() => !isSaving && toggleAddOverlay()}
                 placement="right"
                 size="large"
                 style={styles.fab}
                 disabled={isSaving}
             />
-            {isOverlayVisible && <AddFoodModal
-                isVisible={isOverlayVisible}
-                toggleOverlay={() => !isSaving && setIsOverlayVisible(false)} 
+            {isAddModalVisible && <AddFoodModal
+                isVisible={isAddModalVisible}
+                toggleOverlay={() => !isSaving && setIsAddModalVisible(false)} 
                 newFood={newFood}
-                editFood={editFood}
+                editFood={null} // Add modal is only for new food
                 errors={errors}
                 handleInputChange={handleInputChange}
                 handleCreateFood={handleCreateFood}
-                handleUpdateFood={handleUpdateFood}
+                handleUpdateFood={async () => {}} // No-op for create
                 validateFood={validateFood}
                 setErrors={setErrors}
             />}
@@ -487,6 +478,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 isVisible={isDetailsModalVisible}
                 onClose={() => setIsDetailsModalVisible(false)}
                 food={selectedFoodForDetails}
+                onSave={handleUpdateFood}
+                onDelete={handleDeleteFood}
             />
         </SafeAreaView>
     );

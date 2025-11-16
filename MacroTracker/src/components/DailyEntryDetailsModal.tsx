@@ -5,8 +5,9 @@ import { Overlay, Text, Icon, useTheme, makeStyles, Divider, ListItem, Input, Bu
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
 import { getFoodIconUrl } from '../utils/iconUtils';
-import { calculateBaseFoodGrade, FoodGradeResult } from '../utils/gradingUtils';
+import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
 import { isValidNumberInput } from '../utils/validationUtils';
+import { Settings } from '../types/settings';
 
 interface DailyEntryDetailsModalProps {
   isVisible: boolean;
@@ -14,9 +15,10 @@ interface DailyEntryDetailsModalProps {
   onSave: (newGrams: number) => void;
   onDelete: () => void;
   item: DailyEntryItem | null;
+  dailyGoals: Settings['dailyGoals'];
 }
 
-const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisible, onClose, onSave, onDelete, item }) => {
+const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisible, onClose, onSave, onDelete, item, dailyGoals }) => {
   const { theme } = useTheme();
   const styles = useStyles();
   const [grams, setGrams] = useState('');
@@ -28,6 +30,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
     } else {
       setGrams('');
     }
+    setIsSaving(false); // Reset saving state when item changes or modal closes
   }, [item]);
 
   const food = item?.food;
@@ -36,20 +39,20 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
     if (!food?.name) return null;
     return getFoodIconUrl(food.name);
   }, [food]);
+  
+  const numericGramsValue = useMemo(() => parseFloat(grams) || 0, [grams]);
 
   const gradeResult: FoodGradeResult | null = useMemo(() => {
-    if (!food) return null;
-    return calculateBaseFoodGrade(food);
-  }, [food]);
+    if (!food || !dailyGoals || !isValidNumberInput(grams) || numericGramsValue <= 0) return null;
+    return calculateDailyEntryGrade(food, numericGramsValue, dailyGoals);
+  }, [food, dailyGoals, grams, numericGramsValue]);
 
   const handleSave = () => {
-    const numericGrams = parseFloat(grams);
-    if (!isValidNumberInput(grams) || numericGrams <= 0) {
+    if (!isValidNumberInput(grams) || numericGramsValue <= 0) {
       return;
     }
     setIsSaving(true);
-    onSave(numericGrams);
-    // isSaving will be reset when the modal closes and item becomes null
+    onSave(numericGramsValue);
   };
   
   const handleDelete = () => {
@@ -59,8 +62,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
   if (!item || !food) {
     return null;
   }
-
-  const numericGramsValue = parseFloat(grams) || 0;
+  
   const factor = isValidNumberInput(grams) && numericGramsValue > 0 ? numericGramsValue / 100 : 0;
   
   const calculatedMacros = {
@@ -81,7 +83,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
     </ListItem>
   );
   
-  const isSaveDisabled = !isValidNumberInput(grams) || parseFloat(grams) <= 0 || parseFloat(grams) === item.grams || isSaving;
+  const isSaveDisabled = !isValidNumberInput(grams) || numericGramsValue <= 0 || numericGramsValue === item.grams || isSaving;
 
   return (
     <Overlay isVisible={isVisible} onBackdropPress={onClose} overlayStyle={styles.overlay}>
