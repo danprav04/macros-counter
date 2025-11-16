@@ -80,7 +80,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
                 <RNEIcon name="share-variant-outline" type="material-community" color={theme.colors.primary} size={24} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onQuickAdd(food)} style={styles.actionButton} hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
-                <RNEIcon name="add-circle-outline" type="ionicon" color={theme.colors.primary} size={26} />
+                <RNEIcon name="calendar-plus" type="material-community" color={theme.colors.primary} size={26} />
             </TouchableOpacity>
         </Pressable>
       </ListItem.Swipeable>
