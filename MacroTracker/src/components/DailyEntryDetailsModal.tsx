@@ -87,7 +87,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
 
   return (
     <Overlay isVisible={isVisible} onBackdropPress={onClose} overlayStyle={styles.overlay}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             {iconIdentifier ? (
