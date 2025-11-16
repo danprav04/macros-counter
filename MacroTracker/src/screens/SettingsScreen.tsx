@@ -444,6 +444,8 @@ const useStyles = makeStyles((theme) => ({
     borderWidth: 1,
     borderColor: theme.colors.divider,
     marginBottom: 10,
+    paddingBottom: 10,
+    paddingTop: 3,
     marginTop: -5,
   },
   pickerStyle: {

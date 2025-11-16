@@ -300,7 +300,6 @@ const useStyles = makeStyles((theme) => ({
   },
   scrollContentContainer: {
     padding: 20,
-    paddingBottom: 40,
   },
   title: {
     marginBottom: 20,
@@ -325,6 +324,8 @@ const useStyles = makeStyles((theme) => ({
     borderColor: theme.colors.grey3,
     borderWidth: 1,
     borderRadius: 5,
+    paddingBottom: 8,
+    paddingTop: 2,
     backgroundColor: theme.colors.background, // Ensure picker background matches
   },
   picker: {
