@@ -8,8 +8,8 @@ import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
 import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
-import DeleteAccountModal from "../components/DeleteAccountModal"; // Import the new modal
-import { loadSettings, saveSettings, loadDailyEntries } from "../services/storageService";
+import DeleteAccountModal from "../components/DeleteAccountModal";
+import { loadDailyEntries } from "../services/storageService";
 import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
@@ -59,9 +59,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
-  const [isDataLoading, setIsDataLoading] = useState(true); 
+  
+  // --- Granular loading states for lazy loading ---
+  const [isUserRefreshing, setIsUserRefreshing] = useState(true);
+  const [isStatisticsLoading, setIsStatisticsLoading] = useState(true);
+  
   const [isAdLoading, setIsAdLoading] = useState(false);
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // State for delete modal
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -110,50 +114,66 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     return [finalIntakeData, movingAverageData];
   }, []);
 
-  const updateStatistics = useCallback(async (currentGoals: { [key in MacroType]: number }) => {
-    try {
-        const loadedEntries = await loadDailyEntries();
-        const updatedStats: Statistics = { calories: [], protein: [], carbs: [], fat: [] };
-        (macroKeysSetting as readonly MacroType[]).forEach(macro => {
-            updatedStats[macro] = getStatisticsData(loadedEntries, macro, currentGoals);
-        });
-        setStatistics(updatedStats);
-    } catch (error) {
-        console.error("SettingsScreen: Failed to update statistics:", error);
-    }
-  }, [getStatisticsData]);
+  // Effect to refresh user status and local settings (e.g., theme) upon focus.
+  useFocusEffect(
+    useCallback(() => {
+        let isActive = true;
+        setIsUserRefreshing(true);
+        const refreshUserData = async () => {
+            try {
+                await Promise.all([
+                    refreshUser ? refreshUser() : Promise.resolve(),
+                    reloadSettings ? reloadSettings() : Promise.resolve()
+                ]);
+            } catch (error) {
+                if (isActive) {
+                    console.error("Failed to refresh user/settings data", error);
+                }
+            } finally {
+                if (isActive) {
+                    setIsUserRefreshing(false);
+                }
+            }
+        };
+        refreshUserData();
+        return () => { isActive = false; };
+    }, [refreshUser, reloadSettings])
+  );
 
-  useFocusEffect( useCallback(() => {
-      let isActive = true;
-      setIsDataLoading(true);
-      const loadAndProcessData = async () => {
-        try {
-          if (!isActive) return;
-          // Refresh user data (including coins) every time the screen is focused.
-          if (refreshUser) {
-              await refreshUser();
-          }
-          if (reloadSettings) {
-            await reloadSettings();
-          }
-        } catch (error) {
-          if (isActive) Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
-        } finally {
-          if (isActive) setIsDataLoading(false);
-        }
-      };
-      loadAndProcessData();
-      return () => { isActive = false; };
-    }, [reloadSettings, refreshUser, t]) 
+  // Effect to load and calculate statistics data (the slow part) upon focus.
+  useFocusEffect(
+      useCallback(() => {
+          let isActive = true;
+          const loadAndProcessStats = async () => {
+              if (!settings) return;
+              setIsStatisticsLoading(true);
+              try {
+                  const loadedEntries = await loadDailyEntries();
+                  if (!isActive) return;
+
+                  const updatedStats: Statistics = { calories: [], protein: [], carbs: [], fat: [] };
+                  (macroKeysSetting as readonly MacroType[]).forEach(macro => {
+                      updatedStats[macro] = getStatisticsData(loadedEntries, macro, settings.dailyGoals);
+                  });
+                  setStatistics(updatedStats);
+              } catch (error) {
+                  console.error("SettingsScreen: Failed to update statistics:", error);
+              } finally {
+                  if (isActive) {
+                      setIsStatisticsLoading(false);
+                      setChartUpdateKey(prev => prev + 1);
+                  }
+              }
+          };
+
+          loadAndProcessStats();
+          return () => { isActive = false; };
+      }, [settings, getStatisticsData])
   );
   
   useEffect(() => {
-    if (settings) {
-        updateStatistics(settings.dailyGoals);
-        navigation.setOptions({ title: t('settingsScreen.title') });
-        setChartUpdateKey(prev => prev + 1);
-    }
-  }, [settings, updateStatistics, navigation, t]);
+    navigation.setOptions({ title: t('settingsScreen.title') });
+  }, [navigation, i18n.locale]);
   
   const handleWatchAd = async () => {
     if (!user?.client_id || isAdLoading) return;
@@ -166,10 +186,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       Toast.show({
         type: 'success',
         text1: 'Reward Earned!',
-        text2: 'Your coin balance will update on your next action.',
+        text2: 'Your coin balance will update shortly.',
         position: 'bottom'
       });
-
       setTimeout(() => {
         refreshUser?.();
       }, 3000); 
@@ -182,14 +201,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     const numericValue = parseFloat(value);
     const validatedValue = isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
 
-    if (changeDailyGoals) {
+    if (changeDailyGoals && settings) {
       const updatedGoals = { ...settings.dailyGoals, [goalType]: validatedValue };
       changeDailyGoals(updatedGoals);
     }
-  }, [settings.dailyGoals, changeDailyGoals]);
+  }, [settings, changeDailyGoals]);
 
   const localDataOperationHandler = useCallback(async () => {
-    setIsDataLoading(true);
+    setIsUserRefreshing(true);
     try {
       if (reloadSettings) {
         await reloadSettings();
@@ -200,7 +219,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     } catch (error) { 
         Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage')); 
     } finally { 
-        setIsDataLoading(false); 
+        setIsUserRefreshing(false); 
     }
   }, [reloadSettings, refreshUser, onDataOperation, t]);
 
@@ -221,7 +240,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             setTimeout(() => refreshUser(), 1000);
         }
     } catch (error) {
-        // Error is handled by backendService which shows an alert
         console.error("Failed to resend verification email:", error);
     }
   }, [refreshUser, t]);
@@ -234,7 +252,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
-  if (isDataLoading || !settings) {
+  if (!settings) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -249,7 +267,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
           <AccountSettings
             user={user}
-            isLoading={!user && isDataLoading}
+            isLoading={isUserRefreshing}
             isAdLoading={isAdLoading}
             onWatchAd={handleWatchAd}
             onResendVerification={handleResendVerification}
@@ -321,8 +339,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           </View>
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
-          <View style={styles.chartContainer}>
+          <View style={[styles.chartContainer, isStatisticsLoading && styles.chartLoadingContainer]}>
+            {isStatisticsLoading ? (
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+            ) : (
               <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
+            )}
           </View>
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.dataManagement.title')}</Text>
@@ -410,6 +432,11 @@ const useStyles = makeStyles((theme) => ({
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
   chartContainer: {
     marginBottom: 20,
+  },
+  chartLoadingContainer: {
+    height: 250,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pickerContainerAndroid: {
     backgroundColor: theme.colors.background,
