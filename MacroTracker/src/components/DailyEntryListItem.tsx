@@ -1,6 +1,6 @@
 // src/components/DailyEntryListItem.tsx
-import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { memo, useMemo, useEffect } from 'react';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { ListItem, Button, Icon as RNEIcon, useTheme, makeStyles, Text } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
 import { t } from '../localization/i18n';
@@ -8,13 +8,12 @@ import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils
 import { Settings } from '../types/settings';
 import { getFoodIconUrl } from '../utils/iconUtils';
 
-
 interface DailyEntryListItemProps {
     item: DailyEntryItem;
     reversedIndex: number;
     foodIcons: { [foodName: string]: string | null };
     setFoodIcons: React.Dispatch<React.SetStateAction<{ [foodName: string]: string | null }>>;
-    onEdit: (item: DailyEntryItem, reversedIndex: number) => void;
+    onPress: (item: DailyEntryItem, reversedIndex: number) => void;
     onRemove: (reversedIndex: number) => void;
     isSaving: boolean;
     dailyGoals: Settings['dailyGoals'];
@@ -25,7 +24,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     reversedIndex,
     foodIcons,
     setFoodIcons,
-    onEdit,
+    onPress,
     onRemove,
     isSaving,
     dailyGoals,
@@ -38,7 +37,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
             if (foodIcons[item.food.name] !== undefined) {
                 return foodIcons[item.food.name];
             }
-            return getFoodIconUrl(item.food.name); // No locale needed
+            return getFoodIconUrl(item.food.name);
         }
         return null;
     }, [item.food?.name, foodIcons]);
@@ -49,12 +48,10 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
         }
     }, [item.food?.name, iconIdentifier, foodIcons, setFoodIcons]);
 
-
     const gradeResult: FoodGradeResult | null = useMemo(() => {
         if (!item || !item.food || !dailyGoals) return null;
         return calculateDailyEntryGrade(item.food, item.grams, dailyGoals);
     }, [item, dailyGoals]);
-
 
     const renderListItemIcon = () => {
         if (!item?.food) {
@@ -85,7 +82,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
          );
      }
 
-    const handleEditPress = () => { if (!isSaving) onEdit(item, reversedIndex); };
+    const handlePress = () => { if (!isSaving) onPress(item, reversedIndex); };
     const handleDeletePress = () => { if (!isSaving) onRemove(reversedIndex); };
 
     const calculatedCalories = Math.round((item.food.calories / 100) * item.grams);
@@ -96,16 +93,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
     return (
         <ListItem.Swipeable
             bottomDivider
-            leftContent={(reset) => (
-                <Button
-                    title={t('dailyEntryScreen.edit')}
-                    onPress={() => { handleEditPress(); reset(); }}
-                    icon={{ name: "edit", color: theme.colors.white }}
-                    buttonStyle={styles.swipeButtonEdit}
-                    titleStyle={styles.swipeButtonTitle}
-                    disabled={isSaving}
-                />
-            )}
+            onPress={handlePress}
             rightContent={(reset) => (
                 <Button
                     title={t('dailyEntryScreen.delete')}
@@ -118,6 +106,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
             )}
             containerStyle={styles.listItemContainer}
         >
+          <Pressable onPress={handlePress} style={styles.pressableContent}>
             {renderListItemIcon()}
             <ListItem.Content>
                 <View style={styles.titleContainer}>
@@ -135,6 +124,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
                 </ListItem.Subtitle>
             </ListItem.Content>
             <ListItem.Chevron color={theme.colors.grey3} />
+          </Pressable>
         </ListItem.Swipeable>
     );
 });
@@ -150,7 +140,14 @@ const useStyles = makeStyles((theme) => ({
         textAlignVertical: 'center',
     },
     iconPlaceholder: { backgroundColor: theme.colors.grey5, },
-    listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 12, paddingHorizontal: 15, borderBottomColor: theme.colors.divider, },
+    listItemContainer: { backgroundColor: theme.colors.background, paddingVertical: 0, paddingHorizontal: 0, borderBottomColor: theme.colors.divider, },
+    pressableContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 15,
+      backgroundColor: 'transparent',
+    },
     titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, },
     gradePill: {
         fontSize: 12,
@@ -172,7 +169,6 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'left',
     },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
-    swipeButtonEdit: { minHeight: "100%", backgroundColor: theme.colors.warning, justifyContent: 'center', alignItems: 'center', },
     swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
     textLeft: { textAlign: 'left'},

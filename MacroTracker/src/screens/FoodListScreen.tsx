@@ -9,6 +9,7 @@ import { SearchBar, useTheme, makeStyles, Text, Icon as RNEIcon, Overlay } from 
 import { FAB } from "@rneui/base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AddFoodModal from "../components/AddFoodModal";
+import FoodDetailsModal from "../components/FoodDetailsModal";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { getFoodIconUrl } from "../utils/iconUtils";
@@ -77,6 +78,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+    const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
+    const [selectedFoodForDetails, setSelectedFoodForDetails] = useState<Food | null>(null);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
     const [editFood, setEditFood] = useState<Food | null>(null);
@@ -190,6 +193,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         }
         return items;
     }, [masterFoods, search, sortOption]);
+
+    const handleViewFoodDetails = useCallback((food: Food) => {
+        setSelectedFoodForDetails(food);
+        setIsDetailsModalVisible(true);
+    }, []);
 
     const toggleOverlay = useCallback((foodToEdit?: Food) => {
         if (isSaving) return;
@@ -436,6 +444,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                         onDelete={handleDeleteFood}
                         onQuickAdd={handleQuickAdd}
                         onShare={handleShareFood}
+                        onView={handleViewFoodDetails}
                         foodIconUrl={foodIcons[item.name]}
                         setFoodIconForName={setFoodIconForName}
                     />
@@ -474,6 +483,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 validateFood={validateFood}
                 setErrors={setErrors}
             />}
+            <FoodDetailsModal
+                isVisible={isDetailsModalVisible}
+                onClose={() => setIsDetailsModalVisible(false)}
+                food={selectedFoodForDetails}
+            />
         </SafeAreaView>
     );
 };

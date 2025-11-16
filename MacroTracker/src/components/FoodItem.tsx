@@ -13,12 +13,13 @@ interface FoodItemProps {
   onDelete: (foodId: string) => void;
   onQuickAdd: (food: Food) => void;
   onShare: (food: Food) => void;
+  onView: (food: Food) => void;
   foodIconUrl: string | null; 
   setFoodIconForName: (name: string, icon: string | null) => void;
 }
 
 const FoodItem = memo(forwardRef<any, FoodItemProps>(
-  ({ food, onEdit, onDelete, onQuickAdd, onShare, foodIconUrl, setFoodIconForName }, ref) => {
+  ({ food, onEdit, onDelete, onQuickAdd, onShare, onView, foodIconUrl, setFoodIconForName }, ref) => {
     const { theme } = useTheme();
     const styles = useStyles();
 
@@ -53,6 +54,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
       <ListItem.Swipeable
         ref={ref}
         bottomDivider
+        onPress={() => onView(food)}
         leftContent={(reset) => (
           <Button title={t('foodListScreen.edit')} onPress={() => { onEdit(food); reset(); }} icon={{ name: "edit", color: theme.colors.white }} buttonStyle={styles.swipeButtonEdit} titleStyle={styles.swipeButtonTitle} />
         )}
