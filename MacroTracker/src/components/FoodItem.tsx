@@ -54,7 +54,7 @@ const FoodItem = memo(forwardRef<any, FoodItemProps>(
         ref={ref}
         bottomDivider
         onPress={() => onView(food)}
-        rightContent={(reset) => (
+        leftContent={(reset) => (
           <Button title={t('foodListScreen.delete')} onPress={() => { onDelete(food.id); reset(); }} icon={{ name: "delete", color: theme.colors.white }} buttonStyle={styles.swipeButtonDelete} titleStyle={styles.swipeButtonTitle} />
         )}
         containerStyle={styles.listItemContainer}

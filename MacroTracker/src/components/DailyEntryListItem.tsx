@@ -94,7 +94,7 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
         <ListItem.Swipeable
             bottomDivider
             onPress={handlePress}
-            rightContent={(reset) => (
+            leftContent={(reset) => (
                 <Button
                     title={t('dailyEntryScreen.delete')}
                     onPress={() => { handleDeletePress(); reset(); }}
