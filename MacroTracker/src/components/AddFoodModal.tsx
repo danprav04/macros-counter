@@ -8,6 +8,7 @@ import {
     Alert,
     ScrollView,
     StyleSheet,
+    TouchableOpacity,
 } from "react-native";
 import {
     Button,
@@ -17,7 +18,6 @@ import {
     makeStyles,
     useTheme,
     Icon,
-    ButtonGroup,
 } from "@rneui/themed";
 import { Food } from "../types/food";
 import Toast from "react-native-toast-message";
@@ -200,35 +200,85 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
         <Overlay isVisible={isVisible} onBackdropPress={!isAnyLoading ? toggleOverlay : undefined} animationType="fade" overlayStyle={styles.overlayContainer} >
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
                 <View style={combinedOverlayStyle}>
+                    {/* Header with title and close button */}
                     <View style={styles.header}>
-                        <Text h4 style={styles.overlayTitle}> {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')} </Text>
-                        <Button title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} onPress={handleCreateOrUpdate}
-                                buttonStyle={[ styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } ]}
-                                titleStyle={styles.buttonTitle} loading={showLoading} disabled={isAnyLoading} containerStyle={styles.buttonContainer} />
-                        <Icon name="close" type="material" size={28} color={theme.colors.text} onPress={!isAnyLoading ? toggleOverlay : undefined}
-                              containerStyle={styles.closeIcon} disabled={isAnyLoading} disabledStyle={{ backgroundColor: 'transparent' }} />
+                        <Text h4 style={styles.overlayTitle}>
+                            {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')}
+                        </Text>
+                        <Icon 
+                            name="close" 
+                            type="material" 
+                            size={28} 
+                            color={theme.colors.grey1} 
+                            onPress={!isAnyLoading ? toggleOverlay : undefined}
+                            containerStyle={styles.closeIcon} 
+                            disabled={isAnyLoading} 
+                            disabledStyle={{ backgroundColor: 'transparent' }} 
+                        />
                     </View>
-                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContentContainer}>
+
+                    <ScrollView 
+                        keyboardShouldPersistTaps="handled" 
+                        contentContainerStyle={styles.scrollContentContainer}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* Mode Selection - Only show when adding new food */}
                         {!editFood && (
-                            <ButtonGroup
-                                buttons={[t('addFoodModal.manualInput'), t('addFoodModal.aiAssist')]}
-                                selectedIndex={inputMode === 'manual' ? 0 : 1}
-                                onPress={(index) => {
-                                    if (isAnyLoading) return;
-                                    setInputMode(index === 0 ? 'manual' : 'ai');
-                                }}
-                                containerStyle={styles.inputModeButtonGroup}
-                                selectedButtonStyle={{ backgroundColor: theme.colors.card }}
-                                textStyle={{ color: theme.colors.grey4 }}
-                                selectedTextStyle={{ color: theme.colors.text }}
-                                disabled={isAnyLoading}
-                                disabledStyle={{ backgroundColor: theme.colors.grey4 }}
-                            />
+                            <View style={styles.modeSelectionContainer}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeButton,
+                                        inputMode === 'manual' && styles.modeButtonActive
+                                    ]}
+                                    onPress={() => !isAnyLoading && setInputMode('manual')}
+                                    disabled={isAnyLoading}
+                                    activeOpacity={0.7}
+                                >
+                                    <Icon
+                                        name="keyboard"
+                                        type="material"
+                                        size={22}
+                                        color={inputMode === 'manual' ? theme.colors.primary : theme.colors.grey2}
+                                        containerStyle={styles.modeIcon}
+                                    />
+                                    <Text style={[
+                                        styles.modeButtonText,
+                                        inputMode === 'manual' && styles.modeButtonTextActive
+                                    ]}>
+                                        {t('addFoodModal.manualInput')}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeButton,
+                                        inputMode === 'ai' && styles.modeButtonActive
+                                    ]}
+                                    onPress={() => !isAnyLoading && setInputMode('ai')}
+                                    disabled={isAnyLoading}
+                                    activeOpacity={0.7}
+                                >
+                                    <Icon
+                                        name="auto-awesome"
+                                        type="material"
+                                        size={22}
+                                        color={inputMode === 'ai' ? theme.colors.primary : theme.colors.secondary}
+                                        containerStyle={styles.modeIcon}
+                                    />
+                                    <Text style={[
+                                        styles.modeButtonText,
+                                        inputMode === 'ai' && styles.modeButtonTextActive
+                                    ]}>
+                                        {t('addFoodModal.aiAssist')}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
 
+                        {/* Content Area */}
                         <View style={styles.contentContainer}>
                             {inputMode === 'manual' ? (
-                                <View>
+                                <View style={styles.manualInputContainer}>
                                     <FoodFormFields
                                         values={getCurrentFoodData()}
                                         errors={errors}
@@ -239,52 +289,142 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                 </View>
                             ) : (
                                 <View style={styles.aiContainer}>
+                                    {/* AI Disclaimer */}
                                     <View style={styles.aiDisclaimerContainer}>
-                                        <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
-                                        <Text style={styles.aiDisclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                                        <Icon 
+                                            name="information-outline" 
+                                            type="material-community" 
+                                            color={theme.colors.grey2} 
+                                            size={16} 
+                                        />
+                                        <Text style={styles.aiDisclaimerText}>
+                                            {t('disclaimers.aiWarning')}
+                                        </Text>
                                     </View>
-                                    <Input
-                                        label={t('addFoodModal.ingredientsLabel')}
-                                        labelStyle={styles.inputLabel}
-                                        value={ingredients}
-                                        onChangeText={setIngredients}
-                                        multiline={true}
-                                        numberOfLines={4}
-                                        inputContainerStyle={[styles.inputContainerStyle, styles.multilineInputContainer]}
-                                        inputStyle={[styles.inputStyle, styles.multilineInput]}
-                                        placeholder={t('addFoodModal.ingredientsPlaceholder')}
-                                        placeholderTextColor={theme.colors.grey3}
-                                        disabled={isAnyLoading}
-                                    />
-                                    <Button
-                                        onPress={handleAnalyzeText}
-                                        buttonStyle={styles.aiButton}
-                                        disabled={isAnyLoading}
-                                        loading={showAiTextLoading}
-                                    >
-                                        <Icon name="text-box-search-outline" type="material-community" size={20} color={theme.colors.text} />
-                                        <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeTextButton')}</Text>
-                                        {costs?.cost_macros_recipe != null && !aiTextLoading && (
-                                            <PriceTag amount={costs.cost_macros_recipe} type="cost" style={styles.priceTagInButton} />
-                                        )}
-                                    </Button>
-                                    <Text style={styles.orDividerText}>{t('addFoodModal.orDivider')}</Text>
-                                    <Button
-                                        onPress={handleGetImageAndAnalyze}
-                                        buttonStyle={styles.aiButton}
-                                        disabled={isAnyLoading}
-                                        loading={showAiImageLoading}
-                                    >
-                                        <Icon name="camera-enhance-outline" type="material-community" size={20} color={theme.colors.text} />
-                                        <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeImageButton')}</Text>
-                                        {costs?.cost_macros_image_single != null && !aiImageLoading && (
-                                            <PriceTag amount={costs.cost_macros_image_single} type="cost" style={styles.priceTagInButton} />
-                                        )}
-                                    </Button>
+
+                                    {/* Text Analysis Card */}
+                                    <View style={styles.aiCard}>
+                                        <View style={styles.aiCardHeader}>
+                                            <Icon
+                                                name="text-box-search-outline"
+                                                type="material-community"
+                                                size={24}
+                                                color={theme.colors.primary}
+                                            />
+                                            <Text style={styles.aiCardTitle}>
+                                                {t('addFoodModal.analyzeTextButton')}
+                                            </Text>
+                                        </View>
+                                        
+                                        <Input
+                                            label={t('addFoodModal.ingredientsLabel')}
+                                            labelStyle={styles.aiInputLabel}
+                                            value={ingredients}
+                                            onChangeText={setIngredients}
+                                            multiline={true}
+                                            numberOfLines={4}
+                                            inputContainerStyle={styles.aiInputContainer}
+                                            inputStyle={styles.aiInput}
+                                            placeholder={t('addFoodModal.ingredientsPlaceholder')}
+                                            placeholderTextColor={theme.colors.grey3}
+                                            disabled={isAnyLoading}
+                                        />
+
+                                        <Button
+                                            onPress={handleAnalyzeText}
+                                            buttonStyle={styles.aiActionButton}
+                                            titleStyle={styles.aiActionButtonTitle}
+                                            disabled={isAnyLoading}
+                                            loading={showAiTextLoading}
+                                            disabledStyle={styles.aiActionButtonDisabled}
+                                        >
+                                            {!showAiTextLoading && (
+                                                <View style={styles.aiActionButtonContent}>
+                                                    <Text style={styles.aiActionButtonTitle}>
+                                                        {t('addFoodModal.analyzeTextButton')}
+                                                    </Text>
+                                                    {costs?.cost_macros_recipe != null && (
+                                                        <PriceTag 
+                                                            amount={costs.cost_macros_recipe} 
+                                                            type="cost" 
+                                                            style={styles.priceTagInButton} 
+                                                        />
+                                                    )}
+                                                </View>
+                                            )}
+                                        </Button>
+                                    </View>
+
+                                    {/* Divider */}
+                                    <View style={styles.dividerContainer}>
+                                        <View style={styles.dividerLine} />
+                                        <Text style={styles.dividerText}>{t('addFoodModal.orDivider')}</Text>
+                                        <View style={styles.dividerLine} />
+                                    </View>
+
+                                    {/* Image Analysis Card */}
+                                    <View style={styles.aiCard}>
+                                        <View style={styles.aiCardHeader}>
+                                            <Icon
+                                                name="camera-enhance-outline"
+                                                type="material-community"
+                                                size={24}
+                                                color={theme.colors.primary}
+                                            />
+                                            <Text style={styles.aiCardTitle}>
+                                                {t('addFoodModal.analyzeImageButton')}
+                                            </Text>
+                                        </View>
+                                        
+                                        <Text style={styles.aiCardDescription}>
+                                            {t('addFoodModal.analyzeImageDescription')}
+                                        </Text>
+
+                                        <Button
+                                            onPress={handleGetImageAndAnalyze}
+                                            buttonStyle={styles.aiActionButton}
+                                            titleStyle={styles.aiActionButtonTitle}
+                                            disabled={isAnyLoading}
+                                            loading={showAiImageLoading}
+                                            disabledStyle={styles.aiActionButtonDisabled}
+                                        >
+                                            {!showAiImageLoading && (
+                                                <View style={styles.aiActionButtonContent}>
+                                                    <Text style={styles.aiActionButtonTitle}>
+                                                        {t('addFoodModal.analyzeImageButton')}
+                                                    </Text>
+                                                    {costs?.cost_macros_image_single != null && (
+                                                        <PriceTag 
+                                                            amount={costs.cost_macros_image_single} 
+                                                            type="cost" 
+                                                            style={styles.priceTagInButton} 
+                                                        />
+                                                    )}
+                                                </View>
+                                            )}
+                                        </Button>
+                                    </View>
                                 </View>
                             )}
                         </View>
                     </ScrollView>
+
+                    {/* Footer with action button */}
+                    <View style={styles.footer}>
+                        <Button 
+                            title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
+                            onPress={handleCreateOrUpdate}
+                            buttonStyle={[ 
+                                styles.primaryButton, 
+                                { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
+                            ]}
+                            titleStyle={styles.primaryButtonTitle} 
+                            loading={showLoading} 
+                            disabled={isAnyLoading} 
+                            containerStyle={styles.primaryButtonContainer}
+                            disabledStyle={styles.primaryButtonDisabled}
+                        />
+                    </View>
                 </View>
             </KeyboardAvoidingView>
         </Overlay>
@@ -292,71 +432,223 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
-    overlayContainer: { backgroundColor: 'transparent', width: '90%', maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 2, }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, overflow: 'hidden', },
-    overlayStyle: { width: '100%', borderRadius: 15, padding: 20, paddingBottom: 0, maxHeight: '97%', backgroundColor: theme.colors.background },
-    keyboardAvoidingView: { width: "100%", maxHeight: '100%' },
-    scrollContentContainer: { paddingBottom: 20 },
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, },
-    overlayTitle: { color: theme.colors.text, fontWeight: "bold", fontSize: 20, flexShrink: 1, marginRight: 10, textAlign: 'left' },
-    closeIcon: { padding: 5, marginLeft: 10, },
-    inputLabel: { color: theme.colors.text, fontWeight: '500', marginBottom: 5, fontSize: 14, textAlign: 'left' },
-    inputContainerStyle: { borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, marginBottom: 5, paddingBottom: 2, },
-    inputStyle: { color: theme.colors.text, marginLeft: 10, fontSize: 16, textAlign: 'left' },
-    multilineInputContainer: { borderWidth: 1, borderColor: theme.colors.grey4, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.grey4, minHeight: 100, },
-    multilineInput: { marginLeft: 0, textAlignVertical: 'top', fontSize: 16, color: theme.colors.text, textAlign: 'left' },
-    buttonContainer: { },
-    button: { borderRadius: 8, paddingHorizontal: 15, paddingVertical: 10, },
-    buttonTitle: { color: theme.colors.white, fontWeight: "600", fontSize: 15 },
-    aiButton: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderRadius: 8,
-        backgroundColor: theme.colors.grey5,
+    overlayContainer: { 
+        backgroundColor: 'transparent', 
+        width: '92%', 
+        maxWidth: 520, 
+        padding: 0, 
+        borderRadius: 20, 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 4 }, 
+        shadowOpacity: 0.3, 
+        shadowRadius: 8, 
+        elevation: 8, 
+        overflow: 'hidden',
+        maxHeight: '95%',
     },
-    aiButtonTitle: {
-        color: theme.colors.text,
-        fontWeight: "600",
+    overlayStyle: { 
+        width: '100%', 
+        borderRadius: 20, 
+        padding: 0,
+        maxHeight: '100%', 
+        backgroundColor: theme.colors.background,
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    keyboardAvoidingView: { 
+        width: "100%", 
+        maxHeight: '100%' 
+    },
+    header: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 15,
+        borderBottomWidth: 1, 
+        borderBottomColor: theme.colors.divider,
+    },
+    overlayTitle: { 
+        color: theme.colors.text, 
+        fontWeight: "700", 
+        fontSize: 22, 
+        flex: 1,
+        textAlign: 'left' 
+    },
+    closeIcon: { 
+        padding: 4,
+    },
+    scrollContentContainer: { 
+        paddingHorizontal: 20,
+        paddingBottom: 10,
+    },
+    modeSelectionContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: theme.colors.grey5,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    modeButtonActive: {
+        backgroundColor: theme.colors.card,
+        borderColor: theme.colors.primary,
+    },
+    modeIcon: {
+        marginRight: 8,
+    },
+    modeButtonText: {
         fontSize: 15,
-        textAlign: 'center',
-        marginLeft: 8,
+        fontWeight: '600',
+        color: theme.colors.secondary,
+    },
+    modeButtonTextActive: {
+        color: theme.colors.text,
+    },
+    contentContainer: {
         flex: 1,
     },
-    priceTagInButton: {
-        backgroundColor: 'rgba(0,0,0,0.2)',
-    },
-    inputModeButtonGroup: {
-        marginBottom: 20,
-        borderRadius: 8,
-        backgroundColor: theme.colors.background
+    manualInputContainer: {
+        paddingTop: 5,
     },
     aiContainer: {
-        paddingTop: 10,
+        paddingTop: 5,
     },
     aiDisclaimerContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         paddingHorizontal: 5,
-        marginBottom: 15,
-        opacity: 0.8,
+        marginBottom: 20,
     },
     aiDisclaimerText: {
-        marginLeft: 5,
+        marginLeft: 8,
         fontSize: 12,
         color: theme.colors.grey2,
         fontStyle: 'italic',
-        flexShrink: 1,
+        flex: 1,
+        lineHeight: 16,
     },
-    orDividerText: {
-        textAlign: 'center',
-        marginVertical: 15,
-        color: theme.colors.grey1,
-        fontWeight: 'bold',
+    aiCard: {
+        backgroundColor: theme.colors.card,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.divider,
     },
-    contentContainer: {
-        minHeight: 500,
-        justifyContent: 'flex-start',
+    aiCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    aiCardTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginLeft: 10,
+    },
+    aiCardDescription: {
+        fontSize: 14,
+        color: theme.colors.secondary,
+        marginBottom: 12,
+        lineHeight: 20,
+    },
+    aiInputLabel: {
+        color: theme.colors.text,
+        fontWeight: '500',
+        marginBottom: 8,
+        fontSize: 14,
+    },
+    aiInputContainer: {
+        borderWidth: 1,
+        borderColor: theme.colors.grey4,
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        marginBottom: 12,
+        minHeight: 100,
+        backgroundColor: theme.colors.background,
+    },
+    aiInput: {
+        color: theme.colors.text,
+        fontSize: 15,
+        textAlignVertical: 'top',
+        lineHeight: 20,
+    },
+    aiActionButton: {
+        backgroundColor: theme.colors.primary,
+        borderRadius: 10,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+    },
+    aiActionButtonDisabled: {
+        backgroundColor: theme.colors.grey4,
+    },
+    aiActionButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+    },
+    aiActionButtonTitle: {
+        color: theme.colors.white,
+        fontWeight: '600',
+        fontSize: 16,
+        marginRight: 8,
+    },
+    priceTagInButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: theme.colors.grey4,
+    },
+    dividerText: {
+        marginHorizontal: 16,
+        fontSize: 13,
+        color: theme.colors.grey2,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    footer: {
+        paddingHorizontal: 20,
+        paddingTop: 15,
+        paddingBottom: 20,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+    },
+    primaryButtonContainer: {
+        width: '100%',
+    },
+    primaryButton: {
+        borderRadius: 12,
+        paddingVertical: 14,
+    },
+    primaryButtonDisabled: {
+        backgroundColor: theme.colors.grey4,
+    },
+    primaryButtonTitle: {
+        color: theme.colors.white,
+        fontWeight: '600',
+        fontSize: 16,
     },
 }));
 

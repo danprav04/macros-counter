@@ -304,6 +304,7 @@
     "ingredientsPlaceholder": "למשל, 100ג חזה עוף, 50ג אורז, 1 כף שמן זית",
     "analyzeTextButton": "ניתוח טקסט",
     "analyzeImageButton": "ניתוח מתמונה",
+    "analyzeImageDescription": "צלמו תמונה או בחרו מהגלריה לניתוח",
     "orDivider": "או",
     "macrosEstimatedText": "מאקרואים הוערכו מטקסט.",
     "foodIdentified": "מאכל זוהה!",

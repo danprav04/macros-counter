@@ -304,6 +304,7 @@
     "ingredientsPlaceholder": "e.g., 100g Chicken Breast, 50g Rice, 1 tbsp Olive Oil",
     "analyzeTextButton": "Analyze Text",
     "analyzeImageButton": "Analyze from Image",
+    "analyzeImageDescription": "Take a photo or select from gallery to analyze",
     "orDivider": "OR",
     "macrosEstimatedText": "Macros estimated from text.",
     "foodIdentified": "Food Identified!",

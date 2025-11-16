@@ -304,6 +304,7 @@
     "ingredientsPlaceholder": "например, 100г куриной грудки, 50г риса, 1 ст.л. оливкового масла",
     "analyzeTextButton": "Анализ текста",
     "analyzeImageButton": "Анализ по изображению",
+    "analyzeImageDescription": "Сделайте фото или выберите из галереи для анализа",
     "orDivider": "ИЛИ",
     "macrosEstimatedText": "Макросы оценены по тексту.",
     "foodIdentified": "Продукт определен!",
