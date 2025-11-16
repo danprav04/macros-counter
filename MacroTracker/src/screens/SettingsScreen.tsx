@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, Linking } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
@@ -34,6 +34,7 @@ interface SettingsScreenProps {
 type SettingsStackParamList = {
   SettingsHome: undefined; 
   Questionnaire: undefined; 
+  PrivacyPolicy: undefined;
 };
 
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
@@ -245,8 +246,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   }, [refreshUser, t]);
 
   const handlePrivacyPolicyPress = () => {
-      const privacyUrl = `${Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION}/privacy-policy`;
-      Linking.openURL(privacyUrl).catch(err => Alert.alert("Error", "Could not open privacy policy."));
+      navigation.navigate('PrivacyPolicy');
   };
 
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');

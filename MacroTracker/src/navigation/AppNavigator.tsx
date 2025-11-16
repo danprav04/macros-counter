@@ -19,6 +19,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import UpdateRequiredModal from '../components/UpdateRequiredModal';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
@@ -38,6 +39,7 @@ export type MainTabParamList = {
 export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
+  PrivacyPolicy: undefined;
 };
 
 export type AuthStackParamList = {
@@ -88,6 +90,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
         {(props: NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
+      <SettingsStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: t('settingsScreen.general.privacyPolicy') }} />
     </SettingsStackNav.Navigator>
   );
 }
