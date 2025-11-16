@@ -1,7 +1,7 @@
 {
   "app": {
     "initializing": "Initializing...",
-    "name": "MacrosVisionAI",
+    "name": "Macros Vision AI",
     "alertButtons": {
       "later": "Later",
       "restartNow": "Restart Now"
