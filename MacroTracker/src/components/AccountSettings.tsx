@@ -312,7 +312,7 @@ const useStyles = makeStyles((theme) => ({
     textAlign: "left",
   },
   listItemSubtitle: {
-    color: theme.colors.grey2,
+    color: theme.colors.secondary,
     fontSize: 12,
     textAlign: "left",
   },
