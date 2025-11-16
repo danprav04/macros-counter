@@ -8,7 +8,7 @@ export type SortOptionValue = 'name' | 'newest' | 'oldest';
 
 export interface MacroData {
   x: number; // Timestamp
-  y: number; // Macro value
+  y: number | null; // Macro value
 }
 
 export interface Statistics {

@@ -44,11 +44,26 @@ const calculateMovingAverage = (data: MacroData[], windowSize: number): MacroDat
     if (windowSize <= 1) return data;
     const movingAverageData: MacroData[] = [];
     for (let i = 0; i < data.length; i++) {
+        const currentPoint = data[i];
+        if (currentPoint.y === null) {
+            movingAverageData.push({ x: currentPoint.x, y: null });
+            continue;
+        }
+
         const windowStart = Math.max(0, i - windowSize + 1);
         const windowSlice = data.slice(windowStart, i + 1);
-        const sum = windowSlice.reduce((acc, point) => acc + point.y, 0);
-        const average = sum / windowSlice.length;
-        movingAverageData.push({ x: data[i].x, y: Math.round(average) });
+        
+        let sum = 0;
+        let count = 0;
+        for (const point of windowSlice) {
+            if (point.y !== null) {
+                sum += point.y;
+                count++;
+            }
+        }
+
+        const average = count > 0 ? sum / count : 0;
+        movingAverageData.push({ x: currentPoint.x, y: Math.round(average) });
     }
     return movingAverageData;
 };
@@ -106,13 +121,39 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       }
     });
 
-    const sortedTimestamps = Array.from(new Set([...intakeDataMap.keys(), ...goalDataMap.keys()])).sort((a,b) => a - b);
+    const sortedTimestamps = Array.from(intakeDataMap.keys()).sort((a,b) => a - b);
     
-    const finalIntakeData: MacroData[] = sortedTimestamps.map(ts => ({ x: ts, y: intakeDataMap.get(ts) || 0 }));
+    // Create a unified list of points including gaps
+    const allPoints: MacroData[] = [];
+    const GAP_THRESHOLD = 21 * 24 * 60 * 60 * 1000; // 21 days
+
+    if (sortedTimestamps.length > 0) {
+        let lastTimestamp = sortedTimestamps[0];
+        allPoints.push({ x: lastTimestamp, y: intakeDataMap.get(lastTimestamp) || 0 });
+
+        for (let i = 1; i < sortedTimestamps.length; i++) {
+            const currentTimestamp = sortedTimestamps[i];
+            if (currentTimestamp - lastTimestamp > GAP_THRESHOLD) {
+                // Insert a null point to create a gap. This point will be shared across all series.
+                allPoints.push({ x: lastTimestamp + 60000, y: null }); // Add a point 1 minute after last point
+            }
+            allPoints.push({ x: currentTimestamp, y: intakeDataMap.get(currentTimestamp) || 0 });
+            lastTimestamp = currentTimestamp;
+        }
+    }
+    
+    const finalIntakeData = allPoints;
     const movingAverageData = calculateMovingAverage(finalIntakeData, 7);
 
     if (macro === "calories") {
-        const finalGoalData: MacroData[] = sortedTimestamps.map(ts => ({ x: ts, y: goalDataMap.get(ts) || currentGoals[macro] || 0 }));
+        const finalGoalData: MacroData[] = allPoints.map(point => {
+            if (point.y === null) {
+                return { x: point.x, y: null };
+            }
+            // Use goal from map if available for that day, otherwise use current goal
+            const goalForDay = goalDataMap.get(point.x) ?? currentGoals[macro] ?? 0;
+            return { x: point.x, y: goalForDay };
+        });
         return [finalIntakeData, movingAverageData, finalGoalData];
     }
     return [finalIntakeData, movingAverageData];
