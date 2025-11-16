@@ -118,7 +118,7 @@
       },
       "storeLinks": {
         "ios": "https://apps.apple.com/app/your-app-id",
-        "android": "https://v1.macros-vision-ai.xyz/"
+        "android": "https://play.google.com/store/apps/details?id=com.macrosvisionai.app"
       },
       "env": {
         "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
