@@ -25,6 +25,7 @@ import {
   FoodGradeResult,
 } from "../../utils/gradingUtils";
 import { getFoodIconUrl } from "../../utils/iconUtils";
+import useDelayedLoading from '../../hooks/useDelayedLoading';
 
 
 interface QuickAddItemProps {
@@ -72,6 +73,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   const { theme } = useTheme();
   const styles = useStyles();
   const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
+  const showIsSavingToLibrary = useDelayedLoading(isSavingToLibrary);
 
   const estimatedCalories = Math.round(
     (item.calories_per_100g / 100) * item.estimatedWeightGrams
@@ -261,7 +263,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
               </ListItem.Subtitle>
             </ListItem.Content>
             <View style={styles.actionButtonsContainer}>
-              {isSavingToLibrary ? (
+              {showIsSavingToLibrary ? (
                 <ActivityIndicator
                   size="small"
                   color={theme.colors.primary}

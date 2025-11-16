@@ -24,6 +24,7 @@ import i18n from '../localization/i18n';
 import { Settings as AppSettings } from "../types/settings";
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
+import useDelayedLoading from "../hooks/useDelayedLoading";
 
 type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
@@ -50,6 +51,9 @@ const DailyEntryScreen: React.FC = () => {
 
   const { theme } = useTheme();
   const styles = useStyles();
+
+  const showIsLoadingData = useDelayedLoading(isLoadingData);
+  const showIsSaving = useDelayedLoading(isSaving, 300);
 
   const navigation = useNavigation<DailyEntryScreenNavigationProp>();
   const route = useRoute<DailyEntryScreenRouteProp>();
@@ -455,9 +459,9 @@ const DailyEntryScreen: React.FC = () => {
       {showDatePicker && (<DateTimePicker value={isValid(parseISO(selectedDate)) ? parseISO(selectedDate) : new Date()} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleDateChange} />)}
       <View style={styles.progressContainer}><DailyProgress calories={calculateTotals.totalCalories} protein={calculateTotals.totalProtein} carbs={calculateTotals.totalCarbs} fat={calculateTotals.totalFat} goals={dailyGoals} /></View>
       <Divider style={styles.divider} />
-      {isSaving && (<View style={styles.savingIndicator}><ActivityIndicator size="small" color={theme.colors.primary} /><Text style={styles.savingText}>{t('dailyEntryScreen.saving')}</Text></View>)}
+      {showIsSaving && (<View style={styles.savingIndicator}><ActivityIndicator size="small" color={theme.colors.primary} /><Text style={styles.savingText}>{t('dailyEntryScreen.saving')}</Text></View>)}
       <Text style={styles.sectionTitle}>{t('dailyEntryScreen.todaysEntries')}</Text>
-      {isLoadingData ? (<View style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('dailyEntryScreen.loadingEntries')}</Text></View>
+      {showIsLoadingData ? (<View style={styles.centeredLoader}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={styles.loadingText}>{t('dailyEntryScreen.loadingEntries')}</Text></View>
       ) : (
         <FlatList
           data={currentEntryItems}

@@ -33,6 +33,7 @@ import { t } from '../localization/i18n';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { useCosts } from '../context/CostsContext';
 import PriceTag from './PriceTag';
+import useDelayedLoading from '../hooks/useDelayedLoading';
 
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
@@ -78,6 +79,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const [ingredients, setIngredients] = useState("");
     const [aiTextLoading, setAiTextLoading] = useState(false);
     const [aiImageLoading, setAiImageLoading] = useState(false);
+
+    const showLoading = useDelayedLoading(loading);
+    const showAiTextLoading = useDelayedLoading(aiTextLoading);
+    const showAiImageLoading = useDelayedLoading(aiImageLoading);
 
     useEffect(() => {
         if (isVisible) {
@@ -199,7 +204,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         <Text h4 style={styles.overlayTitle}> {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')} </Text>
                         <Button title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} onPress={handleCreateOrUpdate}
                                 buttonStyle={[ styles.button, { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } ]}
-                                titleStyle={styles.buttonTitle} loading={loading} disabled={isAnyLoading} containerStyle={styles.buttonContainer} />
+                                titleStyle={styles.buttonTitle} loading={showLoading} disabled={isAnyLoading} containerStyle={styles.buttonContainer} />
                         <Icon name="close" type="material" size={28} color={theme.colors.text} onPress={!isAnyLoading ? toggleOverlay : undefined}
                               containerStyle={styles.closeIcon} disabled={isAnyLoading} disabledStyle={{ backgroundColor: 'transparent' }} />
                     </View>
@@ -255,7 +260,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         onPress={handleAnalyzeText}
                                         buttonStyle={styles.aiButton}
                                         disabled={isAnyLoading}
-                                        loading={aiTextLoading}
+                                        loading={showAiTextLoading}
                                     >
                                         <Icon name="text-box-search-outline" type="material-community" size={20} color={theme.colors.text} />
                                         <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeTextButton')}</Text>
@@ -268,7 +273,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         onPress={handleGetImageAndAnalyze}
                                         buttonStyle={styles.aiButton}
                                         disabled={isAnyLoading}
-                                        loading={aiImageLoading}
+                                        loading={showAiImageLoading}
                                     >
                                         <Icon name="camera-enhance-outline" type="material-community" size={20} color={theme.colors.text} />
                                         <Text style={styles.aiButtonTitle}>{t('addFoodModal.analyzeImageButton')}</Text>

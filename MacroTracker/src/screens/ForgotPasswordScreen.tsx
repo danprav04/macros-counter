@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { requestPasswordReset } from '../services/authService';
 import { t } from '../localization/i18n';
+import useDelayedLoading from '../hooks/useDelayedLoading';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
@@ -15,6 +16,7 @@ const ForgotPasswordScreen: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
     const { theme } = useTheme();
+    const showIsLoading = useDelayedLoading(isLoading);
 
     const handleSendLink = async () => {
         if (!email.trim()) {
@@ -62,7 +64,8 @@ const ForgotPasswordScreen: React.FC = () => {
                 <Button
                     title={t('forgotPasswordScreen.buttonText')}
                     onPress={handleSendLink}
-                    loading={isLoading}
+                    loading={showIsLoading}
+                    disabled={isLoading}
                     buttonStyle={styles.button}
                     containerStyle={styles.buttonContainer}
                 />

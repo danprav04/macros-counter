@@ -8,6 +8,7 @@ import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
 import { t } from '../localization/i18n';
+import useDelayedLoading from '../hooks/useDelayedLoading';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -19,6 +20,7 @@ const LoginScreen: React.FC = () => {
     const navigation = useNavigation<LoginScreenNavigationProp>();
     const { login } = useAuth() as AuthContextType;
     const { theme } = useTheme();
+    const showIsLoading = useDelayedLoading(isLoading);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -71,7 +73,8 @@ const LoginScreen: React.FC = () => {
             <Button
                 title="Login"
                 onPress={handleLogin}
-                loading={isLoading}
+                loading={showIsLoading}
+                disabled={isLoading}
                 buttonStyle={styles.button}
                 containerStyle={styles.buttonContainer}
             />

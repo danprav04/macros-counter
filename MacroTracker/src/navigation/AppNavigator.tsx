@@ -1,6 +1,6 @@
 // src/navigation/AppNavigator.tsx
 import React, { useState } from 'react';
-import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View } from 'react-native';
+import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
@@ -28,6 +28,7 @@ import { Food } from '../types/food';
 import { setLogoutListener } from '../services/authService';
 import { getAppConfig } from '../services/backendService';
 import { compareVersions } from '../utils/versionUtils';
+import useDelayedLoading from '../hooks/useDelayedLoading';
 
 // Define ParamLists
 export type MainTabParamList = {
@@ -247,6 +248,7 @@ function AppContent() {
 // Main AppNavigator export
 export default function AppNavigator() {
     const { isLoading, settings } = useAuth() as AuthContextType;
+    const showLoading = useDelayedLoading(isLoading);
     
     React.useEffect(() => {
         if (settings) {
@@ -256,11 +258,17 @@ export default function AppNavigator() {
     }, [settings]);
 
     if (isLoading) {
-        return (
-            <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                <Text>Initializing App...</Text>
-            </SafeAreaView>
-        )
+        if (showLoading) {
+            return (
+                <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: lightThemeColors.background}}>
+                    <ActivityIndicator size="large" color={lightThemeColors.primary} />
+                    <Text style={{marginTop: 10, color: lightThemeColors.text, fontSize: 16}}>
+                        {t('app.initializing')}
+                    </Text>
+                </SafeAreaView>
+            );
+        }
+        return null; // Render nothing during the initial delay
     }
 
     return <AppContent />;

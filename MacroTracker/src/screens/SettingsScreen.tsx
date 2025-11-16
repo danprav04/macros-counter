@@ -22,6 +22,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
 import Constants from 'expo-constants';
+import useDelayedLoading from "../hooks/useDelayedLoading";
 
 
 interface SettingsScreenProps {
@@ -67,6 +68,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   
   const [isAdLoading, setIsAdLoading] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+
+  const showStatisticsLoading = useDelayedLoading(isStatisticsLoading);
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -340,7 +343,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.statistics.title')}</Text>
           <View style={[styles.chartContainer, isStatisticsLoading && styles.chartLoadingContainer]}>
-            {isStatisticsLoading ? (
+            {showStatisticsLoading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} />
             ) : (
               <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />

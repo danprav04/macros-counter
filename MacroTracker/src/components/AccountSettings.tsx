@@ -14,6 +14,7 @@ import { User } from "../types/user";
 import UserBadge from "./UserBadge";
 import { useCosts } from "../context/CostsContext";
 import PriceTag from "./PriceTag";
+import useDelayedLoading from "../hooks/useDelayedLoading";
 
 interface AccountSettingsProps {
   user: User | null;
@@ -34,6 +35,9 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
   const styles = useStyles();
   const [cooldown, setCooldown] = useState(0);
   const { costs } = useCosts();
+  
+  const showIsLoading = useDelayedLoading(isLoading);
+  const showIsAdLoading = useDelayedLoading(isAdLoading);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined = undefined;
@@ -133,7 +137,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             {t("accountSettings.email")}
           </ListItem.Title>
         </ListItem.Content>
-        {isLoading ? (
+        {showIsLoading ? (
           <ActivityIndicator size="small" color={theme.colors.primary} />
         ) : (
           <Text style={styles.valueText}>
@@ -188,7 +192,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             {t("accountSettings.coinBalance")}
           </ListItem.Title>
         </ListItem.Content>
-        {isLoading ? (
+        {showIsLoading ? (
           <ActivityIndicator size="small" color={theme.colors.primary} />
         ) : (
           <View style={styles.coinContainer}>
@@ -200,7 +204,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
               disabled={isAdLoading}
               style={styles.adButton}
             >
-              {isAdLoading ? (
+              {showIsAdLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.primary} />
               ) : (
                 <View style={styles.adButtonContent}>

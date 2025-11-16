@@ -20,6 +20,7 @@ import Constants from 'expo-constants';
 import { findFoodsByTagSearch } from "../utils/searchUtils";
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { SortOptionValue } from '../types/settings';
+import useDelayedLoading from "../hooks/useDelayedLoading";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -92,6 +93,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const sortButtonRef = useRef<View | null>(null);
     const [sortButtonPosition, setSortButtonPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
+    const showIsLoading = useDelayedLoading(isLoading);
 
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
@@ -379,7 +381,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         });
     }, []);
 
-    if (isLoading) {
+    if (showIsLoading) {
         return (
             <SafeAreaView style={styles.centeredLoader} edges={['top', 'left', 'right']}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />

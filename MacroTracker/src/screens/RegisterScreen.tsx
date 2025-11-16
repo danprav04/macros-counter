@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { registerUser } from '../services/authService';
 import { t } from '../localization/i18n';
+import useDelayedLoading from '../hooks/useDelayedLoading';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -19,6 +20,7 @@ const RegisterScreen: React.FC = () => {
     const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
     const navigation = useNavigation<RegisterScreenNavigationProp>();
     const { theme } = useTheme();
+    const showIsLoading = useDelayedLoading(isLoading);
 
     const handleRegister = async () => {
         if (!email || !password || !confirmPassword) {
@@ -99,7 +101,8 @@ const RegisterScreen: React.FC = () => {
             <Button
                 title={t('registerScreen.registerButton')}
                 onPress={handleRegister}
-                loading={isLoading}
+                loading={showIsLoading}
+                disabled={isLoading}
                 buttonStyle={styles.button}
                 containerStyle={styles.buttonContainer}
             />
