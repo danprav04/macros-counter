@@ -16,6 +16,23 @@
   "disclaimers": {
     "aiWarning": "ИИ может совершать ошибки. Пожалуйста, проверяйте важную информацию."
   },
+  "registerScreen": {
+    "title": "Создать аккаунт",
+    "emailPlaceholder": "Электронная почта",
+    "passwordPlaceholder": "Пароль (мин. 8 символов)",
+    "confirmPasswordPlaceholder": "Подтвердите пароль",
+    "registerButton": "Зарегистрироваться",
+    "loginPrompt": "Уже есть аккаунт? Войти",
+    "alert": {
+      "missingFields": "Не все поля заполнены",
+      "missingFieldsMessage": "Пожалуйста, заполните все поля.",
+      "passwordTooShort": "Пароль слишком короткий",
+      "passwordTooShortMessage": "Пароль должен содержать не менее 8 символов.",
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "passwordsDoNotMatchMessage": "Введенные пароли не совпадают.",
+      "successTitle": "Проверьте вашу почту"
+    }
+  },
   "forgotPasswordScreen": {
     "title": "Сброс пароля",
     "instructions": "Введите адрес электронной почты вашей учетной записи, и мы вышлем вам ссылку для сброса пароля.",

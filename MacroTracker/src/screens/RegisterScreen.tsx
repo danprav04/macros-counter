@@ -6,30 +6,39 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { registerUser } from '../services/authService';
+import { t } from '../localization/i18n';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 const RegisterScreen: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
     const navigation = useNavigation<RegisterScreenNavigationProp>();
     const { theme } = useTheme();
 
     const handleRegister = async () => {
-        if (!email || !password) {
-            Alert.alert('Missing Fields', 'Please fill in all fields.');
+        if (!email || !password || !confirmPassword) {
+            Alert.alert(t('registerScreen.alert.missingFields'), t('registerScreen.alert.missingFieldsMessage'));
             return;
         }
         if (password.length < 8) {
-            Alert.alert('Password Too Short', 'Password must be at least 8 characters long.');
+            Alert.alert(t('registerScreen.alert.passwordTooShort'), t('registerScreen.alert.passwordTooShortMessage'));
             return;
         }
+        if (password !== confirmPassword) {
+            Alert.alert(t('registerScreen.alert.passwordsDoNotMatch'), t('registerScreen.alert.passwordsDoNotMatchMessage'));
+            return;
+        }
+
         setIsLoading(true);
         try {
             const response = await registerUser(email, password);
             Alert.alert(
-                'Check Your Email',
+                t('registerScreen.alert.successTitle'),
                 response.message,
                 [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
             );
@@ -42,9 +51,9 @@ const RegisterScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <Text h2 style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
+            <Text h2 style={[styles.title, { color: theme.colors.text }]}>{t('registerScreen.title')}</Text>
             <Input
-                placeholder="Email"
+                placeholder={t('registerScreen.emailPlaceholder')}
                 leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
                 onChangeText={setEmail}
                 value={email}
@@ -54,23 +63,48 @@ const RegisterScreen: React.FC = () => {
                 inputStyle={{ color: theme.colors.text }}
             />
             <Input
-                placeholder="Password (min 8 characters)"
+                placeholder={t('registerScreen.passwordPlaceholder')}
                 leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                rightIcon={
+                    <Icon 
+                        name={isPasswordVisible ? 'eye-slash' : 'eye'} 
+                        type="font-awesome" 
+                        color={theme.colors.grey3}
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                    />
+                }
                 onChangeText={setPassword}
                 value={password}
-                secureTextEntry
+                secureTextEntry={!isPasswordVisible}
+                containerStyle={styles.inputContainer}
+                inputStyle={{ color: theme.colors.text }}
+            />
+            <Input
+                placeholder={t('registerScreen.confirmPasswordPlaceholder')}
+                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                rightIcon={
+                    <Icon 
+                        name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'} 
+                        type="font-awesome" 
+                        color={theme.colors.grey3}
+                        onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                    />
+                }
+                onChangeText={setConfirmPassword}
+                value={confirmPassword}
+                secureTextEntry={!isConfirmPasswordVisible}
                 containerStyle={styles.inputContainer}
                 inputStyle={{ color: theme.colors.text }}
             />
             <Button
-                title="Register"
+                title={t('registerScreen.registerButton')}
                 onPress={handleRegister}
                 loading={isLoading}
                 buttonStyle={styles.button}
                 containerStyle={styles.buttonContainer}
             />
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={[styles.switchText, { color: theme.colors.primary }]}>Already have an account? Log In</Text>
+                <Text style={[styles.switchText, { color: theme.colors.primary }]}>{t('registerScreen.loginPrompt')}</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );

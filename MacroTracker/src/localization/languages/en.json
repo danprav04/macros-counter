@@ -16,6 +16,23 @@
   "disclaimers": {
     "aiWarning": "AI can make mistakes. Please verify important information."
   },
+  "registerScreen": {
+    "title": "Create Account",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password (min 8 characters)",
+    "confirmPasswordPlaceholder": "Confirm Password",
+    "registerButton": "Register",
+    "loginPrompt": "Already have an account? Log In",
+    "alert": {
+      "missingFields": "Missing Fields",
+      "missingFieldsMessage": "Please fill in all fields.",
+      "passwordTooShort": "Password Too Short",
+      "passwordTooShortMessage": "Password must be at least 8 characters long.",
+      "passwordsDoNotMatch": "Passwords Do Not Match",
+      "passwordsDoNotMatchMessage": "The entered passwords do not match.",
+      "successTitle": "Check Your Email"
+    }
+  },
   "forgotPasswordScreen": {
     "title": "Reset Password",
     "instructions": "Enter your account's email address and we will send you a link to reset your password.",

@@ -16,6 +16,23 @@
   "disclaimers": {
     "aiWarning": "בינה מלאכותית עלולה לטעות. אנא ודא מידע חשוב."
   },
+  "registerScreen": {
+    "title": "יצירת חשבון",
+    "emailPlaceholder": "אימייל",
+    "passwordPlaceholder": "סיסמה (לפחות 8 תווים)",
+    "confirmPasswordPlaceholder": "אימות סיסמה",
+    "registerButton": "הרשמה",
+    "loginPrompt": "יש לך כבר חשבון? התחבר",
+    "alert": {
+      "missingFields": "שדות חסרים",
+      "missingFieldsMessage": "אנא מלא את כל השדות.",
+      "passwordTooShort": "סיסמה קצרה מדי",
+      "passwordTooShortMessage": "הסיסמה חייבת להכיל לפחות 8 תווים.",
+      "passwordsDoNotMatch": "הסיסמאות אינן תואמות",
+      "passwordsDoNotMatchMessage": "הסיסמאות שהוזנו אינן תואמות.",
+      "successTitle": "בדוק את האימייל שלך"
+    }
+  },
   "forgotPasswordScreen": {
     "title": "איפוס סיסמה",
     "instructions": "הזן את כתובת האימייל של חשבונך ונשלח לך קישור לאיפוס הסיסמה.",
