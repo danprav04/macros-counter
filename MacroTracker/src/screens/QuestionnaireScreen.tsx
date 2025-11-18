@@ -230,8 +230,6 @@ const QuestionnaireScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
-      <Text h4 style={styles.title}>{t('questionnaireScreen.title')}</Text>
-
       <Input
         label={t('questionnaireScreen.ageLabel')}
         placeholder={t('questionnaireScreen.agePlaceholder')}
