@@ -2,7 +2,7 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "3.5.2",
+    "version": "3.5.3",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -94,6 +94,7 @@
         }
       ],
       "./plugins/withAndroidProguard.js",
+      "./plugins/withAndroid16KBSupport.js",
       "expo-dev-client",
       [
         "expo-document-picker",
