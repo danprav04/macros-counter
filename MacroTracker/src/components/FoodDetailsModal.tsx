@@ -177,6 +177,11 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
         {renderEditableMacroItem(t('dailyProgress.carbs'), 'carbs', 'bread-slice')}
         {renderEditableMacroItem(t('dailyProgress.fat'), 'fat', 'oil')}
 
+        <View style={styles.disclaimerContainer}>
+            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+        </View>
+
         <View style={styles.buttonContainer}>
             <Button
                 title={t('foodListScreen.delete')}
@@ -217,7 +222,22 @@ const useStyles = makeStyles((theme) => ({
   nameInputValue: { color: theme.colors.text, fontSize: 16, textAlign: I18nManager.isRTL ? 'right' : 'left', paddingVertical: 10, },
   unitText: { color: theme.colors.grey3, fontSize: 13, fontWeight: '500' },
   errorText: { color: theme.colors.error, textAlign: 'left', marginLeft: 0, marginTop: 2, marginBottom: 2 },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25, },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 20,
+    opacity: 0.8,
+  },
+  disclaimerText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.colors.grey2,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, },
   button: { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20, flex: 1, marginHorizontal: 5, },
   deleteButton: { borderColor: theme.colors.error, flex: 0.8, },
   deleteButtonTitle: { color: theme.colors.error, },

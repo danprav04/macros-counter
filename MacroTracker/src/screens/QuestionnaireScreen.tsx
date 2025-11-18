@@ -1,7 +1,7 @@
 // src/screens/QuestionnaireScreen.tsx
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform } from 'react-native';
-import { Input, Button, Text, useTheme, makeStyles, CheckBox } from '@rneui/themed';
+import { Input, Button, Text, useTheme, makeStyles, CheckBox, Icon } from '@rneui/themed';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -289,6 +289,10 @@ const QuestionnaireScreen: React.FC = () => {
         loading={isCalculating}
         disabled={isCalculating}
       />
+       <View style={styles.disclaimerContainer}>
+          <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+          <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+      </View>
     </ScrollView>
   );
 };
@@ -349,6 +353,21 @@ const useStyles = makeStyles((theme) => ({
     marginTop: 20,
     backgroundColor: theme.colors.primary,
     borderRadius: 8,
+  },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 25,
+    opacity: 0.8,
+  },
+  disclaimerText: {
+      marginLeft: 8,
+      fontSize: 12,
+      color: theme.colors.grey2,
+      fontStyle: 'italic',
+      textAlign: 'center',
   },
 }));
 

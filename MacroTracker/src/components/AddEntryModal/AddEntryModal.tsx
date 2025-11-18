@@ -374,12 +374,20 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onBackFromQuickAdd={handleBackFromQuickAdd}
           />
           {modalMode === 'normal' && <View style={styles.normalModeContentContainer}><FoodSelectionList search={internalSearch} updateSearch={setInternalSearch} foods={foods} recentFoods={recentFoods} selectedFood={internalSelectedFood} handleSelectFood={setInternalSelectedFood} setGrams={setInternalGrams} setSelectedMultipleFoods={setSelectedMultipleFoods} selectedMultipleFoods={selectedMultipleFoods} handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} foodIcons={foodIcons} onAddNewFoodRequest={onAddNewFoodRequest} isActionDisabled={isActionDisabled} isEditMode={isEditMode} recentServings={recentServings} modalMode={modalMode} />{internalSelectedFood && <AmountInputSection selectedFood={internalSelectedFood} grams={internalGrams} setGrams={setInternalGrams} unitMode={unitMode} setUnitMode={setUnitMode} autoInput={autoInput} setAutoInput={setAutoInput} handleEstimateGrams={handleEstimateGrams} isAiLoading={showAILoading} isAiButtonDisabled={isAiButtonDisabled} isEditMode={isEditMode} servingSizeSuggestions={servingSizeSuggestions} isActionDisabled={isActionDisabled} foodGradeResult={foodGradeResult} />}</View>}
-          {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect') && (
-                <View style={styles.aiDisclaimerContainer}>
-                    <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
-                    <Text style={styles.aiDisclaimerText}>{t('disclaimers.aiWarning')}</Text>
+          
+          {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect' || (modalMode === 'normal' && internalSelectedFood)) && (
+                <View style={styles.disclaimerSection}>
+                    <View style={styles.disclaimerRow}>
+                        <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                        <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                    </View>
+                    <View style={styles.disclaimerRow}>
+                        <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                        <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                    </View>
                 </View>
           )}
+
           {modalMode === 'quickAddText' && (
             <View style={styles.quickAddTextView}>
                 <Input 
@@ -415,14 +423,17 @@ const useStyles = makeStyles((theme) => ({
     overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1 },
     keyboardAvoidingView: { width: "100%", height: "100%" },
     normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
-    aiDisclaimerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    disclaimerSection: {
         paddingHorizontal: 5,
         paddingBottom: 10,
         opacity: 0.8,
     },
-    aiDisclaimerText: {
+    disclaimerRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 4,
+    },
+    disclaimerText: {
         marginLeft: 5,
         fontSize: 12,
         color: theme.colors.grey2,

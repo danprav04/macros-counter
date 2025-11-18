@@ -134,6 +134,11 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
           {renderMacroItem(t('dailyProgress.fat'), calculatedMacros.fat, 'g', 'oil', 'material-community')}
         </View>
 
+        <View style={styles.disclaimerContainer}>
+            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+        </View>
+
         <View style={styles.buttonContainer}>
              <Button
                 title={t('dailyEntryScreen.delete')}
@@ -238,10 +243,25 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 20,
+    opacity: 0.8,
+  },
+  disclaimerText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.colors.grey2,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 25,
+    marginTop: 15,
   },
   button: {
     borderRadius: 8,

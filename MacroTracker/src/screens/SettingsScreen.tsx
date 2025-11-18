@@ -395,6 +395,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           <View style={styles.buttonGroup}>
               <DataManagementButtons onDataOperation={localDataOperationHandler} />
           </View>
+          <View style={styles.disclaimerContainer}>
+              <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+              <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+          </View>
       </ScrollView>
       <DeleteAccountModal
         isVisible={isDeleteModalVisible}
@@ -498,6 +502,21 @@ const useStyles = makeStyles((theme) => ({
   },
   pickerItemStyle: {
     textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 30,
+    opacity: 0.8,
+  },
+  disclaimerText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.colors.grey2,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 }));
 

@@ -14,7 +14,8 @@
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "disclaimers": {
-    "aiWarning": "AI can make mistakes. Please verify important information."
+    "aiWarning": "AI can make mistakes. Please verify important information.",
+    "medicalDisclaimer": "Not a medical device. Consult a physician."
   },
   "registerScreen": {
     "title": "Create Account",

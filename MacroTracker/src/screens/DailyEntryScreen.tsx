@@ -458,6 +458,10 @@ const DailyEntryScreen: React.FC = () => {
       <DateNavigator selectedDate={selectedDate} onPreviousDay={handlePreviousDay} onNextDay={handleNextDay} onShowDatePicker={() => !isSaving && !isLoadingData && setShowDatePicker(true)} isSaving={isSaving} isLoadingData={isLoadingData} />
       {showDatePicker && (<DateTimePicker value={isValid(parseISO(selectedDate)) ? parseISO(selectedDate) : new Date()} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleDateChange} />)}
       <View style={styles.progressContainer}><DailyProgress calories={calculateTotals.totalCalories} protein={calculateTotals.totalProtein} carbs={calculateTotals.totalCarbs} fat={calculateTotals.totalFat} goals={dailyGoals} /></View>
+      <View style={styles.disclaimerContainer}>
+          <RNEIcon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+          <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+      </View>
       <Divider style={styles.divider} />
       {showIsSaving && (<View style={styles.savingIndicator}><ActivityIndicator size="small" color={theme.colors.primary} /><Text style={styles.savingText}>{t('dailyEntryScreen.saving')}</Text></View>)}
       <Text style={styles.sectionTitle}>{t('dailyEntryScreen.todaysEntries')}</Text>
@@ -524,6 +528,21 @@ const DailyEntryScreen: React.FC = () => {
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.background },
   progressContainer: { paddingHorizontal: 15, paddingTop: 10 },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+    paddingBottom: 10,
+    opacity: 0.8,
+  },
+  disclaimerText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.colors.grey2,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   divider: { marginVertical: 0, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.divider, },
   sectionTitle: { marginTop: 15, marginBottom: 10, paddingHorizontal: 15, fontWeight: "bold", fontSize: 18, color: theme.colors.text, textAlign: I18nManager.isRTL ? 'right' : 'left' },
   fab: { position: "absolute", margin: 16, right: I18nManager.isRTL ? undefined : 10, left: I18nManager.isRTL ? 10 : undefined, bottom: 10 },
