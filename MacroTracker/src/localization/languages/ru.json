@@ -22,6 +22,7 @@
     "emailPlaceholder": "Электронная почта",
     "passwordPlaceholder": "Пароль (мин. 8 символов)",
     "confirmPasswordPlaceholder": "Подтвердите пароль",
+    "dobPlaceholder": "Дата рождения",
     "registerButton": "Зарегистрироваться",
     "loginPrompt": "Уже есть аккаунт? Войти",
     "alert": {
@@ -31,7 +32,11 @@
       "passwordTooShortMessage": "Пароль должен содержать не менее 8 символов.",
       "passwordsDoNotMatch": "Пароли не совпадают",
       "passwordsDoNotMatchMessage": "Введенные пароли не совпадают.",
-      "successTitle": "Проверьте вашу почту"
+      "successTitle": "Проверьте вашу почту",
+      "dobRequiredTitle": "Требуется дата рождения",
+      "dobRequiredMessage": "Пожалуйста, выберите вашу дату рождения.",
+      "underageTitle": "Возрастное ограничение",
+      "underageMessage": "Вам должно быть не менее 18 лет, чтобы создать аккаунт."
     }
   },
   "forgotPasswordScreen": {

@@ -22,6 +22,7 @@
     "emailPlaceholder": "אימייל",
     "passwordPlaceholder": "סיסמה (לפחות 8 תווים)",
     "confirmPasswordPlaceholder": "אימות סיסמה",
+    "dobPlaceholder": "תאריך לידה",
     "registerButton": "הרשמה",
     "loginPrompt": "יש לך כבר חשבון? התחבר",
     "alert": {
@@ -31,7 +32,11 @@
       "passwordTooShortMessage": "הסיסמה חייבת להכיל לפחות 8 תווים.",
       "passwordsDoNotMatch": "הסיסמאות אינן תואמות",
       "passwordsDoNotMatchMessage": "הסיסמאות שהוזנו אינן תואמות.",
-      "successTitle": "בדוק את האימייל שלך"
+      "successTitle": "בדוק את האימייל שלך",
+      "dobRequiredTitle": "נדרש תאריך לידה",
+      "dobRequiredMessage": "אנא בחר את תאריך הלידה שלך.",
+      "underageTitle": "הגבלת גיל",
+      "underageMessage": "עליך להיות בן 18 לפחות כדי ליצור חשבון."
     }
   },
   "forgotPasswordScreen": {

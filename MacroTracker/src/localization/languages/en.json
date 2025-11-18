@@ -22,6 +22,7 @@
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Password (min 8 characters)",
     "confirmPasswordPlaceholder": "Confirm Password",
+    "dobPlaceholder": "Date of Birth",
     "registerButton": "Register",
     "loginPrompt": "Already have an account? Log In",
     "alert": {
@@ -31,7 +32,11 @@
       "passwordTooShortMessage": "Password must be at least 8 characters long.",
       "passwordsDoNotMatch": "Passwords Do Not Match",
       "passwordsDoNotMatchMessage": "The entered passwords do not match.",
-      "successTitle": "Check Your Email"
+      "successTitle": "Check Your Email",
+      "dobRequiredTitle": "Date of Birth Required",
+      "dobRequiredMessage": "Please select your date of birth.",
+      "underageTitle": "Age Restriction",
+      "underageMessage": "You must be at least 18 years old to create an account."
     }
   },
   "forgotPasswordScreen": {
