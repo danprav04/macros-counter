@@ -92,7 +92,6 @@
           }
         }
       ],
-      "./plugins/withAndroidImageCropperFix.js",
       "./plugins/withAndroidProguard.js",
       "expo-dev-client",
       [
