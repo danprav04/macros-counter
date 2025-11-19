@@ -95,7 +95,6 @@
       ],
       "./plugins/withAndroidProguard.js",
       "./plugins/withAndroid16KBSupport.js",
-      "./plugins/withExtractNativeLibs.js",
       "expo-dev-client",
       [
         "expo-document-picker",
