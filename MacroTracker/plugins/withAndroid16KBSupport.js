@@ -6,7 +6,7 @@ const withAndroid16KBSupport = (config) => {
   // (including those found in node_modules) to 16KB boundaries.
   config = withGradleProperties(config, (config) => {
     // Remove existing property if present to avoid duplicates/conflicts
-    config.modResults = config.modResults.filter(item => item.key!== 'android.use16KBAlignment');
+    config.modResults = config.modResults.filter(item => item.key !== 'android.use16KBAlignment');
     
     config.modResults.push({
       type: 'property',
@@ -30,19 +30,21 @@ const withAndroid16KBSupport = (config) => {
 
     if (agpDependencyPattern.test(buildGradle)) {
       const match = buildGradle.match(agpDependencyPattern);
-      const currentVersion = match;
+      // FIXED: Access the capture group [2] for the version string. 
+      // match[0] is the full match, match[1] is prefix, match[2] is version, match[3] is suffix.
+      const currentVersion = match ? match[2] : null;
       
-      if (currentVersion!== targetAgpVersion) {
-        console.log(` Upgrading AGP from ${currentVersion} to ${targetAgpVersion}`);
+      if (currentVersion && currentVersion !== targetAgpVersion) {
+        console.log(`[16KB Support] Upgrading AGP from ${currentVersion} to ${targetAgpVersion}`);
         config.modResults.contents = buildGradle.replace(
           agpDependencyPattern,
           `$1${targetAgpVersion}$3`
         );
       } else {
-        console.log(` AGP is already at target version ${targetAgpVersion}`);
+        console.log(`[16KB Support] AGP is already at target version ${targetAgpVersion}`);
       }
     } else {
-      console.warn(" WARNING: Could not find AGP classpath to upgrade. Ensure your project uses AGP 8.5.2+ manually.");
+      console.warn("[16KB Support] WARNING: Could not find AGP classpath to upgrade. Ensure your project uses AGP 8.5.2+ manually.");
     }
 
     return config;
@@ -57,7 +59,7 @@ const withAndroid16KBSupport = (config) => {
 
     // Only add the block if it is not already present to prevent duplication errors
     if (!buildGradle.includes('ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES')) {
-      console.log(' Injecting NDK build flags into defaultConfig.');
+      console.log('[16KB Support] Injecting NDK build flags into defaultConfig.');
       const nativeBuildBlock = `
         externalNativeBuild {
             cmake {
@@ -77,7 +79,7 @@ const withAndroid16KBSupport = (config) => {
           `defaultConfig {\n${nativeBuildBlock}`
         );
       } else {
-        console.warn(" WARNING: Could not find defaultConfig block in app/build.gradle. Flags not injected.");
+        console.warn("[16KB Support] WARNING: Could not find defaultConfig block in app/build.gradle. Flags not injected.");
       }
     }
 
