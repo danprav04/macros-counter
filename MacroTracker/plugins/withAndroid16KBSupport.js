@@ -27,30 +27,38 @@ const withAndroid16KBSupport = (config) => {
       }
     }
 
-    // Inject block to force all SUBPROJECTS (dependencies) to use Java 17
-    // FIX: Changed 'allprojects' to 'subprojects' to avoid "Project already evaluated" error.
+    // Inject block to force all subprojects to use Java 17.
+    // FIX: Using pluginManager.withPlugin instead of afterEvaluate to avoid lifecycle errors.
     const jvmTargetBlock = `
 subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
+    project.pluginManager.withPlugin('com.android.library') {
+        android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
             }
         }
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions {
-                jvmTarget = "17"
+    }
+    
+    project.pluginManager.withPlugin('com.android.application') {
+        android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
             }
+        }
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
         }
     }
 }
 `;
 
     if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
-        console.log('[Fix] Injecting forced JVM 17 target for subprojects.');
+        console.log('[Fix] Injecting forced JVM 17 target for subprojects (Safely).');
         buildGradle += `\n${jvmTargetBlock}\n`;
     }
 
