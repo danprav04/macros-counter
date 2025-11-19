@@ -27,9 +27,10 @@ const withAndroid16KBSupport = (config) => {
       }
     }
 
-    // Inject block to force all subprojects (dependencies) to use Java 17
+    // Inject block to force all SUBPROJECTS (dependencies) to use Java 17
+    // FIX: Changed 'allprojects' to 'subprojects' to avoid "Project already evaluated" error.
     const jvmTargetBlock = `
-allprojects {
+subprojects {
     afterEvaluate { project ->
         if (project.hasProperty("android")) {
             project.android {
@@ -49,7 +50,7 @@ allprojects {
 `;
 
     if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
-        console.log('[Fix] Injecting forced JVM 17 target for all dependencies.');
+        console.log('[Fix] Injecting forced JVM 17 target for subprojects.');
         buildGradle += `\n${jvmTargetBlock}\n`;
     }
 
@@ -57,7 +58,7 @@ allprojects {
     return config;
   });
 
-  // 3. Safer injection of NDK flags (unchanged from previous fix)
+  // 3. Safer injection of NDK flags
   config = withAppBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
     const cmakeFlag = '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON';
