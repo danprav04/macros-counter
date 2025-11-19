@@ -3,41 +3,45 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
 
 const withAndroid16KBSupport = (config) => {
   return withAppBuildGradle(config, (config) => {
-    const buildGradle = config.modResults.contents;
-    
-    // The flag required to enable 16KB page size support in the NDK
-    const flexiblePageSizeFlag = '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON';
+    let buildGradle = config.modResults.contents;
 
-    // 1. Check if the flag is already present to avoid duplication
-    if (buildGradle.includes(flexiblePageSizeFlag)) {
-        return config;
+    // Define the flags required for 16KB page size support in NDK r27
+    // CMake expects a definition flag with -D
+    const cmakeFlag = '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON';
+    // ndk-build expects a make variable assignment
+    const ndkBuildFlag = 'APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true';
+
+    // Check if the flags are already present to avoid duplication
+    if (buildGradle.includes('ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES')) {
+      return config;
     }
 
-    // 2. Define the configuration block to inject.
-    // This adds the arguments to both cmake and ndkBuild to cover different library build types.
-    const externalNativeBuildBlock = `
+    // Configuration block to inject into defaultConfig
+    // This ensures that whether the project uses CMake or ndk-build, the 16KB support is enabled.
+    const nativeBuildBlock = `
         externalNativeBuild {
             cmake {
-                arguments "${flexiblePageSizeFlag}"
+                arguments "${cmakeFlag}"
             }
             ndkBuild {
-                arguments "${flexiblePageSizeFlag}"
+                arguments "${ndkBuildFlag}"
             }
         }
     `;
 
-    // 3. Inject the block into defaultConfig.
+    // Inject the block into defaultConfig.
     // We look for 'defaultConfig {' and append our block immediately after it.
-    // This leverages Groovy's ability to merge configuration blocks if externalNativeBuild already exists.
-    const defaultConfigPattern = /(defaultConfig\s*\{)/;
+    const defaultConfigPattern = /defaultConfig\s*\{/;
 
     if (defaultConfigPattern.test(buildGradle)) {
-        config.modResults.contents = buildGradle.replace(
-            defaultConfigPattern,
-            `$1\n${externalNativeBuildBlock}`
-        );
+      config.modResults.contents = buildGradle.replace(
+        defaultConfigPattern,
+        `defaultConfig {\n${nativeBuildBlock}`
+      );
     } else {
-        console.warn('withAndroid16KBSupport: Could not find defaultConfig block in app/build.gradle. 16KB support flags were not applied.');
+      console.warn(
+        'withAndroid16KBSupport: Could not find defaultConfig block in app/build.gradle. 16KB support flags were not applied.'
+      );
     }
 
     return config;
