@@ -3,7 +3,6 @@ const { withProjectBuildGradle, withGradleProperties, withAppBuildGradle } = req
 const withAndroid16KBSupport = (config) => {
   // 1. Gradle Properties: 16KB Support + Suppress Compose Version Check
   config = withGradleProperties(config, (config) => {
-    // Remove existing properties to avoid duplicates
     config.modResults = config.modResults.filter(item => 
         item.key !== 'android.use16KBAlignment' && 
         item.key !== 'suppressKotlinVersionCompatibilityCheck'
@@ -16,18 +15,17 @@ const withAndroid16KBSupport = (config) => {
       value: 'true',
     });
 
-    // FIX: Suppress the error "Compose Compiler 1.5.14 requires Kotlin 1.9.24"
-    // This allows us to use Kotlin 1.9.25 (needed by AdMob) without crashing Expo.
+    // Suppress Compose Compiler check (needed for Kotlin 1.9.25)
     config.modResults.push({
       type: 'property',
       key: 'suppressKotlinVersionCompatibilityCheck',
-      value: '1.5.14', // The version of the Compose Compiler reporting the error
+      value: '1.5.14', 
     });
 
     return config;
   });
 
-  // 2. Upgrade AGP to 8.5.2 and Force JVM 17
+  // 2. Upgrade AGP to 8.5.2 and Force JVM 17 Safely
   config = withProjectBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
     const targetAgpVersion = '8.5.2';
@@ -42,25 +40,26 @@ const withAndroid16KBSupport = (config) => {
       }
     }
 
-    // Inject block to force all subprojects to use Java 17.
-    // Using pluginManager.withPlugin avoids "Project already evaluated" errors.
+    // Inject robust block to force Java 17 on all subprojects
+    // Handles both "already evaluated" and "not yet evaluated" states.
     const jvmTargetBlock = `
 subprojects {
-    project.pluginManager.withPlugin('com.android.library') {
-        android {
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
+    def configureAndroid = {
+        if (project.hasProperty('android')) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
             }
         }
     }
-    
-    project.pluginManager.withPlugin('com.android.application') {
-        android {
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
+
+    if (state.executed) {
+        configureAndroid()
+    } else {
+        afterEvaluate {
+            configureAndroid()
         }
     }
 
@@ -72,8 +71,8 @@ subprojects {
 }
 `;
 
-    if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
-        console.log('[Fix] Injecting forced JVM 17 target for subprojects.');
+    if (!buildGradle.includes('def configureAndroid = {')) {
+        console.log('[Fix] Injecting robust JVM 17 enforcement.');
         buildGradle += `\n${jvmTargetBlock}\n`;
     }
 
