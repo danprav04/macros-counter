@@ -29,6 +29,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+      
+      - name: Install Android NDK r27
+        run: sdkmanager "ndk;27.0.12077973"
 
       - name: Install dependencies
         working-directory: ./MacroTracker
