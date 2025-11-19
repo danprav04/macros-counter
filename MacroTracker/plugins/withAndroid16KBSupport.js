@@ -12,7 +12,7 @@ const withAndroid16KBSupport = (config) => {
     return config;
   });
 
-  // 2. Upgrade AGP to 8.5.2 AND Force Kotlin JVM Target to 17
+  // 2. Upgrade AGP to 8.5.2, Force JVM 17, AND Force Kotlin 1.9.24
   config = withProjectBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
     const targetAgpVersion = '8.5.2';
@@ -27,9 +27,19 @@ const withAndroid16KBSupport = (config) => {
       }
     }
 
-    // Inject block to force all subprojects to use Java 17.
-    // FIX: Using pluginManager.withPlugin instead of afterEvaluate to avoid lifecycle errors.
-    const jvmTargetBlock = `
+    // FIX: Inject block to force Java 17 AND strictly force Kotlin 1.9.24 resolution
+    const strictConfigBlock = `
+allprojects {
+    // Force Kotlin version to match Compose Compiler requirements
+    configurations.all {
+        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name.startsWith('kotlin-')) {
+                details.useVersion '1.9.24'
+            }
+        }
+    }
+}
+
 subprojects {
     project.pluginManager.withPlugin('com.android.library') {
         android {
@@ -57,9 +67,9 @@ subprojects {
 }
 `;
 
-    if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
-        console.log('[Fix] Injecting forced JVM 17 target for subprojects (Safely).');
-        buildGradle += `\n${jvmTargetBlock}\n`;
+    if (!buildGradle.includes('resolutionStrategy.eachDependency')) {
+        console.log('[Fix] Injecting strict Kotlin 1.9.24 resolution and JVM 17 enforcement.');
+        buildGradle += `\n${strictConfigBlock}\n`;
     }
 
     config.modResults.contents = buildGradle;
