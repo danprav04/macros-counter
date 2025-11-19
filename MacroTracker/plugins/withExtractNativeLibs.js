@@ -1,29 +1,31 @@
-// plugins/withExtractNativeLibs.js
 const { withAndroidManifest } = require('@expo/config-plugins');
 
-/**
- * Modifies AndroidManifest.xml to set android:extractNativeLibs="true".
- * 
- * This is a critical fix for 16KB page size compatibility (Android 15).
- * It ensures that native libraries are extracted from the APK at install time,
- * allowing the OS to align them to the device's page size (4KB or 16KB).
- * 
- * FIXED: Attributes must be set on the '$' property of the xml2js object.
- */
 const withExtractNativeLibs = (config) => {
   return withAndroidManifest(config, async (config) => {
     const androidManifest = config.modResults;
     
+    // 1. Add the tools namespace to the root <manifest> tag
+    if (!androidManifest.manifest.$['xmlns:tools']) {
+      androidManifest.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
+
     if (androidManifest.manifest && androidManifest.manifest.application) {
       const app = androidManifest.manifest.application[0];
       
-      // Ensure the attributes object exists
       if (!app.$) {
         app.$ = {};
       }
       
-      // Set the attribute correctly on the '$' object
+      // 2. Set the attribute
       app.$['android:extractNativeLibs'] = 'true';
+
+      // 3. Add tools:replace to force override the value from Google Mobile Ads SDK
+      const toolsReplace = app.$['tools:replace'];
+      if (!toolsReplace) {
+        app.$['tools:replace'] = 'android:extractNativeLibs';
+      } else if (!toolsReplace.includes('android:extractNativeLibs')) {
+        app.$['tools:replace'] = `${toolsReplace},android:extractNativeLibs`;
+      }
     }
     
     return config;
