@@ -24,14 +24,14 @@ const withAndroid16KBSupport = (config) => {
     const targetAgpVersion = '8.5.2';
 
     // Regex to find the classpath definition. 
-    // Matches various formats: classpath('...'), classpath "...", or classpath '...'
-    // Captures the group prefix and suffix to preserve original formatting.
-    const agpDependencyPattern = /(classpath\s+[\('"]com\.android\.tools\.build:gradle:)([^'"\)]+)([\)'"])/;
+    // Improved to match both:
+    // classpath 'com.android.tools.build:gradle:x.y.z' (space separator)
+    // classpath('com.android.tools.build:gradle:x.y.z') (function call style)
+    // matches: 1=prefix, 2=version, 3=suffix
+    const agpDependencyPattern = /(classpath\s*[\('"]com\.android\.tools\.build:gradle:)([^'"\)]+)([\)'"])/;
 
     if (agpDependencyPattern.test(buildGradle)) {
       const match = buildGradle.match(agpDependencyPattern);
-      // FIXED: Access the capture group [2] for the version string. 
-      // match[0] is the full match, match[1] is prefix, match[2] is version, match[3] is suffix.
       const currentVersion = match ? match[2] : null;
       
       if (currentVersion && currentVersion !== targetAgpVersion) {
@@ -44,7 +44,7 @@ const withAndroid16KBSupport = (config) => {
         console.log(`[16KB Support] AGP is already at target version ${targetAgpVersion}`);
       }
     } else {
-      console.warn("[16KB Support] WARNING: Could not find AGP classpath to upgrade. Ensure your project uses AGP 8.5.2+ manually.");
+      console.warn("[16KB Support] WARNING: Could not find AGP classpath to upgrade. Ensure your project uses AGP 8.5.2+ manually. If the default AGP is older than 8.5, the build WILL fail.");
     }
 
     return config;
@@ -57,9 +57,10 @@ const withAndroid16KBSupport = (config) => {
     const cmakeFlag = '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON';
     const ndkBuildFlag = 'APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true';
 
-    // Only add the block if it is not already present to prevent duplication errors
+    // Check if flags are already present to avoid duplication
     if (!buildGradle.includes('ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES')) {
       console.log('[16KB Support] Injecting NDK build flags into defaultConfig.');
+      
       const nativeBuildBlock = `
         externalNativeBuild {
             cmake {
@@ -69,14 +70,17 @@ const withAndroid16KBSupport = (config) => {
                 arguments "${ndkBuildFlag}"
             }
         }
-    `;
+      `;
       
-      // Inject inside defaultConfig block
-      const defaultConfigPattern = /defaultConfig\s*\{/;
+      // Inject inside defaultConfig block.
+      // We look for the closing brace of defaultConfig to insert before it, 
+      // or simply replace 'defaultConfig {' to append immediately after opening.
+      const defaultConfigPattern = /(defaultConfig\s*\{)/;
+      
       if (defaultConfigPattern.test(buildGradle)) {
         config.modResults.contents = buildGradle.replace(
           defaultConfigPattern,
-          `defaultConfig {\n${nativeBuildBlock}`
+          `$1\n${nativeBuildBlock}`
         );
       } else {
         console.warn("[16KB Support] WARNING: Could not find defaultConfig block in app/build.gradle. Flags not injected.");
