@@ -146,31 +146,35 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
         <View style={styles.header}>
             <View style={styles.titleContainer}>
                 {iconIdentifier ? <Text style={styles.iconEmoji}>{iconIdentifier}</Text> : <Icon name="fast-food-outline" type="ionicon" size={32} color={theme.colors.text} />}
-                <Text h4 h4Style={styles.title}>{String(formState.name) || t('addFoodModal.titleAdd')}</Text>
-                {gradeResult && <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}><Text style={styles.gradeText}>{gradeResult.letter}</Text></View>}
+                <Text h4 h4Style={styles.title} numberOfLines={1} ellipsizeMode="tail">{String(formState.name) || t('addFoodModal.titleAdd')}</Text>
             </View>
+            {gradeResult && <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}><Text style={styles.gradeText}>{gradeResult.letter}</Text></View>}
             <Icon name="close" type="material" size={28} color={theme.colors.grey3} onPress={onClose} containerStyle={styles.closeIcon} />
         </View>
 
         <Divider style={styles.divider} />
 
-        <ListItem containerStyle={styles.macroItem} bottomDivider>
-            <MaterialCommunityIcons name="form-textbox" size={24} color={theme.colors.secondary} />
-            <ListItem.Content>
-                <ListItem.Title style={styles.macroLabel}>{t('foodFormFields.foodName')}</ListItem.Title>
-            </ListItem.Content>
-            <Input
-                value={String(formState.name)}
-                onChangeText={(text) => handleInputChange('name', text)}
-                autoCapitalize="words"
-                containerStyle={styles.inputOuterContainer}
-                inputContainerStyle={styles.inputContainer}
-                inputStyle={styles.nameInputValue}
-                errorMessage={errors.name}
-                errorStyle={styles.errorText}
-                disabled={isSaving}
-            />
-        </ListItem>
+        <Input
+            value={String(formState.name)}
+            onChangeText={(text) => handleInputChange('name', text)}
+            placeholder={t('foodFormFields.foodName')}
+            autoCapitalize="words"
+            // Move the icon inside the input to save space
+            leftIcon={
+                <MaterialCommunityIcons 
+                    name="form-textbox" 
+                    size={24} 
+                    color={theme.colors.secondary} 
+                    style={{ marginRight: 8 }}
+                />
+            }
+            containerStyle={styles.nameInputContainer}
+            inputContainerStyle={styles.nameInputInnerContainer}
+            inputStyle={styles.nameInputValue}
+            errorMessage={errors.name}
+            errorStyle={styles.errorText}
+            disabled={isSaving}
+        />
 
         {renderEditableMacroItem(t('dailyProgress.calories'), 'calories', 'fire')}
         {renderEditableMacroItem(t('dailyProgress.protein'), 'protein', 'food-drumstick')}
@@ -207,19 +211,36 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
 const useStyles = makeStyles((theme) => ({
   overlay: { width: '90%', maxWidth: 500, maxHeight: '85%', borderRadius: 15, padding: 20, backgroundColor: theme.colors.card, },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, },
-  titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10, },
+  titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8, },
   iconEmoji: { fontSize: 32, marginRight: 12, },
-  title: { color: theme.colors.text, fontWeight: 'bold', flexShrink: 1, textAlign: 'left', },
-  gradePill: { marginLeft: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15, },
+  title: { color: theme.colors.text, fontWeight: 'bold', flex: 1, textAlign: 'left', },
+  gradePill: { marginLeft: 8, marginRight: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15, },
   gradeText: { color: theme.colors.white, fontWeight: 'bold', fontSize: 16, },
   closeIcon: { marginLeft: 10, },
   divider: { marginBottom: 15, },
+  nameInputContainer: { 
+    paddingHorizontal: 10,
+    marginBottom: 5, // Minimal spacing between name and macros
+    marginTop: 5,
+  },
+  nameInputInnerContainer: { 
+    borderBottomWidth: 0, 
+    paddingHorizontal: 12, 
+    backgroundColor: theme.colors.grey5, 
+    borderRadius: 8,
+    height: 40, // Enforce a smaller height (was minHeight 45)
+  },
+  nameInputValue: { 
+    color: theme.colors.text, 
+    fontSize: 16, 
+    textAlign: I18nManager.isRTL ? 'right' : 'left', 
+    // Removed paddingVertical to let flex center it
+  },
   macroItem: { paddingVertical: 4, paddingHorizontal: 5, backgroundColor: 'transparent', alignItems: 'center' },
   macroLabel: { color: theme.colors.text, fontSize: 16, fontWeight: '500', textAlign: 'left', },
   inputOuterContainer: { flex: 0.6, paddingHorizontal: 0 },
   inputContainer: { borderBottomWidth: 0, paddingHorizontal: 8, backgroundColor: theme.colors.grey5, borderRadius: 8, marginTop: 20 },
   inputValue: { color: theme.colors.text, fontSize: 16, textAlign: 'right', paddingVertical: 10 },
-  nameInputValue: { color: theme.colors.text, fontSize: 16, textAlign: I18nManager.isRTL ? 'right' : 'left', paddingVertical: 10, },
   unitText: { color: theme.colors.grey3, fontSize: 13, fontWeight: '500' },
   errorText: { color: theme.colors.error, textAlign: 'left', marginLeft: 0, marginTop: 2, marginBottom: 2 },
   disclaimerContainer: {
