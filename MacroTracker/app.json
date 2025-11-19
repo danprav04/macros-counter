@@ -18,9 +18,7 @@
       "translucent": false,
       "barStyle": "light-content"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.macrosvisionai.app",
@@ -57,10 +55,7 @@
               "host": "open-add-food-modal"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -72,10 +67,7 @@
               "pathPrefix": "/share/food"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
@@ -87,6 +79,7 @@
         "expo-build-properties",
         {
           "android": {
+            "kotlinVersion": "1.9.24",
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "ndkVersion": "27.0.12077973"
@@ -95,8 +88,9 @@
       ],
       "./plugins/withAndroidProguard.js",
       "./plugins/withAndroid16KBSupport.js",
-      "./plugins/withExtractNativeLibs.js", 
+      "./plugins/withExtractNativeLibs.js",
       "expo-dev-client",
+      "react-native-google-mobile-ads",
       [
         "expo-document-picker",
         {
@@ -112,8 +106,7 @@
         }
       ],
       "expo-secure-store",
-      "expo-localization",
-      "react-native-google-mobile-ads"
+      "expo-localization"
     ],
     "extra": {
       "eas": {

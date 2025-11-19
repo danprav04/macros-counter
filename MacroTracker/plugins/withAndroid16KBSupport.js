@@ -1,6 +1,7 @@
 const { withProjectBuildGradle, withGradleProperties, withAppBuildGradle } = require('@expo/config-plugins');
 
 const withAndroid16KBSupport = (config) => {
+  // 1. Enable 16KB support property
   config = withGradleProperties(config, (config) => {
     config.modResults = config.modResults.filter(item => item.key !== 'android.use16KBAlignment');
     config.modResults.push({
@@ -11,42 +12,60 @@ const withAndroid16KBSupport = (config) => {
     return config;
   });
 
+  // 2. Upgrade AGP to 8.5.2 AND Force Kotlin JVM Target to 17
   config = withProjectBuildGradle(config, (config) => {
-    const buildGradle = config.modResults.contents;
+    let buildGradle = config.modResults.contents;
     const targetAgpVersion = '8.5.2';
 
-    // Regex matches: classpath('...'), classpath "...", classpath variable
+    // Upgrade AGP Version
     const agpDependencyPattern = /(classpath\s+[\('"]com\.android\.tools\.build:gradle:)([^'"\)]+)([\)'"])/;
-
     if (agpDependencyPattern.test(buildGradle)) {
       const match = buildGradle.match(agpDependencyPattern);
-      const currentVersion = match[2];
-      
-      if (currentVersion !== targetAgpVersion) {
-        console.log(`[16KB] Upgrading AGP from ${currentVersion} to ${targetAgpVersion}`);
-        config.modResults.contents = buildGradle.replace(
-          agpDependencyPattern,
-          `$1${targetAgpVersion}$3`
-        );
+      if (match[2] !== targetAgpVersion) {
+        console.log(`[16KB] Upgrading AGP from ${match[2]} to ${targetAgpVersion}`);
+        buildGradle = buildGradle.replace(agpDependencyPattern, `$1${targetAgpVersion}$3`);
       }
-    } else {
-      console.warn("[16KB] WARNING: Could not find AGP classpath to upgrade.");
     }
 
+    // Inject block to force all subprojects (dependencies) to use Java 17
+    const jvmTargetBlock = `
+allprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+}
+`;
+
+    if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
+        console.log('[Fix] Injecting forced JVM 17 target for all dependencies.');
+        buildGradle += `\n${jvmTargetBlock}\n`;
+    }
+
+    config.modResults.contents = buildGradle;
     return config;
   });
 
-  // Safer injection of NDK flags
+  // 3. Safer injection of NDK flags (unchanged from previous fix)
   config = withAppBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
     const cmakeFlag = '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON';
     const ndkBuildFlag = 'APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true';
 
     if (!buildGradle.includes('ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES')) {
-       // Inject only if defaultConfig exists to avoid syntax errors
        const defaultConfigRegex = /defaultConfig\s*\{/;
        if (defaultConfigRegex.test(buildGradle)) {
-           console.log('[16KB] Injecting NDK build flags.');
            const nativeBuildBlock = `
         externalNativeBuild {
             cmake { arguments "${cmakeFlag}" }
