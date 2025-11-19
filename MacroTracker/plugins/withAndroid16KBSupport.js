@@ -1,18 +1,33 @@
 const { withProjectBuildGradle, withGradleProperties, withAppBuildGradle } = require('@expo/config-plugins');
 
 const withAndroid16KBSupport = (config) => {
-  // 1. Enable 16KB support property
+  // 1. Gradle Properties: 16KB Support + Suppress Compose Version Check
   config = withGradleProperties(config, (config) => {
-    config.modResults = config.modResults.filter(item => item.key !== 'android.use16KBAlignment');
+    // Remove existing properties to avoid duplicates
+    config.modResults = config.modResults.filter(item => 
+        item.key !== 'android.use16KBAlignment' && 
+        item.key !== 'suppressKotlinVersionCompatibilityCheck'
+    );
+    
+    // Enable 16KB Alignment
     config.modResults.push({
       type: 'property',
       key: 'android.use16KBAlignment',
       value: 'true',
     });
+
+    // FIX: Suppress the error "Compose Compiler 1.5.14 requires Kotlin 1.9.24"
+    // This allows us to use Kotlin 1.9.25 (needed by AdMob) without crashing Expo.
+    config.modResults.push({
+      type: 'property',
+      key: 'suppressKotlinVersionCompatibilityCheck',
+      value: '1.5.14', // The version of the Compose Compiler reporting the error
+    });
+
     return config;
   });
 
-  // 2. Upgrade AGP to 8.5.2, Force JVM 17, AND Force Kotlin 1.9.24
+  // 2. Upgrade AGP to 8.5.2 and Force JVM 17
   config = withProjectBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
     const targetAgpVersion = '8.5.2';
@@ -27,19 +42,9 @@ const withAndroid16KBSupport = (config) => {
       }
     }
 
-    // FIX: Inject block to force Java 17 AND strictly force Kotlin 1.9.24 resolution
-    const strictConfigBlock = `
-allprojects {
-    // Force Kotlin version to match Compose Compiler requirements
-    configurations.all {
-        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-            if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name.startsWith('kotlin-')) {
-                details.useVersion '1.9.24'
-            }
-        }
-    }
-}
-
+    // Inject block to force all subprojects to use Java 17.
+    // Using pluginManager.withPlugin avoids "Project already evaluated" errors.
+    const jvmTargetBlock = `
 subprojects {
     project.pluginManager.withPlugin('com.android.library') {
         android {
@@ -67,9 +72,9 @@ subprojects {
 }
 `;
 
-    if (!buildGradle.includes('resolutionStrategy.eachDependency')) {
-        console.log('[Fix] Injecting strict Kotlin 1.9.24 resolution and JVM 17 enforcement.');
-        buildGradle += `\n${strictConfigBlock}\n`;
+    if (!buildGradle.includes('tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile)')) {
+        console.log('[Fix] Injecting forced JVM 17 target for subprojects.');
+        buildGradle += `\n${jvmTargetBlock}\n`;
     }
 
     config.modResults.contents = buildGradle;
