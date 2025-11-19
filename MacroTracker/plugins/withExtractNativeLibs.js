@@ -7,7 +7,8 @@ const { withAndroidManifest } = require('@expo/config-plugins');
  * This is a critical fix for 16KB page size compatibility (Android 15).
  * It ensures that native libraries are extracted from the APK at install time,
  * allowing the OS to align them to the device's page size (4KB or 16KB).
- * This serves as a fail-safe if the AGP build process fails to align binaries inside the zip.
+ * 
+ * FIXED: Attributes must be set on the '$' property of the xml2js object.
  */
 const withExtractNativeLibs = (config) => {
   return withAndroidManifest(config, async (config) => {
@@ -15,7 +16,14 @@ const withExtractNativeLibs = (config) => {
     
     if (androidManifest.manifest && androidManifest.manifest.application) {
       const app = androidManifest.manifest.application[0];
-      app['android:extractNativeLibs'] = 'true';
+      
+      // Ensure the attributes object exists
+      if (!app.$) {
+        app.$ = {};
+      }
+      
+      // Set the attribute correctly on the '$' object
+      app.$['android:extractNativeLibs'] = 'true';
     }
     
     return config;
