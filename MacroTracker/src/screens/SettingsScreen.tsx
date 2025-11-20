@@ -394,6 +394,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           <View style={styles.buttonGroup}>
               <DataManagementButtons onDataOperation={localDataOperationHandler} />
           </View>
+          
+          {/* NEW: Backup Warning */}
+          <View style={styles.backupWarningContainer}>
+              <Icon name="alert" type="material-community" color={theme.colors.warning} size={18} />
+              <Text style={styles.backupWarningText}>{t('dataManagement.backupWarning')}</Text>
+          </View>
+
           <View style={styles.disclaimerContainer}>
               <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
               <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
@@ -477,6 +484,27 @@ const useStyles = makeStyles((theme) => ({
   },
   inputGroup: { marginBottom: 10, paddingHorizontal: 5, },
   buttonGroup: { marginBottom: 10, paddingHorizontal: 5, },
+  backupWarningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    marginTop: 5,
+    backgroundColor: theme.mode === 'light' ? '#fff3cd' : '#3e2e1e', // Subtle yellow/brown background
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.warning,
+  },
+  backupWarningText: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: theme.colors.warning, // Or a text color that contrasts well
+    fontWeight: '500',
+    textAlign: 'center',
+    flexShrink: 1,
+  },
   chartContainer: {
     marginBottom: 20,
   },

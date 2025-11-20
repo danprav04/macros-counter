@@ -126,6 +126,7 @@
     "exportData": "Export Data",
     "importData": "Import Data",
     "clearAllData": "Clear All Data",
+    "backupWarning": "Important: Deleting the app permanently erases all local data. Please export a backup before uninstalling.",
     "exportError": "Sharing Error",
     "exportErrorNoSharing": "Sharing is not available on your platform.",
     "exportFailed": "Export Failed",
