@@ -7,7 +7,8 @@ import { getFoods, createFood, updateFood as updateFoodService } from "../servic
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 import DailyProgress from "../components/DailyProgress";
-import { Text, FAB, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
+import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
+import { FAB } from "@rneui/base";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -490,7 +491,15 @@ const DailyEntryScreen: React.FC = () => {
           extraData={{ foodIcons, isSaving, dailyGoals, selectedDate, itemsLength: currentEntryItems.length }}
         />
       )}
-      <FAB icon={<RNEIcon name="add" color="white" />} color={theme.colors.primary} onPress={() => !isSaving && toggleAddOverlay()} placement="right" size="large" style={styles.fab} disabled={isSaving || isLoadingData} />
+      <FAB
+        icon={<RNEIcon name="add" color={theme.colors.white} />}
+        color={theme.colors.primary}
+        onPress={() => !isSaving && toggleAddOverlay()}
+        placement="right"
+        size="large"
+        style={styles.fab}
+        disabled={isSaving || isLoadingData}
+      />
       
       {isAddModalVisible && (
           <AddEntryModal
