@@ -37,9 +37,6 @@
       "package": "com.macrosvisionai.app",
       "versionCode": 22,
       "userInterfaceStyle": "automatic",
-      "androidNavigationBar": {
-        "userInterfaceStyle": "automatic"
-      },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
