@@ -95,14 +95,19 @@ const DailyEntryListItem = memo<DailyEntryListItemProps>(({
             bottomDivider
             onPress={handlePress}
             leftContent={(reset) => (
-                <Button
-                    title={t('dailyEntryScreen.delete')}
-                    onPress={() => { handleDeletePress(); reset(); }}
-                    icon={{ name: "delete", color: theme.colors.white }}
-                    buttonStyle={styles.swipeButtonDelete}
-                    titleStyle={styles.swipeButtonTitle}
-                    disabled={isSaving}
-                />
+                <View style={styles.deleteButtonContainer}>
+                    <Button
+                        title={t('dailyEntryScreen.delete')}
+                        onPress={() => { handleDeletePress(); reset(); }}
+                        icon={{ name: "delete", color: theme.colors.white }}
+                        buttonStyle={styles.swipeButtonDelete}
+                        titleStyle={styles.swipeButtonTitle}
+                        disabled={isSaving}
+                        // FIX: Explicitly set disabled colors to match error color (with slight opacity)
+                        disabledStyle={{ backgroundColor: theme.colors.error, opacity: 0.7 }}
+                        disabledTitleStyle={{ color: theme.colors.white }}
+                    />
+                </View>
             )}
             containerStyle={styles.listItemContainer}
         >
@@ -169,7 +174,18 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'left',
     },
     listItemSubtitle: { color: theme.colors.secondary, fontSize: 14, textAlign: 'left', },
-    swipeButtonDelete: { minHeight: "100%", backgroundColor: theme.colors.error, justifyContent: 'center', alignItems: 'center', },
+    deleteButtonContainer: {
+        flex: 1,
+        backgroundColor: theme.colors.error,
+        justifyContent: 'center',
+    },
+    swipeButtonDelete: { 
+        minHeight: "100%", 
+        backgroundColor: theme.colors.error, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        borderRadius: 0,
+    },
     swipeButtonTitle: { color: theme.colors.white, fontWeight: 'bold', fontSize: 15, },
     textLeft: { textAlign: 'left'},
 }));
