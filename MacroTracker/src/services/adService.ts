@@ -18,6 +18,20 @@ const adUnitId = __DEV__ ? TestIds.REWARDED : productionAdUnitId;
 let isAdShowing = false;
 let isSdkInitialized = false;
 
+// Listener for loading state
+type AdLoadingListener = (isLoading: boolean) => void;
+let adLoadingListener: AdLoadingListener | null = null;
+
+export const setAdLoadingListener = (listener: AdLoadingListener | null) => {
+    adLoadingListener = listener;
+};
+
+const notifyLoading = (isLoading: boolean) => {
+    if (adLoadingListener) {
+        adLoadingListener(isLoading);
+    }
+};
+
 export const initializeAds = (): void => {
   if (__DEV__) {
     console.log('--- Ad Service Notice --- Using Test Ad Unit ID for development. Real SSV will not trigger.');
@@ -58,6 +72,7 @@ export const showRewardedAd = (userId: string): Promise<boolean> => {
     const processAd = async () => {
         try {
             isAdShowing = true;
+            notifyLoading(true); // Start loading indicator
             
             const { nonce } = await startRewardAdProcess();
             const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
@@ -71,6 +86,7 @@ export const showRewardedAd = (userId: string): Promise<boolean> => {
 
             const unsubscribeLoad = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
                 console.log('Rewarded ad loaded, now showing.');
+                notifyLoading(false); // Stop loading indicator before showing ad
                 rewardedAd.show();
             });
 
@@ -87,6 +103,7 @@ export const showRewardedAd = (userId: string): Promise<boolean> => {
 
             const unsubscribeError = rewardedAd.addAdEventListener(AdEventType.ERROR, (error) => {
                 console.error('Ad failed to load or show:', error);
+                notifyLoading(false); // Stop loading indicator on error
                 const errorMessage = error?.message || t('ads.error.loadFailed');
                 Alert.alert(t('ads.error.title'), errorMessage);
                 isAdShowing = false;
@@ -104,6 +121,7 @@ export const showRewardedAd = (userId: string): Promise<boolean> => {
             rewardedAd.load();
 
         } catch (error: any) {
+            notifyLoading(false); // Stop loading indicator on catch
             Alert.alert(t('ads.error.title'), error.message || t('ads.error.unknown'));
             isAdShowing = false;
             resolve(false);

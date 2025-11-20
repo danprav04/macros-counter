@@ -339,14 +339,14 @@ const useStyles = makeStyles((theme) => ({
     textAlign: "left",
   },
   streakValue: { color: "#FF9800", fontSize: 24, fontWeight: "bold" },
-  streakItemZero: { backgroundColor: theme.colors.grey5, paddingVertical: 15 },
+  streakItemZero: { backgroundColor: theme.colors.grey1, paddingVertical: 15 },
   streakTitleZero: {
-    color: theme.colors.grey3,
+    color: theme.colors.secondary,
     fontWeight: "bold",
     textAlign: "left",
   },
   streakSubtitleZero: {
-    color: theme.colors.grey3,
+    color: theme.colors.grey4,
     fontSize: 12,
     textAlign: "left",
   },

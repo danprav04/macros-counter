@@ -85,7 +85,6 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                         style={styles.labelIcon}
                     />
                     <Text style={styles.label}>{t('foodFormFields.calories')}</Text>
-                    <Text style={styles.unitText}>/ 100g</Text>
                 </View>
                 <Input
                     keyboardType="numeric" 
@@ -112,7 +111,6 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                         style={styles.labelIcon}
                     />
                     <Text style={styles.label}>{t('foodFormFields.protein')}</Text>
-                    <Text style={styles.unitText}>/ 100g</Text>
                 </View>
                 <Input
                     keyboardType="numeric" 
@@ -139,7 +137,6 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                         style={styles.labelIcon}
                     />
                     <Text style={styles.label}>{t('foodFormFields.carbs')}</Text>
-                    <Text style={styles.unitText}>/ 100g</Text>
                 </View>
                 <Input
                     keyboardType="numeric" 
@@ -166,7 +163,6 @@ const FoodFormFields: React.FC<FoodFormFieldsProps> = ({
                         style={styles.labelIcon}
                     />
                     <Text style={styles.label}>{t('foodFormFields.fat')}</Text>
-                    <Text style={styles.unitText}>/ 100g</Text>
                 </View>
                 <Input
                     keyboardType="numeric" 
