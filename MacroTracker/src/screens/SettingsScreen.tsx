@@ -21,7 +21,6 @@ import i18n from '../localization/i18n';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
-import Constants from 'expo-constants';
 import useDelayedLoading from "../hooks/useDelayedLoading";
 
 
@@ -309,7 +308,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
           <AccountSettings
-            key="accountSettings"
             user={user}
             isLoading={isUserRefreshing}
             isAdLoading={isAdLoading}
@@ -317,62 +315,56 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             onResendVerification={handleResendVerification}
           />
           
-          {/* Wrapped in View with keys on children to prevent unique key warning */}
-          <View>
-              <ListItem key="logout" bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
-                  <Icon key="icon" name="logout" type="material-community" color={theme.colors.primary} />
-                  <ListItem.Content key="content">
-                      <ListItem.Title style={styles.actionItemTitle}>
-                          {t('settingsScreen.account.logout')}
-                      </ListItem.Title>
-                  </ListItem.Content>
-                  <ListItem.Chevron key="chevron" color={theme.colors.primary} />
-              </ListItem>
-              <ListItem key="delete" onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
-                  <Icon key="icon" name="account-remove-outline" type="material-community" color={theme.colors.error} />
-                  <ListItem.Content key="content">
-                      <ListItem.Title style={styles.deleteTitle}>
-                          {t('settingsScreen.account.deleteAccount')}
-                      </ListItem.Title>
-                  </ListItem.Content>
-                  <ListItem.Chevron key="chevron" color={theme.colors.error} />
-              </ListItem>
-          </View>
+          <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
+              <Icon name="logout" type="material-community" color={theme.colors.primary} />
+              <ListItem.Content>
+                  <ListItem.Title style={styles.actionItemTitle}>
+                      {t('settingsScreen.account.logout')}
+                  </ListItem.Title>
+              </ListItem.Content>
+              <ListItem.Chevron color={theme.colors.primary} />
+          </ListItem>
+          <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
+              <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
+              <ListItem.Content>
+                  <ListItem.Title style={styles.deleteTitle}>
+                      {t('settingsScreen.account.deleteAccount')}
+                  </ListItem.Title>
+              </ListItem.Content>
+              <ListItem.Chevron color={theme.colors.error} />
+          </ListItem>
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
           
-          {/* Wrapped in View with keys on children */}
-          <View>
-              <ThemeSwitch key="themeSwitch" currentTheme={settings.theme} onToggle={onThemeChange} />
+          <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
-              <ListItem key="languageLabel" bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
-                  <ListItem.Content key="content">
-                      <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
-                  </ListItem.Content>
-              </ListItem>
-              <View key="pickerContainer" style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
-                  <Picker
-                      selectedValue={settings.language}
-                      onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
-                      style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
-                      itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
-                      dropdownIconColor={theme.colors.text}
-                  >
-                    {LANGUAGES.map((lang) => (
-                        <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
-                    ))}
-                  </Picker>
-              </View>
-              <ListItem key="privacyPolicy" bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
-                    <Icon key="icon" name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
-                    <ListItem.Content key="content">
-                        <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
-                            {t('settingsScreen.general.privacyPolicy')}
-                        </ListItem.Title>
-                    </ListItem.Content>
-                    <ListItem.Chevron key="chevron" color={theme.colors.secondary} />
-                </ListItem>
+          <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
+              <ListItem.Content>
+                  <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
+              </ListItem.Content>
+          </ListItem>
+          <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
+              <Picker
+                  selectedValue={settings.language}
+                  onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
+                  style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
+                  itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
+                  dropdownIconColor={theme.colors.text}
+              >
+                {LANGUAGES.map((lang) => (
+                    <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
+                ))}
+              </Picker>
           </View>
+          <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
+                <Icon name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content>
+                    <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
+                        {t('settingsScreen.general.privacyPolicy')}
+                    </ListItem.Title>
+                </ListItem.Content>
+                <ListItem.Chevron color={theme.colors.secondary} />
+            </ListItem>
 
           <View style={styles.sectionHeaderWithButton}>
               <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
