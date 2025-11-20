@@ -87,7 +87,6 @@
         }
       ],
       "./plugins/withAndroidProguard.js",
-      "./plugins/withAndroid16KBSupport.js",
       "expo-dev-client",
       "react-native-google-mobile-ads",
       [

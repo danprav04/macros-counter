@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
           cache: 'npm'
           cache-dependency-path: 'MacroTracker/package-lock.json'
 
@@ -29,6 +29,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+      
+      - name: Install Android NDK r27
+        run: sdkmanager "ndk;27.0.12077973"
 
       - name: Install project dependencies
         working-directory: ./MacroTracker
