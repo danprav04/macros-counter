@@ -75,7 +75,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const { user, settings, refreshUser, changeDailyGoals, reloadSettings } = useAuth() as AuthContextType;
 
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
-  const [chartUpdateKey, setChartUpdateKey] = useState(0);
+  // Removed chartUpdateKey state as it is no longer used
   
   const [isUserRefreshing, setIsUserRefreshing] = useState(true);
   const [isStatisticsLoading, setIsStatisticsLoading] = useState(true);
@@ -200,7 +200,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               } finally {
                   if (isActive) {
                       setIsStatisticsLoading(false);
-                      setChartUpdateKey(prev => prev + 1);
+                      // Chart key update removed
                   }
               }
           };
@@ -387,7 +387,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             {showStatisticsLoading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} />
             ) : (
-              <StatisticsChart statistics={statistics} key={`${chartUpdateKey}-${i18n.locale}-${theme.mode}`} />
+              // FIX: Removed key prop to prevent component unmounting/remounting
+              <StatisticsChart statistics={statistics} />
             )}
           </View>
 

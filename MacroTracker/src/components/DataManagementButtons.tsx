@@ -1,6 +1,6 @@
 // src/components/DataManagementButtons.tsx
 import React, { useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert, Platform, View } from "react-native"; // Added View import
 import { Button, Icon } from "@rneui/themed";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy"; // FIXED: Use legacy import
@@ -110,7 +110,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   };
 
   return (
-    <>
+    <View>
       <Button
         title={t('dataManagement.exportData')}
         onPress={handleExportData}
@@ -140,7 +140,7 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
         message={t('dataManagement.confirmClearMessage')}
         inputPlaceholder={t('dataManagement.confirmClearInputPlaceholder')}
       />
-    </>
+    </View>
   );
 };
 
