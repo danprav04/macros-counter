@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
  * @param delay The delay in milliseconds before the loading indicator should be shown. Defaults to 500ms.
  * @returns A boolean indicating whether the delayed loading indicator should be shown.
  */
-const useDelayedLoading = (loading: boolean, delay: number = 1000): boolean => {
+const useDelayedLoading = (loading: boolean, delay: number = 200): boolean => {
   const [showLoading, setShowLoading] = useState(false);
 
   useEffect(() => {

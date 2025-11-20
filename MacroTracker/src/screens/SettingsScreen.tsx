@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
+import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, InteractionManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import DailyGoalsInput from "../components/DailyGoalsInput";
@@ -75,7 +75,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
   
-  const [isUserRefreshing, setIsUserRefreshing] = useState(true);
+  const [isUserRefreshing, setIsUserRefreshing] = useState(false);
   const [isStatisticsLoading, setIsStatisticsLoading] = useState(true);
   
   const [isAdLoading, setIsAdLoading] = useState(false);
@@ -156,8 +156,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   useFocusEffect(
     useCallback(() => {
         let isActive = true;
-        setIsUserRefreshing(true);
-        const refreshUserData = async () => {
+        
+        const task = InteractionManager.runAfterInteractions(async () => {
             try {
                 await Promise.all([
                     refreshUser ? refreshUser() : Promise.resolve(),
@@ -172,18 +172,21 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                     setIsUserRefreshing(false);
                 }
             }
+        });
+
+        return () => { 
+          isActive = false; 
+          task.cancel();
         };
-        refreshUserData();
-        return () => { isActive = false; };
     }, [refreshUser, reloadSettings])
   );
 
   useFocusEffect(
       useCallback(() => {
           let isActive = true;
-          const loadAndProcessStats = async () => {
+          
+          const task = InteractionManager.runAfterInteractions(async () => {
               if (!settings) return;
-              setIsStatisticsLoading(true);
               try {
                   const loadedEntries = await loadDailyEntries();
                   if (!isActive) return;
@@ -200,10 +203,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                       setIsStatisticsLoading(false);
                   }
               }
-          };
+          });
 
-          loadAndProcessStats();
-          return () => { isActive = false; };
+          return () => { 
+            isActive = false; 
+            task.cancel();
+          };
       }, [settings, getStatisticsData])
   );
   
