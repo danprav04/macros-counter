@@ -2,7 +2,7 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "3.5.7",
+    "version": "4.0.0",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
