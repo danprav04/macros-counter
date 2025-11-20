@@ -418,6 +418,8 @@ const useStyles = makeStyles((theme) => ({
         marginTop: 10,
         borderColor: theme.colors.primary,
         paddingHorizontal: 20,
+        paddingVertical: 10, // Added vertical padding to prevent clipping
+        borderWidth: 1,      // Explicit border width helps layout calculation
         borderRadius: 20,
     },
     addNewFoodButtonTitle: {
