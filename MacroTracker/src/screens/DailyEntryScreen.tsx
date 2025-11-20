@@ -7,8 +7,7 @@ import { getFoods, createFood, updateFood as updateFoodService } from "../servic
 import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
 import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
 import DailyProgress from "../components/DailyProgress";
-import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon } from "@rneui/themed";
-import { FAB } from "@rneui/base";
+import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon, FAB } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -499,6 +498,7 @@ const DailyEntryScreen: React.FC = () => {
         size="large"
         style={styles.fab}
         disabled={isSaving || isLoadingData}
+        key={`fab-${isSaving || isLoadingData}`}
       />
       
       {isAddModalVisible && (
