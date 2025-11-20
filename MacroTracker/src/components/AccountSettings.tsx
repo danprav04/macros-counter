@@ -264,7 +264,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
               </Text>
               {futureRewards.map((reward, index) => (
                 <PriceTag
-                  key={index}
+                  key={`reward-${index}`}
                   amount={reward}
                   type="reward"
                   size="small"
@@ -295,8 +295,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             </ListItem.Title>
           </ListItem.Content>
           <View style={styles.badgesContainer}>
-            {user.badges.map((badge) => (
-              <UserBadge key={badge.id} badge={badge} />
+            {user.badges.map((badge, index) => (
+              <UserBadge key={`badge-${badge.id}-${index}`} badge={badge} />
             ))}
           </View>
         </ListItem>

@@ -1,10 +1,9 @@
 // src/components/DataManagementButtons.tsx
-// src/components/DataManagementButtons.tsx
 import React, { useState } from "react";
 import { Alert, Platform } from "react-native";
 import { Button, Icon } from "@rneui/themed";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy"; // FIXED: Use legacy import
 import * as Sharing from 'expo-sharing';
 import { formatDateISO } from "../utils/dateUtils";
 import {
@@ -37,10 +36,10 @@ const DataManagementButtons: React.FC<DataManagementButtonsProps> = ({
   const handleExportData = async () => {
     try {
       const dailyEntries = await loadDailyEntries();
-      const { items: foodItems } = await loadFoods(); // Correctly destructure to get the array of food items
+      const { items: foodItems } = await loadFoods();
       const settings = await loadSettings();
       
-      const exportData = { dailyEntries, foods: foodItems, settings }; // Use the foodItems array
+      const exportData = { dailyEntries, foods: foodItems, settings };
       
       const exportDataString = JSON.stringify(exportData, null, 2);
       const formattedDate = formatDateISO(new Date());

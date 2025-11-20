@@ -1,5 +1,5 @@
 // src/screens/SettingsScreen.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
@@ -77,7 +77,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
   const [chartUpdateKey, setChartUpdateKey] = useState(0);
   
-  // --- Granular loading states for lazy loading ---
   const [isUserRefreshing, setIsUserRefreshing] = useState(true);
   const [isStatisticsLoading, setIsStatisticsLoading] = useState(true);
   
@@ -123,7 +122,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
 
     const sortedTimestamps = Array.from(intakeDataMap.keys()).sort((a,b) => a - b);
     
-    // Create a unified list of points including gaps
     const allPoints: MacroData[] = [];
     const GAP_THRESHOLD = 21 * 24 * 60 * 60 * 1000; // 21 days
 
@@ -134,8 +132,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
         for (let i = 1; i < sortedTimestamps.length; i++) {
             const currentTimestamp = sortedTimestamps[i];
             if (currentTimestamp - lastTimestamp > GAP_THRESHOLD) {
-                // Insert a null point to create a gap. This point will be shared across all series.
-                allPoints.push({ x: lastTimestamp + 60000, y: null }); // Add a point 1 minute after last point
+                allPoints.push({ x: lastTimestamp + 60000, y: null }); 
             }
             allPoints.push({ x: currentTimestamp, y: intakeDataMap.get(currentTimestamp) || 0 });
             lastTimestamp = currentTimestamp;
@@ -150,7 +147,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             if (point.y === null) {
                 return { x: point.x, y: null };
             }
-            // Use goal from map if available for that day, otherwise use current goal
             const goalForDay = goalDataMap.get(point.x) ?? currentGoals[macro] ?? 0;
             return { x: point.x, y: goalForDay };
         });
@@ -159,7 +155,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     return [finalIntakeData, movingAverageData];
   }, []);
 
-  // Effect to refresh user status and local settings (e.g., theme) upon focus.
   useFocusEffect(
     useCallback(() => {
         let isActive = true;
@@ -185,7 +180,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }, [refreshUser, reloadSettings])
   );
 
-  // Effect to load and calculate statistics data (the slow part) upon focus.
   useFocusEffect(
       useCallback(() => {
           let isActive = true;
@@ -296,6 +290,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
+  const LANGUAGES = useMemo(() => [
+    { code: 'system', label: t('settingsScreen.language.system') },
+    { code: 'en', label: t('settingsScreen.language.english') },
+    { code: 'ru', label: t('settingsScreen.language.russian') },
+    { code: 'he', label: t('settingsScreen.language.hebrew') },
+  ], [i18n.locale]);
+
   if (!settings) {
     return (
       <View style={styles.loadingContainer}>
@@ -351,10 +352,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                   itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
                   dropdownIconColor={theme.colors.text}
               >
-                  <Picker.Item label={t('settingsScreen.language.system')} value="system" />
-                  <Picker.Item label={t('settingsScreen.language.english')} value="en" />
-                  <Picker.Item label={t('settingsScreen.language.russian')} value="ru" />
-                  <Picker.Item label={t('settingsScreen.language.hebrew')} value="he" />
+                {LANGUAGES.map((lang) => (
+                    <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
+                ))}
               </Picker>
           </View>
           <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>

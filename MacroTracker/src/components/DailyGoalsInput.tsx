@@ -1,9 +1,9 @@
 // src/components/DailyGoalsInput.tsx
-// components/DailyGoalsInput.tsx
 import React from "react";
+import { View } from "react-native";
 import { Input, Text } from "@rneui/themed";
 import { MacroType } from "../types/settings";
-import { useTheme, makeStyles } from "@rneui/themed"; // Import makeStyles
+import { useTheme, makeStyles } from "@rneui/themed";
 import { t } from '../localization/i18n';
 
 interface DailyGoalsInputProps {
@@ -16,7 +16,7 @@ const DailyGoalsInput: React.FC<DailyGoalsInputProps> = ({
   onGoalChange,
 }) => {
   const { theme } = useTheme();
-  const styles = useStyles(); // Use styles
+  const styles = useStyles();
 
   const getLabel = (macro: MacroType) => {
     switch(macro) {
@@ -28,8 +28,10 @@ const DailyGoalsInput: React.FC<DailyGoalsInputProps> = ({
     }
   }
 
+  // Ensure we return a View instead of a Fragment to avoid issues with key handling 
+  // when rendered inside other Views in some React Native versions/layouts.
   return (
-    <>
+    <View>
       {(["calories", "protein", "carbs", "fat"] as MacroType[]).map((macro) => (
         <Input
           key={macro}
@@ -37,19 +39,18 @@ const DailyGoalsInput: React.FC<DailyGoalsInputProps> = ({
           keyboardType="numeric"
           value={dailyGoals?.[macro]?.toString() || ""}
           onChangeText={(value) => onGoalChange(macro, value)}
-          style={[styles.inputStyle, { color: theme.colors.text }]} // Apply inputStyle
+          style={[styles.inputStyle, { color: theme.colors.text }]}
           inputContainerStyle={{ borderBottomColor: theme.colors.text }}
         />
       ))}
-    </>
+    </View>
   );
 };
 
-// Add useStyles
 const useStyles = makeStyles((theme) => ({
     labelStyle: {
         color: theme.colors.text,
-        fontWeight: 'normal', // RNEUI default is bold, make it normal if needed
+        fontWeight: 'normal',
         textAlign: 'left',
     },
     inputStyle: {
