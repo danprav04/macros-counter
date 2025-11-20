@@ -96,22 +96,18 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
   const futureRewards = useMemo(() => {
     if (!costs || !user) return [];
 
-    // Explicitly type the array as number[]
     const rewards: number[] = [];
 
-    const maxFutureAdsToShow = 3; // Calculate a reasonable number of future rewards
+    const maxFutureAdsToShow = 3; 
     const adsLeftToday = Math.max(0, adsPerDayCap - adsWatchedToday);
 
     for (let i = 1; i <= maxFutureAdsToShow; i++) {
-      // The streak only increases for ads watched today within the daily cap.
-      // After the cap is hit, the reward for subsequent ads (hypothetically) would be the same.
       const effectiveStreakIncrease = Math.min(i, adsLeftToday);
       const futureStreak = currentStreak + effectiveStreakIncrease;
       const futureReward = calculateRewardForStreak(futureStreak);
 
       if (rewards.at(-1) === futureReward) continue;
 
-      // We know the array contains numbers because this function returns a number
       rewards.push(futureReward);
     }
     return rewards;
@@ -126,7 +122,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
 
   return (
     <View>
-      <ListItem bottomDivider containerStyle={styles.listItem}>
+      <ListItem key="email" bottomDivider containerStyle={styles.listItem}>
         <Icon
           name="email-outline"
           type="material-community"
@@ -148,6 +144,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
 
       {!user?.is_verified && (
         <ListItem
+          key="verification"
           bottomDivider
           containerStyle={[styles.listItem, styles.warningItem]}
         >
@@ -181,7 +178,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
         </ListItem>
       )}
 
-      <ListItem bottomDivider containerStyle={styles.listItem}>
+      <ListItem key="coins" bottomDivider containerStyle={styles.listItem}>
         <Icon
           name="database"
           type="material-community"
@@ -228,6 +225,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
 
       {user && costs && (
         <ListItem
+          key="streak"
           bottomDivider
           containerStyle={
             currentStreak > 0 ? styles.streakItem : styles.streakItemZero
@@ -283,7 +281,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
       )}
 
       {user?.badges && user.badges.length > 0 && (
-        <ListItem bottomDivider containerStyle={styles.listItem}>
+        <ListItem key="badges" bottomDivider containerStyle={styles.listItem}>
           <Icon
             name="shield-star-outline"
             type="material-community"

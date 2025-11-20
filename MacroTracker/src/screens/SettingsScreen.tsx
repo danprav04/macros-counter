@@ -75,7 +75,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const { user, settings, refreshUser, changeDailyGoals, reloadSettings } = useAuth() as AuthContextType;
 
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
-  // Removed chartUpdateKey state as it is no longer used
   
   const [isUserRefreshing, setIsUserRefreshing] = useState(true);
   const [isStatisticsLoading, setIsStatisticsLoading] = useState(true);
@@ -200,7 +199,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               } finally {
                   if (isActive) {
                       setIsStatisticsLoading(false);
-                      // Chart key update removed
                   }
               }
           };
@@ -317,55 +315,63 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             onWatchAd={handleWatchAd}
             onResendVerification={handleResendVerification}
           />
-          <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
-              <Icon name="logout" type="material-community" color={theme.colors.primary} />
-              <ListItem.Content>
-                  <ListItem.Title style={styles.actionItemTitle}>
-                      {t('settingsScreen.account.logout')}
-                  </ListItem.Title>
-              </ListItem.Content>
-              <ListItem.Chevron color={theme.colors.primary} />
-          </ListItem>
-          <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
-              <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
-              <ListItem.Content>
-                  <ListItem.Title style={styles.deleteTitle}>
-                      {t('settingsScreen.account.deleteAccount')}
-                  </ListItem.Title>
-              </ListItem.Content>
-              <ListItem.Chevron color={theme.colors.error} />
-          </ListItem>
+          
+          {/* Wrapped in View to prevent "unique key" warning for ListItems in ScrollView */}
+          <View>
+              <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
+                  <Icon name="logout" type="material-community" color={theme.colors.primary} />
+                  <ListItem.Content>
+                      <ListItem.Title style={styles.actionItemTitle}>
+                          {t('settingsScreen.account.logout')}
+                      </ListItem.Title>
+                  </ListItem.Content>
+                  <ListItem.Chevron color={theme.colors.primary} />
+              </ListItem>
+              <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
+                  <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
+                  <ListItem.Content>
+                      <ListItem.Title style={styles.deleteTitle}>
+                          {t('settingsScreen.account.deleteAccount')}
+                      </ListItem.Title>
+                  </ListItem.Content>
+                  <ListItem.Chevron color={theme.colors.error} />
+              </ListItem>
+          </View>
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
-          <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
+          
+          {/* Wrapped in View to prevent "unique key" warning for ListItems in ScrollView */}
+          <View>
+              <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
-          <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
-              <ListItem.Content>
-                  <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
-              </ListItem.Content>
-          </ListItem>
-          <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
-               <Picker
-                  selectedValue={settings.language}
-                  onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
-                  style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
-                  itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
-                  dropdownIconColor={theme.colors.text}
-              >
-                {LANGUAGES.map((lang) => (
-                    <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
-                ))}
-              </Picker>
+              <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
+                  <ListItem.Content>
+                      <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
+                  </ListItem.Content>
+              </ListItem>
+              <View style={Platform.OS === 'ios' ? {} : styles.pickerContainerAndroid}>
+                  <Picker
+                      selectedValue={settings.language}
+                      onValueChange={(itemValue) => handleLanguageChange(itemValue as LanguageCode)}
+                      style={[styles.pickerStyle, Platform.OS === 'android' ? { color: theme.colors.text, backgroundColor: theme.colors.background } : {}]}
+                      itemStyle={[styles.pickerItemStyle, Platform.OS === 'ios' ? { color: theme.colors.text } : {}]}
+                      dropdownIconColor={theme.colors.text}
+                  >
+                    {LANGUAGES.map((lang) => (
+                        <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
+                    ))}
+                  </Picker>
+              </View>
+              <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
+                    <Icon name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
+                    <ListItem.Content>
+                        <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
+                            {t('settingsScreen.general.privacyPolicy')}
+                        </ListItem.Title>
+                    </ListItem.Content>
+                    <ListItem.Chevron color={theme.colors.secondary} />
+                </ListItem>
           </View>
-          <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
-                <Icon name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
-                <ListItem.Content>
-                    <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
-                        {t('settingsScreen.general.privacyPolicy')}
-                    </ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Chevron color={theme.colors.secondary} />
-            </ListItem>
 
           <View style={styles.sectionHeaderWithButton}>
               <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
@@ -387,7 +393,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             {showStatisticsLoading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} />
             ) : (
-              // FIX: Removed key prop to prevent component unmounting/remounting
               <StatisticsChart statistics={statistics} />
             )}
           </View>
@@ -495,12 +500,11 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 10,
     marginTop: -5,
     justifyContent: 'center',
-    height: 58, // Enforce height on container for Android
-    // Removed padding to prevent clipping
+    height: 58, 
   },
   pickerStyle: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 120 : 58, // Increase from 50 to 58 for Android
+    height: Platform.OS === 'ios' ? 120 : 58, 
   },
   pickerItemStyle: {
     textAlign: I18nManager.isRTL ? 'right' : 'left',
