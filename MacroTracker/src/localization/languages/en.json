@@ -387,6 +387,7 @@
     "watchAdPromptTitle": "Out of Coins",
     "watchAdPromptMessage": "Watch a short video to get more coins and continue?",
     "watchAdButton": "Watch Ad",
+    "loading": "Loading Ad...",
     "error": {
       "title": "Ad Error",
       "sdkFailed": "The ad service could not be initialized. Please try again later.",

@@ -20,6 +20,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import UpdateRequiredModal from '../components/UpdateRequiredModal';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import AdLoadingModal from '../components/AdLoadingModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
@@ -334,6 +335,7 @@ function AppContent() {
                 </RootStack.Navigator>
             </NavigationContainer>
             <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
+            <AdLoadingModal />
         </View>
     </ThemeProvider>
   );
