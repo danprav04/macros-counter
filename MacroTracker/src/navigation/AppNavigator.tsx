@@ -123,8 +123,58 @@ const linking = {
 declare module "@rneui/themed" {
   export interface Colors { text: string; card: string; successLight: string; primaryLight: string; }
 }
-export const lightThemeColors = { primary: "#2e86de", secondary: "#6c757d", background: "#f8f9fa", grey5: "#e9ecef", white: "#ffffff", grey4: "#ced4da", success: "#28a745", successLight: "#d4edda", black: "#000000", text: "#212529", card: "#ffffff", error: "#dc3545", warning: "#ffc107", disabled: "#6c757d", divider: "#ced4da", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#f8f9fa", grey1: "#e9ecef", grey2: "#dee2e6", grey3: "#ced4da", greyOutline: "#adb5bd", searchBg: "#ffffff", primaryLight: '#eaf5fd' };
-export const darkThemeColors = { primary: "#2e86de", secondary: "#adb5bd", background: "#121212", grey5: "#2c2c2c", white: "#ffffff", grey4: "#343a40", success: "#28a745", successLight: "#1f5139", black: "#000000", text: "#f8f9fa", card: "#1e1e1e", error: "#dc3545", warning: "#ffc107", disabled: "#495057", divider: "#343a40", platform: { ios: {}, android: {}, web: {}, default: {} } as any, grey0: "#212529", grey1: "#2c2c2c", grey2: "#343a40", grey3: "#8899a6", greyOutline: "#8899a6", searchBg: "#1e1e1e", primaryLight: '#2a3b4c' };
+
+export const lightThemeColors = {
+  primary: "#2e86de",
+  secondary: "#475569",
+  background: "#ffffff",
+  grey5: "#cbd5e1",
+  white: "#ffffff",
+  grey4: "#94a3af",
+  success: "#10b981",
+  successLight: "#d1fae5",
+  black: "#000000",
+  text: "#1a202c",
+  card: "#f8fafc",
+  error: "#ef4444",
+  warning: "#f59e0b",
+  disabled: "#64748b",
+  divider: "#cbd5e1",
+  platform: { ios: {}, android: {}, web: {}, default: {} } as any,
+  grey0: "#f8fafc",
+  grey1: "#e2e8f0",
+  grey2: "#cbd5e1",
+  grey3: "#94a3af",
+  greyOutline: "#64748b",
+  searchBg: "#f8fafc",
+  primaryLight: '#dbeafe'
+};
+
+export const darkThemeColors = {
+  primary: "#3b9eff",
+  secondary: "#94a3b8",
+  background: "#0a0f1e",
+  grey5: "#2d3b4e",
+  white: "#ffffff",
+  grey4: "#64748b",
+  success: "#10b981",
+  successLight: "#064e3b",
+  black: "#000000",
+  text: "#f1f5f9",
+  card: "#151d2e",
+  error: "#f87171",
+  warning: "#fbbf24",
+  disabled: "#94a3af",
+  divider: "#2d3b4e",
+  platform: { ios: {}, android: {}, web: {}, default: {} } as any,
+  grey0: "#050812",
+  grey1: "#1a2332",
+  grey2: "#2d3b4e",
+  grey3: "#64748b",
+  greyOutline: "#94a3af",
+  searchBg: "#151d2e",
+  primaryLight: '#1e3a5f'
+};
 
 // Settings Stack Navigator Component
 function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onDataOperation, onLogout }: { onThemeChange: (theme: 'light' | 'dark' | 'system') => void; onLocaleChange: (locale: LanguageCode) => void; onDataOperation: () => void; onLogout: () => void; }) {
