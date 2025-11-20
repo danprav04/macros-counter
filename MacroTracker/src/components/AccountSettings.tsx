@@ -96,22 +96,18 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
   const futureRewards = useMemo(() => {
     if (!costs || !user) return [];
 
-    // Explicitly type the array as number[]
     const rewards: number[] = [];
 
-    const maxFutureAdsToShow = 3; // Calculate a reasonable number of future rewards
+    const maxFutureAdsToShow = 3; 
     const adsLeftToday = Math.max(0, adsPerDayCap - adsWatchedToday);
 
     for (let i = 1; i <= maxFutureAdsToShow; i++) {
-      // The streak only increases for ads watched today within the daily cap.
-      // After the cap is hit, the reward for subsequent ads (hypothetically) would be the same.
       const effectiveStreakIncrease = Math.min(i, adsLeftToday);
       const futureStreak = currentStreak + effectiveStreakIncrease;
       const futureReward = calculateRewardForStreak(futureStreak);
 
       if (rewards.at(-1) === futureReward) continue;
 
-      // We know the array contains numbers because this function returns a number
       rewards.push(futureReward);
     }
     return rewards;
@@ -264,7 +260,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
               </Text>
               {futureRewards.map((reward, index) => (
                 <PriceTag
-                  key={index}
+                  key={`reward-${index}`}
                   amount={reward}
                   type="reward"
                   size="small"
@@ -295,8 +291,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             </ListItem.Title>
           </ListItem.Content>
           <View style={styles.badgesContainer}>
-            {user.badges.map((badge) => (
-              <UserBadge key={badge.id} badge={badge} />
+            {user.badges.map((badge, index) => (
+              <UserBadge key={`badge-${badge.id}-${index}`} badge={badge} />
             ))}
           </View>
         </ListItem>

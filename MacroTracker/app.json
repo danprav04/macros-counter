@@ -2,7 +2,7 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "3.5.7",
+    "version": "4.0.2",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,7 +18,9 @@
       "translucent": false,
       "barStyle": "light-content"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.macrosvisionai.app",
@@ -37,9 +39,6 @@
       "package": "com.macrosvisionai.app",
       "versionCode": 22,
       "userInterfaceStyle": "automatic",
-      "androidNavigationBar": {
-        "userInterfaceStyle": "automatic"
-      },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -55,7 +54,10 @@
               "host": "open-add-food-modal"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -67,7 +69,10 @@
               "pathPrefix": "/share/food"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -87,9 +92,15 @@
         }
       ],
       "./plugins/withAndroidProguard.js",
-      "./plugins/withAndroid16KBSupport.js",
+      "./plugins/withGradleMemory.js",
       "expo-dev-client",
-      "react-native-google-mobile-ads",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-5977125521868950~5744485886",
+          "iosAppId": "ca-app-pub-5977125521868950~5744485886"
+        }
+      ],
       [
         "expo-document-picker",
         {
@@ -120,8 +131,5 @@
         "BACKEND_URL_DEVELOPMENT": "https://v1.macros-vision-ai.xyz"
       }
     }
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-5977125521868950~5744485886"
   }
 }

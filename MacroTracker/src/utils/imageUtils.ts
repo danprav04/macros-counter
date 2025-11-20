@@ -2,8 +2,9 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { Alert } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { t } from '../localization/i18n'; // Import t
+import * as FileSystem from 'expo-file-system/legacy'; // FIXED: Use legacy import
+import * as FileSystemNext from 'expo-file-system'; 
+import { t } from '../localization/i18n';
 
 const MAX_IMAGE_DIMENSION = 1024;
 const IMAGE_COMPRESSION_QUALITY = 0.7;
