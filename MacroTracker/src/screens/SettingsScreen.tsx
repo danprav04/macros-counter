@@ -489,16 +489,17 @@ const useStyles = makeStyles((theme) => ({
   pickerContainerAndroid: {
     backgroundColor: theme.colors.background,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: theme.colors.divider,
     marginBottom: 10,
-    paddingBottom: 10,
-    paddingTop: 3,
     marginTop: -5,
+    justifyContent: 'center',
+    height: 58, // Enforce height on container for Android
+    // Removed padding to prevent clipping
   },
   pickerStyle: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 120 : 50,
+    height: Platform.OS === 'ios' ? 120 : 58, // Increase from 50 to 58 for Android
   },
   pickerItemStyle: {
     textAlign: I18nManager.isRTL ? 'right' : 'left',

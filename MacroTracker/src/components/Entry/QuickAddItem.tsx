@@ -1,4 +1,3 @@
-// src/components/Entry/QuickAddItem.tsx
 import React, { useMemo, useState } from "react";
 import {
   View,
@@ -19,7 +18,6 @@ import { EstimatedFoodItem } from "../../types/macros";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
 import { t } from "../../localization/i18n";
-// import i18n from "../../localization/i18n"; // No longer needed here
 import {
   calculateBaseFoodGrade,
   FoodGradeResult,
@@ -87,7 +85,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
       protein: item.protein_per_100g,
       carbs: item.carbs_per_100g,
       fat: item.fat_per_100g,
-      createdAt: new Date().toISOString(), // Added to satisfy the Food type
+      createdAt: new Date().toISOString(),
     }),
     [
       item.foodName,
@@ -114,7 +112,6 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
   };
 
   const renderFoodIcon = (foodName: string) => {
-    // Check foodIcons state first, then call getFoodIconUrl (which handles its own caching and lang detection)
     const iconIdentifier = foodIcons[foodName] ?? getFoodIconUrl(foodName);
     if (iconIdentifier) {
       return <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>;
@@ -158,7 +155,8 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
         {isEditingThisItem ? (
           <View style={styles.quickAddEditView}>
             <View style={styles.editIconAndNameRow}>
-              {renderFoodIcon(item.foodName)}
+              {/* Use a View wrapper for icon to ensure stability/key if needed, though pure function return is ok here inside View */}
+              {renderFoodIcon(item.foodName)} 
               {gradeResult && (
                 <Text
                   style={[
@@ -226,17 +224,22 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
             </View>
           </View>
         ) : (
-          <>
+          // FIX: Return an array with keyed elements instead of a Fragment
+          [
             <CheckBox
+              key="checkbox"
               checked={isSelected}
               onPress={() => onToggleItem(index)}
               containerStyle={styles.quickAddCheckbox}
               checkedColor={theme.colors.primary}
               disabled={!canPerformActions}
               size={22}
-            />
-            {renderFoodIcon(item.foodName)}
-            <ListItem.Content>
+            />,
+            // Wrap icon in a keyed View to satisfy the list requirement
+            <View key="icon" style={{ justifyContent: 'center' }}>
+                {renderFoodIcon(item.foodName)}
+            </View>,
+            <ListItem.Content key="content">
               <View style={styles.titleAndGradeContainer}>
                 {gradeResult && (
                   <Text
@@ -261,8 +264,8 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
                   item.estimatedWeightGrams
                 )}g • ~${estimatedCalories} kcal`}
               </ListItem.Subtitle>
-            </ListItem.Content>
-            <View style={styles.actionButtonsContainer}>
+            </ListItem.Content>,
+            <View key="actions" style={styles.actionButtonsContainer}>
               {showIsSavingToLibrary ? (
                 <ActivityIndicator
                   size="small"
@@ -302,7 +305,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
                 />
               </TouchableOpacity>
             </View>
-          </>
+          ]
         )}
       </ListItem>
     </Pressable>

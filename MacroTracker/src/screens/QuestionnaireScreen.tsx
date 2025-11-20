@@ -324,14 +324,14 @@ const useStyles = makeStyles((theme) => ({
   },
   pickerWrapper: {
     borderColor: theme.colors.grey3,
-    borderWidth: 1,
+    borderWidth: 0,
     borderRadius: 5,
-    paddingBottom: 8,
-    paddingTop: 2,
-    backgroundColor: theme.colors.background, // Ensure picker background matches
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    // Removed vertical padding that was causing cutoff on Android
   },
   picker: {
-    height: Platform.OS === 'ios' ? 120 : 50,
+    height: Platform.OS === 'ios' ? 120 : 58, // Increased from 50 to 58
     width: '100%',
   },
   pickerItem: {
