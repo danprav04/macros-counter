@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath } from '@react-navigation/native';
 import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -33,7 +33,7 @@ import useDelayedLoading from '../hooks/useDelayedLoading';
 // Define ParamLists
 export type MainTabParamList = {
   DailyEntryRoute: { quickAddFood?: Food };
-  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string };
+  FoodListRoute: { openAddFoodModal?: boolean, foodData?: string, data?: string };
   SettingsStackRoute: undefined;
 };
 
@@ -61,17 +61,61 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 // Linking configuration
+const productionBackendUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION || 'https://v1.macros-vision-ai.xyz';
+
 const linking = {
-  prefixes: [Linking.createURL('/')],
+  prefixes: [
+      Linking.createURL('/'),
+      productionBackendUrl, // Support HTTPS deep links
+  ],
   config: {
     screens: {
       Main: {
           path: '', 
           screens: {
-              FoodListRoute: 'open-add-food-modal', 
+              // Map the HTTPS path 'share/food' to this screen
+              FoodListRoute: 'share/food', 
           }
       },
     }
+  },
+  getStateFromPath: (path: string, options: any) => {
+    // Manually handle the legacy custom scheme path 'open-add-food-modal'
+    if (path.includes('open-add-food-modal')) {
+        // Basic parsing to extract query parameters
+        const queryIndex = path.indexOf('?');
+        let params: Record<string, string> = {};
+        if (queryIndex !== -1) {
+            const queryString = path.slice(queryIndex + 1);
+            const pairs = queryString.split('&');
+            for (const pair of pairs) {
+                const [key, value] = pair.split('=');
+                if (key && value) {
+                    params[key] = decodeURIComponent(value);
+                }
+            }
+        }
+        // Ensure openAddFoodModal is set if using this legacy path
+        params.openAddFoodModal = 'true';
+
+        return {
+            routes: [
+                {
+                    name: 'Main',
+                    state: {
+                        routes: [
+                            {
+                                name: 'FoodListRoute',
+                                params: params,
+                            },
+                        ],
+                    },
+                },
+            ],
+        };
+    }
+    // Default behavior for other paths (like share/food)
+    return getStateFromPath(path, options);
   },
 };
 
