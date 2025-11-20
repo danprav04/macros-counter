@@ -124,19 +124,20 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
     <View>
       <ListItem key="email" bottomDivider containerStyle={styles.listItem}>
         <Icon
+          key="icon"
           name="email-outline"
           type="material-community"
           color={theme.colors.secondary}
         />
-        <ListItem.Content>
+        <ListItem.Content key="content">
           <ListItem.Title style={styles.listItemTitle}>
             {t("accountSettings.email")}
           </ListItem.Title>
         </ListItem.Content>
         {showIsLoading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <ActivityIndicator key="loader" size="small" color={theme.colors.primary} />
         ) : (
-          <Text style={styles.valueText}>
+          <Text key="value" style={styles.valueText}>
             {user?.email || t("accountSettings.notApplicable")}
           </Text>
         )}
@@ -149,11 +150,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
           containerStyle={[styles.listItem, styles.warningItem]}
         >
           <Icon
+            key="icon"
             name="email-alert-outline"
             type="material-community"
             color={theme.colors.warning}
           />
-          <ListItem.Content>
+          <ListItem.Content key="content">
             <ListItem.Title
               style={[styles.listItemTitle, { color: theme.colors.warning }]}
             >
@@ -164,6 +166,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             </ListItem.Subtitle>
           </ListItem.Content>
           <Button
+            key="button"
             title={
               cooldown > 0
                 ? t("accountSettings.resendInSeconds", { cooldown })
@@ -180,19 +183,20 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
 
       <ListItem key="coins" bottomDivider containerStyle={styles.listItem}>
         <Icon
+          key="icon"
           name="database"
           type="material-community"
           color={theme.colors.primary}
         />
-        <ListItem.Content>
+        <ListItem.Content key="content">
           <ListItem.Title style={styles.listItemTitle}>
             {t("accountSettings.coinBalance")}
           </ListItem.Title>
         </ListItem.Content>
         {showIsLoading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <ActivityIndicator key="loader" size="small" color={theme.colors.primary} />
         ) : (
-          <View style={styles.coinContainer}>
+          <View key="container" style={styles.coinContainer}>
             <Text style={[styles.valueText, styles.coinValue]}>
               {user?.coins ?? t("accountSettings.notApplicable")}
             </Text>
@@ -232,11 +236,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
           }
         >
           <Icon
+            key="icon"
             name="fire"
             type="material-community"
             color={currentStreak > 0 ? "#FF9800" : theme.colors.grey3}
           />
-          <ListItem.Content>
+          <ListItem.Content key="content">
             <ListItem.Title
               style={
                 currentStreak > 0 ? styles.streakTitle : styles.streakTitleZero
@@ -271,6 +276,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             </View>
           </ListItem.Content>
           <Text
+            key="value"
             style={
               currentStreak > 0 ? styles.streakValue : styles.streakValueZero
             }
@@ -283,16 +289,17 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
       {user?.badges && user.badges.length > 0 && (
         <ListItem key="badges" bottomDivider containerStyle={styles.listItem}>
           <Icon
+            key="icon"
             name="shield-star-outline"
             type="material-community"
             color={theme.colors.success}
           />
-          <ListItem.Content>
+          <ListItem.Content key="content">
             <ListItem.Title style={styles.listItemTitle}>
               {t("accountSettings.badges")}
             </ListItem.Title>
           </ListItem.Content>
-          <View style={styles.badgesContainer}>
+          <View key="container" style={styles.badgesContainer}>
             {user.badges.map((badge, index) => (
               <UserBadge key={`badge-${badge.id}-${index}`} badge={badge} />
             ))}
