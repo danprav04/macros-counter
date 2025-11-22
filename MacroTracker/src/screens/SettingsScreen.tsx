@@ -22,7 +22,8 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
 import useDelayedLoading from "../hooks/useDelayedLoading";
-import { AdsConsent } from 'react-native-google-mobile-ads'; // Added Import
+// 1. Import Consent Status Enum and Method
+import { AdsConsent, AdsConsentPrivacyOptionsRequirementStatus } from 'react-native-google-mobile-ads';
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -81,7 +82,32 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [isAdLoading, setIsAdLoading] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
+  // 2. State to control visibility of the Privacy Settings button
+  const [isPrivacyButtonVisible, setIsPrivacyButtonVisible] = useState(false);
+
   const showStatisticsLoading = useDelayedLoading(isStatisticsLoading);
+
+  // 3. Effect to check if Privacy Options are required for this user
+  useEffect(() => {
+    const checkConsentRequirement = async () => {
+      try {
+        const consentInfo = await AdsConsent.requestInfoUpdate();
+        if (
+          consentInfo.privacyOptionsRequirementStatus ===
+          AdsConsentPrivacyOptionsRequirementStatus.REQUIRED
+        ) {
+          setIsPrivacyButtonVisible(true);
+        } else {
+          setIsPrivacyButtonVisible(false);
+        }
+      } catch (error) {
+        console.log("Error checking consent status:", error);
+        setIsPrivacyButtonVisible(false);
+      }
+    };
+
+    checkConsentRequirement();
+  }, []);
 
   const getStatisticsData = useCallback((
     dailyEntries: DailyEntry[],
@@ -289,16 +315,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       navigation.navigate('PrivacyPolicy');
   };
 
-  // --- NEW FUNCTION: Handle Privacy Settings Press ---
+  // 4. Updated handler to modify existing consent
   const handlePrivacySettingsPress = async () => {
     try {
-      await AdsConsent.loadAndShowConsentFormIfRequired();
+      // showPrivacyOptionsForm allows the user to modify their decision
+      await AdsConsent.showPrivacyOptionsForm();
     } catch (error) {
       console.log('Error showing privacy settings:', error);
-      Alert.alert("Error", "Could not load privacy settings. Please check your internet connection.");
+      Alert.alert("Info", "Privacy options are not available.");
     }
   };
-  // --------------------------------------------------
 
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
@@ -382,17 +408,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                 <ListItem.Chevron color={theme.colors.secondary} />
             </ListItem>
 
-          {/* --- NEW: Privacy Settings Button --- */}
-          <ListItem bottomDivider onPress={handlePrivacySettingsPress} containerStyle={styles.actionItem}>
-                <Icon name="cog-outline" type="material-community" color={theme.colors.secondary} />
-                <ListItem.Content>
-                    <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
-                        Privacy Settings (GDPR/US)
-                    </ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Chevron color={theme.colors.secondary} />
-          </ListItem>
-          {/* ------------------------------------ */}
+          {/* 5. Conditionally Rendered Privacy Button */}
+          {isPrivacyButtonVisible && (
+            <ListItem bottomDivider onPress={handlePrivacySettingsPress} containerStyle={styles.actionItem}>
+                  <Icon name="cog-outline" type="material-community" color={theme.colors.secondary} />
+                  <ListItem.Content>
+                      <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
+                          Privacy Settings
+                      </ListItem.Title>
+                  </ListItem.Content>
+                  <ListItem.Chevron color={theme.colors.secondary} />
+            </ListItem>
+          )}
 
           <View style={styles.sectionHeaderWithButton}>
               <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
@@ -423,7 +450,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               <DataManagementButtons onDataOperation={localDataOperationHandler} />
           </View>
           
-          {/* NEW: Backup Warning */}
           <View style={styles.backupWarningContainer}>
               <Icon name="alert" type="material-community" color={theme.colors.warning} size={18} />
               <Text style={styles.backupWarningText}>{t('dataManagement.backupWarning')}</Text>
