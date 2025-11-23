@@ -214,9 +214,12 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
           toggleAddOverlay();
           navigation.setParams({ openAddFoodModal: undefined });
         }
-        if (params.foodData && typeof params.foodData === 'string') {
+
+        const rawData = params.foodData || params.data;
+
+        if (rawData && typeof rawData === 'string') {
           try {
-            let b64 = params.foodData.replace(/-/g, '+').replace(/_/g, '/');
+            let b64 = rawData.replace(/-/g, '+').replace(/_/g, '/');
             const binaryString = atob(b64);
             const utf8Bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
@@ -240,7 +243,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
           } catch (e) { 
             Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
           } finally { 
-            navigation.setParams({ foodData: undefined }); 
+            navigation.setParams({ foodData: undefined, data: undefined }); 
           }
         }
       }
