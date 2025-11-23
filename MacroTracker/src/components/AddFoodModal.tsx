@@ -608,7 +608,7 @@ const useStyles = makeStyles((theme) => ({
         marginRight: 8,
     },
     priceTagInButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: theme.colors.grey2,
     },
     dividerContainer: {
         flexDirection: 'row',
