@@ -1,10 +1,9 @@
 // src/components/AddFoodModal.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     View,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
@@ -34,6 +33,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { useCosts } from '../context/CostsContext';
 import PriceTag from './PriceTag';
 import useDelayedLoading from '../hooks/useDelayedLoading';
+import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
 
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
@@ -91,13 +91,30 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setAiTextLoading(false);
             setAiImageLoading(false);
             setLoading(false);
-            setInputMode(editFood ? 'manual' : 'manual');
+            // Reset to manual if editing, or if adding new
+            setInputMode('manual');
         }
     }, [isVisible, editFood, setErrors]);
 
     const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
     };
+
+    // Calculate live grade based on current input values
+    const gradeResult: FoodGradeResult | null = useMemo(() => {
+        const currentData = getCurrentFoodData();
+        // Construct a temporary Food object with safe defaults for grading
+        const tempFood: Food = {
+            id: 'temp-grading',
+            name: currentData.name || '',
+            calories: Number(currentData.calories) || 0,
+            protein: Number(currentData.protein) || 0,
+            carbs: Number(currentData.carbs) || 0,
+            fat: Number(currentData.fat) || 0,
+            createdAt: new Date().toISOString(),
+        };
+        return calculateBaseFoodGrade(tempFood);
+    }, [newFood, editFood]); // Dependencies are the props that change on input
 
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
@@ -202,9 +219,17 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 <View style={combinedOverlayStyle}>
                     {/* Header with title and close button */}
                     <View style={styles.header}>
-                        <Text h4 style={styles.overlayTitle}>
-                            {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')}
-                        </Text>
+                        <View style={styles.titleContainer}>
+                            <Text h4 style={styles.overlayTitle}>
+                                {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')}
+                            </Text>
+                            {/* Live Grading Pill */}
+                            {inputMode === 'manual' && gradeResult && (
+                                <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                                    <Text style={styles.gradeText}>{gradeResult.letter}</Text>
+                                </View>
+                            )}
+                        </View>
                         <Icon 
                             name="close" 
                             type="material" 
@@ -469,12 +494,29 @@ const useStyles = makeStyles((theme) => ({
         borderBottomWidth: 1, 
         borderBottomColor: theme.colors.divider,
     },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
     overlayTitle: { 
         color: theme.colors.text, 
         fontWeight: "700", 
         fontSize: 22, 
-        flex: 1,
         textAlign: 'left' 
+    },
+    gradePill: {
+        marginLeft: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    gradeText: {
+        color: theme.colors.white,
+        fontWeight: 'bold',
+        fontSize: 14,
     },
     closeIcon: { 
         padding: 4,
