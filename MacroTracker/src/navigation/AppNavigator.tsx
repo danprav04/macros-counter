@@ -1,6 +1,6 @@
 // src/navigation/AppNavigator.tsx
 import React, { useState } from 'react';
-import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View, ActivityIndicator } from 'react-native';
+import { Platform, useColorScheme, Alert, I18nManager, Text, View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath } from '@react-navigation/native';
@@ -292,21 +292,10 @@ function AppContent() {
   }), [currentThemeConfig]);
   
   const handleLocaleChange = (newLocale: LanguageCode) => {
-    const oldLocale = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : settings.language;
+    // We simply change the locale in settings.
+    // The AppNavigator's useEffect will detect the setting change,
+    // update I18nManager if necessary, and force a root re-render via 'appKey'.
     changeLocale(newLocale);
-    const newEffectiveLocale = newLocale === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US').split('-')[0] : newLocale;
-
-    const oldIsRTL = oldLocale === 'he';
-    const newIsRTL = newEffectiveLocale === 'he';
-
-    if (oldIsRTL !== newIsRTL && Platform.OS !== 'web') {
-        Alert.alert( t('confirmationModal.restartRequiredTitle'), t('settingsScreen.language.restartMessage'),
-            [ { text: t('app.alertButtons.later'), style: "cancel" },
-              { text: t('app.alertButtons.restartNow'), onPress: () => DevSettings.reload() } ]
-        );
-    } else if (Platform.OS === 'web' && oldIsRTL !== newIsRTL) {
-        window.location.reload();
-    }
   };
 
   const LoadingFallback = () => (
@@ -345,11 +334,31 @@ function AppContent() {
 export default function AppNavigator() {
     const { isLoading, settings } = useAuth() as AuthContextType;
     const showLoading = useDelayedLoading(isLoading);
+    const [appKey, setAppKey] = useState(0); // Key to force root re-render
     
     React.useEffect(() => {
         if (settings) {
             const lang = settings.language === 'system' ? (Localization.getLocales()?.[0]?.languageTag || 'en-US') : settings.language;
+            
+            // Check if RTL change is needed
+            const languageTag = lang.split('-')[0];
+            const isHebrew = languageTag === 'he';
+            
+            let rtlChanged = false;
+            if (Platform.OS !== 'web' && I18nManager.isRTL !== isHebrew) {
+                I18nManager.allowRTL(true);
+                I18nManager.forceRTL(isHebrew);
+                rtlChanged = true;
+            }
+
+            // Apply translations
             setLocale(lang);
+
+            // If RTL direction changed, force a full remount of the app.
+            // This is the cleanest way to switch layout direction without a native restart.
+            if (rtlChanged) {
+                setAppKey(prev => prev + 1);
+            }
         }
     }, [settings]);
 
@@ -367,5 +376,9 @@ export default function AppNavigator() {
         return null; // Render nothing during the initial delay
     }
 
-    return <AppContent />;
+    return (
+        <React.Fragment key={appKey}>
+            <AppContent />
+        </React.Fragment>
+    );
 }

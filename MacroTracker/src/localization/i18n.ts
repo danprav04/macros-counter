@@ -45,9 +45,16 @@ export const setLocale = (locale: string) => {
   i18n.defaultLocale = 'en';
 
   const isRTL = languageTag === 'he';
+  
+  // Ensure RTL is allowed
+  if (Platform.OS !== 'web') {
+      I18nManager.allowRTL(true);
+  }
+
   if (Platform.OS !== 'web' && I18nManager.isRTL !== isRTL) {
     I18nManager.forceRTL(isRTL);
-    console.log(`RTL forced to: ${isRTL} for locale: ${languageTag}. App restart/reload may be needed for full layout update.`);
+    // Note: A root component remount is usually required for this to take full effect immediately.
+    console.log(`RTL forced to: ${isRTL} for locale: ${languageTag}`);
   } else if (Platform.OS === 'web') {
       document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
   }
