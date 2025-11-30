@@ -19,13 +19,13 @@ export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
    <style>
        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: ${colors.background}; color: ${colors.text}; padding: 20px; line-height: 1.6; font-size: 16px; }
        h1 { color: ${colors.primary}; font-size: 24px; margin-bottom: 10px; border-bottom: 2px solid ${colors.divider}; padding-bottom: 10px; }
-       h2 { color: ${colors.text}; font-size: 20px; margin-top: 30px; margin-bottom: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-       h3 { color: ${colors.text}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; opacity: 0.9; }
+       h2 { color: ${colors.text}; font-size: 19px; margin-top: 30px; margin-bottom: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid ${colors.divider}; padding-bottom: 5px; }
+       h3 { color: ${colors.text}; font-size: 17px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; opacity: 0.9; }
        p { margin-bottom: 15px; }
        ul, ol { margin-bottom: 15px; padding-left: 20px; }
        li { margin-bottom: 8px; }
        strong { font-weight: 700; }
-      .critical { border: 2px solid ${colors.error}; background-color: rgba(255, 0, 0, 0.05); padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+      .critical { border: 2px solid ${colors.error}; background-color: rgba(255, 0, 0, 0.05); padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold; color: ${colors.text}; }
       .warning { border: 1px solid ${colors.warningBorder}; background-color: ${colors.warningBackground}; color: ${colors.warningText}; padding: 15px; border-radius: 8px; margin: 20px 0; }
       .apple-section { border: 1px solid ${colors.divider}; background-color: rgba(128, 128, 128, 0.05); padding: 15px; border-radius: 8px; margin: 20px 0; }
       .footer { margin-top: 40px; border-top: 1px solid ${colors.divider}; padding-top: 20px; font-size: 14px; opacity: 0.7; }
@@ -35,138 +35,159 @@ export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
 <body>
 
    <h1>Terms of Service</h1>
-   <p><strong>Last Updated: December 2025</strong></p>
+   <p><strong>Last Updated: December 1, 2025</strong></p>
 
-   <p>These Terms of Service ("Terms") constitute a binding legal agreement between you ("User" or "You") and the developer of Macros Vision AI ("Developer," "We," "Us," or "Our"), operating under the laws of the State of Israel.</p>
-
-   <p>By downloading, installing, accessing, buying "Coins," or subscribing to the Macros Vision AI mobile application (the "App"), you explicitly acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
-
-   <div class="critical">
-       IF YOU DO NOT AGREE TO THESE TERMS, YOU MUST IMMEDIATELY UNINSTALL THE APP AND CEASE ALL USE OF THE SERVICE.
+   <h2>1. Preamble and Binding Agreement</h2>
+   <p>These Terms of Service ("Terms") constitute a binding legal agreement between you ("User," "You," or "Your") and the developer of Macros Vision AI ("Developer," "We," "Us," or "Our"), a legal entity operating under the laws of the State of Israel.</p>
+   <p>By downloading, installing, accessing, purchasing "Coins," subscribing to, or using the Macros Vision AI mobile application (the "Service" or "App"), you explicitly acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
+   
+   <div class="warning">
+       <strong>WARNING:</strong> THESE TERMS CONTAIN A BINDING ARBITRATION CLAUSE AND CLASS ACTION WAIVER FOR RESIDENTS OF THE UNITED STATES (SECTION 12). IT AFFECTS YOUR RIGHTS TO RESOLVE DISPUTES.
    </div>
 
-   <h2>1. ELIGIBILITY AND ACCOUNT SECURITY</h2>
-   <p>You must be at least 18 years of age to use this Service. Use by minors is strictly prohibited. By creating an account, you represent that you possess the legal capacity to enter into a binding contract.</p>
-   <p>You are responsible for maintaining the confidentiality of your login credentials. You agree to notify us immediately of any unauthorized use of your account. We are not liable for any loss or damage arising from your failure to protect your account security.</p>
+   <p>If you do not agree to these Terms, you must immediately uninstall the App and cease all use of the Service.</p>
 
-   <h2>2. NOT A MEDICAL DEVICE & HEALTH DISCLAIMER</h2>
-   <div class="critical">
-       THIS SERVICE IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE.
-   </div>
+   <h2>2. Not a Medical Device & Health Disclaimer</h2>
    
    <h3>2.1 General Wellness Tool</h3>
-   <p>The Service is an informational tool designed solely for general wellness tracking and recreational use. It is <strong>NOT</strong> intended to diagnose, cure, mitigate, treat, or prevent any disease or medical condition. Nothing in the App, including calorie counts, macronutrient estimates, or health insights, constitutes medical advice.</p>
+   <p>The Service is a data aggregation and estimation tool designed solely for general wellness tracking, recreational use, and informational purposes. It is <strong>NOT</strong> a medical device. It is <strong>NOT</strong> intended to diagnose, cure, mitigate, treat, or prevent any disease, disorder, or medical condition.</p>
 
-   <h3>2.2 Nutritional Grades and Scoring</h3>
-   <p>Any "Nutritional Grades" (e.g., A-F scores) or health scores provided by the Service are generated by proprietary algorithms for comparative informational purposes only. These scores <strong>do not</strong> correspond to any clinical standard, medical diagnosis, or government-issued dietary guideline. They are heuristic suggestions based on general wellness principles and should not be treated as a definitive assessment of food quality.</p>
+   <h3>2.2 No Medical Advice</h3>
+   <p>Nothing within the Service—including but not limited to calorie counts, macronutrient estimates ("Macros"), nutritional grades (A-F scores), or metabolic calculations (BMR/TDEE)—constitutes medical advice, diagnosis, or treatment. All content is generated for informational purposes only. The "Nutritional Grades" provided by the App are heuristic suggestions based on general wellness principles and do not correspond to any clinical standard or government-issued dietary guideline.</p>
 
-   <h3>2.3 High-Risk Conditions</h3>
-   <p>You expressly acknowledge that you should <strong>NOT</strong> rely on the Service for the management of critical medical conditions, including but not limited to:</p>
+   <h3>2.3 High-Risk Usage Prohibited</h3>
+   <p>You expressly acknowledge that the Service is inappropriate for, and must not be relied upon for, the management of critical medical conditions, including but not limited to:</p>
    <ul>
-       <li>Diabetes (e.g., calculating insulin dosages).</li>
-       <li>Eating disorders (e.g., Anorexia, Bulimia).</li>
-       <li>Pregnancy nutrition or pediatric nutrition.</li>
+       <li><strong>Diabetes:</strong> Calculating insulin or medication dosages based on App estimates.</li>
+       <li><strong>Eating Disorders:</strong> Management of Anorexia, Bulimia, or other disorders.</li>
+       <li><strong>Pregnancy:</strong> Monitoring nutritional intake during pregnancy or breastfeeding.</li>
    </ul>
-   <p>Always consult with a qualified healthcare provider before making decisions related to your diet or health. Extreme outliers in input data (e.g., weight/height ratios indicative of medical distress) render the app's output invalid and unsupported.</p>
+   <p><strong>YOU ASSUME FULL RESPONSIBILITY FOR YOUR HEALTH.</strong> Always consult with a qualified healthcare provider before making significant changes to your diet or relying on nutritional data.</p>
 
-   <h3>2.4 STRICT PROHIBITION ON ALLERGEN DETECTION</h3>
-   <div class="warning">
-       <strong>WARNING: DO NOT USE THIS SERVICE TO DETECT ALLERGENS.</strong><br><br>
-       Computer Vision and Artificial Intelligence cannot reliably detect ingredients that are hidden, dissolved, cross-contaminated, or obscured (e.g., peanut oil in a sauce, gluten traces, shellfish stock). <strong>Reliance on the Service for allergen safety is STRICTLY PROHIBITED.</strong> We expressly disclaim all liability for injury, anaphylaxis, or death resulting from reliance on the App for allergen detection.
+   <div class="critical">
+       <h3>2.4 STRICT PROHIBITION ON ALLERGEN DETECTION</h3>
+       <p>CRITICAL WARNING: The Service utilizes probabilistic Artificial Intelligence (AI) and Computer Vision to estimate food content. AI CANNOT reliably detect ingredients that are hidden, dissolved, cross-contaminated, or obscured (e.g., peanut oil in a sauce, gluten traces, shellfish stock, dissolved sugars).</p>
+       <p>RELIANCE ON THIS SERVICE FOR ALLERGEN DETECTION IS STRICTLY PROHIBITED. We expressly disclaim all liability for injury, anaphylaxis, hospitalization, or death resulting from reliance on the App for allergen identification. You agree that using the App for allergen safety constitutes a material breach of these Terms and a misuse of the Service.</p>
    </div>
 
-   <h2>3. ARTIFICIAL INTELLIGENCE LIMITATIONS</h2>
-   <h3>3.1 "Beta" and Experimental Nature</h3>
-   <p>You acknowledge that the AI Analysis features are provided on an "Experimental" or "Beta" basis. The Service utilizes third-party Generative AI models (e.g., Google Gemini, OpenAI) to analyze food. The Developer makes no warranties regarding the accuracy, continuity, or availability of these experimental features and reserves the right to modify or discontinue them (or switch underlying models) at any time without liability.</p>
+   <h2>3. Artificial Intelligence Limitations & Liability</h2>
 
-   <h3>3.2 Probabilistic Nature</h3>
-   <p>You acknowledge that these models are <strong>probabilistic, not deterministic</strong>. They generate predictions based on patterns, which may result in "hallucinations"—confident but factually incorrect outputs.</p>
+   <h3>3.1 Experimental Technology</h3>
+   <p>You acknowledge that the AI Analysis features (text-to-macros, image-to-macros) are provided on an "As-Is" and "Experimental" basis. The Service utilizes third-party Generative AI models (e.g., OpenAI, Google Gemini) which are subject to latency, downtime, and modification. We make no warranties regarding the continuous availability or accuracy of these features.</p>
 
-   <h3>3.3 User Responsibility ("Human-in-the-Loop")</h3>
-   <p>You agree that the AI acts solely as a <strong>drafting assistant</strong>. You assume full responsibility for verifying all data (including portion sizes, ingredients, and nutritional values) before relying on it or saving it to your log. The Developer does not warrant the accuracy of any AI-generated content.</p>
+   <h3>3.2 Probabilistic Nature & Hallucinations</h3>
+   <p>You understand that Generative AI is probabilistic, not deterministic. It predicts the most likely response based on patterns, which may result in "hallucinations"—outputs that sound confident and plausible but are factually incorrect.</p>
+   <ul>
+       <li>The App may misidentify a fried food as grilled.</li>
+       <li>The App may significantly under- or over-estimate portion sizes.</li>
+       <li>The App may generate nutritional values that defy the laws of physics (e.g., more protein than total weight).</li>
+   </ul>
 
-   <h2>4. USER CONTENT AND LICENSING</h2>
-   <h3>4.1 License Grant to Developer</h3>
-   <p>By submitting User Content (including but not limited to food images, text descriptions, and usage data), you grant the Developer a worldwide, non-exclusive, royalty-free, sublicensable, and transferable license to use, reproduce, modify, distribute, prepare derivative works of, and display the Content in connection with the Service. This includes, without limitation, the right to use such Content for the purposes of operating, improving, and training the artificial intelligence models and computer vision algorithms utilized by the Service.</p>
+   <h3>3.3 The "Human-in-the-Loop" Doctrine</h3>
+   <p>You agree that the AI acts solely as a drafting assistant. You assume the role of the "Human-in-the-Loop." It is your sole responsibility to:</p>
+   <ol>
+       <li>Verify the identity of the food recognized by the AI.</li>
+       <li>Validate the estimated portion sizes and weight.</li>
+       <li>Cross-reference nutritional values with trusted sources before saving them to your log.</li>
+   </ol>
+   <p>By saving an entry, you accept the data as your own and release the Developer from any liability regarding its accuracy.</p>
 
-   <h3>4.2 Metadata Processing</h3>
-   <p>You agree that the Service may process metadata associated with your User Content (e.g., file attributes). You represent that you have stripped sensitive location data (EXIF GPS) from your images before upload if you do not wish for it to be processed.</p>
+   <h2>4. Virtual Currency ("Coins") and Economy</h2>
 
-   <h2>5. VIRTUAL CURRENCY ("COINS")</h2>
-   <h3>5.1 Limited License</h3>
-   <p>The Service allows you to acquire virtual currency ("Coins") through purchase or interaction (e.g., watching ads). You acknowledge that Coins are:</p>
+   <h3>4.1 Limited License</h3>
+   <p>The Service allows you to acquire virtual currency ("Coins") through purchase or interaction (e.g., watching advertisements). You acknowledge that Coins are:</p>
    <ul>
        <li>A limited, non-transferable, revocable, non-exclusive license to access specific features of the App.</li>
-       <li><strong>NOT</strong> personal property and have <strong>NO</strong> monetary value.</li>
+       <li><strong>NOT</strong> personal property and have <strong>NO</strong> monetary value in the real world.</li>
        <li><strong>NOT</strong> redeemable for cash, checks, or refunds from the Developer or any third party.</li>
    </ul>
 
-   <h3>5.2 Consumption Logic</h3>
-   <p>Coins are consumed on a functional basis. If the Service does not distinguish between purchased and free coins, coins will be consumed on a First-In-First-Out (FIFO) basis, or at the Developer's discretion. The Developer reserves the right to expire unused "Earned" (non-purchased) Coins if your account remains inactive for a period of 12 months.</p>
+   <h3>4.2 Dynamic Pricing (Floating Exchange Rate)</h3>
+   <p>The Service relies on third-party API providers whose costs fluctuate. <strong>WE RESERVE THE RIGHT TO MODIFY THE COIN COST OF ANY FEATURE AT ANY TIME WITHOUT NOTICE.</strong></p>
+   <p>For example, a food scan costing 4 Coins today may cost 8 Coins tomorrow if underlying API costs increase. The cost of features is displayed at the point of use. By initiating an action, you agree to the posted Coin price at that specific moment. You acknowledge that the purchasing power of your Coins may fluctuate over time.</p>
 
-   <h3>5.3 Dynamic Pricing (Floating Exchange Rate)</h3>
-   <p>The Service relies on third-party API providers whose costs fluctuate. <strong>WE RESERVE THE RIGHT TO MODIFY THE COIN COST OF ANY FEATURE AT ANY TIME WITHOUT NOTICE.</strong> For example, a food scan costing 4 Coins today may cost 8 Coins tomorrow if underlying API costs increase. The cost of features is displayed at the point of use; by initiating an action, you agree to the posted Coin price.</p>
+   <h3>4.3 Expiration of Coins</h3>
+   <p>To ensure the efficient management of the Service, the Developer reserves the right to expire and delete unused Coins (both purchased and earned) from your account if your account remains inactive (no login) for a period of twelve (12) consecutive months.</p>
 
-   <h2>6. SUBSCRIPTIONS AND LIFETIME ACCESS</h2>
-   <h3>6.1 Auto-Renewing Subscriptions</h3>
-   <p>If you purchase a recurring subscription (e.g., Monthly Pro), the following terms apply:</p>
+   <h3>4.4 Ad-Rewarded Coins</h3>
+   <p>You agree not to use bots, scripts, emulators, or automation tools to artificially inflate ad views or accumulate Coins. Violation of this policy constitutes fraud and will result in the immediate termination of your account and forfeiture of all Coins without recourse.</p>
+
+   <h2>5. Subscriptions and Lifetime Access</h2>
+
+   <h3>5.1 Auto-Renewing Subscriptions</h3>
+   <p>If you purchase a recurring subscription, payment will be charged to your Apple ID or Google Play account upon confirmation of purchase. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period. You must manage cancellation via your Store settings; uninstalling the App does <strong>NOT</strong> cancel your subscription.</p>
+
+   <h3>5.2 Definition of "Lifetime" Access</h3>
+   <p>A "Lifetime" subscription grants you access to premium features for the <strong>operational lifetime of the Service</strong>, not the lifetime of the user.</p>
    <ul>
-       <li><strong>Billing:</strong> Payment is charged to your iTunes/Google Play Account upon confirmation of purchase.</li>
-       <li><strong>Renewal:</strong> Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period.</li>
-       <li><strong>Cancellation:</strong> The Developer does not have the technical ability to cancel your subscription or issue refunds. You must manage your subscription through your Apple ID or Google Play Store settings. Uninstalling the App does <strong>NOT</strong> cancel your subscription.</li>
+       <li>We reserve the right to discontinue the Service or specific features with reasonable notice (e.g., 60 days).</li>
+       <li>If the Developer ceases operations, enters bankruptcy, or permanently discontinues the App, the "Lifetime" license terminates immediately, and no refund will be provided.</li>
    </ul>
 
-   <h3>6.2 "Lifetime" Access Definition & Sunsetting</h3>
-   <p>A "Lifetime" subscription grants access to premium features for the <strong>operational lifetime of the Service</strong>, not the lifetime of the user. We reserve the right to discontinue the Service with reasonable notice (e.g., 60 days). If the Developer ceases operations, goes bankrupt, or discontinues the App, the "Lifetime" license terminates immediately, and no refund will be provided.</p>
+   <h3>5.3 Fair Use Policy</h3>
+   <p>To prevent abuse and ensure service stability, <strong>ALL PLANS, INCLUDING "LIFETIME" AND "UNLIMITED," ARE SUBJECT TO A FAIR USE POLICY.</strong> We reserve the right to enforce a hard cap on AI usage (e.g., 50 scans per day) to prevent commercial scraping, botting, or excessive cost generation. Usage exceeding this limit may be throttled or require Coins.</p>
 
-   <h3>6.3 Fair Use Policy</h3>
-   <p>To ensure the economic sustainability of the Service, <strong>ALL PLANS, INCLUDING "LIFETIME" AND "UNLIMITED," ARE SUBJECT TO A FAIR USE POLICY.</strong> We reserve the right to enforce a cap on AI usage (e.g., 50 scans per day) to prevent commercial abuse or botting. Usage exceeding this limit may be throttled, suspended, or require Coins.</p>
+   <h2>6. Refunds and Cancellation Rights</h2>
 
-   <h2>7. REFUNDS AND CANCELLATION RIGHTS</h2>
-   <h3>7.1 General Policy</h3>
-   <p>All purchases are final. Refunds are at the sole discretion of the Application Store (Apple/Google) and are subject to their respective policies.</p>
+   <h3>6.1 General Policy</h3>
+   <p>All purchases are final. Refunds are at the sole discretion of the Application Store (Apple/Google) and are subject to their respective policies. The Developer cannot issue refunds directly.</p>
 
-   <h3>7.2 Waiver for Israeli Users (Consumer Protection Law)</h3>
    <div class="warning">
-       <strong>NOTICE TO ISRAELI CONSUMERS:</strong><br>
-       Pursuant to the <em>Consumer Protection Law, 5741-1981</em>, the right to cancel a remote transaction within 14 days does <strong>NOT</strong> apply to "Information" or "Goods that can be recorded, transcribed, or reproduced" which the consumer has accessed. <br><br>
-       <strong>YOU EXPRESSLY ACKNOWLEDGE THAT "COINS" AND "PREMIUM ACCESS" CONSTITUTE DIGITAL INFORMATION. BY PURCHASING AND IMMEDIATELY RECEIVING THESE DIGITAL GOODS, YOU WAIVE YOUR RIGHT TO CANCEL THE TRANSACTION.</strong>
+       <h3>6.2 Waiver for Israeli Consumers</h3>
+       <p><strong>NOTICE TO ISRAELI USERS:</strong> Pursuant to the <em>Consumer Protection Law, 5741-1981</em>, the right to cancel a remote transaction within 14 days does <strong>NOT</strong> apply to "Information" or "Goods that can be recorded, transcribed, or reproduced" which the consumer has accessed.</p>
+       <p>YOU EXPRESSLY ACKNOWLEDGE THAT "COINS" AND "PREMIUM ACCESS" CONSTITUTE DIGITAL "INFORMATION" (DATA). BY PURCHASING AND IMMEDIATELY RECEIVING ACCESS TO THESE DIGITAL GOODS, YOU WAIVE YOUR RIGHT TO CANCEL THE TRANSACTION.</p>
    </div>
 
-   <h3>7.3 Waiver for EU Users (Right of Withdrawal)</h3>
-   <p>For users in the European Union: You expressly consent to the immediate performance of the contract upon the purchase of Coins or Subscriptions. You acknowledge that by accessing the digital content or using the Coins, you lose your right of withdrawal from the contract once performance has begun.</p>
+   <h3>6.3 Waiver for EU/EEA Users (Right of Withdrawal)</h3>
+   <p><strong>NOTICE TO EU USERS:</strong> You expressly consent to the immediate performance of the contract upon the purchase of Coins or Subscriptions. You acknowledge that by accessing the digital content or utilizing the Coins immediately upon purchase, you lose your Right of Withdrawal from the contract once performance has begun (Article 16(m) of the Consumer Rights Directive).</p>
 
-   <h2>8. PRIVACY AND DATA TRANSFER</h2>
-   <p>By using the Service, you acknowledge and agree that your data (including User Content) may be transferred to, stored, and processed in the United States, Israel, or other jurisdictions where our cloud providers operate. You acknowledge that data protection laws in these jurisdictions may differ from those in your country of residence.</p>
+   <h2>7. Intellectual Property and User Content</h2>
 
-   <h2>9. ADVERTISEMENTS AND REWARDS</h2>
-   <p>The App may offer rewards for watching advertisements. You agree not to use bots, scripts, or automation to artificially inflate ad views. Violation of this policy constitutes a material breach and will result in the immediate termination of your account and forfeiture of all Coins.</p>
+   <h3>7.1 License Grant to Developer</h3>
+   <p>By submitting User Content (including food images, text descriptions, and logs), you grant the Developer a worldwide, non-exclusive, royalty-free, perpetual, irrevocable, sublicensable, and transferable license to use, reproduce, modify, distribute, prepare derivative works of, and display the Content.</p>
+   <p><strong>Specific Use for AI Training:</strong> You explicitly grant us the right to use your anonymized food images and corrections to train, fine-tune, and improve our computer vision and nutritional estimation models.</p>
 
-   <h2>10. LIMITATION OF LIABILITY</h2>
-   <div class="critical">
-       TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SERVICE IS PROVIDED "AS IS." THE DEVELOPER SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES, OR ANY LOSS OF PROFITS OR DATA, ARISING FROM YOUR USE OF THE SERVICE, RELIANCE ON AI OUTPUTS, OR FAILURE OF THIRD-PARTY PLATFORMS.
-   </div>
+   <h3>7.2 Metadata</h3>
+   <p>You agree that the Service may process metadata associated with your images (e.g., camera type, lighting conditions). You represent that you have stripped sensitive location data (EXIF GPS) from your images before upload if you do not wish for it to be processed.</p>
 
-   <h2>11. APPLE APP STORE PROVISIONS</h2>
+   <h2>8. Data Privacy and Advertising</h2>
+
+   <h3>8.1 Advertising Consent</h3>
+   <p>The Service is supported by advertising. By using the Service, you consent to the display of advertisements. We utilize the Google Mobile Ads SDK, which may collect data to serve personalized ads.</p>
+   <p><strong>Consent Management:</strong> We provide a Consent Management Platform (CMP) to allow you to manage your preferences regarding data collection for advertising purposes, in compliance with GDPR and CPRA.</p>
+
+   <h3>8.2 Data Deletion</h3>
+   <p>You may request the deletion of your account and associated personal data at any time via the Settings menu ("Delete Account"). While we will delete your personal account data, you acknowledge that anonymized User Content previously used to train our AI models cannot be extracted or deleted from those aggregated models.</p>
+
+   <h2>9. Disclaimer of Warranties</h2>
+   <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTY OF ANY KIND. WE DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE AI OUTPUTS WILL BE ACCURATE, RELIABLE, OR ERROR-FREE.</p>
+
+   <h2>10. Limitation of Liability</h2>
+   <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE DEVELOPER BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, USE, OR GOODWILL, ARISING FROM (A) YOUR ACCESS TO OR USE OF THE SERVICE; (B) ANY AI "HALLUCINATIONS" OR INACCURATE NUTRITIONAL DATA; (C) ANY THIRD-PARTY CONDUCT; OR (D) UNAUTHORIZED ACCESS TO YOUR TRANSMISSIONS OR CONTENT.</p>
+   <p>IN NO EVENT SHALL THE DEVELOPER'S TOTAL LIABILITY EXCEED THE GREATER OF FIFTY DOLLARS ($50) OR THE AMOUNT YOU PAID THE DEVELOPER IN THE PAST SIX MONTHS.</p>
+
+   <h2>11. Apple App Store Provisions</h2>
    <div class="apple-section">
-       <p>If you downloaded this App from the Apple App Store, the following terms apply:</p>
+       <p>If you downloaded this App from the Apple App Store:</p>
        <ul>
-           <li><strong>Acknowledgment:</strong> You and the Developer acknowledge that these Terms are concluded between you and the Developer only, and not with Apple. The Developer, not Apple, is solely responsible for the Licensed Application and the content thereof.</li>
-           <li><strong>Maintenance:</strong> Apple has no obligation whatsoever to furnish any maintenance and support services with respect to the App.</li>
-           <li><strong>Warranty:</strong> In the event of any failure of the App to conform to any applicable warranty, you may notify Apple, and Apple will refund the purchase price for the App to you. To the maximum extent permitted by applicable law, Apple will have no other warranty obligation whatsoever with respect to the App.</li>
-           <li><strong>Third-Party Beneficiary:</strong> You acknowledge and agree that Apple, and Apple’s subsidiaries, are third-party beneficiaries of these Terms. Upon your acceptance of these Terms, Apple will have the right (and will be deemed to have accepted the right) to enforce these Terms against you as a third-party beneficiary thereof.</li>
+           <li><strong>Party:</strong> These Terms are between you and the Developer, not Apple.</li>
+           <li><strong>Maintenance:</strong> Apple has no obligation to furnish maintenance or support.</li>
+           <li><strong>Warranty:</strong> In the event of any failure to conform to any warranty, you may notify Apple, and Apple will refund the purchase price. Apple has no other warranty obligation.</li>
+           <li><strong>Beneficiary:</strong> Apple is a third-party beneficiary of these Terms and may enforce them against you.</li>
        </ul>
    </div>
 
-   <h2>12. GOVERNING LAW AND DISPUTE RESOLUTION</h2>
-   <h3>12.1 For US Residents</h3>
-   <p>These Terms are governed by the Federal Arbitration Act and the laws of the State of Delaware. All disputes shall be resolved by binding individual arbitration. <strong>YOU WAIVE YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN CLASS ACTIONS.</strong></p>
+   <h2>12. Governing Law and Dispute Resolution</h2>
 
-   <h3>12.2 For Rest of World (including Israel)</h3>
-   <p>These Terms are governed by the laws of the State of Israel. The competent courts in Tel Aviv-Jaffa shall have exclusive jurisdiction over any dispute.</p>
+   <h3>12.1 For Residents of the United States (Arbitration)</h3>
+   <p>All disputes arising out of or relating to these Terms or the Service shall be resolved exclusively by binding arbitration under the Federal Arbitration Act. The arbitration shall be conducted by the American Arbitration Association (AAA). <strong>YOU WAIVE YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN CLASS ACTIONS.</strong></p>
 
-   <h2>13. CONTACT</h2>
-   <p>For legal inquiries, please contact: <a href="mailto:contact@danprav.me">contact@danprav.me</a></p>
+   <h3>12.2 For Users Outside the United States (including Israel)</h3>
+   <p>These Terms shall be governed by and construed in accordance with the laws of the State of Israel, without regard to its conflict of law principles. You agree to submit to the exclusive personal jurisdiction of the competent courts located in Tel Aviv-Jaffa for any dispute arising from these Terms.</p>
+
+   <h2>13. Contact Information</h2>
+   <p>For legal inquiries, please contact:</p>
+   <p>Email: <a href="mailto:contact@danprav.me">contact@danprav.me</a></p>
 
    <div class="footer">
        © ${new Date().getFullYear()} Macros Vision AI. All rights reserved.
