@@ -1,20 +1,66 @@
 // src/constants/termsOfServiceText.ts
 
-export const TERMS_OF_SERVICE_HTML = `
+export interface TermsHtmlColors {
+  background: string;
+  text: string;
+  primary: string;
+  warningBackground: string;
+  warningText: string;
+  warningBorder: string;
+  error: string;
+  divider: string;
+}
+
+export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333; }
-        h1 { font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        h2 { font-size: 20px; margin-top: 25px; color: #2e86de; }
-        h3 { font-size: 16px; font-weight: bold; margin-top: 15px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            padding: 20px; 
+            line-height: 1.6; 
+            color: ${colors.text}; 
+            background-color: ${colors.background};
+        }
+        h1 { 
+            font-size: 24px; 
+            border-bottom: 2px solid ${colors.divider}; 
+            padding-bottom: 10px; 
+            color: ${colors.text};
+        }
+        h2 { 
+            font-size: 20px; 
+            margin-top: 25px; 
+            color: ${colors.primary}; 
+        }
+        h3 { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-top: 15px; 
+            color: ${colors.text};
+        }
         p { margin-bottom: 10px; font-size: 14px; }
         ul { margin-bottom: 10px; padding-left: 20px; }
         li { font-size: 14px; margin-bottom: 5px; }
-        .warning { background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 5px; color: #856404; font-weight: bold; }
-        .critical { text-transform: uppercase; font-weight: bold; }
+        strong { color: ${colors.text}; }
+        .warning { 
+            background-color: ${colors.warningBackground}; 
+            border: 1px solid ${colors.warningBorder}; 
+            padding: 15px; 
+            border-radius: 8px; 
+            color: ${colors.warningText}; 
+            font-weight: normal; 
+        }
+        .warning strong {
+            color: ${colors.warningText};
+        }
+        .critical { 
+            text-transform: uppercase; 
+            font-weight: bold; 
+            color: ${colors.error};
+        }
     </style>
 </head>
 <body>
@@ -58,8 +104,10 @@ export const TERMS_OF_SERVICE_HTML = `
 <p>Always consult with a qualified physician or healthcare provider before making any changes to your diet, exercise, or medication regimen.</p>
 
 <h3>3.3 STRICT PROHIBITION ON ALLERGEN DETECTION</h3>
-<p class="warning">WARNING: DO NOT USE THIS SERVICE TO DETECT ALLERGENS.</p>
+<div class="warning">
+<p><strong>WARNING: DO NOT USE THIS SERVICE TO DETECT ALLERGENS.</strong></p>
 <p>Computer Vision and Artificial Intelligence (AI) cannot detect ingredients that are dissolved, hidden, obscured, or cross-contaminated (e.g., peanut oil in a sauce, dissolved sugar, gluten traces). <strong>Reliance on the Service for allergen safety is STRICTLY PROHIBITED and constitutes a material breach of these Terms.</strong> We expressly disclaim any liability for injury, anaphylaxis, or death resulting from such reliance.</p>
+</div>
 
 <h2>4. ARTIFICIAL INTELLIGENCE & ACCURACY DISCLAIMER</h2>
 
