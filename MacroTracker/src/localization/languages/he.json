@@ -17,6 +17,13 @@
     "aiWarning": "בינה מלאכותית עלולה לטעות. אנא ודא מידע חשוב.",
     "medicalDisclaimer": "אינו מכשיר רפואי. יש להתייעץ עם רופא."
   },
+  "termsGate": {
+    "iAgree": "אני מסכים ל",
+    "viewTerms": "תנאי השימוש",
+    "and": " ו",
+    "viewPrivacy": "מדיניות הפרטיות",
+    "notMedicalDevice": "אני מאשר שאפליקציה זו אינה מכשיר רפואי."
+  },
   "registerScreen": {
     "title": "יצירת חשבון",
     "emailPlaceholder": "אימייל",
@@ -36,7 +43,9 @@
       "dobRequiredTitle": "נדרש תאריך לידה",
       "dobRequiredMessage": "אנא בחר את תאריך הלידה שלך.",
       "underageTitle": "הגבלת גיל",
-      "underageMessage": "עליך להיות בן 18 לפחות כדי ליצור חשבון."
+      "underageMessage": "עליך להיות בן 18 לפחות כדי ליצור חשבון.",
+      "termsRequiredTitle": "חובה לאשר תנאים",
+      "termsRequiredMessage": "עליך להסכים לתנאי השימוש ומדיניות הפרטיות כדי להירשם."
     }
   },
   "forgotPasswordScreen": {
@@ -60,7 +69,8 @@
     },
     "general": {
       "title": "כללי",
-      "privacyPolicy": "מדיניות פרטיות"
+      "privacyPolicy": "מדיניות פרטיות",
+      "termsOfService": "תנאי השימוש"
     },
     "dailyGoals": {
       "title": "יעדים יומיים"

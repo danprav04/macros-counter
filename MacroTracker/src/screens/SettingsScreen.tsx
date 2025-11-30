@@ -22,7 +22,6 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
 import useDelayedLoading from "../hooks/useDelayedLoading";
-// 1. Import Consent Status Enum and Method
 import { AdsConsent, AdsConsentPrivacyOptionsRequirementStatus } from 'react-native-google-mobile-ads';
 
 interface SettingsScreenProps {
@@ -36,6 +35,7 @@ type SettingsStackParamList = {
   SettingsHome: undefined; 
   Questionnaire: undefined; 
   PrivacyPolicy: undefined;
+  TermsOfService: undefined;
 };
 
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
@@ -82,12 +82,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const [isAdLoading, setIsAdLoading] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
-  // 2. State to control visibility of the Privacy Settings button
   const [isPrivacyButtonVisible, setIsPrivacyButtonVisible] = useState(false);
 
   const showStatisticsLoading = useDelayedLoading(isStatisticsLoading);
 
-  // 3. Effect to check if Privacy Options are required for this user
   useEffect(() => {
     const checkConsentRequirement = async () => {
       try {
@@ -315,10 +313,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
       navigation.navigate('PrivacyPolicy');
   };
 
-  // 4. Updated handler to modify existing consent
+  const handleTermsOfServicePress = () => {
+      navigation.navigate('TermsOfService');
+  };
+
   const handlePrivacySettingsPress = async () => {
     try {
-      // showPrivacyOptionsForm allows the user to modify their decision
       await AdsConsent.showPrivacyOptionsForm();
     } catch (error) {
       console.log('Error showing privacy settings:', error);
@@ -407,8 +407,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                 </ListItem.Content>
                 <ListItem.Chevron color={theme.colors.secondary} />
             </ListItem>
+            
+            <ListItem bottomDivider onPress={handleTermsOfServicePress} containerStyle={styles.actionItem}>
+                <Icon name="file-document-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content>
+                    <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
+                        {t('settingsScreen.general.termsOfService')}
+                    </ListItem.Title>
+                </ListItem.Content>
+                <ListItem.Chevron color={theme.colors.secondary} />
+            </ListItem>
 
-          {/* 5. Conditionally Rendered Privacy Button */}
           {isPrivacyButtonVisible && (
             <ListItem bottomDivider onPress={handlePrivacySettingsPress} containerStyle={styles.actionItem}>
                   <Icon name="cog-outline" type="material-community" color={theme.colors.secondary} />

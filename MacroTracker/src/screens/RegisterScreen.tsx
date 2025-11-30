@@ -1,6 +1,6 @@
 // src/screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform, ScrollView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { registerUser } from '../services/authService';
 import { t } from '../localization/i18n';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { formatDateISO } from '../utils/dateUtils';
+import TermsGate from '../components/TermsGate';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -22,6 +23,8 @@ const RegisterScreen: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
+    const [isTermsAgreed, setIsTermsAgreed] = useState(false);
+    
     const navigation = useNavigation<RegisterScreenNavigationProp>();
     const { theme } = useTheme();
     const showIsLoading = useDelayedLoading(isLoading);
@@ -35,6 +38,11 @@ const RegisterScreen: React.FC = () => {
     };
 
     const handleRegister = async () => {
+        if (!isTermsAgreed) {
+            Alert.alert(t('registerScreen.alert.termsRequiredTitle'), t('registerScreen.alert.termsRequiredMessage'));
+            return;
+        }
+
         if (!email || !password || !confirmPassword) {
             Alert.alert(t('registerScreen.alert.missingFields'), t('registerScreen.alert.missingFieldsMessage'));
             return;
@@ -83,79 +91,84 @@ const RegisterScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <Text h2 style={[styles.title, { color: theme.colors.text }]}>{t('registerScreen.title')}</Text>
-            <Input
-                placeholder={t('registerScreen.emailPlaceholder')}
-                leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
-                onChangeText={setEmail}
-                value={email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                containerStyle={styles.inputContainer}
-                inputStyle={{ color: theme.colors.text }}
-            />
-            <Input
-                placeholder={t('registerScreen.passwordPlaceholder')}
-                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
-                rightIcon={
-                    <Icon 
-                        name={isPasswordVisible ? 'eye-slash' : 'eye'} 
-                        type="font-awesome" 
-                        color={theme.colors.grey3}
-                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                    />
-                }
-                onChangeText={setPassword}
-                value={password}
-                secureTextEntry={!isPasswordVisible}
-                containerStyle={styles.inputContainer}
-                inputStyle={{ color: theme.colors.text }}
-            />
-            <Input
-                placeholder={t('registerScreen.confirmPasswordPlaceholder')}
-                leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
-                rightIcon={
-                    <Icon 
-                        name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'} 
-                        type="font-awesome" 
-                        color={theme.colors.grey3}
-                        onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
-                    />
-                }
-                onChangeText={setConfirmPassword}
-                value={confirmPassword}
-                secureTextEntry={!isConfirmPasswordVisible}
-                containerStyle={styles.inputContainer}
-                inputStyle={{ color: theme.colors.text }}
-            />
-             <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.dateInput, { borderColor: theme.colors.grey3 }]}>
-                <Icon name="calendar" type="font-awesome" size={20} color={theme.colors.grey3} style={styles.dateIcon} />
-                <Text style={[styles.dateText, { color: dateOfBirth ? theme.colors.text : theme.colors.grey3 }]}>
-                    {dateOfBirth ? formatDateISO(dateOfBirth) : t('registerScreen.dobPlaceholder')}
-                </Text>
-            </TouchableOpacity>
-
-            {showDatePicker && (
-                <DateTimePicker
-                    testID="dateTimePicker"
-                    value={dateOfBirth || new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onDateChange}
-                    maximumDate={new Date()}
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                <Text h2 style={[styles.title, { color: theme.colors.text }]}>{t('registerScreen.title')}</Text>
+                <Input
+                    placeholder={t('registerScreen.emailPlaceholder')}
+                    leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                    onChangeText={setEmail}
+                    value={email}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    containerStyle={styles.inputContainer}
+                    inputStyle={{ color: theme.colors.text }}
                 />
-            )}
-            <Button
-                title={t('registerScreen.registerButton')}
-                onPress={handleRegister}
-                loading={showIsLoading}
-                disabled={isLoading}
-                buttonStyle={styles.button}
-                containerStyle={styles.buttonContainer}
-            />
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={[styles.switchText, { color: theme.colors.primary }]}>{t('registerScreen.loginPrompt')}</Text>
-            </TouchableOpacity>
+                <Input
+                    placeholder={t('registerScreen.passwordPlaceholder')}
+                    leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                    rightIcon={
+                        <Icon 
+                            name={isPasswordVisible ? 'eye-slash' : 'eye'} 
+                            type="font-awesome" 
+                            color={theme.colors.grey3}
+                            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                        />
+                    }
+                    onChangeText={setPassword}
+                    value={password}
+                    secureTextEntry={!isPasswordVisible}
+                    containerStyle={styles.inputContainer}
+                    inputStyle={{ color: theme.colors.text }}
+                />
+                <Input
+                    placeholder={t('registerScreen.confirmPasswordPlaceholder')}
+                    leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                    rightIcon={
+                        <Icon 
+                            name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'} 
+                            type="font-awesome" 
+                            color={theme.colors.grey3}
+                            onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                        />
+                    }
+                    onChangeText={setConfirmPassword}
+                    value={confirmPassword}
+                    secureTextEntry={!isConfirmPasswordVisible}
+                    containerStyle={styles.inputContainer}
+                    inputStyle={{ color: theme.colors.text }}
+                />
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.dateInput, { borderColor: theme.colors.grey3 }]}>
+                    <Icon name="calendar" type="font-awesome" size={20} color={theme.colors.grey3} style={styles.dateIcon} />
+                    <Text style={[styles.dateText, { color: dateOfBirth ? theme.colors.text : theme.colors.grey3 }]}>
+                        {dateOfBirth ? formatDateISO(dateOfBirth) : t('registerScreen.dobPlaceholder')}
+                    </Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                    <DateTimePicker
+                        testID="dateTimePicker"
+                        value={dateOfBirth || new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onDateChange}
+                        maximumDate={new Date()}
+                    />
+                )}
+
+                <TermsGate onAgreementChange={setIsTermsAgreed} />
+
+                <Button
+                    title={t('registerScreen.registerButton')}
+                    onPress={handleRegister}
+                    loading={showIsLoading}
+                    disabled={isLoading || !isTermsAgreed}
+                    buttonStyle={styles.button}
+                    containerStyle={styles.buttonContainer}
+                />
+                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                    <Text style={[styles.switchText, { color: theme.colors.primary }]}>{t('registerScreen.loginPrompt')}</Text>
+                </TouchableOpacity>
+            </ScrollView>
         </SafeAreaView>
     );
 };
@@ -163,6 +176,9 @@ const RegisterScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
@@ -181,7 +197,7 @@ const styles = StyleSheet.create({
         height: 50,
         borderBottomWidth: 1,
         paddingHorizontal: 10,
-        marginBottom: 20,
+        marginBottom: 10,
     },
     dateIcon: {
         marginRight: 10,
@@ -195,11 +211,12 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         width: '100%',
-        marginTop: 20,
+        marginTop: 10,
     },
     switchText: {
         marginTop: 20,
         textDecorationLine: 'underline',
+        paddingBottom: 20,
     },
 });
 

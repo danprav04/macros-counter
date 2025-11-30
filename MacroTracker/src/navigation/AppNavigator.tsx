@@ -20,6 +20,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import UpdateRequiredModal from '../components/UpdateRequiredModal';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/TermsOfServiceScreen'; // New Import
 import AdLoadingModal from '../components/AdLoadingModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
@@ -42,12 +43,15 @@ export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
   PrivacyPolicy: undefined;
+  TermsOfService: undefined; // Added
 };
 
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  PrivacyPolicy: undefined; // Allow access during auth
+  TermsOfService: undefined; // Allow access during auth
 };
 
 export type RootStackParamList = {
@@ -187,6 +191,7 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
       </SettingsStackNav.Screen>
       <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
       <SettingsStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: t('settingsScreen.general.privacyPolicy') }} />
+      <SettingsStackNav.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ title: t('settingsScreen.general.termsOfService') }} />
     </SettingsStackNav.Navigator>
   );
 }
@@ -239,6 +244,8 @@ function AuthNavigator() {
             <AuthStack.Screen name="Login" component={LoginScreen} />
             <AuthStack.Screen name="Register" component={RegisterScreen} />
             <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <AuthStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: true, title: t('settingsScreen.general.privacyPolicy'), headerStyle: { backgroundColor: theme.colors.background }, headerTintColor: theme.colors.primary, headerTitleStyle: { color: theme.colors.text } }} />
+            <AuthStack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: true, title: t('settingsScreen.general.termsOfService'), headerStyle: { backgroundColor: theme.colors.background }, headerTintColor: theme.colors.primary, headerTitleStyle: { color: theme.colors.text } }} />
         </AuthStack.Navigator>
     )
 }

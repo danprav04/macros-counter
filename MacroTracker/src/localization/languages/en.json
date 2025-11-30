@@ -17,6 +17,13 @@
     "aiWarning": "AI can make mistakes. Please verify important information.",
     "medicalDisclaimer": "Not a medical device. Consult a physician."
   },
+  "termsGate": {
+    "iAgree": "I agree to the ",
+    "viewTerms": "Terms of Service",
+    "and": " and ",
+    "viewPrivacy": "Privacy Policy",
+    "notMedicalDevice": "I acknowledge that this app is NOT a medical device."
+  },
   "registerScreen": {
     "title": "Create Account",
     "emailPlaceholder": "Email",
@@ -36,7 +43,9 @@
       "dobRequiredTitle": "Date of Birth Required",
       "dobRequiredMessage": "Please select your date of birth.",
       "underageTitle": "Age Restriction",
-      "underageMessage": "You must be at least 18 years old to create an account."
+      "underageMessage": "You must be at least 18 years old to create an account.",
+      "termsRequiredTitle": "Terms Required",
+      "termsRequiredMessage": "You must agree to the Terms of Service and Privacy Policy to register."
     }
   },
   "forgotPasswordScreen": {
@@ -60,7 +69,8 @@
     },
     "general": {
       "title": "General",
-      "privacyPolicy": "Privacy Policy"
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
     },
     "dailyGoals": {
       "title": "Daily Goals"
