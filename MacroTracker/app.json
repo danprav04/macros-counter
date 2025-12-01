@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Macros Vision AI",
+    "name": "DEV Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "4.2.0",
+    "version": "4.2.1",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,7 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.macrosvisionai.app",
+      "package": "com.macrosvisionai.app.dev",
       "versionCode": 22,
       "userInterfaceStyle": "automatic",
       "permissions": [
@@ -84,7 +84,7 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.0.21",
+            "kotlinVersion": "2.1.20",
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "ndkVersion": "27.0.12077973"

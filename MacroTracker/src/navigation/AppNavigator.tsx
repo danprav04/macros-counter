@@ -1,6 +1,6 @@
 // src/navigation/AppNavigator.tsx
 import React, { useState } from 'react';
-import { Platform, useColorScheme, Alert, DevSettings, I18nManager, Text, View, ActivityIndicator } from 'react-native';
+import { Platform, useColorScheme, Alert, I18nManager, Text, View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import * as Localization from 'expo-localization';
 import Constants from 'expo-constants';
+import RNRestart from 'react-native-restart';
 
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
@@ -20,7 +21,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import UpdateRequiredModal from '../components/UpdateRequiredModal';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
-import TermsOfServiceScreen from '../screens/TermsOfServiceScreen'; // New Import
+import TermsOfServiceScreen from '../screens/TermsOfServiceScreen'; 
 import AdLoadingModal from '../components/AdLoadingModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
@@ -43,15 +44,15 @@ export type SettingsStackParamList = {
   SettingsHome: undefined;
   Questionnaire: undefined;
   PrivacyPolicy: undefined;
-  TermsOfService: undefined; // Added
+  TermsOfService: undefined;
 };
 
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  PrivacyPolicy: undefined; // Allow access during auth
-  TermsOfService: undefined; // Allow access during auth
+  PrivacyPolicy: undefined; 
+  TermsOfService: undefined; 
 };
 
 export type RootStackParamList = {
@@ -309,7 +310,11 @@ function AppContent() {
     if (oldIsRTL !== newIsRTL && Platform.OS !== 'web') {
         Alert.alert( t('confirmationModal.restartRequiredTitle'), t('settingsScreen.language.restartMessage'),
             [ { text: t('app.alertButtons.later'), style: "cancel" },
-              { text: t('app.alertButtons.restartNow'), onPress: () => DevSettings.reload() } ]
+              { 
+                text: t('app.alertButtons.restartNow'), 
+                onPress: () => RNRestart.Restart() 
+              } 
+            ]
         );
     } else if (Platform.OS === 'web' && oldIsRTL !== newIsRTL) {
         window.location.reload();
