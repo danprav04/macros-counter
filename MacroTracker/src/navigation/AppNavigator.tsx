@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import * as Localization from 'expo-localization';
 import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
+import RNRestart from 'react-native-restart';
 
 import DailyEntryScreen from '../screens/DailyEntryScreen';
 import FoodListScreen from '../screens/FoodListScreen';
@@ -312,14 +312,7 @@ function AppContent() {
             [ { text: t('app.alertButtons.later'), style: "cancel" },
               { 
                 text: t('app.alertButtons.restartNow'), 
-                onPress: async () => {
-                    try {
-                        await Updates.reloadAsync();
-                    } catch (e) {
-                        console.error('Failed to reload app:', e);
-                        Alert.alert('Error', 'Please restart the app manually.');
-                    }
-                } 
+                onPress: () => RNRestart.Restart() 
               } 
             ]
         );
