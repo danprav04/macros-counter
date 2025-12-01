@@ -465,7 +465,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           </View>
 
           <View style={styles.disclaimerContainer}>
-              <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+              <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
               <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
           </View>
       </ScrollView>
@@ -604,7 +604,7 @@ const useStyles = makeStyles((theme) => ({
   disclaimerText: {
     marginLeft: 8,
     fontSize: 12,
-    color: theme.colors.grey2,
+    color: theme.colors.grey3,
     fontStyle: 'italic',
     textAlign: 'center',
   },

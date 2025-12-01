@@ -181,11 +181,11 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
 
         <View style={styles.disclaimerContainer}>
             <View style={styles.disclaimerRow}>
-                <Icon name="auto-awesome" type="material" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Icon name="auto-awesome" type="material" color={theme.colors.grey3} size={14} style={styles.disclaimerIcon} />
                 <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
             </View>
             <View style={styles.disclaimerRow}>
-                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={14} style={styles.disclaimerIcon} />
                 <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
             </View>
         </View>
@@ -262,7 +262,7 @@ const useStyles = makeStyles((theme) => ({
   },
   disclaimerText: {
     fontSize: 12,
-    color: theme.colors.grey2,
+    color: theme.colors.grey3,
     fontStyle: 'italic',
     textAlign: 'center',
   },

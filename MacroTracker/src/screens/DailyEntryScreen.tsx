@@ -459,7 +459,7 @@ const DailyEntryScreen: React.FC = () => {
       {showDatePicker && (<DateTimePicker value={isValid(parseISO(selectedDate)) ? parseISO(selectedDate) : new Date()} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleDateChange} />)}
       <View style={styles.progressContainer}><DailyProgress calories={calculateTotals.totalCalories} protein={calculateTotals.totalProtein} carbs={calculateTotals.totalCarbs} fat={calculateTotals.totalFat} goals={dailyGoals} /></View>
       <View style={styles.disclaimerContainer}>
-          <RNEIcon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+          <RNEIcon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
           <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
       </View>
       <Divider style={styles.divider} />
@@ -548,7 +548,7 @@ const useStyles = makeStyles((theme) => ({
   disclaimerText: {
     marginLeft: 8,
     fontSize: 12,
-    color: theme.colors.grey2,
+    color: theme.colors.grey3,
     fontStyle: 'italic',
     textAlign: 'center',
   },

@@ -319,7 +319,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         <Icon 
                                             name="information-outline" 
                                             type="material-community" 
-                                            color={theme.colors.grey2} 
+                                            color={theme.colors.grey3} 
                                             size={16} 
                                         />
                                         <Text style={styles.aiDisclaimerText}>
@@ -576,7 +576,7 @@ const useStyles = makeStyles((theme) => ({
     aiDisclaimerText: {
         marginLeft: 8,
         fontSize: 12,
-        color: theme.colors.grey2,
+        color: theme.colors.grey3,
         fontStyle: 'italic',
         flex: 1,
         lineHeight: 16,

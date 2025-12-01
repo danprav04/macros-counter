@@ -378,11 +378,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect' || (modalMode === 'normal' && internalSelectedFood)) && (
                 <View style={styles.disclaimerSection}>
                     <View style={styles.disclaimerRow}>
-                        <Icon name="information-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                        <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} />
                         <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
                     </View>
                     <View style={styles.disclaimerRow}>
-                        <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
+                        <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
                         <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
                     </View>
                 </View>
@@ -436,7 +436,7 @@ const useStyles = makeStyles((theme) => ({
     disclaimerText: {
         marginLeft: 5,
         fontSize: 12,
-        color: theme.colors.grey2,
+        color: theme.colors.grey3,
         fontStyle: 'italic',
         flexShrink: 1,
     },
