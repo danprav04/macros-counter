@@ -104,7 +104,7 @@ export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
 
    <h3>4.2 Dynamic Pricing (Floating Exchange Rate)</h3>
    <p>The Service relies on third-party API providers whose costs fluctuate. <strong>WE RESERVE THE RIGHT TO MODIFY THE COIN COST OF ANY FEATURE AT ANY TIME WITHOUT NOTICE.</strong></p>
-   <p>For example, a food scan costing 4 Coins today may cost 8 Coins tomorrow if underlying API costs increase. The cost of features is displayed at the point of use. By initiating an action, you agree to the posted Coin price at that specific moment. You acknowledge that the purchasing power of your Coins may fluctuate over time.</p>
+   <p>For example, a food scan costing 4 Coins today may cost 8 Coins tomorrow if underlying API costs increase. The effective price for any Service is the price explicitly displayed in the user interface (e.g., via the price tag icon) at the moment you initiate the request. By initiating an action, you contractually agree to the posted Coin price at that specific moment. You acknowledge that the purchasing power of your Coins may fluctuate over time.</p>
 
    <h3>4.3 Expiration of Coins</h3>
    <p>To ensure the efficient management of the Service, the Developer reserves the right to expire and delete unused Coins (both purchased and earned) from your account if your account remains inactive (no login) for a period of twelve (12) consecutive months.</p>
@@ -115,22 +115,25 @@ export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
    <h2>5. Subscriptions and Lifetime Access</h2>
 
    <h3>5.1 Auto-Renewing Subscriptions</h3>
-   <p>If you purchase a recurring subscription, payment will be charged to your Apple ID or Google Play account upon confirmation of purchase. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period. You must manage cancellation via your Store settings; uninstalling the App does <strong>NOT</strong> cancel your subscription.</p>
+   <p>If you purchase a recurring subscription, payment will be charged to your iTunes or Google Play Account at confirmation of purchase. Your subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period at the then-current price. You can manage and cancel your subscriptions by going to your Account Settings on the App Store or Google Play Store after purchase. Any unused portion of a free trial period, if offered, will be forfeited when you purchase a subscription.</p>
 
    <h3>5.2 Definition of "Lifetime" Access</h3>
-   <p>A "Lifetime" subscription grants you access to premium features for the <strong>operational lifetime of the Service</strong>, not the lifetime of the user.</p>
+   <p>A "Lifetime" subscription grants you access to premium features for the <strong>operational lifetime of the Service</strong>, not the biological lifetime of the user.</p>
    <ul>
        <li>We reserve the right to discontinue the Service or specific features with reasonable notice (e.g., 60 days).</li>
-       <li>If the Developer ceases operations, enters bankruptcy, or permanently discontinues the App, the "Lifetime" license terminates immediately, and no refund will be provided.</li>
+       <li>If the Developer permanently ceases operations or enters bankruptcy within three (3) years of your "Lifetime" purchase, you may be eligible for a pro-rata refund based on the remaining time of that three-year period, subject to applicable law and platform policies. After three years, no refund will be provided if the Service is discontinued.</li>
    </ul>
 
    <h3>5.3 Fair Use Policy</h3>
    <p>To prevent abuse and ensure service stability, <strong>ALL PLANS, INCLUDING "LIFETIME" AND "UNLIMITED," ARE SUBJECT TO A FAIR USE POLICY.</strong> We reserve the right to enforce a hard cap on AI usage (e.g., 50 scans per day) to prevent commercial scraping, botting, or excessive cost generation. Usage exceeding this limit may be throttled or require Coins.</p>
 
+   <h3>5.4 Restore Purchases</h3>
+   <p>You may restore your "Lifetime" or active recurring subscription license on devices associated with your Apple ID or Google Play account via the "Restore Purchases" mechanism in the App Settings.</p>
+
    <h2>6. Refunds and Cancellation Rights</h2>
 
    <h3>6.1 General Policy</h3>
-   <p>All purchases are final. Refunds are at the sole discretion of the Application Store (Apple/Google) and are subject to their respective policies. The Developer cannot issue refunds directly.</p>
+   <p>All purchases are final. Refunds for transactions made via the Apple App Store are handled exclusively by Apple and are subject to their specific terms and conditions. The Developer does not have the technical or legal authority to issue refunds for Apple transactions. Refunds for Google Play are at the discretion of the Developer or Google, strictly within 48 hours of purchase.</p>
 
    <div class="warning">
        <h3>6.2 Waiver for Israeli Consumers</h3>
@@ -150,12 +153,14 @@ export const getTermsOfServiceHTML = (colors: TermsHtmlColors): string => `
    <h3>7.2 Metadata</h3>
    <p>You agree that the Service may process metadata associated with your images (e.g., camera type, lighting conditions). You represent that you have stripped sensitive location data (EXIF GPS) from your images before upload if you do not wish for it to be processed.</p>
 
+   <h3>7.3 Acceptable Use Policy for Shared Content</h3>
+   <p>The Service allows you to share custom food items via deep links. You agree not to create, upload, or share content that is offensive, hateful, defamatory, obscene, pornographic, or promotes illegal acts. The Developer reserves the right to ban users found violating this policy and to disable links to content deemed inappropriate without prior notice.</p>
+
    <h2>8. Data Privacy and Advertising</h2>
 
    <h3>8.1 Advertising Consent</h3>
-   <p>The Service is supported by advertising. By using the Service, you consent to the display of advertisements. We utilize the Google Mobile Ads SDK, which may collect data to serve personalized ads.</p>
-   <p><strong>Consent Management:</strong> We provide a Consent Management Platform (CMP) to allow you to manage your preferences regarding data collection for advertising purposes, in compliance with GDPR and CPRA.</p>
-
+   <p>The Service is supported by advertising. By using the Service, you consent to the display of advertisements. We utilize the Google Mobile Ads SDK, which may collect data (such as Mobile Advertising IDs: IDFA/GAID) to serve personalized ads. You can manage your consent preferences via the Privacy Settings in the App.</p>
+   
    <h3>8.2 Data Deletion</h3>
    <p>You may request the deletion of your account and associated personal data at any time via the Settings menu ("Delete Account"). While we will delete your personal account data, you acknowledge that anonymized User Content previously used to train our AI models cannot be extracted or deleted from those aggregated models.</p>
 
