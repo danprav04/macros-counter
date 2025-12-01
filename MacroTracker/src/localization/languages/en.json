@@ -14,7 +14,7 @@
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "disclaimers": {
-    "aiWarning": "AI can make mistakes. Please verify important information.",
+    "aiWarning": "AI estimation. Verify accuracy before consumption.",
     "medicalDisclaimer": "Not a medical device. Consult a physician."
   },
   "termsGate": {

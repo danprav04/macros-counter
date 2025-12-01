@@ -99,7 +99,6 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
       if (!food) return;
       Alert.alert(
           `${t('foodListScreen.delete')} ${food.name}?`,
-          // This confirmation message from dataManagement is more generic and fits here
           "This action is irreversible.",
           [
               { text: t('confirmationModal.cancel'), style: 'cancel' },
@@ -159,7 +158,6 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
             onChangeText={(text) => handleInputChange('name', text)}
             placeholder={t('foodFormFields.foodName')}
             autoCapitalize="words"
-            // Move the icon inside the input to save space
             leftIcon={
                 <MaterialCommunityIcons 
                     name="form-textbox" 
@@ -182,8 +180,14 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
         {renderEditableMacroItem(t('dailyProgress.fat'), 'fat', 'oil')}
 
         <View style={styles.disclaimerContainer}>
-            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
-            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+            <View style={styles.disclaimerRow}>
+                <Icon name="auto-awesome" type="material" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
+            </View>
+            <View style={styles.disclaimerRow}>
+                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+            </View>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -220,7 +224,7 @@ const useStyles = makeStyles((theme) => ({
   divider: { marginBottom: 15, },
   nameInputContainer: { 
     paddingHorizontal: 10,
-    marginBottom: 5, // Minimal spacing between name and macros
+    marginBottom: 5, 
     marginTop: 5,
   },
   nameInputInnerContainer: { 
@@ -228,13 +232,12 @@ const useStyles = makeStyles((theme) => ({
     paddingHorizontal: 12, 
     backgroundColor: theme.colors.grey5, 
     borderRadius: 8,
-    height: 40, // Enforce a smaller height (was minHeight 45)
+    height: 40,
   },
   nameInputValue: { 
     color: theme.colors.text, 
     fontSize: 16, 
     textAlign: I18nManager.isRTL ? 'right' : 'left', 
-    // Removed paddingVertical to let flex center it
   },
   macroItem: { paddingVertical: 4, paddingHorizontal: 5, backgroundColor: 'transparent', alignItems: 'center' },
   macroLabel: { color: theme.colors.text, fontSize: 16, fontWeight: '500', textAlign: 'left', },
@@ -244,15 +247,20 @@ const useStyles = makeStyles((theme) => ({
   unitText: { color: theme.colors.grey3, fontSize: 13, fontWeight: '500' },
   errorText: { color: theme.colors.error, textAlign: 'left', marginLeft: 0, marginTop: 2, marginBottom: 2 },
   disclaimerContainer: {
+    marginTop: 20,
+    paddingHorizontal: 10,
+    opacity: 0.8,
+  },
+  disclaimerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    marginTop: 20,
-    opacity: 0.8,
+    marginBottom: 4,
+  },
+  disclaimerIcon: {
+    marginRight: 6,
   },
   disclaimerText: {
-    marginLeft: 8,
     fontSize: 12,
     color: theme.colors.grey2,
     fontStyle: 'italic',

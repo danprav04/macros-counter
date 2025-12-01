@@ -30,7 +30,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
     } else {
       setGrams('');
     }
-    setIsSaving(false); // Reset saving state when item changes or modal closes
+    setIsSaving(false);
   }, [item]);
 
   const food = item?.food;
@@ -135,8 +135,14 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
         </View>
 
         <View style={styles.disclaimerContainer}>
-            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={16} />
-            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+            <View style={styles.disclaimerRow}>
+                <Icon name="auto-awesome" type="material" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
+            </View>
+            <View style={styles.disclaimerRow}>
+                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey2} size={14} style={styles.disclaimerIcon} />
+                <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+            </View>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -244,15 +250,20 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: 'bold',
   },
   disclaimerContainer: {
+    marginTop: 20,
+    paddingHorizontal: 10,
+    opacity: 0.8,
+  },
+  disclaimerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    marginTop: 20,
-    opacity: 0.8,
+    marginBottom: 4,
+  },
+  disclaimerIcon: {
+    marginRight: 6,
   },
   disclaimerText: {
-    marginLeft: 8,
     fontSize: 12,
     color: theme.colors.grey2,
     fontStyle: 'italic',
