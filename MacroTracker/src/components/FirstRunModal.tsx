@@ -1,13 +1,8 @@
 // src/components/FirstRunModal.tsx
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Modal, ScrollView } from 'react-native';
-import { Text, Button, CheckBox, Icon, useTheme } from '@rneui/themed';
+import { View, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, Button, Icon, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigation/AppNavigator';
-
-type AuthNavProp = NativeStackNavigationProp<AuthStackParamList>;
 
 export interface MissingConsents {
     tos: boolean;
@@ -24,6 +19,51 @@ interface FirstRunModalProps {
     onOpenTerms: () => void;
     onOpenPrivacy: () => void;
 }
+
+interface CustomCheckboxProps {
+    checked: boolean;
+    onPress: () => void;
+    children: React.ReactNode;
+    checkedColor?: string;
+    uncheckedColor?: string;
+    iconChecked?: string;
+    iconUnchecked?: string;
+    containerStyle?: object;
+}
+
+const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ 
+    checked, 
+    onPress, 
+    children, 
+    checkedColor, 
+    uncheckedColor, 
+    iconChecked = 'checkbox-marked',
+    iconUnchecked = 'checkbox-blank-outline',
+    containerStyle
+}) => {
+    const { theme } = useTheme();
+    const activeColor = checkedColor || theme.colors.primary;
+    const inactiveColor = uncheckedColor || theme.colors.grey3;
+
+    return (
+        <TouchableOpacity 
+            onPress={onPress} 
+            activeOpacity={0.7} 
+            style={[styles.customRow, containerStyle]}
+        >
+            <Icon
+                name={checked ? iconChecked : iconUnchecked}
+                type="material-community"
+                size={24}
+                color={checked ? activeColor : inactiveColor}
+                style={styles.iconStyle}
+            />
+            <View style={styles.textContainer}>
+                {children}
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const FirstRunModal: React.FC<FirstRunModalProps> = ({ 
     isVisible, 
@@ -94,73 +134,56 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
                         
                         <View style={styles.content}>
                             {missingConsents.tos && (
-                                <CheckBox
+                                <CustomCheckbox
                                     checked={checkedState.tos}
                                     onPress={() => toggleCheck('tos')}
-                                    title={
-                                        <Text style={[styles.checkboxTextLabel, { color: theme.colors.text }]}>
-                                            {t('termsGate.iAgree')}
-                                            <Text style={[styles.link, { color: theme.colors.primary }]} onPress={onOpenTerms}>
-                                                {t('termsGate.viewTerms')}
-                                            </Text>
+                                >
+                                    <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
+                                        {t('termsGate.iAgree')}
+                                        <Text style={[styles.link, { color: theme.colors.primary }]} onPress={onOpenTerms}>
+                                            {t('termsGate.viewTerms')}
                                         </Text>
-                                    }
-                                    containerStyle={styles.checkboxContainer}
-                                    wrapperStyle={styles.checkboxWrapper}
-                                    iconType="material-community"
-                                    checkedIcon="checkbox-marked"
-                                    uncheckedIcon="checkbox-blank-outline"
-                                />
+                                    </Text>
+                                </CustomCheckbox>
                             )}
 
                             {missingConsents.health && (
-                                <CheckBox
+                                <CustomCheckbox
                                     checked={checkedState.health}
                                     onPress={() => toggleCheck('health')}
-                                    title={
-                                        <Text style={[styles.checkboxTextLabel, { color: theme.colors.text }]}>
-                                            {t('termsGate.consentHealth')}
-                                            {" "}
-                                            <Text style={[styles.link, { color: theme.colors.primary }]} onPress={onOpenPrivacy}>
-                                                {t('termsGate.viewPrivacy')}
-                                            </Text>
+                                >
+                                    <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
+                                        {t('termsGate.consentHealth')}
+                                        {" "}
+                                        <Text style={[styles.link, { color: theme.colors.primary }]} onPress={onOpenPrivacy}>
+                                            {t('termsGate.viewPrivacy')}
                                         </Text>
-                                    }
-                                    containerStyle={styles.checkboxContainer}
-                                    wrapperStyle={styles.checkboxWrapper}
-                                    iconType="material-community"
-                                    checkedIcon="checkbox-marked"
-                                    uncheckedIcon="checkbox-blank-outline"
-                                />
+                                    </Text>
+                                </CustomCheckbox>
                             )}
 
                             {missingConsents.transfer && (
-                                <CheckBox
+                                <CustomCheckbox
                                     checked={checkedState.transfer}
                                     onPress={() => toggleCheck('transfer')}
-                                    title={t('termsGate.consentTransfer')}
-                                    containerStyle={styles.checkboxContainer}
-                                    wrapperStyle={styles.checkboxWrapper}
-                                    textStyle={[styles.checkboxText, { color: theme.colors.text }]}
-                                    iconType="material-community"
-                                    checkedIcon="checkbox-marked"
-                                    uncheckedIcon="checkbox-blank-outline"
-                                />
+                                >
+                                    <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
+                                        {t('termsGate.consentTransfer')}
+                                    </Text>
+                                </CustomCheckbox>
                             )}
 
                             {missingConsents.medical && (
-                                <CheckBox
+                                <CustomCheckbox
                                     checked={checkedState.medical}
                                     onPress={() => toggleCheck('medical')}
-                                    title={t('termsGate.notMedical')}
-                                    containerStyle={styles.checkboxContainer}
-                                    wrapperStyle={styles.checkboxWrapper}
-                                    textStyle={[styles.checkboxText, { color: theme.colors.text, fontWeight: '600' }]}
                                     checkedColor={theme.colors.warning}
-                                    iconType="material-community"
-                                    checkedIcon="alert-box"
-                                    uncheckedIcon="checkbox-blank-outline"
-                                />
+                                    iconChecked="alert-box"
+                                >
+                                    <Text style={[styles.checkboxText, { color: theme.colors.text, fontWeight: '600' }]}>
+                                        {t('termsGate.notMedical')}
+                                    </Text>
+                                </CustomCheckbox>
                             )}
 
                             {missingConsents.hitl && (
@@ -168,24 +191,22 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
                                     <View style={[styles.warningBox, { borderColor: theme.colors.warning, backgroundColor: theme.mode === 'dark' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)' }]}>
                                         <View style={styles.warningHeader}>
                                             <Icon name="robot" type="material-community" size={20} color={theme.colors.warning} style={{marginRight: 8}}/>
-                                            <Text style={[styles.warningTitle, { color: theme.colors.warning }]}>AI Disclaimer</Text>
+                                            <Text style={[styles.warningTitle, { color: theme.colors.warning }]}>AI DISCLAIMER</Text>
                                         </View>
                                         <Text style={[styles.warningText, { color: theme.colors.text }]}>
                                             {t('disclaimers.aiWarning')}
                                         </Text>
                                     </View>
-                                    <CheckBox
+                                    <CustomCheckbox
                                         checked={checkedState.hitl}
                                         onPress={() => toggleCheck('hitl')}
-                                        title={t('firstRunModal.humanInTheLoopText')}
-                                        containerStyle={[styles.checkboxContainer, { marginTop: 5 }]}
-                                        wrapperStyle={styles.checkboxWrapper}
-                                        textStyle={[styles.checkboxText, { color: theme.colors.text }]}
                                         checkedColor={theme.colors.success}
-                                        iconType="material-community"
-                                        checkedIcon="checkbox-marked"
-                                        uncheckedIcon="checkbox-blank-outline"
-                                    />
+                                        containerStyle={{ marginTop: 5 }}
+                                    >
+                                        <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
+                                            {t('firstRunModal.humanInTheLoopText')}
+                                        </Text>
+                                    </CustomCheckbox>
                                 </View>
                             )}
                         </View>
@@ -276,33 +297,25 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
     },
-    // Styling specifically for RNEUI CheckBox to align icon top-left with text
-    checkboxContainer: {
-        backgroundColor: 'transparent',
-        borderWidth: 0,
+    // Custom Checkbox Styles
+    customRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start', // Top alignment for icon vs multiline text
         paddingVertical: 10,
-        paddingHorizontal: 0,
-        margin: 0,
-        marginLeft: 0, 
-        marginRight: 0,
-        width: '100%', // Ensure full width
+        width: '100%',
     },
-    checkboxWrapper: {
-        alignItems: 'flex-start', // Key: Aligns checkbox icon with top of multi-line text
+    iconStyle: {
+        marginRight: 12,
+        marginTop: 0, // Ensure no extra margin pushes it down
+    },
+    textContainer: {
+        flex: 1, // Crucial for wrapping
     },
     checkboxText: {
         fontSize: 15,
         fontWeight: '400',
-        marginLeft: 12,
-        lineHeight: 22,
-        flexShrink: 1, // changed from flex: 1 to fix text disappearing
-    },
-    checkboxTextLabel: {
-        fontSize: 15,
-        fontWeight: '400',
-        marginLeft: 12,
-        lineHeight: 22,
-        flexShrink: 1, // changed from flex: 1 to fix text disappearing
+        lineHeight: 22, // Good readable line height
+        textAlign: 'left',
     },
     link: {
         fontWeight: '700',
