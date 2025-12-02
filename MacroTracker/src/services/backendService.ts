@@ -104,8 +104,8 @@ export async function fetchBackend<T>(
     }
 }
 
-// App configuration endpoint
-export const getAppConfig = (): Promise<{ current_version: string }> => fetchBackend('/app/version', {}, false);
+// App configuration endpoint - now includes tos_current_version
+export const getAppConfig = (): Promise<{ current_version: string; tos_current_version: string }> => fetchBackend('/app/version', {}, false);
 
 // App costs endpoint
 export const getAppCosts = (): Promise<AppCosts> => fetchBackend('/app/costs', {}, false);

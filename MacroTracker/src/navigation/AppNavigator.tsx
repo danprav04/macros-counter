@@ -267,6 +267,7 @@ function AppContent() {
   const [missingConsents, setMissingConsents] = useState<MissingConsents>({
       tos: false, health: false, transfer: false, medical: false, hitl: false
   });
+  const [latestTosVersion, setLatestTosVersion] = useState('');
 
   React.useEffect(() => {
     const checkVersion = async () => {
@@ -274,6 +275,9 @@ function AppContent() {
             const remoteConfig = await getAppConfig();
             const currentVersion = Constants.expoConfig?.version;
             const requiredVersion = remoteConfig.current_version;
+            
+            // Store the latest ToS version for use in compliance check
+            setLatestTosVersion(remoteConfig.tos_current_version || '1.0.0');
 
             if (currentVersion && requiredVersion && compareVersions(currentVersion, requiredVersion) < 0) {
                 const links = Constants.expoConfig?.extra?.storeLinks;
@@ -292,13 +296,13 @@ function AppContent() {
 
   // --- Logic to Show Compliance / Liability Modal ---
   React.useEffect(() => {
-      if (authState.authenticated && user) {
-          const currentAppVersion = Constants.expoConfig?.version || '1.0.0';
+      if (authState.authenticated && user && latestTosVersion) {
           const userAgreedVersion = user.tos_version || '0.0.0';
           
           // Determine what is missing
+          // The critical change: compare user's agreed version to the REMOTE ToS setting
           const missing = {
-              tos: !user.tos_agreed_at || compareVersions(userAgreedVersion, currentAppVersion) < 0,
+              tos: !user.tos_agreed_at || compareVersions(userAgreedVersion, latestTosVersion) < 0,
               health: !user.consent_health_data_at,
               transfer: !user.consent_data_transfer_at,
               medical: !user.acknowledged_not_medical_device_at,
@@ -314,12 +318,11 @@ function AppContent() {
       } else {
           setShowComplianceModal(false);
       }
-  }, [authState.authenticated, user]);
+  }, [authState.authenticated, user, latestTosVersion]);
 
   const handleAgreeToCompliance = async (updatedConsents: MissingConsents) => {
       try {
           const currentIsoTime = new Date().toISOString();
-          const currentVersion = Constants.expoConfig?.version || '1.0.0';
           
           // Build payload only for checked items that were missing
           // Note: FirstRunModal only allows clicking Agree if they checked the boxes for missing items.
@@ -327,7 +330,7 @@ function AppContent() {
           
           if (missingConsents.tos) {
               payload.tos_agreed_at = currentIsoTime;
-              payload.tos_version = currentVersion;
+              payload.tos_version = latestTosVersion; // Use the version from remote config
           }
           if (missingConsents.health) payload.consent_health_data_at = currentIsoTime;
           if (missingConsents.transfer) payload.consent_data_transfer_at = currentIsoTime;

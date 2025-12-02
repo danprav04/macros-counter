@@ -7,11 +7,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { registerUser } from '../services/authService';
+import { getAppConfig } from '../services/backendService';
 import { t } from '../localization/i18n';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { formatDateISO } from '../utils/dateUtils';
 import TermsGate, { Consents } from '../components/TermsGate';
-import Constants from 'expo-constants';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -85,10 +85,21 @@ const RegisterScreen: React.FC = () => {
 
         setIsLoading(true);
         try {
+            // Fetch the current ToS version from the backend
+            let tosVersion = "1.0.0"; // fallback
+            try {
+                const config = await getAppConfig();
+                if (config.tos_current_version) {
+                    tosVersion = config.tos_current_version;
+                }
+            } catch (e) {
+                console.warn("Could not fetch latest ToS version, using fallback.");
+            }
+
             const currentIsoTime = new Date().toISOString();
             const response = await registerUser(email, password, {
                 tos_agreed_at: currentIsoTime,
-                tos_version: Constants.expoConfig?.version || "1.0.0",
+                tos_version: tosVersion,
                 consent_health_data_at: currentIsoTime,
                 consent_data_transfer_at: currentIsoTime,
                 acknowledged_not_medical_device_at: currentIsoTime
@@ -99,7 +110,7 @@ const RegisterScreen: React.FC = () => {
                 [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
             );
         } catch (error: any) {
-            // Error is handled and alerted by the authService
+            // Error is handled and alerted by the authService usually, or we catch here
         } finally {
             setIsLoading(false);
         }
