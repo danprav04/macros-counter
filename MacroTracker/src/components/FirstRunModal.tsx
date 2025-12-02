@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Text, Button, CheckBox, Icon, useTheme } from '@rneui/themed';
 import { t } from '../localization/i18n';
-import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
@@ -286,23 +285,24 @@ const styles = StyleSheet.create({
         margin: 0,
         marginLeft: 0, 
         marginRight: 0,
+        width: '100%', // Ensure full width
     },
     checkboxWrapper: {
         alignItems: 'flex-start', // Key: Aligns checkbox icon with top of multi-line text
     },
     checkboxText: {
         fontSize: 15,
-        fontWeight: '400', // Regular weight for better reading
+        fontWeight: '400',
         marginLeft: 12,
-        lineHeight: 22, // Better line height for multi-line text
-        flex: 1, // Allows text to wrap properly
+        lineHeight: 22,
+        flexShrink: 1, // changed from flex: 1 to fix text disappearing
     },
     checkboxTextLabel: {
         fontSize: 15,
         fontWeight: '400',
         marginLeft: 12,
         lineHeight: 22,
-        flex: 1,
+        flexShrink: 1, // changed from flex: 1 to fix text disappearing
     },
     link: {
         fontWeight: '700',
