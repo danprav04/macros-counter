@@ -345,28 +345,6 @@ function AppContent() {
       }
   };
 
-  // 2. Implement Navigation Handlers using the ref
-  const handleOpenTerms = () => {
-      if (navigationRef.isReady()) {
-          // Since the modal shows only when authenticated, we are in the 'Main' stack.
-          // We need to navigate to 'SettingsStackRoute' -> 'TermsOfService'
-          // We cast to 'any' because strict typing of nested params with ref is verbose and error-prone here.
-          navigationRef.navigate('Main', {
-              screen: 'SettingsStackRoute',
-              params: { screen: 'TermsOfService' }
-          } as any);
-      }
-  };
-
-  const handleOpenPrivacy = () => {
-      if (navigationRef.isReady()) {
-          navigationRef.navigate('Main', {
-              screen: 'SettingsStackRoute',
-              params: { screen: 'PrivacyPolicy' }
-          } as any);
-      }
-  };
-
   React.useEffect(() => {
     if (logout) {
       setLogoutListener(logout);
@@ -441,8 +419,6 @@ function AppContent() {
                 isVisible={showComplianceModal} 
                 missingConsents={missingConsents} 
                 onAgree={handleAgreeToCompliance}
-                onOpenTerms={handleOpenTerms}
-                onOpenPrivacy={handleOpenPrivacy}
             />
         </View>
     </ThemeProvider>
