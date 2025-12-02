@@ -126,3 +126,12 @@ export const getMacrosForImageMultiple = (base64Image: string, mimeType: string)
 export const getMacrosForImageMultipleBatch = (images: { image_base64: string, mime_type: string }[]): Promise<EstimatedFoodItem[]> => fetchBackend('/ai/macros_image_multiple_batch', { method: 'POST', body: JSON.stringify({ images }) });
 export const getMacrosForTextMultiple = (text: string): Promise<EstimatedFoodItem[]> => fetchBackend('/ai/macros_text_multiple', { method: 'POST', body: JSON.stringify({ text }) });
 export const deleteCurrentUserAccount = (password: string): Promise<null> => fetchBackend('/users/me', { method: 'DELETE', body: JSON.stringify({ password }) });
+
+export const updateUserCompliance = (data: {
+    tos_agreed_at?: string;
+    tos_version?: string;
+    consent_health_data_at?: string;
+    consent_data_transfer_at?: string;
+    acknowledged_not_medical_device_at?: string;
+    agreed_to_human_in_the_loop_at?: string;
+}): Promise<User> => fetchBackend('/users/update-compliance', { method: 'POST', body: JSON.stringify(data) });

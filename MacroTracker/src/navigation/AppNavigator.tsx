@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Platform, useColorScheme, Alert, I18nManager, Text, View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
 import { Icon, useTheme, ThemeProvider, createTheme } from '@rneui/themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -23,13 +23,14 @@ import UpdateRequiredModal from '../components/UpdateRequiredModal';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../screens/TermsOfServiceScreen'; 
 import AdLoadingModal from '../components/AdLoadingModal';
+import FirstRunModal, { MissingConsents } from '../components/FirstRunModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
 import { setLogoutListener } from '../services/authService';
-import { getAppConfig } from '../services/backendService';
+import { getAppConfig, updateUserCompliance } from '../services/backendService';
 import { compareVersions } from '../utils/versionUtils';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 
@@ -251,12 +252,21 @@ function AuthNavigator() {
     )
 }
 
+// 1. Create a navigation ref to use outside of components nested in the navigator
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 // App Content - Determines which stack to show
 function AppContent() {
-  const { authState, settings, changeTheme, changeLocale, logout } = useAuth() as AuthContextType;
+  const { authState, settings, user, changeTheme, changeLocale, logout, refreshUser } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
   const [isUpdateRequired, setIsUpdateRequired] = useState(false);
   const [storeUrl, setStoreUrl] = useState('');
+  
+  // Compliance State
+  const [showComplianceModal, setShowComplianceModal] = useState(false);
+  const [missingConsents, setMissingConsents] = useState<MissingConsents>({
+      tos: false, health: false, transfer: false, medical: false, hitl: false
+  });
 
   React.useEffect(() => {
     const checkVersion = async () => {
@@ -280,6 +290,79 @@ function AppContent() {
     checkVersion();
   }, []);
 
+  // --- Logic to Show Compliance / Liability Modal ---
+  React.useEffect(() => {
+      if (authState.authenticated && user) {
+          const currentAppVersion = Constants.expoConfig?.version || '1.0.0';
+          const userAgreedVersion = user.tos_version || '0.0.0';
+          
+          // Determine what is missing
+          const missing = {
+              tos: !user.tos_agreed_at || compareVersions(userAgreedVersion, currentAppVersion) < 0,
+              health: !user.consent_health_data_at,
+              transfer: !user.consent_data_transfer_at,
+              medical: !user.acknowledged_not_medical_device_at,
+              hitl: !user.agreed_to_human_in_the_loop_at,
+          };
+
+          if (missing.tos || missing.health || missing.transfer || missing.medical || missing.hitl) {
+              setMissingConsents(missing);
+              setShowComplianceModal(true);
+          } else {
+              setShowComplianceModal(false);
+          }
+      } else {
+          setShowComplianceModal(false);
+      }
+  }, [authState.authenticated, user]);
+
+  const handleAgreeToCompliance = async (updatedConsents: MissingConsents) => {
+      try {
+          const currentIsoTime = new Date().toISOString();
+          const currentVersion = Constants.expoConfig?.version || '1.0.0';
+          
+          // Build payload only for checked items that were missing
+          // Note: FirstRunModal only allows clicking Agree if they checked the boxes for missing items.
+          const payload: any = {};
+          
+          if (missingConsents.tos) {
+              payload.tos_agreed_at = currentIsoTime;
+              payload.tos_version = currentVersion;
+          }
+          if (missingConsents.health) payload.consent_health_data_at = currentIsoTime;
+          if (missingConsents.transfer) payload.consent_data_transfer_at = currentIsoTime;
+          if (missingConsents.medical) payload.acknowledged_not_medical_device_at = currentIsoTime;
+          if (missingConsents.hitl) payload.agreed_to_human_in_the_loop_at = currentIsoTime;
+
+          await updateUserCompliance(payload);
+          await refreshUser?.(); // Update local user state
+          setShowComplianceModal(false);
+      } catch (error) {
+          Alert.alert("Error", "Could not save your agreements. Please check your connection.");
+      }
+  };
+
+  // 2. Implement Navigation Handlers using the ref
+  const handleOpenTerms = () => {
+      if (navigationRef.isReady()) {
+          // Since the modal shows only when authenticated, we are in the 'Main' stack.
+          // We need to navigate to 'SettingsStackRoute' -> 'TermsOfService'
+          // We cast to 'any' because strict typing of nested params with ref is verbose and error-prone here.
+          navigationRef.navigate('Main', {
+              screen: 'SettingsStackRoute',
+              params: { screen: 'TermsOfService' }
+          } as any);
+      }
+  };
+
+  const handleOpenPrivacy = () => {
+      if (navigationRef.isReady()) {
+          navigationRef.navigate('Main', {
+              screen: 'SettingsStackRoute',
+              params: { screen: 'PrivacyPolicy' }
+          } as any);
+      }
+  };
 
   React.useEffect(() => {
     if (logout) {
@@ -331,7 +414,9 @@ function AppContent() {
     <ThemeProvider theme={createTheme(currentThemeConfig)}>
         <View style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
             <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
+            {/* 3. Attach the ref to the container */}
             <NavigationContainer 
+                ref={navigationRef}
                 linking={linking} 
                 theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light} 
                 fallback={<LoadingFallback />}
@@ -348,6 +433,14 @@ function AppContent() {
             </NavigationContainer>
             <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
             <AdLoadingModal />
+            {/* 4. Pass handlers to modal */}
+            <FirstRunModal 
+                isVisible={showComplianceModal} 
+                missingConsents={missingConsents} 
+                onAgree={handleAgreeToCompliance}
+                onOpenTerms={handleOpenTerms}
+                onOpenPrivacy={handleOpenPrivacy}
+            />
         </View>
     </ThemeProvider>
   );

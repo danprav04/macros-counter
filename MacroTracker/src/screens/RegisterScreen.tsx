@@ -10,7 +10,8 @@ import { registerUser } from '../services/authService';
 import { t } from '../localization/i18n';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { formatDateISO } from '../utils/dateUtils';
-import TermsGate from '../components/TermsGate';
+import TermsGate, { Consents } from '../components/TermsGate';
+import Constants from 'expo-constants';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -23,7 +24,14 @@ const RegisterScreen: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
-    const [isTermsAgreed, setIsTermsAgreed] = useState(false);
+    
+    // New consent state object
+    const [consents, setConsents] = useState<Consents>({
+        tosAgreed: false,
+        healthDataConsent: false,
+        dataTransferConsent: false,
+        notMedicalDeviceAck: false,
+    });
     
     const navigation = useNavigation<RegisterScreenNavigationProp>();
     const { theme } = useTheme();
@@ -38,7 +46,8 @@ const RegisterScreen: React.FC = () => {
     };
 
     const handleRegister = async () => {
-        if (!isTermsAgreed) {
+        // Validate all consents
+        if (!consents.tosAgreed || !consents.healthDataConsent || !consents.dataTransferConsent || !consents.notMedicalDeviceAck) {
             Alert.alert(t('registerScreen.alert.termsRequiredTitle'), t('registerScreen.alert.termsRequiredMessage'));
             return;
         }
@@ -76,7 +85,14 @@ const RegisterScreen: React.FC = () => {
 
         setIsLoading(true);
         try {
-            const response = await registerUser(email, password);
+            const currentIsoTime = new Date().toISOString();
+            const response = await registerUser(email, password, {
+                tos_agreed_at: currentIsoTime,
+                tos_version: Constants.expoConfig?.version || "1.0.0",
+                consent_health_data_at: currentIsoTime,
+                consent_data_transfer_at: currentIsoTime,
+                acknowledged_not_medical_device_at: currentIsoTime
+            });
             Alert.alert(
                 t('registerScreen.alert.successTitle'),
                 response.message,
@@ -155,13 +171,13 @@ const RegisterScreen: React.FC = () => {
                     />
                 )}
 
-                <TermsGate onAgreementChange={setIsTermsAgreed} />
+                <TermsGate onConsentsChange={setConsents} />
 
                 <Button
                     title={t('registerScreen.registerButton')}
                     onPress={handleRegister}
                     loading={showIsLoading}
-                    disabled={isLoading || !isTermsAgreed}
+                    disabled={isLoading}
                     buttonStyle={styles.button}
                     containerStyle={styles.buttonContainer}
                 />

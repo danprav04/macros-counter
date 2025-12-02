@@ -41,7 +41,7 @@ export const setLogoutListener = (listener: LogoutListener) => {
 
 export const triggerLogout = () => {
     console.log("Global logout triggered.");
-    deleteToken(); // Use the new abstracted function
+    deleteToken(); 
     if (onLogout) {
         onLogout();
     } else {
@@ -87,10 +87,20 @@ async function fetchAuthApi<T>(endpoint: string, options: RequestInit = {}): Pro
     }
 }
 
-export const registerUser = async (email: string, password: string): Promise<{message: string}> => {
+export const registerUser = async (
+    email: string, 
+    password: string,
+    consents: {
+        tos_agreed_at: string;
+        tos_version: string;
+        consent_health_data_at: string;
+        consent_data_transfer_at: string;
+        acknowledged_not_medical_device_at: string;
+    }
+): Promise<{message: string}> => {
     return fetchAuthApi<{message: string}>('/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ...consents }),
     });
 };
 

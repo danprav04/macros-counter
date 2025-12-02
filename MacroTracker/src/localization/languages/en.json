@@ -18,11 +18,21 @@
     "medicalDisclaimer": "Not a medical device. Consult a physician."
   },
   "termsGate": {
+    "title": "Legal Agreements",
     "iAgree": "I agree to the ",
     "viewTerms": "Terms of Service",
     "and": " and ",
     "viewPrivacy": "Privacy Policy",
-    "notMedicalDevice": "I acknowledge that this app is NOT a medical device."
+    "notMedicalDevice": "I acknowledge that this app is NOT a medical device.",
+    "agreeTerms": "I agree to the Terms of Service.",
+    "consentHealth": "I explicitly consent to the processing of my health/biometric data.",
+    "consentTransfer": "I consent to the transfer of my data to servers in the USA.",
+    "notMedical": "I acknowledge that this app is NOT a medical device."
+  },
+  "firstRunModal": {
+    "title": "Important Liability Notice",
+    "humanInTheLoopText": "I agree that I will verify all AI results (macronutrients, food identification) and I assume full responsibility for their accuracy.",
+    "buttonAgree": "I Agree & Continue"
   },
   "registerScreen": {
     "title": "Create Account",
@@ -44,8 +54,8 @@
       "dobRequiredMessage": "Please select your date of birth.",
       "underageTitle": "Age Restriction",
       "underageMessage": "You must be at least 18 years old to create an account.",
-      "termsRequiredTitle": "Terms Required",
-      "termsRequiredMessage": "You must agree to the Terms of Service and Privacy Policy to register."
+      "termsRequiredTitle": "Consents Required",
+      "termsRequiredMessage": "You must agree to all terms and consents to create an account."
     }
   },
   "forgotPasswordScreen": {

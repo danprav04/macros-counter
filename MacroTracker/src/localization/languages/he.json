@@ -18,11 +18,21 @@
     "medicalDisclaimer": "אינו מכשיר רפואי. יש להתייעץ עם רופא."
   },
   "termsGate": {
+    "title": "הסכמים משפטיים",
     "iAgree": "אני מסכים ל",
     "viewTerms": "תנאי השימוש",
     "and": " ו",
     "viewPrivacy": "מדיניות הפרטיות",
-    "notMedicalDevice": "אני מאשר שאפליקציה זו אינה מכשיר רפואי."
+    "notMedicalDevice": "אני מאשר שאפליקציה זו אינה מכשיר רפואי.",
+    "agreeTerms": "אני מסכים לתנאי השימוש.",
+    "consentHealth": "אני מסכים במפורש לעיבוד נתוני הבריאות/הביומטריים שלי.",
+    "consentTransfer": "אני מסכים להעברת הנתונים שלי לשרתים בארה\"ב.",
+    "notMedical": "אני מאשר שאפליקציה זו אינה מכשיר רפואי."
+  },
+  "firstRunModal": {
+    "title": "הודעת אחריות חשובה",
+    "humanInTheLoopText": "אני מסכים שאאמת את כל תוצאות ה-AI (מאקרואים, זיהוי מזון) ולוקח אחריות מלאה על דיוקן.",
+    "buttonAgree": "אני מסכים וממשיך"
   },
   "registerScreen": {
     "title": "יצירת חשבון",
@@ -45,7 +55,7 @@
       "underageTitle": "הגבלת גיל",
       "underageMessage": "עליך להיות בן 18 לפחות כדי ליצור חשבון.",
       "termsRequiredTitle": "חובה לאשר תנאים",
-      "termsRequiredMessage": "עליך להסכים לתנאי השימוש ומדיניות הפרטיות כדי להירשם."
+      "termsRequiredMessage": "עליך להסכים לכל התנאים וההסכמות כדי להירשם."
     }
   },
   "forgotPasswordScreen": {
