@@ -263,7 +263,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         name="keyboard"
                                         type="material"
                                         size={22}
-                                        color={inputMode === 'manual' ? theme.colors.primary : theme.colors.grey2}
+                                        color={inputMode === 'manual' ? theme.colors.primary : theme.colors.grey3}
                                         containerStyle={styles.modeIcon}
                                     />
                                     <Text style={[
