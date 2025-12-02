@@ -14,7 +14,7 @@
     "unexpectedError": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   },
   "disclaimers": {
-    "aiWarning": "Оценка ИИ. Проверьте точность перед употреблением.",
+    "aiWarning": "Оценка ИИ (Beta). Проверьте точность перед употреблением.",
     "medicalDisclaimer": "Не является медицинским устройством. Проконсультируйтесь с врачом."
   },
   "termsGate": {
@@ -238,10 +238,10 @@
   "addEntryModal": {
     "titleAdd": "Добавить запись",
     "titleEdit": "Изменить запись",
-    "titleQuickAddSelect": "Выберите элементы для добавления",
+    "titleQuickAddSelect": "Выберите элементы (Beta)",
     "titleQuickAddEdit": "Изменить элемент",
-    "titleQuickAddAnalyzing": "Анализ...",
-    "titleQuickAddFromText": "Быстрое добавление по тексту",
+    "titleQuickAddAnalyzing": "Анализ (Beta)...",
+    "titleQuickAddFromText": "Быстрое добавление по тексту (Beta)",
     "searchPlaceholder": "Поиск продуктов...",
     "recent": "Недавние",
     "noResults": "Продукты, соответствующие \"%{searchTerm}\", не найдены.",
@@ -249,7 +249,7 @@
     "noQuickAddResults": "Продукты не найдены.",
     "amount": "Количество",
     "grams": "Граммы",
-    "autoAi": "Авто (ИИ)",
+    "autoAi": "Авто (ИИ Beta)",
     "quickAddServing": "Быстрое добавление:",
     "lastUsedServing": "Пред.: %{grams}г",
     "gramsPlaceholder": "Введите граммы (например, 150)",
@@ -280,7 +280,7 @@
     "alertQuickAddErrorMessage": "Произошла непредвиденная ошибка.",
     "alertQuickAddFinishEditing": "Завершите редактирование",
     "alertQuickAddFinishEditingSaveOrCancel": "Пожалуйста, сначала сохраните или отмените текущее редактирование.",
-    "alertQuickAddFromImageTitle": "Быстрое добавление с изображения(й)",
+    "alertQuickAddFromImageTitle": "Быстрое добавление (Beta)",
     "alertQuickAddFromImageMessage": "Определите несколько продуктов с одного изображения.",
     "alertQuickAddFromImageMessageBatch": "Определите продукты с одного или нескольких изображений (до 10).",
     "alertQuickAddInvalidName": "Неверное имя",
@@ -305,7 +305,7 @@
     "toastErrorSavingToLibrary": "Ошибка сохранения продукта в библиотеку.",
     "textQuickAdd": {
       "placeholder": "Опишите ваш прием пищи...\nнапример, '150г куриной грудки, небольшой салат с помидорами и одно яблоко'",
-      "analyzeButton": "Анализировать текст",
+      "analyzeButton": "Анализировать текст (Beta)",
       "alertInputEmpty": "Пустое поле",
       "alertInputEmptyMessage": "Пожалуйста, напишите или произнесите, что вы съели, для анализа."
     }
@@ -316,11 +316,11 @@
     "buttonAdd": "Добавить",
     "buttonUpdate": "Обновить",
     "manualInput": "Ручной ввод",
-    "aiAssist": "ИИ-помощник",
+    "aiAssist": "ИИ-помощник (Beta)",
     "ingredientsLabel": "Описание / Ингредиенты",
     "ingredientsPlaceholder": "например, 100г куриной грудки, 50г риса, 1 ст.л. оливкового масла",
-    "analyzeTextButton": "Анализ текста",
-    "analyzeImageButton": "Анализ по изображению",
+    "analyzeTextButton": "Анализ текста (Beta)",
+    "analyzeImageButton": "Анализ по изображению (Beta)",
     "analyzeImageDescription": "Сделайте фото или выберите из галереи для анализа",
     "orDivider": "ИЛИ",
     "macrosEstimatedText": "Макросы оценены по тексту.",
@@ -348,7 +348,7 @@
     "foodNamePlaceholder": "Название продукта",
     "gramsPlaceholder": "Граммы",
     "errorInvalidGrams": "Неверно",
-    "analyzing": "Анализ...",
+    "analyzing": "Анализ (Beta)...",
     "emptyMessage": "На изображении не найдено опознаваемых продуктов.",
     "emptyHint": "Попробуйте другое изображение или добавьте вручную."
   },

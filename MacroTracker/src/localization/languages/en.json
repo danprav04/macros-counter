@@ -14,7 +14,7 @@
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "disclaimers": {
-    "aiWarning": "AI estimation. Verify accuracy before consumption.",
+    "aiWarning": "AI estimation (Beta). Verify accuracy before consumption.",
     "medicalDisclaimer": "Not a medical device. Consult a physician."
   },
   "termsGate": {
@@ -238,10 +238,10 @@
   "addEntryModal": {
     "titleAdd": "Add Entry",
     "titleEdit": "Edit Entry",
-    "titleQuickAddSelect": "Select Items to Add",
+    "titleQuickAddSelect": "Select Items (Beta)",
     "titleQuickAddEdit": "Edit Item",
-    "titleQuickAddAnalyzing": "Analyzing...",
-    "titleQuickAddFromText": "Quick Add from Text",
+    "titleQuickAddAnalyzing": "Analyzing (Beta)...",
+    "titleQuickAddFromText": "Quick Add from Text (Beta)",
     "searchPlaceholder": "Search Foods...",
     "recent": "Recent",
     "noResults": "No foods found matching \"%{searchTerm}\".",
@@ -249,7 +249,7 @@
     "noQuickAddResults": "No food items found.",
     "amount": "Amount",
     "grams": "Grams",
-    "autoAi": "Auto (AI)",
+    "autoAi": "Auto (AI Beta)",
     "quickAddServing": "Quick Add:",
     "lastUsedServing": "Last: %{grams}g",
     "gramsPlaceholder": "Enter grams (e.g., 150)",
@@ -280,7 +280,7 @@
     "alertQuickAddErrorMessage": "An unexpected error occurred.",
     "alertQuickAddFinishEditing": "Finish Editing",
     "alertQuickAddFinishEditingSaveOrCancel": "Please save or cancel the current edit first.",
-    "alertQuickAddFromImageTitle": "Quick Add from Image(s)",
+    "alertQuickAddFromImageTitle": "Quick Add (Beta)",
     "alertQuickAddFromImageMessage": "Identify multiple foods from a single image.",
     "alertQuickAddFromImageMessageBatch": "Identify foods from one or more images (up to 10).",
     "alertQuickAddInvalidName": "Invalid Name",
@@ -305,7 +305,7 @@
     "toastErrorSavingToLibrary": "Error saving food to library.",
     "textQuickAdd": {
       "placeholder": "Describe your meal...\ne.g., '150g chicken breast, a side salad with tomatoes, and one apple'",
-      "analyzeButton": "Analyze Text",
+      "analyzeButton": "Analyze Text (Beta)",
       "alertInputEmpty": "Input Empty",
       "alertInputEmptyMessage": "Please type or say what you ate to analyze."
     }
@@ -316,11 +316,11 @@
     "buttonAdd": "Add",
     "buttonUpdate": "Update",
     "manualInput": "Manual Input",
-    "aiAssist": "AI Assist",
+    "aiAssist": "AI Assist (Beta)",
     "ingredientsLabel": "Food Description / Ingredients",
     "ingredientsPlaceholder": "e.g., 100g Chicken Breast, 50g Rice, 1 tbsp Olive Oil",
-    "analyzeTextButton": "Analyze Text",
-    "analyzeImageButton": "Analyze from Image",
+    "analyzeTextButton": "Analyze Text (Beta)",
+    "analyzeImageButton": "Analyze from Image (Beta)",
     "analyzeImageDescription": "Take a photo or select from gallery to analyze",
     "orDivider": "OR",
     "macrosEstimatedText": "Macros estimated from text.",
@@ -348,7 +348,7 @@
     "foodNamePlaceholder": "Food Name",
     "gramsPlaceholder": "Grams",
     "errorInvalidGrams": "Invalid",
-    "analyzing": "Analyzing...",
+    "analyzing": "Analyzing (Beta)...",
     "emptyMessage": "No identifiable foods found in the image.",
     "emptyHint": "Try a different image or add manually."
   },

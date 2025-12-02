@@ -14,7 +14,7 @@
     "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב."
   },
   "disclaimers": {
-    "aiWarning": "הערכת AI. יש לאמת את הדיוק לפני הצריכה.",
+    "aiWarning": "הערכת AI (Beta). יש לאמת את הדיוק לפני הצריכה.",
     "medicalDisclaimer": "אינו מכשיר רפואי. יש להתייעץ עם רופא."
   },
   "termsGate": {
@@ -238,10 +238,10 @@
   "addEntryModal": {
     "titleAdd": "הוסף רשומה",
     "titleEdit": "ערוך רשומה",
-    "titleQuickAddSelect": "בחר פריטים להוספה",
+    "titleQuickAddSelect": "בחר פריטים (Beta)",
     "titleQuickAddEdit": "ערוך פריט",
-    "titleQuickAddAnalyzing": "מנתח...",
-    "titleQuickAddFromText": "הוספה מהירה מטקסט",
+    "titleQuickAddAnalyzing": "מנתח (Beta)...",
+    "titleQuickAddFromText": "הוספה מהירה מטקסט (Beta)",
     "searchPlaceholder": "חפש מאכלים...",
     "recent": "אחרונים",
     "noResults": "לא נמצאו מאכלים התואמים ל-\"%{searchTerm}\".",
@@ -249,7 +249,7 @@
     "noQuickAddResults": "לא נמצאו פריטי מזון.",
     "amount": "כמות",
     "grams": "גרם",
-    "autoAi": "אוטומטי (AI)",
+    "autoAi": "אוטומטי (AI Beta)",
     "quickAddServing": "הוספה מהירה:",
     "lastUsedServing": "אחרון: %{grams}ג",
     "gramsPlaceholder": "הזן גרמים (למשל, 150)",
@@ -280,7 +280,7 @@
     "alertQuickAddErrorMessage": "אירעה שגיאה בלתי צפויה.",
     "alertQuickAddFinishEditing": "סיים עריכה",
     "alertQuickAddFinishEditingSaveOrCancel": "אנא שמור או בטל את העריכה הנוכחית תחילה.",
-    "alertQuickAddFromImageTitle": "הוספה מהירה מתמונה(ות)",
+    "alertQuickAddFromImageTitle": "הוספה מהירה (Beta)",
     "alertQuickAddFromImageMessage": "זהה מספר מאכלים מתמונה יחידה.",
     "alertQuickAddFromImageMessageBatch": "זהה מאכלים מתמונה אחת או יותר (עד 10).",
     "alertQuickAddInvalidName": "שם לא חוקי",
@@ -305,7 +305,7 @@
     "toastErrorSavingToLibrary": "שגיאה בשמירת המאכל לספרייה.",
     "textQuickAdd": {
       "placeholder": "תאר את הארוחה שלך...\nלמשל, '150ג חזה עוף, סלט קטן עם עגבניות, ותפוח אחד'",
-      "analyzeButton": "נתח טקסט",
+      "analyzeButton": "נתח טקסט (Beta)",
       "alertInputEmpty": "קלט ריק",
       "alertInputEmptyMessage": "אנא הקלד או אמור מה אכלת לצורך הניתוח."
     }
@@ -316,11 +316,11 @@
     "buttonAdd": "הוסף",
     "buttonUpdate": "עדכן",
     "manualInput": "הזנה ידנית",
-    "aiAssist": "עזרת AI",
+    "aiAssist": "עזרת AI (Beta)",
     "ingredientsLabel": "תיאור המאכל / רכיבים",
     "ingredientsPlaceholder": "למשל, 100ג חזה עוף, 50ג אורז, 1 כף שמן זית",
-    "analyzeTextButton": "ניתוח טקסט",
-    "analyzeImageButton": "ניתוח מתמונה",
+    "analyzeTextButton": "ניתוח טקסט (Beta)",
+    "analyzeImageButton": "ניתוח מתמונה (Beta)",
     "analyzeImageDescription": "צלמו תמונה או בחרו מהגלריה לניתוח",
     "orDivider": "או",
     "macrosEstimatedText": "מאקרואים הוערכו מטקסט.",
@@ -348,7 +348,7 @@
     "foodNamePlaceholder": "שם המאכל",
     "gramsPlaceholder": "גרמים",
     "errorInvalidGrams": "לא חוקי",
-    "analyzing": "מנתח...",
+    "analyzing": "מנתח (Beta)...",
     "emptyMessage": "לא נמצאו מאכלים הניתנים לזיהוי בתמונה.",
     "emptyHint": "נסה תמונה אחרת או הוסף ידנית."
   },
