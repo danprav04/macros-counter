@@ -195,6 +195,7 @@ const useStyles = makeStyles((theme) => ({
     labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginRight: 10,
     },
     sectionLabel: {
         fontSize: 14,
@@ -218,9 +219,11 @@ const useStyles = makeStyles((theme) => ({
     controlsRight: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexShrink: 1,
+        justifyContent: 'flex-end',
     },
     buttonGroupContainer: {
-        height: 32,
+        height: 34,
         borderRadius: 8,
         borderColor: theme.colors.primary,
         borderWidth: 1,
@@ -229,11 +232,15 @@ const useStyles = makeStyles((theme) => ({
         marginRight: 0,
         marginTop: 0,
         marginBottom: 0,
-        width: 140,
+        minWidth: 160, 
+        flex: 0,
+        paddingHorizontal: 0,
     },
     buttonGroupText: {
-        fontSize: 13,
+        fontSize: 12,
         color: theme.colors.text,
+        fontWeight: '500',
+        paddingHorizontal: 4,
     },
     disabledButtonGroup: {
         backgroundColor: theme.colors.grey5,

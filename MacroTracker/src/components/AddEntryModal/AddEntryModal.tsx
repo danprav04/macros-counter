@@ -71,6 +71,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
+  
   // --- ADDED MISSING STATE VARIABLES ---
   const [editedCalories, setEditedCalories] = useState<string>("");
   const [editedProtein, setEditedProtein] = useState<string>("");
@@ -446,9 +447,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             buttonTitle = count > 0 ? t('addEntryModal.buttonAddSelected', { count }) : t('addEntryModal.buttonAdd') + " 0";
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
+            
+            // If count > 0, make it success color (Green).
             // If 0, default to primary (Blue). The 'disabled' prop will handle greying it out.
             if (count > 0) buttonColor = theme.colors.success;
-            else buttonColor = theme.colors.grey3;
+            else buttonColor = theme.colors.primary;
         }
     } else if (modalMode === 'quickAddSelect') {
         const count = selectedQuickAddIndices.size;
@@ -456,19 +459,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         onPress = handleConfirmQuickAdd;
         disabled = isQuickAddConfirmDisabled;
         loading = showQuickAddLoading;
-        buttonColor = count > 0 ? theme.colors.success : theme.colors.grey3;
+        buttonColor = count > 0 ? theme.colors.success : theme.colors.primary;
     }
 
     return (
         <View style={styles.footerContainer}>
             <Button
+                // Key forces re-render if disabled state changes, fixing style update lag
+                key={`footer-btn-${disabled}-${buttonColor}`}
                 title={buttonTitle}
                 onPress={onPress}
                 disabled={disabled}
                 loading={loading}
+                // Only apply the active color to buttonStyle
                 buttonStyle={[styles.footerButton, { backgroundColor: buttonColor }]}
                 titleStyle={styles.footerButtonTitle}
+                // Explicitly define disabled style to ensure it turns grey immediately
                 disabledStyle={{ backgroundColor: theme.colors.grey4 }}
+                disabledTitleStyle={{ color: theme.colors.grey2 }}
             />
         </View>
     );
@@ -647,18 +655,17 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.colors.background, 
         display: 'flex',
         flexDirection: 'column',
-        // flex: 1, // REMOVED: Prevent forcing full height which pushes footer off-screen
     },
     keyboardAvoidingView: { 
         width: "100%", 
-        // height: "100%", // REMOVED: Let content determine height
+        // height: "100%", // REMOVED: Let content determine height to avoid pushing footer off-screen
     },
     contentContainer: {
-        flexShrink: 1, // CHANGED: Allow shrinking if content is large, but don't force expansion
+        flexShrink: 1, 
         marginBottom: 10,
     },
     normalModeContentContainer: { 
-        flexShrink: 1, // CHANGED: Allow shrinking
+        flexShrink: 1, 
         justifyContent: 'flex-start',
     },
     disclaimerSection: {
