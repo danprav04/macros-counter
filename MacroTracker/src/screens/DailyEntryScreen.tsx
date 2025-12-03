@@ -1,6 +1,6 @@
 // src/screens/DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nManager } from "react-native";
+import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nManager, TouchableOpacity } from "react-native";
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
@@ -181,6 +181,10 @@ const DailyEntryScreen: React.FC = () => {
     } catch (error) {
       console.error("Failed to save dismissal preference", error);
     }
+  };
+
+  const handleCloseGoalPrompt = () => {
+    setShowGoalPrompt(false);
   };
 
   const currentEntryItems = useMemo(() => {
@@ -560,8 +564,12 @@ const DailyEntryScreen: React.FC = () => {
       />
 
       {/* Goal Estimation Prompt Modal */}
-      <Overlay isVisible={showGoalPrompt} onBackdropPress={() => {}} overlayStyle={styles.promptOverlay}>
+      <Overlay isVisible={showGoalPrompt} onBackdropPress={handleCloseGoalPrompt} overlayStyle={styles.promptOverlay}>
         <View style={styles.promptContainer}>
+          <TouchableOpacity onPress={handleCloseGoalPrompt} style={styles.promptCloseIcon}>
+            <RNEIcon name="close" type="material" size={24} color={theme.colors.grey3} />
+          </TouchableOpacity>
+
           <RNEIcon name="calculator-variant" type="material-community" size={48} color={theme.colors.primary} />
           <Text h4 style={styles.promptTitle}>{t('dailyEntryScreen.goalPromptTitle')}</Text>
           <Text style={styles.promptMessage}>{t('dailyEntryScreen.goalPromptMessage')}</Text>
@@ -623,9 +631,19 @@ const useStyles = makeStyles((theme) => ({
   },
   promptContainer: {
     alignItems: 'center',
+    position: 'relative',
+    width: '100%',
+    paddingTop: 20,
+  },
+  promptCloseIcon: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    padding: 10,
+    zIndex: 1,
   },
   promptTitle: {
-    marginTop: 15,
+    marginTop: 10,
     marginBottom: 10,
     textAlign: 'center',
     color: theme.colors.text,
