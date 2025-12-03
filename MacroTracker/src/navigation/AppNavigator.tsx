@@ -26,7 +26,7 @@ import AdLoadingModal from '../components/AdLoadingModal';
 import FirstRunModal, { MissingConsents } from '../components/FirstRunModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
-import { LanguageCode } from '../types/settings';
+import { LanguageCode, SettingsStackParamList } from '../types/settings'; // Import shared type
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
 import { setLogoutListener } from '../services/authService';
@@ -38,14 +38,7 @@ import useDelayedLoading from '../hooks/useDelayedLoading';
 export type MainTabParamList = {
   DailyEntryRoute: { quickAddFood?: Food };
   FoodListRoute: { openAddFoodModal?: boolean, foodData?: string, data?: string };
-  SettingsStackRoute: undefined;
-};
-
-export type SettingsStackParamList = {
-  SettingsHome: undefined;
-  Questionnaire: undefined;
-  PrivacyPolicy: undefined;
-  TermsOfService: undefined;
+  SettingsStackRoute: { screen: keyof SettingsStackParamList, params?: any };
 };
 
 export type AuthStackParamList = {

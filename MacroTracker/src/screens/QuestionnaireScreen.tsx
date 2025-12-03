@@ -1,9 +1,9 @@
 // src/screens/QuestionnaireScreen.tsx
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform, LayoutAnimation } from 'react-native';
+import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import { View, ScrollView, StyleSheet, I18nManager, Platform, LayoutAnimation, Alert } from 'react-native';
 import { Input, Button, Text, useTheme, makeStyles, ButtonGroup, Icon } from '@rneui/themed';
 import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { 
   QuestionnaireFormData, 
@@ -16,18 +16,14 @@ import {
   JobActivity, 
   ExerciseIntensity 
 } from '../types/questionnaire';
-import { Settings } from '../types/settings';
+import { Settings, SettingsStackParamList } from '../types/settings';
 import { loadSettings, saveSettings } from '../services/storageService';
 import i18n, { t } from '../localization/i18n';
 import Toast from 'react-native-toast-message';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 
-type SettingsStackParamList = {
-  SettingsScreen: undefined;
-  QuestionnaireScreen: undefined;
-};
-
-type QuestionnaireNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'QuestionnaireScreen'>;
+type QuestionnaireScreenRouteProp = RouteProp<SettingsStackParamList, 'Questionnaire'>;
+type QuestionnaireNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Questionnaire'>;
 
 // MET Values from 2024 Compendium
 const METS = {
@@ -49,7 +45,24 @@ const QuestionnaireScreen: React.FC = () => {
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<QuestionnaireNavigationProp>();
+  const route = useRoute<QuestionnaireScreenRouteProp>();
   const { settings } = useAuth() as AuthContextType;
+
+  // Handle explicit Cancel button for "From Prompt" flow
+  useLayoutEffect(() => {
+    if (route.params?.fromPrompt) {
+        navigation.setOptions({
+            headerLeft: () => (
+                <Button
+                    type="clear"
+                    title={t('confirmationModal.cancel')}
+                    titleStyle={{ color: theme.colors.primary }}
+                    onPress={() => navigation.navigate('DailyEntryRoute' as any)} // Cast to any to avoid type issues with crossing stacks
+                />
+            ),
+        });
+    }
+  }, [navigation, route.params?.fromPrompt, theme.colors.primary]);
 
   // Default Initial State
   const defaultFormData: QuestionnaireFormData = {
@@ -319,6 +332,8 @@ const QuestionnaireScreen: React.FC = () => {
         };
         await saveSettings(updatedSettings);
         Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });
+        
+        // Go back. If opened via Prompt, this should correctly return to the caller.
         navigation.goBack();
       } else {
         Alert.alert(t('questionnaireScreen.error.calculationFailedTitle'), t('questionnaireScreen.error.calculationFailedMessage'));
@@ -364,7 +379,7 @@ const QuestionnaireScreen: React.FC = () => {
           selectedIndex={method === CalculationMethod.BASIC ? 0 : 1}
           buttons={methodButtons}
           containerStyle={styles.methodGroup}
-          buttonContainerStyle={{ backgroundColor: 'transparent' }}
+          buttonContainerStyle={{ backgroundColor: theme.colors.background }} // FIXED: Explicit background
           buttonStyle={{ backgroundColor: 'transparent' }}
           selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.grey3, fontSize: 13, textAlign: 'center' }}
@@ -520,18 +535,14 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 20,
     alignItems: 'center',
   },
-  title: {
-    marginBottom: 15,
-    textAlign: 'center',
-    color: theme.colors.text,
-  },
+  // Removed title style as title text was removed
   methodGroup: {
     height: 48,
     borderRadius: 8,
     marginBottom: 10,
     width: '100%',
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.background, // Ensure background matches theme to avoid transparent white-on-white
+    backgroundColor: theme.colors.background, // Explicitly set to background color
   },
   methodDescription: {
     textAlign: 'center',

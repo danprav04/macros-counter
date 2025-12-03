@@ -42,6 +42,14 @@ export interface SettingsScreenProps {
   onLocaleChange: (locale: LanguageCode) => void; 
 }
 
+// Shared ParamList to ensure type safety across screens
+export type SettingsStackParamList = {
+  SettingsHome: undefined;
+  Questionnaire: { fromPrompt?: boolean } | undefined;
+  PrivacyPolicy: undefined;
+  TermsOfService: undefined;
+};
+
 export interface AppCosts {
     reward_ad_coins_amount: number;
     cost_grams_natural_language: number;

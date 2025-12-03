@@ -7,7 +7,7 @@ import { getFoods, createFood, updateFood as updateFoodService } from "../servic
 import { saveDailyEntries, loadDailyEntries, loadSettings, saveSettings } from "../services/storageService";
 import { getTodayDateString, formatDateReadableAsync } from "../utils/dateUtils";
 import DailyProgress from "../components/DailyProgress";
-import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon, FAB, Button } from "@rneui/themed";
+import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon, FAB, Button, Overlay } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,8 +25,6 @@ import { Settings as AppSettings } from "../types/settings";
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import useDelayedLoading from "../hooks/useDelayedLoading";
-import ConfirmationModal from "../components/ConfirmationModal";
-import { Overlay } from "@rneui/themed";
 
 type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
@@ -168,7 +166,11 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleEstimateNow = () => {
     setShowGoalPrompt(false);
-    navigation.navigate('SettingsStackRoute', { screen: 'Questionnaire' } as any);
+    // Navigate specifically to the Questionnaire in Settings stack with the params to show Cancel button
+    navigation.navigate('SettingsStackRoute', { 
+        screen: 'Questionnaire',
+        params: { fromPrompt: true }
+    });
   };
 
   const handleDontRemind = async () => {
