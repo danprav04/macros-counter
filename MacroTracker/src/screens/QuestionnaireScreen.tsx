@@ -1,7 +1,7 @@
 // src/screens/QuestionnaireScreen.tsx
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform, LayoutAnimation, TouchableOpacity } from 'react-native';
-import { Input, Button, Text, useTheme, makeStyles, ButtonGroup, Icon, Divider, ListItem } from '@rneui/themed';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform, LayoutAnimation } from 'react-native';
+import { Input, Button, Text, useTheme, makeStyles, ButtonGroup, Icon } from '@rneui/themed';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +20,7 @@ import { Settings } from '../types/settings';
 import { loadSettings, saveSettings } from '../services/storageService';
 import i18n, { t } from '../localization/i18n';
 import Toast from 'react-native-toast-message';
+import { useAuth, AuthContextType } from '../context/AuthContext';
 
 type SettingsStackParamList = {
   SettingsScreen: undefined;
@@ -48,10 +49,10 @@ const QuestionnaireScreen: React.FC = () => {
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<QuestionnaireNavigationProp>();
+  const { settings } = useAuth() as AuthContextType;
 
-  // State
-  const [method, setMethod] = useState<CalculationMethod>(CalculationMethod.BASIC);
-  const [formData, setFormData] = useState<QuestionnaireFormData>({
+  // Default Initial State
+  const defaultFormData: QuestionnaireFormData = {
     method: CalculationMethod.BASIC,
     age: '',
     sex: '',
@@ -67,10 +68,44 @@ const QuestionnaireScreen: React.FC = () => {
     resistanceIntensity: ExerciseIntensity.MODERATE,
     cardioHours: '0',
     cardioIntensity: ExerciseIntensity.MODERATE,
+  };
+
+  // Initialize state with draft from settings if available, otherwise default
+  const [formData, setFormData] = useState<QuestionnaireFormData>(() => {
+    if (settings?.questionnaireDraft) {
+        return { ...defaultFormData, ...settings.questionnaireDraft };
+    }
+    return defaultFormData;
   });
+
+  // Local state for method selector (derived from formData to keep in sync)
+  const [method, setMethod] = useState<CalculationMethod>(formData.method);
 
   const [errors, setErrors] = useState<Partial<Record<keyof QuestionnaireFormData, string>>>({});
   const [isCalculating, setIsCalculating] = useState(false);
+
+  // Auto-save draft effect
+  useEffect(() => {
+    const saveDraft = async () => {
+        if (!settings) return;
+        try {
+            // We create a new settings object preserving existing data but updating the draft
+            // We do NOT update the global AuthContext state here to avoid re-renders while typing.
+            // Persistence is handled via storageService. When the user leaves and returns, 
+            // the main SettingsScreen will reload settings from storage.
+            const updatedSettings: Settings = {
+                ...settings,
+                questionnaireDraft: formData
+            };
+            await saveSettings(updatedSettings);
+        } catch (error) {
+            console.warn("Failed to save questionnaire draft", error);
+        }
+    };
+
+    const timeoutId = setTimeout(saveDraft, 500); // Debounce save by 500ms
+    return () => clearTimeout(timeoutId);
+  }, [formData, settings]);
 
   // Options
   const methodButtons = [t('questionnaireScreen.methodBasic'), t('questionnaireScreen.methodAdvanced')];
@@ -120,7 +155,9 @@ const QuestionnaireScreen: React.FC = () => {
 
   const toggleMethod = (index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setMethod(index === 0 ? CalculationMethod.BASIC : CalculationMethod.ADVANCED);
+    const newMethod = index === 0 ? CalculationMethod.BASIC : CalculationMethod.ADVANCED;
+    setMethod(newMethod);
+    handleInputChange('method', newMethod);
   };
 
   const validateForm = (): boolean => {
@@ -303,6 +340,7 @@ const QuestionnaireScreen: React.FC = () => {
           ...currentSettings,
           dailyGoals: calculated,
           hasCompletedEstimation: true, // Mark as done
+          questionnaireDraft: formData // keep the successful data
         };
         await saveSettings(updatedSettings);
         Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });

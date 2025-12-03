@@ -1,4 +1,6 @@
 // src/types/settings.ts
+import { QuestionnaireFormData } from './questionnaire';
+
 export const macros = ["calories", "protein", "carbs", "fat"] as const;
 export type MacroType = (typeof macros)[number];
 
@@ -30,6 +32,9 @@ export interface Settings {
   // New flags for Estimation Prompt
   hasCompletedEstimation?: boolean;
   isEstimationReminderDismissed?: boolean;
+
+  // Draft state for questionnaire
+  questionnaireDraft?: QuestionnaireFormData;
 }
 
 export interface SettingsScreenProps {
