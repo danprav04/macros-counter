@@ -71,11 +71,12 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-  
+  // --- ADDED MISSING STATE VARIABLES ---
   const [editedCalories, setEditedCalories] = useState<string>("");
   const [editedProtein, setEditedProtein] = useState<string>("");
   const [editedCarbs, setEditedCarbs] = useState<string>("");
   const [editedFat, setEditedFat] = useState<string>("");
+  // -------------------------------------
 
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
   
@@ -440,17 +441,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onPress = handleAddOrUpdateSingleEntry;
             disabled = isSingleAddButtonDisabled;
             loading = showAILoading;
-            buttonColor = theme.colors.primary;
         } else {
             const count = selectedMultipleFoods.size;
             buttonTitle = count > 0 ? t('addEntryModal.buttonAddSelected', { count }) : t('addEntryModal.buttonAdd') + " 0";
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
-            
-            // If count > 0, make it success color (Green). 
             // If 0, default to primary (Blue). The 'disabled' prop will handle greying it out.
             if (count > 0) buttonColor = theme.colors.success;
-            else buttonColor = theme.colors.primary;
+            else buttonColor = theme.colors.grey3;
         }
     } else if (modalMode === 'quickAddSelect') {
         const count = selectedQuickAddIndices.size;
@@ -458,24 +456,19 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         onPress = handleConfirmQuickAdd;
         disabled = isQuickAddConfirmDisabled;
         loading = showQuickAddLoading;
-        buttonColor = count > 0 ? theme.colors.success : theme.colors.primary;
+        buttonColor = count > 0 ? theme.colors.success : theme.colors.grey3;
     }
 
     return (
         <View style={styles.footerContainer}>
             <Button
-                // Key forces re-render if disabled state changes, fixing style update lag
-                key={`footer-btn-${disabled}-${buttonColor}`}
                 title={buttonTitle}
                 onPress={onPress}
                 disabled={disabled}
                 loading={loading}
-                // Only apply the active color to buttonStyle
                 buttonStyle={[styles.footerButton, { backgroundColor: buttonColor }]}
                 titleStyle={styles.footerButtonTitle}
-                // Explicitly define disabled style to ensure it turns grey immediately
-                disabledStyle={styles.footerButton}
-                disabledTitleStyle={{ color: theme.colors.grey2 }}
+                disabledStyle={{ backgroundColor: theme.colors.grey4 }}
             />
         </View>
     );
@@ -642,28 +635,30 @@ const useStyles = makeStyles((theme) => ({
         shadowRadius: 8, 
         elevation: 10, 
         overflow: "hidden", 
-        maxHeight: "90%", // Let content shrink but not overflow screen
+        maxHeight: "90%", 
     },
     overlayStyle: { 
         width: "100%", 
-        // height: "100%", // Removed fixed height to allow shrinking
         maxHeight: "100%",
         borderRadius: 20, 
         paddingTop: 16, 
         paddingHorizontal: 16,
         paddingBottom: 0, 
         backgroundColor: theme.colors.background, 
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
+        // flex: 1, // REMOVED: Prevent forcing full height which pushes footer off-screen
     },
-    keyboardAvoidingView: { width: "100%", height: "100%" },
+    keyboardAvoidingView: { 
+        width: "100%", 
+        // height: "100%", // REMOVED: Let content determine height
+    },
     contentContainer: {
-        flex: 1, // Allow this to grow/shrink
+        flexShrink: 1, // CHANGED: Allow shrinking if content is large, but don't force expansion
         marginBottom: 10,
     },
     normalModeContentContainer: { 
-        flex: 1, // Important
+        flexShrink: 1, // CHANGED: Allow shrinking
         justifyContent: 'flex-start',
     },
     disclaimerSection: {
@@ -684,7 +679,7 @@ const useStyles = makeStyles((theme) => ({
         flexShrink: 1,
     },
     quickAddListStyle: { 
-        flexGrow: 0, // Allow list to shrink if content is small
+        flexGrow: 0, 
     },
     quickAddTextView: { flex: 1, justifyContent: 'flex-start' },
     quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
@@ -701,11 +696,10 @@ const useStyles = makeStyles((theme) => ({
         borderRadius: 12,
         paddingVertical: 14,
         width: '100%',
-        backgroundColor: theme.colors.grey4
     },
     footerButtonTitle: {
         fontSize: 16,
-        fontWeight: 'bold'
+        fontWeight: 'bold',
     },
 }));
 

@@ -336,7 +336,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     container: {
-        flex: 1,
+        flexShrink: 1, // CHANGED: from flex: 1 to flexShrink: 1
     },
     searchBarContainer: {
         backgroundColor: "transparent",
@@ -359,7 +359,7 @@ const useStyles = makeStyles((theme) => ({
         textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
-        flex: 1,
+        flexGrow: 0, // Changed: Prevent it from aggressively filling space when empty
     },
     flatListContentContainer: {
         paddingBottom: 20,
