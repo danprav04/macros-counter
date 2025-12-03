@@ -2,7 +2,7 @@
 
 An intelligent calorie and macro tracker that uses AI to simplify food logging. Snap a photo or describe your meal, and let the AI do the rest.
 
-![License](https://img.shields.io/badge/license-0BSD-blue.svg)![React Native](https://img.shields.io/badge/React_Native-0.76.7-61DAFB?logo=react)![Expo](https://img.shields.io/badge/Expo-52-black?logo=expo)![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue?logo=typescript)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)![React Native](https://img.shields.io/badge/React_Native-0.76.7-61DAFB?logo=react)![Expo](https://img.shields.io/badge/Expo-52-black?logo=expo)![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue?logo=typescript)
 
 ---
 
