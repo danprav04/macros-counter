@@ -378,7 +378,25 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }
   }, [foods, quickAddItems, selectedQuickAddIndices, editingQuickAddItemIndex, parentHandleAddMultipleEntries, isEditMode, isActionDisabled, addMultipleToRecentServings]);
 
-  const handleQuickAddGramsChange = useCallback((text: string) => setEditedGrams(text.replace(/[^0-9]/g, "")), []);
+  const handleQuickAddGramsChange = useCallback((text: string) => {
+    const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1");
+    setEditedGrams(cleanedText);
+
+    if (editingQuickAddItemIndex !== null) {
+        const item = quickAddItems[editingQuickAddItemIndex];
+        const grams = parseFloat(cleanedText);
+        
+        // If valid positive number, recalculate macros proportionally
+        if (!isNaN(grams) && grams >= 0) {
+            const factor = grams / 100;
+            // Use Math.round for display values
+            setEditedCalories(String(Math.round(item.calories_per_100g * factor)));
+            setEditedProtein(String(Math.round(item.protein_per_100g * factor)));
+            setEditedCarbs(String(Math.round(item.carbs_per_100g * factor)));
+            setEditedFat(String(Math.round(item.fat_per_100g * factor)));
+        }
+    }
+  }, [editingQuickAddItemIndex, quickAddItems]);
 
   const handleSaveQuickAddItemToLibrary = useCallback(async (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => {
     setSavingState(true);
@@ -446,8 +464,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
             
-            if (count > 0) buttonColor = theme.colors.success;
-            else buttonColor = theme.colors.primary;
+            // Use primary color instead of success for cleaner look
+            buttonColor = theme.colors.primary;
         }
     } else if (modalMode === 'quickAddSelect') {
         const count = selectedQuickAddIndices.size;
@@ -455,7 +473,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         onPress = handleConfirmQuickAdd;
         disabled = isQuickAddConfirmDisabled;
         loading = showQuickAddLoading;
-        buttonColor = count > 0 ? theme.colors.success : theme.colors.primary;
+        // Use primary color instead of success
+        buttonColor = theme.colors.primary;
     }
 
     return (
@@ -679,13 +698,14 @@ const useStyles = makeStyles((theme) => ({
     quickAddListStyle: { 
         flexGrow: 0, 
     },
-    quickAddTextView: { width: '100%', justifyContent: 'flex-start' }, // Removed flex: 1
+    quickAddTextView: { width: '100%', justifyContent: 'flex-start' },
     quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
     quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
     analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },
     footerContainer: {
-        paddingVertical: 12,
-        paddingHorizontal: 4,
+        paddingTop: 12,
+        paddingBottom: 24, // Explicit padding bottom for better spacing
+        paddingHorizontal: 16,
         borderTopWidth: 1,
         borderTopColor: theme.colors.divider,
         backgroundColor: theme.colors.background,
