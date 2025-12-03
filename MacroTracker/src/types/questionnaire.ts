@@ -1,15 +1,36 @@
 // src/types/questionnaire.ts
+
+export enum CalculationMethod {
+  BASIC = 'basic',
+  ADVANCED = 'advanced'
+}
+
 export enum Sex {
     MALE = 'male',
     FEMALE = 'female',
   }
   
+  // For Basic Algorithm (Static Multipliers)
   export enum ActivityLevel {
-    SEDENTARY = 'sedentary',
+    SEDENTARY = 'sedentary', // 1.2
+    LIGHT = 'light',         // 1.375
+    MODERATE = 'moderate',   // 1.55
+    ACTIVE = 'active',       // 1.725
+    VERY_ACTIVE = 'very_active', // 1.9
+  }
+
+  // For Advanced Algorithm (Factorial Method)
+  export enum JobActivity {
+    SITTING = 'sitting', // 1.3 MET
+    STANDING = 'standing', // 2.5 MET
+    MANUAL = 'manual', // 3.5 MET
+    HEAVY = 'heavy', // 5.0 MET
+  }
+
+  export enum ExerciseIntensity {
     LIGHT = 'light',
     MODERATE = 'moderate',
-    ACTIVE = 'active',
-    VERY_ACTIVE = 'very_active',
+    VIGOROUS = 'vigorous'
   }
   
   export enum PrimaryGoal {
@@ -25,13 +46,27 @@ export enum Sex {
   }
   
   export interface QuestionnaireFormData {
+    method: CalculationMethod;
+    
+    // Core (Used in both)
     age: string;
-    sex: Sex | ''; // Allow empty initial state for Picker
+    sex: Sex | '';
     height: string; // cm
     weight: string; // kg
-    activityLevel: ActivityLevel | ''; // Allow empty initial state
-    primaryGoal: PrimaryGoal | ''; // Allow empty initial state
+    primaryGoal: PrimaryGoal | '';
     goalIntensity?: GoalIntensity;
+
+    // Basic Only
+    activityLevel: ActivityLevel | ''; 
+
+    // Advanced Only
+    bodyFat?: string; // Optional percentage
+    sleepHours?: string;
+    jobActivity?: JobActivity | '';
+    resistanceHours?: string; // Weekly hours
+    resistanceIntensity?: ExerciseIntensity;
+    cardioHours?: string; // Weekly hours
+    cardioIntensity?: ExerciseIntensity;
   }
   
   export interface CalculatedGoals {

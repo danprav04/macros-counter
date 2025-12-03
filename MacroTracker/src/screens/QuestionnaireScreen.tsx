@@ -1,12 +1,22 @@
 // src/screens/QuestionnaireScreen.tsx
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform } from 'react-native';
-import { Input, Button, Text, useTheme, makeStyles, CheckBox, Icon } from '@rneui/themed';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, ScrollView, Alert, StyleSheet, I18nManager, Platform, LayoutAnimation, TouchableOpacity } from 'react-native';
+import { Input, Button, Text, useTheme, makeStyles, ButtonGroup, Icon, Divider, ListItem } from '@rneui/themed';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { QuestionnaireFormData, Sex, ActivityLevel, PrimaryGoal, GoalIntensity, CalculatedGoals } from '../types/questionnaire';
-import { MacroType, Settings } from '../types/settings';
+import { 
+  QuestionnaireFormData, 
+  Sex, 
+  ActivityLevel, 
+  PrimaryGoal, 
+  GoalIntensity, 
+  CalculatedGoals, 
+  CalculationMethod, 
+  JobActivity, 
+  ExerciseIntensity 
+} from '../types/questionnaire';
+import { Settings } from '../types/settings';
 import { loadSettings, saveSettings } from '../services/storageService';
 import i18n, { t } from '../localization/i18n';
 import Toast from 'react-native-toast-message';
@@ -18,23 +28,58 @@ type SettingsStackParamList = {
 
 type QuestionnaireNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'QuestionnaireScreen'>;
 
+// MET Values from 2024 Compendium
+const METS = {
+  SLEEP: 0.95,
+  SITTING: 1.3,
+  STANDING: 2.5,
+  MANUAL: 3.5,
+  HEAVY: 5.0,
+  RESISTANCE_LIGHT: 3.5,
+  RESISTANCE_MODERATE: 5.0,
+  RESISTANCE_VIGOROUS: 6.0,
+  CARDIO_LIGHT: 5.0,
+  CARDIO_MODERATE: 7.0, // e.g. Jogging
+  CARDIO_VIGOROUS: 9.8, // e.g. Running 6mph
+  RESIDUAL: 1.3
+};
+
 const QuestionnaireScreen: React.FC = () => {
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<QuestionnaireNavigationProp>();
 
+  // State
+  const [method, setMethod] = useState<CalculationMethod>(CalculationMethod.BASIC);
   const [formData, setFormData] = useState<QuestionnaireFormData>({
+    method: CalculationMethod.BASIC,
     age: '',
     sex: '',
     height: '',
     weight: '',
-    activityLevel: '',
+    activityLevel: '', // Basic only
     primaryGoal: '',
-    goalIntensity: GoalIntensity.MODERATE, // Default intensity
+    goalIntensity: GoalIntensity.MODERATE,
+    bodyFat: '',
+    sleepHours: '7.5',
+    jobActivity: '',
+    resistanceHours: '0',
+    resistanceIntensity: ExerciseIntensity.MODERATE,
+    cardioHours: '0',
+    cardioIntensity: ExerciseIntensity.MODERATE,
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof QuestionnaireFormData, string>>>({});
   const [isCalculating, setIsCalculating] = useState(false);
+
+  // Options
+  const methodButtons = [t('questionnaireScreen.methodBasic'), t('questionnaireScreen.methodAdvanced')];
+  
+  const sexOptions = useMemo(() => [
+    { label: t('questionnaireScreen.sex.select'), value: '' },
+    { label: t('questionnaireScreen.sex.male'), value: Sex.MALE },
+    { label: t('questionnaireScreen.sex.female'), value: Sex.FEMALE },
+  ], [i18n.locale]);
 
   const activityLevelOptions = useMemo(() => [
     { label: t('questionnaireScreen.activityLevel.select'), value: '' },
@@ -45,10 +90,12 @@ const QuestionnaireScreen: React.FC = () => {
     { label: t('questionnaireScreen.activityLevel.veryActive'), value: ActivityLevel.VERY_ACTIVE },
   ], [i18n.locale]);
 
-  const sexOptions = useMemo(() => [
-    { label: t('questionnaireScreen.sex.select'), value: '' },
-    { label: t('questionnaireScreen.sex.male'), value: Sex.MALE },
-    { label: t('questionnaireScreen.sex.female'), value: Sex.FEMALE },
+  const jobOptions = useMemo(() => [
+    { label: t('questionnaireScreen.jobActivity.select'), value: '' },
+    { label: t('questionnaireScreen.jobActivity.sitting'), value: JobActivity.SITTING },
+    { label: t('questionnaireScreen.jobActivity.standing'), value: JobActivity.STANDING },
+    { label: t('questionnaireScreen.jobActivity.manual'), value: JobActivity.MANUAL },
+    { label: t('questionnaireScreen.jobActivity.heavy'), value: JobActivity.HEAVY },
   ], [i18n.locale]);
 
   const primaryGoalOptions = useMemo(() => [
@@ -64,12 +111,16 @@ const QuestionnaireScreen: React.FC = () => {
     { label: t('questionnaireScreen.goalIntensity.aggressive'), value: GoalIntensity.AGGRESSIVE },
   ], [i18n.locale]);
 
-
   const handleInputChange = (field: keyof QuestionnaireFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  const toggleMethod = (index: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMethod(index === 0 ? CalculationMethod.BASIC : CalculationMethod.ADVANCED);
   };
 
   const validateForm = (): boolean => {
@@ -78,26 +129,21 @@ const QuestionnaireScreen: React.FC = () => {
     const heightNum = parseFloat(formData.height);
     const weightNum = parseFloat(formData.weight);
 
-    if (!formData.age.trim() || isNaN(ageNum) || ageNum <= 0 || ageNum > 120) {
-      newErrors.age = t('questionnaireScreen.validation.invalidAge');
-    }
-    if (formData.sex === '') {
-      newErrors.sex = t('questionnaireScreen.validation.selectSex');
-    }
-    if (!formData.height.trim() || isNaN(heightNum) || heightNum <= 50 || heightNum > 250) {
-      newErrors.height = t('questionnaireScreen.validation.invalidHeight');
-    }
-    if (!formData.weight.trim() || isNaN(weightNum) || weightNum <= 20 || weightNum > 300) {
-      newErrors.weight = t('questionnaireScreen.validation.invalidWeight');
-    }
-    if (formData.activityLevel === '') {
-      newErrors.activityLevel = t('questionnaireScreen.validation.selectActivityLevel');
-    }
-    if (formData.primaryGoal === '') {
-      newErrors.primaryGoal = t('questionnaireScreen.validation.selectPrimaryGoal');
-    }
-    if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && !formData.goalIntensity) {
-        newErrors.goalIntensity = t('questionnaireScreen.validation.selectGoalIntensity');
+    // Common validations
+    if (!formData.age.trim() || isNaN(ageNum) || ageNum <= 0 || ageNum > 120) newErrors.age = t('questionnaireScreen.validation.invalidAge');
+    if (formData.sex === '') newErrors.sex = t('questionnaireScreen.validation.selectSex');
+    if (!formData.height.trim() || isNaN(heightNum) || heightNum <= 50 || heightNum > 250) newErrors.height = t('questionnaireScreen.validation.invalidHeight');
+    if (!formData.weight.trim() || isNaN(weightNum) || weightNum <= 20 || weightNum > 300) newErrors.weight = t('questionnaireScreen.validation.invalidWeight');
+    if (formData.primaryGoal === '') newErrors.primaryGoal = t('questionnaireScreen.validation.selectPrimaryGoal');
+    if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && !formData.goalIntensity) newErrors.goalIntensity = t('questionnaireScreen.validation.selectGoalIntensity');
+
+    // Method specific
+    if (method === CalculationMethod.BASIC) {
+      if (formData.activityLevel === '') newErrors.activityLevel = t('questionnaireScreen.validation.selectActivityLevel');
+    } else {
+      if (formData.jobActivity === '') newErrors.jobActivity = t('questionnaireScreen.validation.selectJobActivity');
+      // Sleep/Exercise defaults exist, so less critical, but good to validate parsing
+      if (isNaN(parseFloat(formData.sleepHours || '0'))) newErrors.sleepHours = "Invalid sleep hours";
     }
 
     setErrors(newErrors);
@@ -108,71 +154,138 @@ const QuestionnaireScreen: React.FC = () => {
     const age = parseFloat(formData.age);
     const height = parseFloat(formData.height);
     const weight = parseFloat(formData.weight);
+    const bodyFat = formData.bodyFat ? parseFloat(formData.bodyFat) : 0;
+    const hasBodyFat = !isNaN(bodyFat) && bodyFat > 0;
 
-    // BMR (Mifflin-St Jeor)
+    // --- 1. Calculate BMR ---
     let bmr: number;
-    if (formData.sex === Sex.MALE) {
-      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    if (hasBodyFat && method === CalculationMethod.ADVANCED) {
+      // Katch-McArdle
+      const lbm = weight * (1 - bodyFat / 100);
+      bmr = 370 + (21.6 * lbm);
     } else {
-      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+      // Mifflin-St Jeor
+      if (formData.sex === Sex.MALE) {
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+      } else {
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+      }
     }
 
-    // TDEE
-    let activityMultiplier = 1.2;
-    switch (formData.activityLevel) {
-      case ActivityLevel.SEDENTARY: activityMultiplier = 1.2; break;
-      case ActivityLevel.LIGHT: activityMultiplier = 1.375; break;
-      case ActivityLevel.MODERATE: activityMultiplier = 1.55; break;
-      case ActivityLevel.ACTIVE: activityMultiplier = 1.725; break;
-      case ActivityLevel.VERY_ACTIVE: activityMultiplier = 1.9; break;
-    }
-    const tdee = bmr * activityMultiplier;
+    // --- 2. Calculate TDEE ---
+    let tdee: number;
 
-    // Calorie Goal
+    if (method === CalculationMethod.BASIC) {
+      let activityMultiplier = 1.2;
+      switch (formData.activityLevel) {
+        case ActivityLevel.SEDENTARY: activityMultiplier = 1.2; break;
+        case ActivityLevel.LIGHT: activityMultiplier = 1.375; break;
+        case ActivityLevel.MODERATE: activityMultiplier = 1.55; break;
+        case ActivityLevel.ACTIVE: activityMultiplier = 1.725; break;
+        case ActivityLevel.VERY_ACTIVE: activityMultiplier = 1.9; break;
+      }
+      tdee = bmr * activityMultiplier;
+    } else {
+      // Advanced: Factorial Method
+      const sleepHrs = parseFloat(formData.sleepHours || '7.5');
+      const workHrs = 8; // Standard assumption, could be input
+      const resHrsWeek = parseFloat(formData.resistanceHours || '0');
+      const cardioHrsWeek = parseFloat(formData.cardioHours || '0');
+      
+      const resDailyAvg = resHrsWeek / 7;
+      const cardioDailyAvg = cardioHrsWeek / 7;
+      
+      // Determine Work MET
+      let workMet = METS.SITTING;
+      switch (formData.jobActivity) {
+        case JobActivity.STANDING: workMet = METS.STANDING; break;
+        case JobActivity.MANUAL: workMet = METS.MANUAL; break;
+        case JobActivity.HEAVY: workMet = METS.HEAVY; break;
+      }
+
+      // Determine Exercise METs
+      let resMet = METS.RESISTANCE_MODERATE;
+      if (formData.resistanceIntensity === ExerciseIntensity.LIGHT) resMet = METS.RESISTANCE_LIGHT;
+      if (formData.resistanceIntensity === ExerciseIntensity.VIGOROUS) resMet = METS.RESISTANCE_VIGOROUS;
+
+      let cardioMet = METS.CARDIO_MODERATE;
+      if (formData.cardioIntensity === ExerciseIntensity.LIGHT) cardioMet = METS.CARDIO_LIGHT;
+      if (formData.cardioIntensity === ExerciseIntensity.VIGOROUS) cardioMet = METS.CARDIO_VIGOROUS;
+
+      // Residual Time
+      const residualHrs = Math.max(0, 24 - sleepHrs - workHrs - resDailyAvg - cardioDailyAvg);
+
+      // Weighted Average MET (PAL)
+      const totalMetHours = 
+        (sleepHrs * METS.SLEEP) + 
+        (workHrs * workMet) + 
+        (resDailyAvg * resMet) + 
+        (cardioDailyAvg * cardioMet) + 
+        (residualHrs * METS.RESIDUAL);
+      
+      const customPAL = totalMetHours / 24;
+      tdee = bmr * customPAL;
+    }
+
+    // --- 3. Goal Adjustment ---
     let calorieAdjustment = 0;
     if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT) {
+      const isCutting = formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT;
+      // Adjust intensity scalars
+      const mild = isCutting ? -300 : 200;
+      const moderate = isCutting ? -500 : 350;
+      const aggressive = isCutting ? -750 : 500;
+
       switch (formData.goalIntensity) {
-        case GoalIntensity.MILD: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -300 : 250); break;
-        case GoalIntensity.MODERATE: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -500 : 400); break;
-        case GoalIntensity.AGGRESSIVE: calorieAdjustment = (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT ? -700 : 600); break;
+        case GoalIntensity.MILD: calorieAdjustment = mild; break;
+        case GoalIntensity.MODERATE: calorieAdjustment = moderate; break;
+        case GoalIntensity.AGGRESSIVE: calorieAdjustment = aggressive; break;
+        default: calorieAdjustment = moderate;
       }
     }
     let calorieGoal = tdee + calorieAdjustment;
 
-    // Ensure calorie goal is not below minimums
+    // Safety Floors
     const minCalories = formData.sex === Sex.FEMALE ? 1200 : 1500;
     if (calorieGoal < minCalories) {
-        calorieGoal = minCalories;
-        Toast.show({ type: 'info', text1: t('questionnaireScreen.toast.minCaloriesAdjustedTitle'), text2: t('questionnaireScreen.toast.minCaloriesAdjustedMessage', { calories: minCalories }), position: 'bottom' });
-    }
-    if (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT && calorieGoal >= tdee) {
-        calorieGoal = tdee - 100; // Ensure at least a small deficit
-    }
-    if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE && calorieGoal <= tdee) {
-        calorieGoal = tdee + 100; // Ensure at least a small surplus
+      calorieGoal = minCalories;
+      Toast.show({ type: 'info', text1: t('questionnaireScreen.toast.minCaloriesAdjustedTitle'), text2: t('questionnaireScreen.toast.minCaloriesAdjustedMessage', { calories: minCalories }), position: 'bottom' });
     }
 
+    // --- 4. Partitioning (Advanced Logic) ---
+    // Protein: Structural Anchor
+    let proteinPerKg = 1.6; // Base
+    if (method === CalculationMethod.ADVANCED && formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT) {
+        proteinPerKg = 2.2; // Protect muscle in deficit
+    } else if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE) {
+        proteinPerKg = 2.0;
+    } else if (formData.activityLevel === ActivityLevel.SEDENTARY && method === CalculationMethod.BASIC) {
+        proteinPerKg = 1.2;
+    }
 
-    // Macros
-    let proteinPerKg = 1.8;
-    if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE) proteinPerKg = 2.0;
-    if (age > 65) proteinPerKg = Math.max(1.2, proteinPerKg - 0.4); // Adjust for older adults
+    // Use LBM if known, else total weight
+    const weightBasis = (hasBodyFat && method === CalculationMethod.ADVANCED) ? (weight * (1 - bodyFat / 100)) : weight;
+    // If using LBM, the multiplier implies a higher density, so adjust base scalars slightly up or stick to high end of ranges
+    const effectiveProteinGrams = Math.round(proteinPerKg * weightBasis);
+    const proteinCalories = effectiveProteinGrams * 4;
 
-    const proteinGrams = proteinPerKg * weight;
-    const proteinCalories = proteinGrams * 4;
+    // Fats: Hormonal Floor
+    let fatPerKg = 0.9;
+    if (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT && formData.goalIntensity === GoalIntensity.AGGRESSIVE) {
+        fatPerKg = 0.7; // Temporary floor
+    }
+    const fatGrams = Math.round(fatPerKg * weight);
+    const fatCalories = fatGrams * 9;
 
-    const fatPercentage = 0.25; // 25% of calories from fat
-    const fatCalories = calorieGoal * fatPercentage;
-    const fatGrams = fatCalories / 9;
-
-    const carbCalories = calorieGoal - proteinCalories - fatCalories;
-    const carbGrams = carbCalories / 4;
+    // Carbs: Performance Variable (Remainder)
+    const remainingCalories = Math.max(0, calorieGoal - proteinCalories - fatCalories);
+    const carbGrams = Math.round(remainingCalories / 4);
 
     return {
       calories: Math.round(calorieGoal),
-      protein: Math.round(proteinGrams),
-      carbs: Math.round(carbGrams),
-      fat: Math.round(fatGrams),
+      protein: effectiveProteinGrams,
+      carbs: carbGrams,
+      fat: fatGrams,
     };
   };
 
@@ -189,6 +302,7 @@ const QuestionnaireScreen: React.FC = () => {
         const updatedSettings: Settings = {
           ...currentSettings,
           dailyGoals: calculated,
+          hasCompletedEstimation: true, // Mark as done
         };
         await saveSettings(updatedSettings);
         Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });
@@ -230,6 +344,24 @@ const QuestionnaireScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
+      <View style={styles.header}>
+        <Text h4 style={styles.title}>{t('questionnaireScreen.title')}</Text>
+        <ButtonGroup
+          onPress={toggleMethod}
+          selectedIndex={method === CalculationMethod.BASIC ? 0 : 1}
+          buttons={methodButtons}
+          containerStyle={styles.methodGroup}
+          selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.text }}
+        />
+        <Text style={styles.methodDescription}>
+            {method === CalculationMethod.BASIC ? 
+                "Standard equation (Mifflin-St Jeor). Fast and reliable for general population." : 
+                "Precise modeling (Katch-McArdle + Factorial). Uses body fat and activity breakdown for high accuracy."}
+        </Text>
+      </View>
+
+      <Text style={styles.sectionHeader}>{t('questionnaireScreen.sectionBiometrics')}</Text>
       <Input
         label={t('questionnaireScreen.ageLabel')}
         placeholder={t('questionnaireScreen.agePlaceholder')}
@@ -237,7 +369,7 @@ const QuestionnaireScreen: React.FC = () => {
         value={formData.age}
         onChangeText={val => handleInputChange('age', val)}
         errorMessage={errors.age}
-        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
+        inputStyle={styles.input}
         labelStyle={styles.label}
         errorStyle={styles.errorText}
         containerStyle={styles.inputContainer}
@@ -245,35 +377,97 @@ const QuestionnaireScreen: React.FC = () => {
 
       {renderPicker(t('questionnaireScreen.sexLabel'), formData.sex, (val) => handleInputChange('sex', val), sexOptions, errors.sex)}
 
-      <Input
-        label={t('questionnaireScreen.heightLabel')}
-        placeholder={t('questionnaireScreen.heightPlaceholder')}
-        keyboardType="numeric"
-        value={formData.height}
-        onChangeText={val => handleInputChange('height', val)}
-        errorMessage={errors.height}
-        rightIcon={<Text style={styles.unitText}>cm</Text>}
-        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
-        labelStyle={styles.label}
-        errorStyle={styles.errorText}
-        containerStyle={styles.inputContainer}
-      />
+      <View style={styles.row}>
+        <View style={{flex: 1}}>
+            <Input
+                label={t('questionnaireScreen.heightLabel')}
+                placeholder={t('questionnaireScreen.heightPlaceholder')}
+                keyboardType="numeric"
+                value={formData.height}
+                onChangeText={val => handleInputChange('height', val)}
+                errorMessage={errors.height}
+                rightIcon={<Text style={styles.unitText}>cm</Text>}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+                errorStyle={styles.errorText}
+                containerStyle={styles.inputContainer}
+            />
+        </View>
+        <View style={{flex: 1}}>
+            <Input
+                label={t('questionnaireScreen.weightLabel')}
+                placeholder={t('questionnaireScreen.weightPlaceholder')}
+                keyboardType="numeric"
+                value={formData.weight}
+                onChangeText={val => handleInputChange('weight', val)}
+                errorMessage={errors.weight}
+                rightIcon={<Text style={styles.unitText}>kg</Text>}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+                errorStyle={styles.errorText}
+                containerStyle={styles.inputContainer}
+            />
+        </View>
+      </View>
 
-      <Input
-        label={t('questionnaireScreen.weightLabel')}
-        placeholder={t('questionnaireScreen.weightPlaceholder')}
-        keyboardType="numeric"
-        value={formData.weight}
-        onChangeText={val => handleInputChange('weight', val)}
-        errorMessage={errors.weight}
-        rightIcon={<Text style={styles.unitText}>kg</Text>}
-        inputStyle={{ textAlign: I18nManager.isRTL ? 'right' : 'left', color: theme.colors.text}}
-        labelStyle={styles.label}
-        errorStyle={styles.errorText}
-        containerStyle={styles.inputContainer}
-      />
+      {method === CalculationMethod.ADVANCED && (
+        <Input
+            label={t('questionnaireScreen.bodyFatLabel')}
+            placeholder={t('questionnaireScreen.bodyFatPlaceholder')}
+            keyboardType="numeric"
+            value={formData.bodyFat}
+            onChangeText={val => handleInputChange('bodyFat', val)}
+            rightIcon={<Text style={styles.unitText}>%</Text>}
+            inputStyle={styles.input}
+            labelStyle={styles.label}
+            containerStyle={styles.inputContainer}
+        />
+      )}
 
-      {renderPicker(t('questionnaireScreen.activityLevelLabel'), formData.activityLevel, (val) => handleInputChange('activityLevel', val), activityLevelOptions, errors.activityLevel)}
+      <Text style={styles.sectionHeader}>{t('questionnaireScreen.sectionActivity')}</Text>
+      
+      {method === CalculationMethod.BASIC ? (
+        renderPicker(t('questionnaireScreen.activityLevelLabel'), formData.activityLevel, (val) => handleInputChange('activityLevel', val), activityLevelOptions, errors.activityLevel)
+      ) : (
+        <>
+            {renderPicker(t('questionnaireScreen.jobActivityLabel'), formData.jobActivity || '', (val) => handleInputChange('jobActivity', val), jobOptions, errors.jobActivity)}
+            
+            <Input
+                label={t('questionnaireScreen.sleepLabel')}
+                placeholder={t('questionnaireScreen.sleepPlaceholder')}
+                keyboardType="numeric"
+                value={formData.sleepHours}
+                onChangeText={val => handleInputChange('sleepHours', val)}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+                containerStyle={styles.inputContainer}
+            />
+
+            <Input
+                label={t('questionnaireScreen.resistanceHoursLabel')}
+                placeholder={t('questionnaireScreen.resistanceHoursPlaceholder')}
+                keyboardType="numeric"
+                value={formData.resistanceHours}
+                onChangeText={val => handleInputChange('resistanceHours', val)}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+                containerStyle={styles.inputContainer}
+            />
+            
+            <Input
+                label={t('questionnaireScreen.cardioHoursLabel')}
+                placeholder={t('questionnaireScreen.cardioHoursPlaceholder')}
+                keyboardType="numeric"
+                value={formData.cardioHours}
+                onChangeText={val => handleInputChange('cardioHours', val)}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+                containerStyle={styles.inputContainer}
+            />
+        </>
+      )}
+
+      <Text style={styles.sectionHeader}>{t('questionnaireScreen.sectionGoal')}</Text>
       {renderPicker(t('questionnaireScreen.primaryGoalLabel'), formData.primaryGoal, (val) => handleInputChange('primaryGoal', val), primaryGoalOptions, errors.primaryGoal)}
 
       {formData.primaryGoal && formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && (
@@ -286,6 +480,7 @@ const QuestionnaireScreen: React.FC = () => {
         buttonStyle={styles.button}
         loading={isCalculating}
         disabled={isCalculating}
+        icon={<Icon name="calculator" type="material-community" color="white" style={{marginRight: 10}}/>}
       />
        <View style={styles.disclaimerContainer}>
           <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
@@ -302,20 +497,57 @@ const useStyles = makeStyles((theme) => ({
   },
   scrollContentContainer: {
     padding: 20,
+    paddingBottom: 50,
+  },
+  header: {
+    marginBottom: 20,
+    alignItems: 'center',
   },
   title: {
-    marginBottom: 20,
+    marginBottom: 15,
     textAlign: 'center',
     color: theme.colors.text,
   },
-  inputContainer: {
+  methodGroup: {
+    height: 40,
+    borderRadius: 8,
+    marginBottom: 10,
+    width: '100%',
+    borderColor: theme.colors.primary,
+  },
+  methodDescription: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: theme.colors.grey3,
+    paddingHorizontal: 10,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginTop: 15,
     marginBottom: 15,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+    paddingLeft: 10,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  inputContainer: {
+    marginBottom: 5,
+  },
+  input: {
+    textAlign: I18nManager.isRTL ? 'right' : 'left', 
+    color: theme.colors.text
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   label: {
     color: theme.colors.secondary,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 5,
-    fontSize: 16,
+    fontSize: 15,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
   unitText: {
@@ -324,18 +556,18 @@ const useStyles = makeStyles((theme) => ({
   },
   pickerWrapper: {
     borderColor: theme.colors.grey3,
-    borderWidth: 0,
-    borderRadius: 5,
+    borderWidth: 1, // Added border for visibility
+    borderRadius: 8,
     backgroundColor: theme.colors.background,
     justifyContent: 'center',
-    // Removed vertical padding that was causing cutoff on Android
+    marginBottom: 15,
+    overflow: 'hidden', // iOS
   },
   picker: {
-    height: Platform.OS === 'ios' ? 120 : 58, // Increased from 50 to 58
+    height: Platform.OS === 'ios' ? 120 : 55,
     width: '100%',
   },
   pickerItem: {
-     // For iOS, text color is set here. Android uses picker's color prop.
      textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
   errorText: {
@@ -348,9 +580,10 @@ const useStyles = makeStyles((theme) => ({
     borderColor: theme.colors.error,
   },
   button: {
-    marginTop: 20,
+    marginTop: 30,
     backgroundColor: theme.colors.primary,
     borderRadius: 8,
+    paddingVertical: 12,
   },
   disclaimerContainer: {
     flexDirection: 'row',

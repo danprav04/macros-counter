@@ -26,6 +26,10 @@ export interface Settings {
   };
   foodSortPreference?: SortOptionValue;
   settingsHistory?: { date: number; dailyGoals: { [key in MacroType]: number } }[];
+  
+  // New flags for Estimation Prompt
+  hasCompletedEstimation?: boolean;
+  isEstimationReminderDismissed?: boolean;
 }
 
 export interface SettingsScreenProps {

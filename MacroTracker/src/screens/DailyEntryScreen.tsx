@@ -4,10 +4,10 @@ import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nMan
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
-import { saveDailyEntries, loadDailyEntries, loadSettings } from "../services/storageService";
-import { getTodayDateString, formatDateISO, formatDateReadableAsync } from "../utils/dateUtils";
+import { saveDailyEntries, loadDailyEntries, loadSettings, saveSettings } from "../services/storageService";
+import { getTodayDateString, formatDateReadableAsync } from "../utils/dateUtils";
 import DailyProgress from "../components/DailyProgress";
-import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon, FAB } from "@rneui/themed";
+import { Text, makeStyles, useTheme, Divider, Icon as RNEIcon, FAB, Button } from "@rneui/themed";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { addDays, subDays, parseISO, formatISO, isValid } from "date-fns";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +25,8 @@ import { Settings as AppSettings } from "../types/settings";
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from "../navigation/AppNavigator";
 import useDelayedLoading from "../hooks/useDelayedLoading";
+import ConfirmationModal from "../components/ConfirmationModal";
+import { Overlay } from "@rneui/themed";
 
 type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
@@ -48,6 +50,9 @@ const DailyEntryScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
+
+  // Goal Estimation Prompt
+  const [showGoalPrompt, setShowGoalPrompt] = useState(false);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -118,6 +123,12 @@ const DailyEntryScreen: React.FC = () => {
       setFoods(loadedFoodsArray);
       setDailyEntries(loadedEntries);
       triggerIconPrefetch(loadedEntries, selectedDate);
+
+      // Check for Goal Estimation Prompt
+      if (!loadedSettings.hasCompletedEstimation && !loadedSettings.isEstimationReminderDismissed) {
+        setShowGoalPrompt(true);
+      }
+
     } catch (error) {
       console.error("Error in DailyEntryScreen loadData:", error);
       Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
@@ -154,6 +165,21 @@ const DailyEntryScreen: React.FC = () => {
       return () => {};
     }, [loadData]) 
   );
+
+  const handleEstimateNow = () => {
+    setShowGoalPrompt(false);
+    navigation.navigate('SettingsStackRoute', { screen: 'Questionnaire' } as any);
+  };
+
+  const handleDontRemind = async () => {
+    setShowGoalPrompt(false);
+    try {
+      const currentSettings = await loadSettings();
+      await saveSettings({ ...currentSettings, isEstimationReminderDismissed: true });
+    } catch (error) {
+      console.error("Failed to save dismissal preference", error);
+    }
+  };
 
   const currentEntryItems = useMemo(() => {
     const entry = dailyEntries.find((e) => e.date === selectedDate);
@@ -530,6 +556,29 @@ const DailyEntryScreen: React.FC = () => {
         item={selectedEntryForDetails?.item || null}
         dailyGoals={dailyGoals}
       />
+
+      {/* Goal Estimation Prompt Modal */}
+      <Overlay isVisible={showGoalPrompt} onBackdropPress={() => {}} overlayStyle={styles.promptOverlay}>
+        <View style={styles.promptContainer}>
+          <RNEIcon name="calculator-variant" type="material-community" size={48} color={theme.colors.primary} />
+          <Text h4 style={styles.promptTitle}>{t('dailyEntryScreen.goalPromptTitle')}</Text>
+          <Text style={styles.promptMessage}>{t('dailyEntryScreen.goalPromptMessage')}</Text>
+          
+          <Button
+            title={t('dailyEntryScreen.goalPromptEstimate')}
+            onPress={handleEstimateNow}
+            buttonStyle={styles.promptButtonPrimary}
+            titleStyle={{ fontWeight: 'bold' }}
+          />
+          <Button
+            title={t('dailyEntryScreen.goalPromptDontRemind')}
+            onPress={handleDontRemind}
+            type="clear"
+            titleStyle={styles.promptButtonSecondaryTitle}
+          />
+        </View>
+      </Overlay>
+
     </SafeAreaView>
   );
 };
@@ -563,6 +612,38 @@ const useStyles = makeStyles((theme) => ({
   savingIndicator: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 5, backgroundColor: theme.colors.grey5, },
   savingText: { marginLeft: 8, color: theme.colors.primary, fontSize: 14, fontStyle: "italic", },
   listContentContainer: { paddingBottom: 80 },
+  promptOverlay: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 15,
+    padding: 20,
+    backgroundColor: theme.colors.background,
+  },
+  promptContainer: {
+    alignItems: 'center',
+  },
+  promptTitle: {
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: 'center',
+    color: theme.colors.text,
+  },
+  promptMessage: {
+    textAlign: 'center',
+    marginBottom: 20,
+    color: theme.colors.secondary,
+    lineHeight: 20,
+  },
+  promptButtonPrimary: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    width: 200,
+    marginBottom: 10,
+  },
+  promptButtonSecondaryTitle: {
+    color: theme.colors.grey3,
+    fontSize: 14,
+  }
 }));
 
 export default DailyEntryScreen;

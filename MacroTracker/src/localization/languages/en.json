@@ -209,7 +209,11 @@
     "errorAddMultipleMessage": "Failed to add multiple items.",
     "invalidEntryData": "Invalid Entry Data",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "goalPromptTitle": "Setup Goals",
+    "goalPromptMessage": "You haven't estimated your daily macro goals yet. Setting accurate goals helps you track progress effectively.",
+    "goalPromptEstimate": "Estimate Now",
+    "goalPromptDontRemind": "Don't Remind Me"
   },
   "foodListScreen": {
     "tabTitle": "Foods",
@@ -424,6 +428,12 @@
   },
   "questionnaireScreen": {
     "title": "Estimate Your Goals",
+    "methodLabel": "Choose Method",
+    "methodBasic": "Quick-Start (6 Questions)",
+    "methodAdvanced": "Metabolic Profiler (13 Questions)",
+    "sectionBiometrics": "Biometrics",
+    "sectionActivity": "Activity & Lifestyle",
+    "sectionGoal": "Goals & Strategy",
     "ageLabel": "Age (years)",
     "agePlaceholder": "e.g., 30",
     "sexLabel": "Sex",
@@ -436,6 +446,22 @@
     "heightPlaceholder": "e.g., 175",
     "weightLabel": "Weight",
     "weightPlaceholder": "e.g., 70",
+    "bodyFatLabel": "Body Fat % (Optional)",
+    "bodyFatPlaceholder": "e.g., 15",
+    "sleepLabel": "Avg Sleep (Hours)",
+    "sleepPlaceholder": "e.g., 7.5",
+    "jobActivityLabel": "Occupational Activity (8h)",
+    "jobActivity": {
+      "select": "Select Job Activity...",
+      "sitting": "Mostly Sitting (Office/Driver)",
+      "standing": "Standing/Light Movement",
+      "manual": "Moderate Manual Labor",
+      "heavy": "Heavy Manual Labor"
+    },
+    "resistanceHoursLabel": "Resistance Training (Hrs/Week)",
+    "resistanceHoursPlaceholder": "e.g., 3",
+    "cardioHoursLabel": "Cardio Training (Hrs/Week)",
+    "cardioHoursPlaceholder": "e.g., 2",
     "activityLevelLabel": "Activity Level",
     "activityLevel": {
       "select": "Select Activity Level...",
@@ -468,6 +494,7 @@
       "selectActivityLevel": "Please select your activity level.",
       "selectPrimaryGoal": "Please select your primary goal.",
       "selectGoalIntensity": "Please select your goal intensity.",
+      "selectJobActivity": "Please select your job activity type.",
       "fixErrors": "Please fix the errors above."
     },
     "error": {
