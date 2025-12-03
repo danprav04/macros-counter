@@ -1,6 +1,6 @@
 // src/components/AddEntryModal/FoodSelectionList.tsx
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, ActivityIndicator, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
+import { View, FlatList, TouchableOpacity, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
 import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { RecentServings } from '../../services/storageService';
@@ -72,18 +72,15 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     }, [foods, search]);
 
     const listDisplayData = useMemo((): DisplayFoodItem[] => {
-        // If a single food is selected, show only that item.
         if (selectedFood) {
             const isSelRecent = recentFoods.some(rf => rf.id === selectedFood.id);
             return [{ ...selectedFood, isRecent: isSelRecent }];
         }
 
-        // If there is an active search term, show search results.
         if (search) {
             return filteredFoodsForSearch;
         }
 
-        // Otherwise, show default list (recents + library).
         const tempCombinedList: DisplayFoodItem[] = [];
         const displayedIds = new Set<string>();
 
@@ -185,48 +182,60 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 disabled={isActionDisabled}
                 style={[isActionDisabled && styles.disabledOverlay]}
             >
-                <ListItem
-                    bottomDivider
-                    containerStyle={[
+                <View
+                    style={[
                         styles.listItemContainer,
                         (showSingleSelectCheckmark || isMultiSelected) && styles.selectedListItem,
-                        isMultiSelected && styles.multiSelectedListItemBorder,
                     ]}
                 >
-                    {canShowCheckbox && (
-                        <CheckBox
-                            checked={isMultiSelected}
-                            onPress={() => { 
-                                if (isActionDisabled) return;
-                                handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
-                            }}
-                            containerStyle={styles.multiSelectCheckboxContainer}
-                            size={22}
-                            disabled={isActionDisabled}
-                        />
-                    )}
-                    {iconIdentifier ? (
-                        <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>
-                    ) : (
-                        <View style={styles.defaultIconContainer}>
-                            <Icon name="help-outline" type="material" size={22} color={theme.colors.grey3} />
-                        </View>
-                    )}
-                    <ListItem.Content>
-                        <ListItem.Title style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
-                            {foodItem.name}
-                        </ListItem.Title>
+                    <View style={styles.leftContent}>
                         {canShowCheckbox && (
-                            <ListItem.Subtitle style={styles.listItemSubtitleSecondary}>
-                                {t('addEntryModal.grams')}: {displayGramsForMulti}g
-                            </ListItem.Subtitle>
+                            <CheckBox
+                                checked={isMultiSelected}
+                                onPress={() => { 
+                                    if (isActionDisabled) return;
+                                    handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                                }}
+                                containerStyle={styles.checkboxContainer}
+                                size={22}
+                                checkedColor={theme.colors.primary}
+                                uncheckedColor={theme.colors.grey3}
+                                disabled={isActionDisabled}
+                            />
                         )}
-                        {foodItem.isRecent && !search && (!selectedFood || selectedFood.id !== foodItem.id) && (
-                             <Text style={styles.recentBadge}>{t('addEntryModal.recent')}</Text>
-                        )}
-                    </ListItem.Content>
-                    {showSingleSelectCheckmark && (<Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />)}
-                </ListItem>
+                        
+                        <View style={styles.iconWrapper}>
+                            {iconIdentifier ? (
+                                <Text style={styles.foodIconEmoji}>{iconIdentifier}</Text>
+                            ) : (
+                                <View style={styles.defaultIconContainer}>
+                                    <Icon name="help-outline" type="material" size={20} color={theme.colors.grey3} />
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={styles.textWrapper}>
+                            <Text style={styles.listItemTitle} numberOfLines={1} ellipsizeMode="tail">
+                                {foodItem.name}
+                            </Text>
+                            {canShowCheckbox && (
+                                <Text style={styles.listItemSubtitle}>
+                                    {t('addEntryModal.grams')}: {displayGramsForMulti}g
+                                </Text>
+                            )}
+                        </View>
+                    </View>
+
+                    {showSingleSelectCheckmark && (
+                        <Icon name="checkmark-circle" type="ionicon" color={theme.colors.primary} size={24} />
+                    )}
+                    
+                    {foodItem.isRecent && !search && (!selectedFood || selectedFood.id !== foodItem.id) && (
+                         <View style={styles.recentBadge}>
+                             <Text style={styles.recentBadgeText}>{t('addEntryModal.recent')}</Text>
+                         </View>
+                    )}
+                </View>
             </TouchableOpacity>
         );
     };
@@ -272,19 +281,20 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     };
 
     return (
-        <View>
+        <View style={styles.container}>
             <SearchBar
                 placeholder={t('addEntryModal.searchPlaceholder')}
                 onChangeText={handleSearchChange}
                 value={search}
-                platform={Platform.OS === "ios" ? "ios" : "android"}
+                platform="default"
                 containerStyle={styles.searchBarContainer}
                 inputContainerStyle={styles.searchBarInputContainer}
                 inputStyle={styles.searchInputStyle}
-                onCancel={() => { updateSearch(""); Keyboard.dismiss();}}
-                showCancel={Platform.OS === "ios"}
+                placeholderTextColor={theme.colors.grey3}
                 onClear={() => updateSearch("")}
                 disabled={isActionDisabled || modalMode !== "normal"}
+                searchIcon={{ name: 'search', color: theme.colors.grey3 }}
+                clearIcon={{ name: 'close', color: theme.colors.grey3 }}
             />
             <FlatList
                 ref={flatListRef}
@@ -301,7 +311,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 style={styles.flatListContainer}
                 contentContainerStyle={styles.flatListContentContainer}
                 getItemLayout={(data, index) => (
-                    { length: 65, offset: 65 * index, index } 
+                    { length: 60, offset: 60 * index, index } 
                 )}
             />
         </View>
@@ -309,6 +319,9 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
+    container: {
+        flex: 1,
+    },
     searchBarContainer: {
         backgroundColor: "transparent",
         borderBottomColor: "transparent",
@@ -317,84 +330,98 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: 10,
     },
     searchBarInputContainer: {
-        borderRadius: 25,
-        backgroundColor: theme.colors.searchBg || theme.colors.grey5,
-        height: 40,
+        backgroundColor: theme.colors.background,
+        borderWidth: 1,
+        borderColor: theme.colors.grey5,
+        borderRadius: 12,
+        height: 44,
+        borderBottomWidth: 1, // Ensure all sides have border
     },
     searchInputStyle: {
         color: theme.colors.text,
-        fontSize: 15,
+        fontSize: 16,
         textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     flatListContainer: {
-        maxHeight: "90%", 
+        flex: 1,
         minHeight: 150,
     },
     flatListContentContainer: {
-        paddingBottom: 10,
+        paddingBottom: 20,
+    },
+    listItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.divider,
+        minHeight: 60,
+    },
+    selectedListItem: { 
+        backgroundColor: theme.colors.primaryLight,
+        borderRadius: 8,
+        borderBottomColor: 'transparent',
+    },
+    leftContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    checkboxContainer: { 
+        padding: 0, 
+        margin: 0, 
+        marginRight: 10,
+        marginLeft: 0, 
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        minWidth: 24,
+    },
+    iconWrapper: {
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
     },
     foodIconEmoji: {
-        fontSize: 26,
-        width: 35,
-        height: 35,
+        fontSize: 24,
         textAlign: 'center',
-        textAlignVertical: 'center',
-        marginRight: 10,
     },
     defaultIconContainer: {
-        width: 35,
-        height: 35,
-        marginRight: 10,
-        borderRadius: 17.5,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         backgroundColor: theme.colors.grey5,
         alignItems: "center",
         justifyContent: "center",
     },
-    listItemContainer: {
-        backgroundColor: "transparent",
-        paddingVertical: 8,
-        paddingHorizontal: 5,
-        borderBottomColor: theme.colors.divider,
-        minHeight: 65,
-    },
-    selectedListItem: { 
-        backgroundColor: theme.colors.grey5, 
-        borderRadius: 8,
-    },
-    multiSelectedListItemBorder: { 
-        borderLeftWidth: 3, 
-        borderLeftColor: theme.colors.success, 
-    },
-    multiSelectCheckboxContainer: { 
-        padding: 10, 
-        marginRight: 0, 
-        marginLeft: -10, 
-        backgroundColor: 'transparent',
-        borderWidth: 0,
+    textWrapper: {
+        flex: 1,
+        justifyContent: 'center',
     },
     listItemTitle: {
         color: theme.colors.text,
         fontSize: 16,
         fontWeight: "500",
         textAlign: 'left',
-        flexShrink: 1,
     },
-    listItemSubtitleSecondary: {
+    listItemSubtitle: {
         color: theme.colors.secondary,
         fontSize: 12,
         textAlign: 'left',
         marginTop: 2,
     },
     recentBadge: {
-        position: 'absolute',
-        top: -2,
-        right: 0,
-        fontSize: 10,
-        color: theme.colors.primary,
-        backgroundColor: theme.colors.grey5,
-        paddingHorizontal: 4,
-        paddingVertical: 1,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         borderRadius: 4,
+        backgroundColor: theme.colors.grey5,
+    },
+    recentBadgeText: {
+        fontSize: 10,
+        color: theme.colors.secondary,
         fontWeight: 'bold',
         textTransform: 'uppercase'
     },
@@ -403,9 +430,8 @@ const useStyles = makeStyles((theme) => ({
     },
     noResultsContainer: {
         alignItems: 'center',
-        paddingVertical: 20,
-        paddingHorizontal: 10,
-        minHeight: 150, 
+        paddingVertical: 40,
+        paddingHorizontal: 20,
         justifyContent: 'center',
     },
     noFoodsText: {
@@ -413,13 +439,14 @@ const useStyles = makeStyles((theme) => ({
         fontStyle: "italic",
         textAlign: "center",
         marginBottom: 15,
+        fontSize: 15,
     },
     addNewFoodButton: {
         marginTop: 10,
         borderColor: theme.colors.primary,
         paddingHorizontal: 20,
-        paddingVertical: 10, // Added vertical padding to prevent clipping
-        borderWidth: 1,      // Explicit border width helps layout calculation
+        paddingVertical: 10,
+        borderWidth: 1,
         borderRadius: 20,
     },
     addNewFoodButtonTitle: {

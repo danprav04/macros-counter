@@ -61,90 +61,206 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
 
     return (
         <View style={styles.header}>
-            {isBackButtonVisible ? (
-                <Button
-                    type="clear"
-                    onPress={handleBackPress}
-                    icon={<Icon name="arrow-back" type="ionicon" size={24} color={isActionDisabled ? theme.colors.grey3 : theme.colors.primary} />}
-                    containerStyle={styles.closeIconContainer}
-                    disabled={isActionDisabled}
-                />
-            ) : (
-                <TouchableOpacity onPress={handleClose} style={styles.closeIconContainer} disabled={isActionDisabled} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Icon name="close" type="material" size={28} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
-                </TouchableOpacity>
-            )}
+            <View style={styles.leftContainer}>
+                {isBackButtonVisible ? (
+                    <TouchableOpacity 
+                        onPress={handleBackPress} 
+                        style={styles.iconButton} 
+                        disabled={isActionDisabled}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Icon name="arrow-back" type="ionicon" size={24} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity 
+                        onPress={handleClose} 
+                        style={styles.iconButton} 
+                        disabled={isActionDisabled} 
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Icon name="close" type="material" size={24} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
+                    </TouchableOpacity>
+                )}
+            </View>
 
-            <Text h4 h4Style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]} numberOfLines={1} ellipsizeMode="tail">
-                {title}
-            </Text>
+            <View style={styles.titleContainer}>
+                <Text style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]} numberOfLines={1}>
+                    {title}
+                </Text>
+            </View>
 
-            <View style={styles.headerActionsContainer}>
+            <View style={styles.rightContainer}>
                 {modalMode === 'normal' && (
                     <>
                         {!isEditMode && !selectedFood && (
-                            <View style={styles.quickAddIconsContainer}>
-                                <View style={styles.iconWrapper}>
-                                    <TouchableOpacity onPress={onQuickAddText} disabled={isQuickAddTextButtonDisabled} style={styles.headerIcon}>
+                            <View style={styles.quickAddGroup}>
+                                <View style={styles.actionWrapper}>
+                                    <TouchableOpacity 
+                                        onPress={onQuickAddText} 
+                                        disabled={isQuickAddTextButtonDisabled} 
+                                        style={[styles.quickActionButton, isQuickAddTextButtonDisabled && styles.disabledButton]}
+                                    >
                                         {quickAddLoading && textQuickAddLoading ? (
                                             <ActivityIndicator size="small" color={theme.colors.primary} />
                                         ) : (
-                                            <Icon name="text-box-search-outline" type="material-community" size={26} color={isQuickAddTextButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                            <Icon name="text-box-search-outline" type="material-community" size={20} color={theme.colors.primary} />
                                         )}
                                     </TouchableOpacity>
                                     {costs?.cost_macros_text_multiple != null && (
-                                        <PriceTag amount={costs.cost_macros_text_multiple} type="cost" />
+                                        <PriceTag amount={costs.cost_macros_text_multiple} type="cost" size="small" style={styles.priceTag} />
                                     )}
                                 </View>
-                                <View style={styles.iconWrapper}>
-                                    <TouchableOpacity onPress={onQuickAddImage} disabled={isQuickAddImageButtonDisabled} style={styles.headerIcon}>
+                                <View style={styles.actionWrapper}>
+                                    <TouchableOpacity 
+                                        onPress={onQuickAddImage} 
+                                        disabled={isQuickAddImageButtonDisabled} 
+                                        style={[styles.quickActionButton, isQuickAddImageButtonDisabled && styles.disabledButton]}
+                                    >
                                         {quickAddLoading && !textQuickAddLoading ? (
                                             <ActivityIndicator size="small" color={theme.colors.primary} />
                                         ) : (
-                                            <Icon name="camera-burst" type="material-community" size={26} color={isQuickAddImageButtonDisabled ? theme.colors.grey3 : theme.colors.primary} />
+                                            <Icon name="camera-outline" type="material-community" size={20} color={theme.colors.primary} />
                                         )}
                                     </TouchableOpacity>
                                     {costs?.cost_macros_image_multiple != null && (
-                                        <PriceTag amount={costs.cost_macros_image_multiple} type="cost" />
+                                        <PriceTag amount={costs.cost_macros_image_multiple} type="cost" size="small" style={styles.priceTag} />
                                     )}
                                 </View>
                             </View>
                         )}
                         {isEditMode ? (
-                            <Button title={t('addEntryModal.buttonUpdate')} onPress={onAddOrUpdateSingleEntry} disabled={isSingleAddButtonDisabled} buttonStyle={[styles.actionButton, styles.updateButton]} titleStyle={styles.buttonTitle} loading={isAiLoading && !!selectedFood} />
+                            <Button 
+                                title={t('addEntryModal.buttonUpdate')} 
+                                onPress={onAddOrUpdateSingleEntry} 
+                                disabled={isSingleAddButtonDisabled} 
+                                buttonStyle={[styles.mainActionButton, styles.updateButton]} 
+                                titleStyle={styles.buttonTitle} 
+                                loading={isAiLoading && !!selectedFood} 
+                            />
                         ) : selectedFood ? (
-                            <Button title={t('addEntryModal.buttonAdd')} onPress={onAddOrUpdateSingleEntry} disabled={isSingleAddButtonDisabled} buttonStyle={styles.actionButton} titleStyle={styles.buttonTitle} loading={isAiLoading} />
+                            <Button 
+                                title={t('addEntryModal.buttonAdd')} 
+                                onPress={onAddOrUpdateSingleEntry} 
+                                disabled={isSingleAddButtonDisabled} 
+                                buttonStyle={styles.mainActionButton} 
+                                titleStyle={styles.buttonTitle} 
+                                loading={isAiLoading} 
+                            />
                         ) : (
-                            <Button title={t('addEntryModal.buttonAddSelected', { count: selectedMultipleFoodsSize })} onPress={onConfirmAddMultipleSelected} disabled={isMultiAddButtonDisabled} buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]} titleStyle={styles.buttonTitle} />
+                            <Button 
+                                title={selectedMultipleFoodsSize > 0 ? t('addEntryModal.buttonAddSelected', { count: selectedMultipleFoodsSize }) : t('addEntryModal.buttonAdd') + " 0"}
+                                onPress={onConfirmAddMultipleSelected} 
+                                disabled={isMultiAddButtonDisabled} 
+                                buttonStyle={[
+                                    styles.mainActionButton, 
+                                    selectedMultipleFoodsSize > 0 ? { backgroundColor: theme.colors.success } : { backgroundColor: theme.colors.grey3 }
+                                ]} 
+                                titleStyle={styles.buttonTitle} 
+                            />
                         )}
                     </>
                 )}
                 {modalMode === 'quickAddSelect' && editingQuickAddItemIndex === null && (
-                    <Button title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', { count: selectedQuickAddIndicesSize })} onPress={onConfirmQuickAdd} disabled={isQuickAddConfirmDisabled} buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]} titleStyle={styles.buttonTitle} loading={quickAddLoading} />
+                    <Button 
+                        title={quickAddLoading ? t('addEntryModal.buttonLoading') : t('addEntryModal.buttonAddSelected', { count: selectedQuickAddIndicesSize })} 
+                        onPress={onConfirmQuickAdd} 
+                        disabled={isQuickAddConfirmDisabled} 
+                        buttonStyle={[styles.mainActionButton, { backgroundColor: theme.colors.success }]} 
+                        titleStyle={styles.buttonTitle} 
+                        loading={quickAddLoading} 
+                    />
                 )}
-                {modalMode === 'quickAddText' && <View style={styles.placeholderActionView} />}
-                {modalMode === 'quickAddSelect' && editingQuickAddItemIndex !== null && <View style={styles.placeholderActionView} />}
             </View>
         </View>
     );
 };
 
 const useStyles = makeStyles((theme) => ({
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 0 },
-    closeIconContainer: { padding: 5, minWidth: 40, alignItems: 'flex-start' },
-    overlayTitle: { color: theme.colors.text, fontWeight: 'bold', fontSize: 20, textAlign: 'center', flex: 1, marginHorizontal: 5 },
-    editModeTitle: { color: theme.colors.warning },
-    headerActionsContainer: { flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'flex-end' },
-    quickAddIconsContainer: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
-    iconWrapper: {
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        marginBottom: 16, 
+        paddingHorizontal: 0,
+        height: 44,
+    },
+    leftContainer: {
+        width: 40,
+        alignItems: 'flex-start',
+    },
+    iconButton: {
+        padding: 4,
+    },
+    titleContainer: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    overlayTitle: { 
+        color: theme.colors.text, 
+        fontWeight: '700', 
+        fontSize: 18, 
+        textAlign: 'center',
+    },
+    editModeTitle: { 
+        color: theme.colors.warning 
+    },
+    rightContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        minWidth: 40,
+    },
+    quickAddGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    actionWrapper: {
         alignItems: 'center',
         marginHorizontal: 4,
+        position: 'relative',
     },
-    headerIcon: { paddingHorizontal: 6, paddingBottom: 2 },
-    actionButton: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, minWidth: 70, marginLeft: 5, backgroundColor: theme.colors.primary },
-    updateButton: { backgroundColor: theme.colors.warning },
-    buttonTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 14 },
-    placeholderActionView: { width: 70, marginLeft: 5 },
+    quickActionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme.colors.background,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.divider,
+    },
+    disabledButton: {
+        opacity: 0.5,
+        borderColor: theme.colors.grey1,
+    },
+    priceTag: {
+        position: 'absolute',
+        bottom: -8,
+        zIndex: 1,
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.divider,
+        paddingHorizontal: 3,
+        paddingVertical: 1,
+        borderRadius: 4,
+    },
+    mainActionButton: { 
+        borderRadius: 20, 
+        paddingHorizontal: 16, 
+        paddingVertical: 8, 
+        minWidth: 80, 
+        height: 36,
+        backgroundColor: theme.colors.primary 
+    },
+    updateButton: { 
+        backgroundColor: theme.colors.warning 
+    },
+    buttonTitle: { 
+        color: theme.colors.white, 
+        fontWeight: '600', 
+        fontSize: 14 
+    },
 }));
 
 export default ModalHeader;

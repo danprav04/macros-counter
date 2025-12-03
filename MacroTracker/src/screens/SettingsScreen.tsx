@@ -434,11 +434,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               <Text h3 style={[styles.sectionTitle, styles.sectionTitleInline]}>{t('settingsScreen.dailyGoals.title')}</Text>
               <Button
                   title={t('settingsScreen.goals.estimateButton')}
-                  type="outline"
+                  type="solid"
                   onPress={handleNavigateToQuestionnaire}
                   buttonStyle={styles.estimateButton}
                   titleStyle={styles.estimateButtonTitle}
-                  icon={<Icon name="calculator-variant" type="material-community" color={theme.colors.primary} size={18} />}
+                  icon={<Icon name="calculator-variant" type="material-community" color="white" size={20} style={{marginRight: 6}} />}
               />
           </View>
           <View style={styles.inputGroup}>
@@ -513,17 +513,20 @@ const useStyles = makeStyles((theme) => ({
     flexShrink: 1,
   },
   estimateButton: {
-    borderColor: theme.colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
   estimateButtonTitle: {
-    color: theme.colors.primary,
+    color: 'white',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: I18nManager.isRTL ? 0 : 5,
-    marginRight: I18nManager.isRTL ? 5 : 0,
   },
   listItemTitle: {
     color: theme.colors.text,

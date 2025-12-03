@@ -66,17 +66,18 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 
     return (
         <View style={styles.amountSection}>
-            <View style={styles.unitSelectorContainer}>
-                <View style={styles.amountLabelContainer}>
-                    <Text style={styles.inputLabel}>{t('addEntryModal.amount')}</Text>
+            <View style={styles.headerRow}>
+                <View style={styles.labelContainer}>
+                    <Text style={styles.sectionLabel}>{t('addEntryModal.amount')}</Text>
                     {foodGradeResult && (
-                        <Text style={[styles.gradePill, { backgroundColor: foodGradeResult.color }]}>
-                            {foodGradeResult.letter}
-                        </Text>
+                        <View style={[styles.gradeBadge, { backgroundColor: foodGradeResult.color }]}>
+                            <Text style={styles.gradeText}>{foodGradeResult.letter}</Text>
+                        </View>
                     )}
                 </View>
+                
                 {!isEditMode && (
-                    <View style={styles.buttonGroupWrapper}>
+                    <View style={styles.controlsRight}>
                         <ButtonGroup
                             buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
                             selectedIndex={unitMode === "grams" ? 0 : 1}
@@ -90,84 +91,87 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                             selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
                             textStyle={styles.buttonGroupText}
                             selectedTextStyle={{ color: theme.colors.white }}
+                            innerBorderStyle={{ color: theme.colors.primary }}
                             disabled={isActionDisabled ? [0, 1] : []}
                             disabledStyle={styles.disabledButtonGroup}
-                            disabledTextStyle={{ color: theme.colors.grey3 }}
                         />
                         {unitMode === 'auto' && costs?.cost_grams_natural_language != null && (
-                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" style={{ marginLeft: 8 }} />
+                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" size="small" style={{ marginLeft: 6 }} />
                         )}
                     </View>
                 )}
             </View>
+
             {unitMode === "grams" && (
-                <>
-                    {!isEditMode && servingSizeSuggestions.length > 0 && (
-                        <View style={styles.servingSizeRow}>
-                            <Text style={styles.servingSizeLabel}>{t('addEntryModal.quickAddServing')}</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servingSizeContainer} keyboardShouldPersistTaps="handled">
-                                {servingSizeSuggestions.map((suggestion) => (
-                                    <TouchableOpacity
-                                        key={suggestion.label}
-                                        style={[styles.servingSizeButton, isActionDisabled && styles.disabledOverlay]}
-                                        onPress={() => {
-                                            if (!isActionDisabled) {
-                                                setGrams(suggestion.value);
-                                                Keyboard.dismiss();
-                                            }
-                                        }}
-                                        disabled={isActionDisabled}
-                                    >
-                                        <Text style={styles.servingSizeButtonTitle}>{suggestion.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
+                <View style={styles.inputWrapper}>
                     <Input
                         ref={gramsInputRef}
                         placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
                         keyboardType="numeric"
                         value={grams}
                         onChangeText={handleGramsChange}
-                        inputStyle={styles.gramInputStyle}
-                        inputContainerStyle={styles.gramInputContainerStyle}
+                        inputStyle={styles.textInput}
+                        inputContainerStyle={styles.inputFieldContainer}
+                        containerStyle={styles.containerPadding}
                         errorMessage={!isValidNumberInput(grams) && grams !== "" && grams !== "." ? t('addEntryModal.gramsError') : ""}
-                        errorStyle={{ color: theme.colors.error }}
-                        rightIcon={<Text style={styles.unitText}>g</Text>}
-                        containerStyle={{ paddingHorizontal: 0 }}
-                        key={`grams-input-${selectedFood.id}-${isEditMode}`}
+                        errorStyle={styles.errorText}
+                        rightIcon={<Text style={styles.unitSuffix}>g</Text>}
                         disabled={isActionDisabled}
                         autoFocus={!isEditMode}
                         selectTextOnFocus={true}
                     />
-                </>
+                    
+                    {!isEditMode && servingSizeSuggestions.length > 0 && (
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            contentContainerStyle={styles.suggestionsScroll}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {servingSizeSuggestions.map((suggestion) => (
+                                <TouchableOpacity
+                                    key={suggestion.label}
+                                    style={[styles.suggestionChip, isActionDisabled && styles.disabledOpacity]}
+                                    onPress={() => {
+                                        if (!isActionDisabled) {
+                                            setGrams(suggestion.value);
+                                            Keyboard.dismiss();
+                                        }
+                                    }}
+                                    disabled={isActionDisabled}
+                                >
+                                    <Text style={styles.suggestionText}>{suggestion.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
             )}
+
             {unitMode === "auto" && !isEditMode && (
-                <View style={styles.autoInputRow}>
-                    <Input
-                        placeholder={t('addEntryModal.autoPlaceholder')}
-                        value={autoInput}
-                        onChangeText={setAutoInput}
-                        inputStyle={[styles.gramInputStyle, styles.autoInputField]}
-                        inputContainerStyle={styles.gramInputContainerStyle}
-                        containerStyle={styles.autoInputContainer}
-                        multiline={false}
-                        onSubmitEditing={handleEstimateGrams}
-                        key={`auto-input-${selectedFood.id}`}
-                        disabled={isActionDisabled}
-                        autoFocus
-                    />
-                    <Button
-                        onPress={() => { Keyboard.dismiss(); handleEstimateGrams(); }}
-                        disabled={isAiButtonDisabled || isActionDisabled}
-                        loading={isAiLoading}
-                        buttonStyle={styles.aiButton}
-                        icon={isAiLoading ? undefined : (
-                            <Icon name="calculator-variant" type="material-community" size={20} color={theme.colors.white} />
-                        )}
-                        title={isAiLoading ? "" : ""}
-                    />
+                <View style={styles.autoInputWrapper}>
+                    <View style={styles.autoInputRow}>
+                        <Input
+                            placeholder={t('addEntryModal.autoPlaceholder')}
+                            value={autoInput}
+                            onChangeText={setAutoInput}
+                            inputStyle={styles.textInput}
+                            inputContainerStyle={styles.inputFieldContainer}
+                            containerStyle={[styles.containerPadding, { flex: 1 }]}
+                            onSubmitEditing={handleEstimateGrams}
+                            disabled={isActionDisabled}
+                            autoFocus
+                        />
+                        <Button
+                            onPress={() => { Keyboard.dismiss(); handleEstimateGrams(); }}
+                            disabled={isAiButtonDisabled || isActionDisabled}
+                            loading={isAiLoading}
+                            buttonStyle={styles.aiButton}
+                            icon={isAiLoading ? undefined : (
+                                <Icon name="calculator-variant" type="material-community" size={22} color={theme.colors.white} />
+                            )}
+                        />
+                    </View>
                 </View>
             )}
         </View>
@@ -176,137 +180,134 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 
 const useStyles = makeStyles((theme) => ({
     amountSection: {
-        marginTop: 10,
+        marginTop: 12,
+        paddingTop: 16,
         borderTopWidth: 1,
         borderTopColor: theme.colors.divider,
-        paddingTop: 15,
-        paddingHorizontal: 0,
     },
-    unitSelectorContainer: {
+    headerRow: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 15,
-        paddingHorizontal: 5,
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
-    amountLabelContainer: {
+    labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    gradePill: {
+    sectionLabel: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: theme.colors.text,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    gradeBadge: {
+        marginLeft: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 1,
+        borderRadius: 4,
+        justifyContent: 'center',
+    },
+    gradeText: {
         fontSize: 11,
         fontWeight: 'bold',
         color: theme.colors.white,
-        paddingHorizontal: 5,
-        paddingVertical: 1.5,
-        borderRadius: 7,
-        marginLeft: 8,
-        minWidth: 18,
-        textAlign: 'center',
-        overflow: 'hidden',
     },
-    inputLabel: {
-        fontWeight: "600",
-        color: theme.colors.secondary,
-        fontSize: 14,
-        marginRight: 0,
-        textTransform: "uppercase",
-        textAlign: 'left',
-    },
-    buttonGroupWrapper: {
+    controlsRight: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 0.7,
-        justifyContent: 'flex-end',
     },
     buttonGroupContainer: {
-        flex: 1,
-        maxWidth: 220,
-        height: 35,
+        height: 32,
         borderRadius: 8,
         borderColor: theme.colors.primary,
         borderWidth: 1,
         backgroundColor: theme.colors.background,
+        marginLeft: 0,
+        marginRight: 0,
+        marginTop: 0,
+        marginBottom: 0,
+        width: 140,
     },
     buttonGroupText: {
-        fontSize: 14,
+        fontSize: 13,
         color: theme.colors.text,
     },
     disabledButtonGroup: {
         backgroundColor: theme.colors.grey5,
+        opacity: 0.5,
     },
-    servingSizeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 12,
+    inputWrapper: {
+        marginBottom: 8,
+    },
+    textInput: {
+        color: theme.colors.text,
+        fontSize: 16,
+        paddingLeft: 10,
+    },
+    inputFieldContainer: {
+        borderWidth: 1,
+        borderColor: theme.colors.grey3,
+        borderRadius: 8,
         paddingHorizontal: 5,
+        height: 48,
+        backgroundColor: theme.colors.background,
+        borderBottomWidth: 1, // Override RNE default
     },
-    servingSizeLabel: {
-        color: theme.colors.secondary,
-        fontSize: 13,
-        marginRight: 8,
-        textAlign: 'left',
+    containerPadding: {
+        paddingHorizontal: 0,
     },
-    servingSizeContainer: {
-        flexGrow: 0,
+    unitSuffix: {
+        color: theme.colors.grey3,
+        fontSize: 16,
+        fontWeight: "600",
+        paddingRight: 10,
     },
-    servingSizeButton: {
-        backgroundColor: theme.colors.primaryLight,
-        borderRadius: 15,
-        marginRight: 8,
+    errorText: {
+        color: theme.colors.error,
+        fontSize: 12,
+        margin: 4,
+    },
+    suggestionsScroll: {
+        paddingVertical: 8,
+        paddingHorizontal: 2,
+        alignItems: 'center',
+    },
+    suggestionChip: {
+        backgroundColor: theme.colors.grey5,
+        borderRadius: 16,
         paddingHorizontal: 12,
-        paddingVertical: 5,
-        justifyContent: "center",
-        alignItems: "center",
-        height: 30,
+        paddingVertical: 6,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.divider,
     },
-    servingSizeButtonTitle: {
-        color: theme.colors.primary,
+    suggestionText: {
+        color: theme.colors.text,
         fontSize: 13,
         fontWeight: '500',
     },
-    gramInputStyle: {
-        color: theme.colors.text,
-        fontSize: 16,
-        paddingVertical: 8,
-        height: 40,
-        textAlign: 'left',
+    disabledOpacity: {
+        opacity: 0.5,
     },
-    gramInputContainerStyle: {
-        borderBottomColor: theme.colors.grey3,
-        paddingHorizontal: 5,
-    },
-    unitText: {
-        color: theme.colors.secondary,
-        fontSize: 15,
-        fontWeight: "500",
-        paddingRight: 5,
+    autoInputWrapper: {
+        marginBottom: 8,
     },
     autoInputRow: {
         flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 0,
-    },
-    autoInputContainer: {
-        flex: 1,
-        paddingHorizontal: 0,
-        marginRight: 10,
-    },
-    autoInputField: {
-        height: 40,
+        alignItems: "flex-start",
     },
     aiButton: {
-        backgroundColor: theme.colors.secondary,
-        borderRadius: 20,
-        width: 40,
-        height: 40,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 8,
+        width: 48,
+        height: 48,
+        marginLeft: 10,
         padding: 0,
         justifyContent: "center",
         alignItems: "center",
-        minWidth: 40,
-    },
-    disabledOverlay: {
-        opacity: 0.6,
     },
 }));
 

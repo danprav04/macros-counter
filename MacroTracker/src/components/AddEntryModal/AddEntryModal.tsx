@@ -1,6 +1,6 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { View, KeyboardAvoidingView, Platform, Dimensions, StyleSheet, Alert, Keyboard } from "react-native";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { View, KeyboardAvoidingView, Platform, Alert, Keyboard } from "react-native";
 import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
@@ -364,7 +364,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   return (
     <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
-        <View style={[styles.overlayStyle, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.overlayStyle, { backgroundColor: theme.colors.card }]}>
           <ModalHeader title={modalTitle} isEditMode={isEditMode} modalMode={modalMode} quickAddLoading={showQuickAddLoading} textQuickAddLoading={showTextQuickAddLoading}
             selectedFood={internalSelectedFood} selectedMultipleFoodsSize={selectedMultipleFoods.size} selectedQuickAddIndicesSize={selectedQuickAddIndices.size}
             editingQuickAddItemIndex={editingQuickAddItemIndex} isActionDisabled={isActionDisabled} isSingleAddButtonDisabled={isSingleAddButtonDisabled}
@@ -378,11 +378,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
           {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect' || (modalMode === 'normal' && internalSelectedFood)) && (
                 <View style={styles.disclaimerSection}>
                     <View style={styles.disclaimerRow}>
-                        <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                        <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={14} />
                         <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
                     </View>
                     <View style={styles.disclaimerRow}>
-                        <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                        <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={14} />
                         <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
                     </View>
                 </View>
@@ -411,7 +411,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             </View>
           )}
           {modalMode === 'quickAddSelect' && <QuickAddList items={quickAddItems} selectedIndices={selectedQuickAddIndices} editingIndex={editingQuickAddItemIndex} editedName={editedFoodName} editedGrams={editedGrams} onToggleItem={handleToggleQuickAddItem} onEditItem={handleEditQuickAddItem} onSaveEdit={handleSaveQuickAddItemEdit} onCancelEdit={handleCancelQuickAddItemEdit} onNameChange={setEditedFoodName} onGramsChange={handleQuickAddGramsChange} isLoading={showQuickAddLoading} foodIcons={foodIcons} style={styles.quickAddListStyle} onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} foods={foods} />}
-          <View style={{ height: Platform.OS === 'ios' ? 20 : 40 }} />
+          <View style={{ height: Platform.OS === 'ios' ? 20 : 10 }} />
         </View>
       </KeyboardAvoidingView>
     </Overlay>
@@ -419,32 +419,63 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
-    overlayContainer: { backgroundColor: "transparent", width: "90%", maxWidth: 500, padding: 0, borderRadius: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6, overflow: "hidden", maxHeight: "90%", },
-    overlayStyle: { width: "100%", height: "100%", borderRadius: 15, padding: 15, paddingBottom: 0, backgroundColor: theme.colors.background, flex: 1 },
+    overlayContainer: { 
+      backgroundColor: "transparent", 
+      width: "92%", 
+      maxWidth: 520, 
+      padding: 0, 
+      borderRadius: 16, 
+      shadowColor: "#000", 
+      shadowOffset: { width: 0, height: 4 }, 
+      shadowOpacity: 0.3, 
+      shadowRadius: 8, 
+      elevation: 8, 
+      overflow: "hidden", 
+      maxHeight: "92%", 
+    },
+    overlayStyle: { 
+      width: "100%", 
+      height: "100%", 
+      borderRadius: 16, 
+      padding: 16, 
+      paddingBottom: 0, 
+      backgroundColor: theme.colors.card, 
+      flex: 1 
+    },
     keyboardAvoidingView: { width: "100%", height: "100%" },
     normalModeContentContainer: { flex: 1, justifyContent: 'flex-start' },
     disclaimerSection: {
-        paddingHorizontal: 5,
+        paddingHorizontal: 8,
         paddingBottom: 10,
         opacity: 0.8,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+        paddingTop: 8,
     },
     disclaimerRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         marginBottom: 4,
     },
     disclaimerText: {
-        marginLeft: 5,
-        fontSize: 12,
+        marginLeft: 6,
+        fontSize: 11,
         color: theme.colors.grey3,
         fontStyle: 'italic',
         flexShrink: 1,
     },
     quickAddListStyle: { flex: 1 },
-    quickAddTextView: { flex: 1, justifyContent: 'flex-start' },
-    quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
-    quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
-    analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },
+    quickAddTextView: { flex: 1, justifyContent: 'flex-start', paddingTop: 10 },
+    quickAddTextAreaContainer: { 
+      minHeight: 150, 
+      padding: 12, 
+      borderWidth: 1, 
+      borderColor: theme.colors.divider, 
+      borderRadius: 12, 
+      backgroundColor: theme.colors.background 
+    },
+    quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, minHeight: 150 },
+    analyzeButton: { marginTop: 20, borderRadius: 12, paddingVertical: 12, backgroundColor: theme.colors.primary },
 }));
 
 export default AddEntryModal;

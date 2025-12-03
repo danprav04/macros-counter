@@ -51,6 +51,8 @@ const DailyEntryScreen: React.FC = () => {
 
   // Goal Estimation Prompt
   const [showGoalPrompt, setShowGoalPrompt] = useState(false);
+  // Track if we have already shown the prompt in this session/mount to prevent it reappearing after close
+  const hasShownSessionPrompt = useRef(false);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -122,9 +124,10 @@ const DailyEntryScreen: React.FC = () => {
       setDailyEntries(loadedEntries);
       triggerIconPrefetch(loadedEntries, selectedDate);
 
-      // Check for Goal Estimation Prompt
-      if (!loadedSettings.hasCompletedEstimation && !loadedSettings.isEstimationReminderDismissed) {
+      // Check for Goal Estimation Prompt - Only show if not shown this session
+      if (!hasShownSessionPrompt.current && !loadedSettings.hasCompletedEstimation && !loadedSettings.isEstimationReminderDismissed) {
         setShowGoalPrompt(true);
+        hasShownSessionPrompt.current = true;
       }
 
     } catch (error) {
