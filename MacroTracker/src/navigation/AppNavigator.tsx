@@ -77,10 +77,15 @@ const linking = {
   ],
   config: {
     screens: {
+      Auth: {
+        screens: {
+          Login: 'login',
+        },
+      },
       Main: {
-          path: '', 
+          path: '', // Matches the root path '/'
           screens: {
-              // Map the HTTPS path 'share/food' to this screen
+              DailyEntryRoute: '', // Matches root inside Main, effectively '/'
               FoodListRoute: 'share/food', 
           }
       },
@@ -121,7 +126,7 @@ const linking = {
             ],
         };
     }
-    // Default behavior for other paths (like share/food)
+    // Default behavior for other paths (like share/food and login)
     return getStateFromPath(path, options);
   },
 };

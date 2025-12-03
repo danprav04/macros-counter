@@ -2,7 +2,7 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "4.2.1",
+    "version": "4.2.2",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -67,6 +67,16 @@
               "scheme": "https",
               "host": "v1.macros-vision-ai.xyz",
               "pathPrefix": "/share/food"
+            },
+            {
+              "scheme": "https",
+              "host": "v1.macros-vision-ai.xyz",
+              "pathPrefix": "/login"
+            },
+            {
+              "scheme": "https",
+              "host": "v1.macros-vision-ai.xyz",
+              "path": "/"
             }
           ],
           "category": [
