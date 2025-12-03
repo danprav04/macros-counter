@@ -89,10 +89,6 @@ const QuestionnaireScreen: React.FC = () => {
     const saveDraft = async () => {
         if (!settings) return;
         try {
-            // We create a new settings object preserving existing data but updating the draft
-            // We do NOT update the global AuthContext state here to avoid re-renders while typing.
-            // Persistence is handled via storageService. When the user leaves and returns, 
-            // the main SettingsScreen will reload settings from storage.
             const updatedSettings: Settings = {
                 ...settings,
                 questionnaireDraft: formData
@@ -166,7 +162,6 @@ const QuestionnaireScreen: React.FC = () => {
     const heightNum = parseFloat(formData.height);
     const weightNum = parseFloat(formData.weight);
 
-    // Common validations
     if (!formData.age.trim() || isNaN(ageNum) || ageNum <= 0 || ageNum > 120) newErrors.age = t('questionnaireScreen.validation.invalidAge');
     if (formData.sex === '') newErrors.sex = t('questionnaireScreen.validation.selectSex');
     if (!formData.height.trim() || isNaN(heightNum) || heightNum <= 50 || heightNum > 250) newErrors.height = t('questionnaireScreen.validation.invalidHeight');
@@ -174,12 +169,10 @@ const QuestionnaireScreen: React.FC = () => {
     if (formData.primaryGoal === '') newErrors.primaryGoal = t('questionnaireScreen.validation.selectPrimaryGoal');
     if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT && !formData.goalIntensity) newErrors.goalIntensity = t('questionnaireScreen.validation.selectGoalIntensity');
 
-    // Method specific
     if (method === CalculationMethod.BASIC) {
       if (formData.activityLevel === '') newErrors.activityLevel = t('questionnaireScreen.validation.selectActivityLevel');
     } else {
       if (formData.jobActivity === '') newErrors.jobActivity = t('questionnaireScreen.validation.selectJobActivity');
-      // Sleep/Exercise defaults exist, so less critical, but good to validate parsing
       if (isNaN(parseFloat(formData.sleepHours || '0'))) newErrors.sleepHours = "Invalid sleep hours";
     }
 
@@ -194,14 +187,11 @@ const QuestionnaireScreen: React.FC = () => {
     const bodyFat = formData.bodyFat ? parseFloat(formData.bodyFat) : 0;
     const hasBodyFat = !isNaN(bodyFat) && bodyFat > 0;
 
-    // --- 1. Calculate BMR ---
     let bmr: number;
     if (hasBodyFat && method === CalculationMethod.ADVANCED) {
-      // Katch-McArdle
       const lbm = weight * (1 - bodyFat / 100);
       bmr = 370 + (21.6 * lbm);
     } else {
-      // Mifflin-St Jeor
       if (formData.sex === Sex.MALE) {
         bmr = 10 * weight + 6.25 * height - 5 * age + 5;
       } else {
@@ -209,7 +199,6 @@ const QuestionnaireScreen: React.FC = () => {
       }
     }
 
-    // --- 2. Calculate TDEE ---
     let tdee: number;
 
     if (method === CalculationMethod.BASIC) {
@@ -223,16 +212,14 @@ const QuestionnaireScreen: React.FC = () => {
       }
       tdee = bmr * activityMultiplier;
     } else {
-      // Advanced: Factorial Method
       const sleepHrs = parseFloat(formData.sleepHours || '7.5');
-      const workHrs = 8; // Standard assumption, could be input
+      const workHrs = 8;
       const resHrsWeek = parseFloat(formData.resistanceHours || '0');
       const cardioHrsWeek = parseFloat(formData.cardioHours || '0');
       
       const resDailyAvg = resHrsWeek / 7;
       const cardioDailyAvg = cardioHrsWeek / 7;
       
-      // Determine Work MET
       let workMet = METS.SITTING;
       switch (formData.jobActivity) {
         case JobActivity.STANDING: workMet = METS.STANDING; break;
@@ -240,7 +227,6 @@ const QuestionnaireScreen: React.FC = () => {
         case JobActivity.HEAVY: workMet = METS.HEAVY; break;
       }
 
-      // Determine Exercise METs
       let resMet = METS.RESISTANCE_MODERATE;
       if (formData.resistanceIntensity === ExerciseIntensity.LIGHT) resMet = METS.RESISTANCE_LIGHT;
       if (formData.resistanceIntensity === ExerciseIntensity.VIGOROUS) resMet = METS.RESISTANCE_VIGOROUS;
@@ -249,10 +235,8 @@ const QuestionnaireScreen: React.FC = () => {
       if (formData.cardioIntensity === ExerciseIntensity.LIGHT) cardioMet = METS.CARDIO_LIGHT;
       if (formData.cardioIntensity === ExerciseIntensity.VIGOROUS) cardioMet = METS.CARDIO_VIGOROUS;
 
-      // Residual Time
       const residualHrs = Math.max(0, 24 - sleepHrs - workHrs - resDailyAvg - cardioDailyAvg);
 
-      // Weighted Average MET (PAL)
       const totalMetHours = 
         (sleepHrs * METS.SLEEP) + 
         (workHrs * workMet) + 
@@ -264,11 +248,9 @@ const QuestionnaireScreen: React.FC = () => {
       tdee = bmr * customPAL;
     }
 
-    // --- 3. Goal Adjustment ---
     let calorieAdjustment = 0;
     if (formData.primaryGoal !== PrimaryGoal.MAINTAIN_WEIGHT) {
       const isCutting = formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT;
-      // Adjust intensity scalars
       const mild = isCutting ? -300 : 200;
       const moderate = isCutting ? -500 : 350;
       const aggressive = isCutting ? -750 : 500;
@@ -282,39 +264,32 @@ const QuestionnaireScreen: React.FC = () => {
     }
     let calorieGoal = tdee + calorieAdjustment;
 
-    // Safety Floors
     const minCalories = formData.sex === Sex.FEMALE ? 1200 : 1500;
     if (calorieGoal < minCalories) {
       calorieGoal = minCalories;
       Toast.show({ type: 'info', text1: t('questionnaireScreen.toast.minCaloriesAdjustedTitle'), text2: t('questionnaireScreen.toast.minCaloriesAdjustedMessage', { calories: minCalories }), position: 'bottom' });
     }
 
-    // --- 4. Partitioning (Advanced Logic) ---
-    // Protein: Structural Anchor
-    let proteinPerKg = 1.6; // Base
+    let proteinPerKg = 1.6;
     if (method === CalculationMethod.ADVANCED && formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT) {
-        proteinPerKg = 2.2; // Protect muscle in deficit
+        proteinPerKg = 2.2;
     } else if (formData.primaryGoal === PrimaryGoal.GAIN_MUSCLE) {
         proteinPerKg = 2.0;
     } else if (formData.activityLevel === ActivityLevel.SEDENTARY && method === CalculationMethod.BASIC) {
         proteinPerKg = 1.2;
     }
 
-    // Use LBM if known, else total weight
     const weightBasis = (hasBodyFat && method === CalculationMethod.ADVANCED) ? (weight * (1 - bodyFat / 100)) : weight;
-    // If using LBM, the multiplier implies a higher density, so adjust base scalars slightly up or stick to high end of ranges
     const effectiveProteinGrams = Math.round(proteinPerKg * weightBasis);
     const proteinCalories = effectiveProteinGrams * 4;
 
-    // Fats: Hormonal Floor
     let fatPerKg = 0.9;
     if (formData.primaryGoal === PrimaryGoal.LOSE_WEIGHT && formData.goalIntensity === GoalIntensity.AGGRESSIVE) {
-        fatPerKg = 0.7; // Temporary floor
+        fatPerKg = 0.7;
     }
     const fatGrams = Math.round(fatPerKg * weight);
     const fatCalories = fatGrams * 9;
 
-    // Carbs: Performance Variable (Remainder)
     const remainingCalories = Math.max(0, calorieGoal - proteinCalories - fatCalories);
     const carbGrams = Math.round(remainingCalories / 4);
 
@@ -339,8 +314,8 @@ const QuestionnaireScreen: React.FC = () => {
         const updatedSettings: Settings = {
           ...currentSettings,
           dailyGoals: calculated,
-          hasCompletedEstimation: true, // Mark as done
-          questionnaireDraft: formData // keep the successful data
+          hasCompletedEstimation: true,
+          questionnaireDraft: formData 
         };
         await saveSettings(updatedSettings);
         Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });
@@ -383,20 +358,28 @@ const QuestionnaireScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
-        <Text h4 style={styles.title}>{t('questionnaireScreen.title')}</Text>
+        {/* Title Removed to avoid duplication with Header */}
         <ButtonGroup
           onPress={toggleMethod}
           selectedIndex={method === CalculationMethod.BASIC ? 0 : 1}
           buttons={methodButtons}
           containerStyle={styles.methodGroup}
+          buttonContainerStyle={{ backgroundColor: 'transparent' }}
+          buttonStyle={{ backgroundColor: 'transparent' }}
           selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-          textStyle={{ color: theme.colors.text }}
+          textStyle={{ color: theme.colors.grey3, fontSize: 13, textAlign: 'center' }}
+          selectedTextStyle={{ color: 'white', fontWeight: 'bold' }}
+          innerBorderStyle={{ color: theme.colors.primary }}
         />
         <Text style={styles.methodDescription}>
             {method === CalculationMethod.BASIC ? 
                 "Standard equation (Mifflin-St Jeor). Fast and reliable for general population." : 
                 "Precise modeling (Katch-McArdle + Factorial). Uses body fat and activity breakdown for high accuracy."}
         </Text>
+        <View style={styles.disclaimerContainer}>
+          <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
+          <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+        </View>
       </View>
 
       <Text style={styles.sectionHeader}>{t('questionnaireScreen.sectionBiometrics')}</Text>
@@ -520,10 +503,6 @@ const QuestionnaireScreen: React.FC = () => {
         disabled={isCalculating}
         icon={<Icon name="calculator" type="material-community" color="white" style={{marginRight: 10}}/>}
       />
-       <View style={styles.disclaimerContainer}>
-          <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
-          <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
-      </View>
     </ScrollView>
   );
 };
@@ -547,11 +526,12 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.text,
   },
   methodGroup: {
-    height: 40,
+    height: 48,
     borderRadius: 8,
     marginBottom: 10,
     width: '100%',
     borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.background, // Ensure background matches theme to avoid transparent white-on-white
   },
   methodDescription: {
     textAlign: 'center',
@@ -628,7 +608,7 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-    marginTop: 25,
+    marginTop: 10,
     opacity: 0.8,
   },
   disclaimerText: {
