@@ -1,7 +1,7 @@
 // src/components/AddEntryModal/FoodSelectionList.tsx
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Platform, Keyboard, StyleSheet, I18nManager } from 'react-native';
-import { Text, ListItem, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
+import { View, FlatList, TouchableOpacity, Platform, StyleSheet, I18nManager } from 'react-native';
+import { Text, Icon, Button, SearchBar, CheckBox, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
 import { RecentServings } from '../../services/storageService';
 import { t } from '../../localization/i18n';
@@ -27,6 +27,7 @@ interface FoodSelectionListProps {
     isEditMode: boolean;
     recentServings: RecentServings;
     modalMode: "normal" | "quickAddSelect";
+    ListFooterComponent?: React.ReactElement | null;
 }
 
 type DisplayFoodItem = Food & { isRecent?: boolean };
@@ -48,6 +49,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
     isEditMode,
     recentServings,
     modalMode,
+    ListFooterComponent
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -108,7 +110,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
             const index = listDisplayData.findIndex(item => item.id === selectedFood.id);
             if (index !== -1) {
                 setTimeout(() => {
-                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 }); 
+                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0 }); 
                 }, 150);
             }
         }
@@ -116,10 +118,13 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
 
     const handleInternalSingleSelectFood = useCallback((item: Food | null) => {
         if (selectedMultipleFoods.size > 0 && item !== null && (!selectedFood || selectedFood.id !== item.id)) {
-            Keyboard.dismiss();
+            // In multi-select mode, tapping the row should toggle if it's already active, 
+            // but here we just dismiss keyboard to be safe.
+            // Actually, let's make row tap toggle in multi-select mode for better UX.
+            // But this function is for single select logic.
             return; 
         }
-        Keyboard.dismiss();
+        
         if (selectedFood && item && selectedFood.id === item.id) {
             handleSelectFood(null);
             setGrams(""); 
@@ -181,6 +186,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 }}
                 disabled={isActionDisabled}
                 style={[isActionDisabled && styles.disabledOverlay]}
+                activeOpacity={0.7}
             >
                 <View
                     style={[
@@ -190,18 +196,27 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 >
                     <View style={styles.leftContent}>
                         {canShowCheckbox && (
-                            <CheckBox
-                                checked={isMultiSelected}
+                            <TouchableOpacity
                                 onPress={() => { 
                                     if (isActionDisabled) return;
                                     handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
                                 }}
-                                containerStyle={styles.checkboxContainer}
-                                size={22}
-                                checkedColor={theme.colors.primary}
-                                uncheckedColor={theme.colors.grey3}
-                                disabled={isActionDisabled}
-                            />
+                                style={styles.checkboxTouchable}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <CheckBox
+                                    checked={isMultiSelected}
+                                    onPress={() => { 
+                                        if (isActionDisabled) return;
+                                        handleToggleMultipleFoodSelection(foodItem, displayGramsForMulti);
+                                    }}
+                                    containerStyle={styles.checkboxContainer}
+                                    size={24}
+                                    checkedColor={theme.colors.primary}
+                                    uncheckedColor={theme.colors.grey3}
+                                    disabled={isActionDisabled}
+                                />
+                            </TouchableOpacity>
                         )}
                         
                         <View style={styles.iconWrapper}>
@@ -302,6 +317,7 @@ const FoodSelectionList: React.FC<FoodSelectionListProps> = ({
                 renderItem={renderFoodItem}
                 keyExtractor={(item) => `food-sel-${item.id}`}
                 ListEmptyComponent={renderEmptyOrNoResults}
+                ListFooterComponent={ListFooterComponent}
                 extraData={{ selectedFoodId: selectedFood?.id, selectedMultipleFoodsSize: selectedMultipleFoods.size, search, listLength: listDisplayData.length, recentServings }}
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={15}
@@ -334,8 +350,8 @@ const useStyles = makeStyles((theme) => ({
         borderWidth: 1,
         borderColor: theme.colors.grey5,
         borderRadius: 12,
-        height: 44,
-        borderBottomWidth: 1, // Ensure all sides have border
+        height: 46,
+        borderBottomWidth: 1,
     },
     searchInputStyle: {
         color: theme.colors.text,
@@ -344,7 +360,6 @@ const useStyles = makeStyles((theme) => ({
     },
     flatListContainer: {
         flex: 1,
-        minHeight: 150,
     },
     flatListContentContainer: {
         paddingBottom: 20,
@@ -353,11 +368,11 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 10,
+        paddingVertical: 12,
         paddingHorizontal: 8,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.colors.divider,
-        minHeight: 60,
+        minHeight: 64,
     },
     selectedListItem: { 
         backgroundColor: theme.colors.primaryLight,
@@ -369,30 +384,31 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         flex: 1,
     },
+    checkboxTouchable: {
+        padding: 4,
+        marginRight: 8,
+    },
     checkboxContainer: { 
         padding: 0, 
         margin: 0, 
-        marginRight: 10,
-        marginLeft: 0, 
         backgroundColor: 'transparent',
         borderWidth: 0,
-        minWidth: 24,
     },
     iconWrapper: {
-        width: 32,
-        height: 32,
+        width: 36,
+        height: 36,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     foodIconEmoji: {
-        fontSize: 24,
+        fontSize: 26,
         textAlign: 'center',
     },
     defaultIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: theme.colors.grey5,
         alignItems: "center",
         justifyContent: "center",
@@ -404,12 +420,12 @@ const useStyles = makeStyles((theme) => ({
     listItemTitle: {
         color: theme.colors.text,
         fontSize: 16,
-        fontWeight: "500",
+        fontWeight: "600",
         textAlign: 'left',
     },
     listItemSubtitle: {
         color: theme.colors.secondary,
-        fontSize: 12,
+        fontSize: 13,
         textAlign: 'left',
         marginTop: 2,
     },

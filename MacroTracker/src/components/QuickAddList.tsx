@@ -12,7 +12,7 @@ import {
     makeStyles,
 } from '@rneui/themed';
 import { EstimatedFoodItem } from '../types/macros';
-import { Food } from '../types/food'; // Import Food type
+import { Food } from '../types/food';
 import { t } from '../localization/i18n';
 import QuickAddItem from './Entry/QuickAddItem';
 
@@ -20,38 +20,64 @@ interface QuickAddListProps {
     items: EstimatedFoodItem[];
     selectedIndices: Set<number>;
     editingIndex: number | null;
+    
+    // Edit state
     editedName: string;
     editedGrams: string;
+    editedCalories: string;
+    editedProtein: string;
+    editedCarbs: string;
+    editedFat: string;
+
+    // Handlers
     onToggleItem: (index: number) => void;
     onEditItem: (index: number) => void;
     onSaveEdit: () => void;
     onCancelEdit: () => void;
+    
     onNameChange: (name: string) => void;
     onGramsChange: (grams: string) => void;
+    onCaloriesChange: (val: string) => void;
+    onProteinChange: (val: string) => void;
+    onCarbsChange: (val: string) => void;
+    onFatChange: (val: string) => void;
+
     style?: object;
     isLoading?: boolean;
-    foodIcons: { [foodName: string]: string | null | undefined };
+    foodIcons: { [foodName: string]: string | null }; // Fixed type
     onSaveItemToLibrary: (item: EstimatedFoodItem, setSavingState: (isSaving: boolean) => void) => Promise<void>;
-    foods: Food[]; // Add foods prop
+    foods: Food[];
 }
 
 const QuickAddList: React.FC<QuickAddListProps> = ({
     items,
     selectedIndices,
     editingIndex,
+    
     editedName,
     editedGrams,
+    editedCalories,
+    editedProtein,
+    editedCarbs,
+    editedFat,
+
     onToggleItem,
     onEditItem,
     onSaveEdit,
     onCancelEdit,
+    
     onNameChange,
     onGramsChange,
+    onCaloriesChange,
+    onProteinChange,
+    onCarbsChange,
+    onFatChange,
+
     style,
     isLoading,
     foodIcons,
     onSaveItemToLibrary,
-    foods, // Destructure foods
+    foods,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -70,16 +96,28 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                 isAnyItemEditing={isAnyItemEditing}
                 isLoading={isLoading}
                 foodIcons={foodIcons}
+                
                 editedName={isEditingThisItem ? editedName : ''}
                 editedGrams={isEditingThisItem ? editedGrams : ''}
+                editedCalories={isEditingThisItem ? editedCalories : ''}
+                editedProtein={isEditingThisItem ? editedProtein : ''}
+                editedCarbs={isEditingThisItem ? editedCarbs : ''}
+                editedFat={isEditingThisItem ? editedFat : ''}
+
                 onToggleItem={onToggleItem}
                 onEditItem={onEditItem}
                 onSaveEdit={onSaveEdit}
                 onCancelEdit={onCancelEdit}
+                
                 onNameChange={onNameChange}
                 onGramsChange={onGramsChange}
+                onCaloriesChange={onCaloriesChange}
+                onProteinChange={onProteinChange}
+                onCarbsChange={onCarbsChange}
+                onFatChange={onFatChange}
+
                 onSaveToLibrary={onSaveItemToLibrary}
-                foods={foods} // Pass foods to QuickAddItem
+                foods={foods} 
             />
         );
     };
@@ -108,7 +146,11 @@ const QuickAddList: React.FC<QuickAddListProps> = ({
                 ) : null
             }
             style={[styles.listDefaults, style]}
-            extraData={{ selectedIndices, editingIndex, foodIcons, isLoading, editedName, editedGrams, foodsLength: foods.length }}
+            extraData={{ 
+                selectedIndices, editingIndex, foodIcons, isLoading, 
+                editedName, editedGrams, editedCalories, editedProtein, editedCarbs, editedFat,
+                foodsLength: foods.length 
+            }}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={items.length === 0 && !isLoading ? styles.listContentContainerEmpty : {paddingBottom: 10}}
         />
