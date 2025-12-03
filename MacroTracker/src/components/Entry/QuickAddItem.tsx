@@ -172,7 +172,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
             </View>
 
             {/* Middle Row: Grams & Grade */}
-            <View style={[styles.editRow, { marginTop: 4 }]}>
+            <View style={[styles.editRow, { marginTop: 8 }]}>
                {gradeResult && (
                 <Text style={[styles.gradePill, { backgroundColor: gradeResult.color, marginRight: 8, marginLeft: 2 }]}>
                   {gradeResult.letter}
@@ -194,10 +194,10 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({
               </View>
               <View style={styles.editActions}>
                   <TouchableOpacity onPress={onSaveEdit} style={styles.quickEditActionButton}>
-                    <Icon name="checkmark-circle" type="ionicon" color={theme.colors.success} size={30} />
+                    <Icon name="checkmark-circle" type="ionicon" color={theme.colors.success} size={34} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={onCancelEdit} style={styles.quickEditActionButton}>
-                    <Icon name="close-circle" type="ionicon" color={theme.colors.error} size={30} />
+                    <Icon name="close-circle" type="ionicon" color={theme.colors.error} size={34} />
                   </TouchableOpacity>
               </View>
             </View>
@@ -479,14 +479,16 @@ const useStyles = makeStyles((theme) => ({
   quickEditInputContainer: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.primary,
-    height: 36,
+    minHeight: 40,
     paddingHorizontal: 0,
+    paddingBottom: 4,
   },
   quickEditInput: {
     fontSize: 16,
     color: theme.colors.text,
     paddingVertical: 0,
     textAlign: "left",
+    textAlignVertical: 'center',
   },
   quickEditNameContainer: {
     flex: 1,
@@ -506,6 +508,7 @@ const useStyles = makeStyles((theme) => ({
   editActions: {
       flexDirection: 'row',
       marginLeft: 'auto',
+      alignItems: 'center',
   },
   quickEditActionButton: {
     padding: 6,
@@ -521,8 +524,8 @@ const useStyles = makeStyles((theme) => ({
   macrosGrid: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginTop: 8,
-      paddingTop: 8,
+      marginTop: 10,
+      paddingTop: 10,
       borderTopWidth: 1,
       borderTopColor: theme.colors.divider,
   },
@@ -547,7 +550,9 @@ const useStyles = makeStyles((theme) => ({
       fontSize: 14,
       color: theme.colors.text,
       textAlign: 'center',
-      paddingVertical: 0,
+      paddingBottom: 0,
+      marginBottom: 0,
+      marginTop: 16,
   },
   macroContainerStyle: {
       flex: 1,
