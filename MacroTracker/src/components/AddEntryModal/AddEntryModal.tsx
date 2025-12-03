@@ -425,6 +425,14 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     setQuickAddTextInput("");
   }, []);
 
+  const handleBackFromFoodSelection = useCallback(() => {
+    setInternalSelectedFood(null);
+    setInternalGrams("");
+    // Reset unit mode to default just in case
+    setUnitMode("grams");
+    setAutoInput("");
+  }, []);
+
   const modalTitle = modalMode === "quickAddSelect" ? (editingQuickAddItemIndex !== null ? t('addEntryModal.titleQuickAddEdit') : quickAddLoading ? t('addEntryModal.titleQuickAddAnalyzing') : t('addEntryModal.titleQuickAddSelect'))
                     : modalMode === "quickAddText" ? t('addEntryModal.titleQuickAddFromText')
                     : isEditMode ? t('addEntryModal.titleEdit') : t('addEntryModal.titleAdd');
@@ -537,6 +545,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onQuickAddText={handleQuickAddText}
             onBackFromQuickAdd={handleBackFromQuickAdd}
             selectedFoodId={internalSelectedFood?.id}
+            onBackFromFoodSelection={handleBackFromFoodSelection}
           />
           
           <View style={styles.contentContainer}>

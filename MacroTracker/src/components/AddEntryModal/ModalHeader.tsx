@@ -22,6 +22,7 @@ interface ModalHeaderProps {
     onQuickAddText: () => void;
     onBackFromQuickAdd: () => void;
     selectedFoodId: string | undefined;
+    onBackFromFoodSelection: () => void;
 }
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({
@@ -29,7 +30,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
     editingQuickAddItemIndex, isActionDisabled,
     isQuickAddImageButtonDisabled, isQuickAddTextButtonDisabled,
     toggleOverlay, onQuickAddImage, onQuickAddText, onBackFromQuickAdd,
-    selectedFoodId
+    selectedFoodId, onBackFromFoodSelection
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -40,13 +41,21 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         toggleOverlay();
     };
     
+    // Logic for showing back button
+    const isQuickAddBack = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
+    const isFoodSelectionBack = modalMode === 'normal' && !isEditMode && !!selectedFoodId;
+
+    const isBackButtonVisible = isQuickAddBack || isFoodSelectionBack;
+
     const handleBackPress = useCallback(() => {
         if (isActionDisabled) return;
         Keyboard.dismiss();
-        onBackFromQuickAdd();
-    }, [isActionDisabled, onBackFromQuickAdd]);
-
-    const isBackButtonVisible = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
+        if (isQuickAddBack) {
+            onBackFromQuickAdd();
+        } else if (isFoodSelectionBack && onBackFromFoodSelection) {
+            onBackFromFoodSelection();
+        }
+    }, [isActionDisabled, onBackFromQuickAdd, onBackFromFoodSelection, isQuickAddBack, isFoodSelectionBack]);
 
     return (
         <View style={styles.header}>
