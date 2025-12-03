@@ -594,8 +594,9 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                         onPress={handleAnalyzeText} 
                         loading={showTextQuickAddLoading} 
                         disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} 
-                        icon={{ name: 'brain', type: 'material-community', color: theme.colors.white }} 
-                        buttonStyle={styles.analyzeButton} 
+                        buttonStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.primary, marginBottom: 10}]} 
+                        disabledStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.grey2}]}
+                        disabledTitleStyle={{color: theme.colors.grey3}}
                     />
                 </View>
             )}
