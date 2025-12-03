@@ -73,7 +73,12 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
             </View>
 
             <View style={styles.titleContainer}>
-                <Text style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]} numberOfLines={1}>
+                <Text 
+                    style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]} 
+                    numberOfLines={2} 
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                >
                     {title}
                 </Text>
             </View>
@@ -127,7 +132,7 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'space-between', 
         marginBottom: 10, 
         paddingHorizontal: 0,
-        height: 56,
+        minHeight: 56,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.divider,
         paddingBottom: 8,

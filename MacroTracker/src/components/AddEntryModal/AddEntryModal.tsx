@@ -72,12 +72,10 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
   
-  // --- ADDED MISSING STATE VARIABLES ---
   const [editedCalories, setEditedCalories] = useState<string>("");
   const [editedProtein, setEditedProtein] = useState<string>("");
   const [editedCarbs, setEditedCarbs] = useState<string>("");
   const [editedFat, setEditedFat] = useState<string>("");
-  // -------------------------------------
 
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
   
@@ -448,8 +446,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
             
-            // If count > 0, make it success color (Green).
-            // If 0, default to primary (Blue). The 'disabled' prop will handle greying it out.
             if (count > 0) buttonColor = theme.colors.success;
             else buttonColor = theme.colors.primary;
         }
@@ -465,16 +461,13 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     return (
         <View style={styles.footerContainer}>
             <Button
-                // Key forces re-render if disabled state changes, fixing style update lag
                 key={`footer-btn-${disabled}-${buttonColor}`}
                 title={buttonTitle}
                 onPress={onPress}
                 disabled={disabled}
                 loading={loading}
-                // Only apply the active color to buttonStyle
                 buttonStyle={[styles.footerButton, { backgroundColor: buttonColor }]}
                 titleStyle={styles.footerButtonTitle}
-                // Explicitly define disabled style to ensure it turns grey immediately
                 disabledStyle={{ backgroundColor: theme.colors.grey4 }}
                 disabledTitleStyle={{ color: theme.colors.grey2 }}
             />
@@ -482,7 +475,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     );
   };
 
-  // AmountInputSection Logic Wrapper for Footer
   const amountInputSection = useMemo(() => {
       if (internalSelectedFood) {
           return (
@@ -548,7 +540,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                         isEditMode={isEditMode} 
                         recentServings={recentServings} 
                         modalMode={modalMode} 
-                        ListFooterComponent={amountInputSection} // Pass as prop
+                        ListFooterComponent={amountInputSection}
                     />
                 </View>
             )}
@@ -658,7 +650,6 @@ const useStyles = makeStyles((theme) => ({
     },
     keyboardAvoidingView: { 
         width: "100%", 
-        // height: "100%", // REMOVED: Let content determine height to avoid pushing footer off-screen
     },
     contentContainer: {
         flexShrink: 1, 
@@ -688,7 +679,7 @@ const useStyles = makeStyles((theme) => ({
     quickAddListStyle: { 
         flexGrow: 0, 
     },
-    quickAddTextView: { flex: 1, justifyContent: 'flex-start' },
+    quickAddTextView: { width: '100%', justifyContent: 'flex-start' }, // Removed flex: 1
     quickAddTextAreaContainer: { height: 150, padding: 8, borderWidth: 1, borderColor: theme.colors.divider, borderRadius: 8, },
     quickAddTextArea: { textAlignVertical: 'top', color: theme.colors.text, fontSize: 16, height: '100%' },
     analyzeButton: { marginTop: 15, borderRadius: 8, backgroundColor: theme.colors.primary },
