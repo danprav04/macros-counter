@@ -71,12 +71,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const [editingQuickAddItemIndex, setEditingQuickAddItemIndex] = useState<number | null>(null);
   const [editedFoodName, setEditedFoodName] = useState<string>("");
   const [editedGrams, setEditedGrams] = useState<string>("");
-  // --- ADDED MISSING STATE VARIABLES ---
+  
   const [editedCalories, setEditedCalories] = useState<string>("");
   const [editedProtein, setEditedProtein] = useState<string>("");
   const [editedCarbs, setEditedCarbs] = useState<string>("");
   const [editedFat, setEditedFat] = useState<string>("");
-  // -------------------------------------
 
   const [selectedMultipleFoods, setSelectedMultipleFoods] = useState<Map<string, { food: Food; grams: number }>>(new Map());
   
@@ -441,13 +440,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onPress = handleAddOrUpdateSingleEntry;
             disabled = isSingleAddButtonDisabled;
             loading = showAILoading;
+            buttonColor = theme.colors.primary;
         } else {
             const count = selectedMultipleFoods.size;
             buttonTitle = count > 0 ? t('addEntryModal.buttonAddSelected', { count }) : t('addEntryModal.buttonAdd') + " 0";
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
+            
+            // If count > 0, make it success color (Green). 
+            // If 0, default to primary (Blue). The 'disabled' prop will handle greying it out.
             if (count > 0) buttonColor = theme.colors.success;
-            else buttonColor = theme.colors.grey3;
+            else buttonColor = theme.colors.primary;
         }
     } else if (modalMode === 'quickAddSelect') {
         const count = selectedQuickAddIndices.size;
@@ -455,19 +458,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         onPress = handleConfirmQuickAdd;
         disabled = isQuickAddConfirmDisabled;
         loading = showQuickAddLoading;
-        buttonColor = count > 0 ? theme.colors.success : theme.colors.grey3;
+        buttonColor = count > 0 ? theme.colors.success : theme.colors.primary;
     }
 
     return (
         <View style={styles.footerContainer}>
             <Button
+                // Key forces re-render if disabled state changes, fixing style update lag
+                key={`footer-btn-${disabled}-${buttonColor}`}
                 title={buttonTitle}
                 onPress={onPress}
                 disabled={disabled}
                 loading={loading}
+                // Only apply the active color to buttonStyle
                 buttonStyle={[styles.footerButton, { backgroundColor: buttonColor }]}
                 titleStyle={styles.footerButtonTitle}
-                disabledStyle={{ backgroundColor: theme.colors.grey4 }}
+                // Explicitly define disabled style to ensure it turns grey immediately
+                disabledStyle={styles.footerButton}
+                disabledTitleStyle={{ color: theme.colors.grey2 }}
             />
         </View>
     );
@@ -693,10 +701,11 @@ const useStyles = makeStyles((theme) => ({
         borderRadius: 12,
         paddingVertical: 14,
         width: '100%',
+        backgroundColor: theme.colors.grey4
     },
     footerButtonTitle: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: 'bold'
     },
 }));
 
