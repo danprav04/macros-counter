@@ -13,12 +13,18 @@ export interface MissingConsents {
     transfer: boolean;
     medical: boolean;
     hitl: boolean; // Human in the Loop
+    // localStorageAck is implicit if ToS is re-agreed to, but we track UI state locally.
 }
 
 interface FirstRunModalProps {
     isVisible: boolean;
     missingConsents: MissingConsents;
     onAgree: (updatedConsents: MissingConsents) => Promise<void>;
+}
+
+// Local Interface extending MissingConsents to track checkbox state for UI only
+interface LocalConsentState extends MissingConsents {
+    localStorageAck: boolean;
 }
 
 interface CustomCheckboxProps {
@@ -79,12 +85,13 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
     const { theme } = useTheme();
     
     // Local state to track checkboxes inside the modal
-    const [checkedState, setCheckedState] = useState<MissingConsents>({
+    const [checkedState, setCheckedState] = useState<LocalConsentState>({
         tos: false,
         health: false,
         transfer: false,
         medical: false,
-        hitl: false
+        hitl: false,
+        localStorageAck: false // Defaults to false, required if ToS is updated
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -98,18 +105,22 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
                 health: !missingConsents.health,
                 transfer: !missingConsents.transfer,
                 medical: !missingConsents.medical,
-                hitl: !missingConsents.hitl
+                hitl: !missingConsents.hitl,
+                // If ToS is missing (update required), we enforce re-ack of local storage
+                localStorageAck: !missingConsents.tos 
             });
         }
     }, [isVisible, missingConsents]);
 
-    const toggleCheck = (key: keyof MissingConsents) => {
+    const toggleCheck = (key: keyof LocalConsentState) => {
         setCheckedState(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const handleConfirm = async () => {
         setIsSaving(true);
-        await onAgree(checkedState);
+        // We pass back the missing consents structure. LocalStorageAck isn't sent to backend directly
+        // but acts as a gate here.
+        await onAgree(checkedState); 
         setIsSaving(false);
     };
 
@@ -132,7 +143,8 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
         checkedState.health && 
         checkedState.transfer && 
         checkedState.medical && 
-        checkedState.hitl;
+        checkedState.hitl &&
+        checkedState.localStorageAck;
 
     return (
         <Modal 
@@ -184,17 +196,31 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
                             
                             <View style={styles.content}>
                                 {missingConsents.tos && (
-                                    <CustomCheckbox
-                                        checked={checkedState.tos}
-                                        onPress={() => toggleCheck('tos')}
-                                    >
-                                        <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
-                                            {t('termsGate.iAgree')}
-                                            <Text style={[styles.link, { color: theme.colors.primary }]} onPress={handleOpenTerms}>
-                                                {t('termsGate.viewTerms')}
+                                    <>
+                                        <CustomCheckbox
+                                            checked={checkedState.tos}
+                                            onPress={() => toggleCheck('tos')}
+                                        >
+                                            <Text style={[styles.checkboxText, { color: theme.colors.text }]}>
+                                                {t('termsGate.iAgree')}
+                                                <Text style={[styles.link, { color: theme.colors.primary }]} onPress={handleOpenTerms}>
+                                                    {t('termsGate.viewTerms')}
+                                                </Text>
                                             </Text>
-                                        </Text>
-                                    </CustomCheckbox>
+                                        </CustomCheckbox>
+
+                                        {/* New Local Storage Ack - Tied to ToS Update */}
+                                        <CustomCheckbox
+                                            checked={checkedState.localStorageAck}
+                                            onPress={() => toggleCheck('localStorageAck')}
+                                            checkedColor={theme.colors.error}
+                                            iconChecked="alert-box"
+                                        >
+                                            <Text style={[styles.checkboxText, { color: theme.colors.error, fontWeight: 'bold' }]}>
+                                                {t('termsGate.localStorageAck')}
+                                            </Text>
+                                        </CustomCheckbox>
+                                    </>
                                 )}
 
                                 {missingConsents.health && (

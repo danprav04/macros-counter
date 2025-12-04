@@ -14,6 +14,7 @@ export interface Consents {
     healthDataConsent: boolean;
     dataTransferConsent: boolean;
     notMedicalDeviceAck: boolean;
+    localStorageAck: boolean; // New Field for Local Storage Ack
 }
 
 interface TermsGateProps {
@@ -29,6 +30,7 @@ const TermsGate: React.FC<TermsGateProps> = ({ onConsentsChange }) => {
       healthDataConsent: false,
       dataTransferConsent: false,
       notMedicalDeviceAck: false,
+      localStorageAck: false, // Default false
   });
 
   useEffect(() => {
@@ -83,7 +85,20 @@ const TermsGate: React.FC<TermsGateProps> = ({ onConsentsChange }) => {
             textStyle={[styles.checkboxText, { color: theme.colors.text }]}
         />
 
-        {/* 4. Medical Disclaimer Acknowledgement */}
+        {/* 4. Local Storage / No Backup Warning (NEW) */}
+        <CheckBox
+            checked={consents.localStorageAck}
+            onPress={() => toggleConsent('localStorageAck')}
+            title={t('termsGate.localStorageAck')}
+            containerStyle={styles.checkboxContainer}
+            textStyle={[styles.checkboxText, { color: theme.colors.error, fontWeight: 'bold' }]} // Red text for warning
+            checkedColor={theme.colors.error}
+            checkedIcon="alert-box"
+            uncheckedIcon="checkbox-blank-outline"
+            iconType="material-community"
+        />
+
+        {/* 5. Medical Disclaimer Acknowledgement */}
         <CheckBox
             checked={consents.notMedicalDeviceAck}
             onPress={() => toggleConsent('notMedicalDeviceAck')}

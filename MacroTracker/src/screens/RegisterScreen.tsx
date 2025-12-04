@@ -31,6 +31,7 @@ const RegisterScreen: React.FC = () => {
         healthDataConsent: false,
         dataTransferConsent: false,
         notMedicalDeviceAck: false,
+        localStorageAck: false, // New Field
     });
     
     const navigation = useNavigation<RegisterScreenNavigationProp>();
@@ -47,7 +48,7 @@ const RegisterScreen: React.FC = () => {
 
     const handleRegister = async () => {
         // Validate all consents
-        if (!consents.tosAgreed || !consents.healthDataConsent || !consents.dataTransferConsent || !consents.notMedicalDeviceAck) {
+        if (!consents.tosAgreed || !consents.healthDataConsent || !consents.dataTransferConsent || !consents.notMedicalDeviceAck || !consents.localStorageAck) {
             Alert.alert(t('registerScreen.alert.termsRequiredTitle'), t('registerScreen.alert.termsRequiredMessage'));
             return;
         }

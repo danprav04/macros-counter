@@ -579,6 +579,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
                             <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} />
                             <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
                         </View>
+                        {/* NEW SENSITIVE DATA WARNING */}
+                        <View style={styles.disclaimerRow}>
+                            <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                            <Text style={styles.disclaimerText}>{t('disclaimers.sensitiveDataWarning')}</Text>
+                        </View>
                         <View style={styles.disclaimerRow}>
                             <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
                             <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
