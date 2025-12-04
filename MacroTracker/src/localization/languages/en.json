@@ -29,7 +29,7 @@
     "consentHealth": "I explicitly consent to the processing of my health/biometric data.",
     "consentTransfer": "I consent to the transfer of my data to servers in the USA.",
     "notMedical": "I acknowledge that this app is NOT a medical device.",
-    "localStorageAck": "I understand my data is stored LOCALLY. If I delete the app, my history is lost forever."
+    "localStorageAck": "I understand my data is stored LOCALLY. If I delete the app without a backup, my history is lost forever."
   },
   "firstRunModal": {
     "title": "Important Liability Notice",
