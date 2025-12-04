@@ -489,11 +489,15 @@ const useStyles = makeStyles((theme) => ({
     paddingVertical: 0,
     textAlign: "left",
     textAlignVertical: 'center',
+    marginTop: 16,
+    marginBottom: -8,
+    paddingBottom: 0,
   },
   quickEditNameContainer: {
     flex: 1,
     paddingHorizontal: 0,
     marginLeft: 8,
+    marginBottom: 0,
   },
   gramsInputWrapper: {
       flex: 1,
@@ -504,6 +508,7 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 14,
     fontWeight: "500",
     paddingRight: 5,
+    marginBottom: -20,
   },
   editActions: {
       flexDirection: 'row',
