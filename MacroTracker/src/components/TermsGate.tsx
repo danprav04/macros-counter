@@ -1,4 +1,5 @@
 // src/components/TermsGate.tsx
+
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, CheckBox, useTheme, Icon } from '@rneui/themed';
@@ -91,11 +92,7 @@ const TermsGate: React.FC<TermsGateProps> = ({ onConsentsChange }) => {
             onPress={() => toggleConsent('localStorageAck')}
             title={t('termsGate.localStorageAck')}
             containerStyle={styles.checkboxContainer}
-            textStyle={[styles.checkboxText, { color: theme.colors.error, fontWeight: 'bold' }]} // Red text for warning
-            checkedColor={theme.colors.error}
-            checkedIcon="alert-box"
-            uncheckedIcon="checkbox-blank-outline"
-            iconType="material-community"
+            textStyle={[styles.checkboxText, { color: theme.colors.error, fontWeight: 'bold' }]} 
         />
 
         {/* 5. Medical Disclaimer Acknowledgement */}
@@ -141,12 +138,15 @@ const styles = StyleSheet.create({
       marginLeft: 0,
       marginRight: 0,
       paddingVertical: 5,
+      alignItems: 'flex-start', // Ensure icon aligns to top for multiline text
   },
   checkboxText: {
       fontSize: 13,
       fontWeight: 'normal',
       marginLeft: 10,
+      flex: 1, // Ensure text wraps properly within container
       flexShrink: 1,
+      marginTop: 2, // Minor adjustment to align text baseline with icon
   },
   link: {
     fontWeight: 'bold',
