@@ -1,6 +1,6 @@
 // src/screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,6 +14,8 @@ import { formatDateISO } from '../utils/dateUtils';
 import TermsGate, { Consents } from '../components/TermsGate';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
+
+const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 0 : 0;
 
 const RegisterScreen: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -118,91 +120,100 @@ const RegisterScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                <Text h2 style={[styles.title, { color: theme.colors.text }]}>{t('registerScreen.title')}</Text>
-                <Input
-                    placeholder={t('registerScreen.emailPlaceholder')}
-                    leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
-                    onChangeText={setEmail}
-                    value={email}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    containerStyle={styles.inputContainer}
-                    inputStyle={{ color: theme.colors.text }}
-                />
-                <Input
-                    placeholder={t('registerScreen.passwordPlaceholder')}
-                    leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
-                    rightIcon={
-                        <Icon 
-                            name={isPasswordVisible ? 'eye-slash' : 'eye'} 
-                            type="font-awesome" 
-                            color={theme.colors.grey3}
-                            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                        />
-                    }
-                    onChangeText={setPassword}
-                    value={password}
-                    secureTextEntry={!isPasswordVisible}
-                    containerStyle={styles.inputContainer}
-                    inputStyle={{ color: theme.colors.text }}
-                />
-                <Input
-                    placeholder={t('registerScreen.confirmPasswordPlaceholder')}
-                    leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
-                    rightIcon={
-                        <Icon 
-                            name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'} 
-                            type="font-awesome" 
-                            color={theme.colors.grey3}
-                            onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
-                        />
-                    }
-                    onChangeText={setConfirmPassword}
-                    value={confirmPassword}
-                    secureTextEntry={!isConfirmPasswordVisible}
-                    containerStyle={styles.inputContainer}
-                    inputStyle={{ color: theme.colors.text }}
-                />
-                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.dateInput, { borderColor: theme.colors.grey3 }]}>
-                    <Icon name="calendar" type="font-awesome" size={20} color={theme.colors.grey3} style={styles.dateIcon} />
-                    <Text style={[styles.dateText, { color: dateOfBirth ? theme.colors.text : theme.colors.grey3 }]}>
-                        {dateOfBirth ? formatDateISO(dateOfBirth) : t('registerScreen.dobPlaceholder')}
-                    </Text>
-                </TouchableOpacity>
-
-                {showDatePicker && (
-                    <DateTimePicker
-                        testID="dateTimePicker"
-                        value={dateOfBirth || new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onDateChange}
-                        maximumDate={new Date()}
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+            <KeyboardAvoidingView 
+                style={styles.keyboardAvoidingView} 
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                    <Text h2 style={[styles.title, { color: theme.colors.text }]}>{t('registerScreen.title')}</Text>
+                    <Input
+                        placeholder={t('registerScreen.emailPlaceholder')}
+                        leftIcon={<Icon name="envelope" type="font-awesome" size={20} color={theme.colors.grey3} />}
+                        onChangeText={setEmail}
+                        value={email}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        containerStyle={styles.inputContainer}
+                        inputStyle={{ color: theme.colors.text }}
                     />
-                )}
+                    <Input
+                        placeholder={t('registerScreen.passwordPlaceholder')}
+                        leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                        rightIcon={
+                            <Icon 
+                                name={isPasswordVisible ? 'eye-slash' : 'eye'} 
+                                type="font-awesome" 
+                                color={theme.colors.grey3}
+                                onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                            />
+                        }
+                        onChangeText={setPassword}
+                        value={password}
+                        secureTextEntry={!isPasswordVisible}
+                        containerStyle={styles.inputContainer}
+                        inputStyle={{ color: theme.colors.text }}
+                    />
+                    <Input
+                        placeholder={t('registerScreen.confirmPasswordPlaceholder')}
+                        leftIcon={<Icon name="lock" type="font-awesome" size={24} color={theme.colors.grey3} />}
+                        rightIcon={
+                            <Icon 
+                                name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'} 
+                                type="font-awesome" 
+                                color={theme.colors.grey3}
+                                onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                            />
+                        }
+                        onChangeText={setConfirmPassword}
+                        value={confirmPassword}
+                        secureTextEntry={!isConfirmPasswordVisible}
+                        containerStyle={styles.inputContainer}
+                        inputStyle={{ color: theme.colors.text }}
+                    />
+                    <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.dateInput, { borderColor: theme.colors.grey3 }]}>
+                        <Icon name="calendar" type="font-awesome" size={20} color={theme.colors.grey3} style={styles.dateIcon} />
+                        <Text style={[styles.dateText, { color: dateOfBirth ? theme.colors.text : theme.colors.grey3 }]}>
+                            {dateOfBirth ? formatDateISO(dateOfBirth) : t('registerScreen.dobPlaceholder')}
+                        </Text>
+                    </TouchableOpacity>
 
-                <TermsGate onConsentsChange={setConsents} />
+                    {showDatePicker && (
+                        <DateTimePicker
+                            testID="dateTimePicker"
+                            value={dateOfBirth || new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={onDateChange}
+                            maximumDate={new Date()}
+                        />
+                    )}
 
-                <Button
-                    title={t('registerScreen.registerButton')}
-                    onPress={handleRegister}
-                    loading={showIsLoading}
-                    disabled={isLoading}
-                    buttonStyle={styles.button}
-                    containerStyle={styles.buttonContainer}
-                />
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                    <Text style={[styles.switchText, { color: theme.colors.primary }]}>{t('registerScreen.loginPrompt')}</Text>
-                </TouchableOpacity>
-            </ScrollView>
+                    <TermsGate onConsentsChange={setConsents} />
+
+                    <Button
+                        title={t('registerScreen.registerButton')}
+                        onPress={handleRegister}
+                        loading={showIsLoading}
+                        disabled={isLoading}
+                        buttonStyle={styles.button}
+                        containerStyle={styles.buttonContainer}
+                    />
+                    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                        <Text style={[styles.switchText, { color: theme.colors.primary }]}>{t('registerScreen.loginPrompt')}</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    safeArea: {
+        flex: 1,
+    },
+    keyboardAvoidingView: {
         flex: 1,
     },
     scrollContent: {
