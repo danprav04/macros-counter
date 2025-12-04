@@ -211,7 +211,11 @@
     "errorAddMultipleMessage": "נכשל בהוספת מספר פריטים.",
     "invalidEntryData": "נתוני רשומה לא חוקיים",
     "edit": "ערוך",
-    "delete": "מחק"
+    "delete": "מחק",
+    "goalPromptTitle": "הגדרת יעדים",
+    "goalPromptMessage": "טרם הערכת את היעדים היומיים שלך. הגדרת יעדים מדויקים עוזרת במעקב יעיל.",
+    "goalPromptEstimate": "הערך כעת",
+    "goalPromptDontRemind": "אל תזכיר לי"
   },
   "foodListScreen": {
     "tabTitle": "מאכלים",
@@ -426,6 +430,12 @@
   },
   "questionnaireScreen": {
     "title": "הערכת היעדים שלך",
+    "methodLabel": "בחר שיטת חישוב",
+    "methodBasic": "מהיר (6 שאלות)",
+    "methodAdvanced": "מתקדם (13 שאלות)",
+    "sectionBiometrics": "נתונים ביומטריים",
+    "sectionActivity": "פעילות ואורח חיים",
+    "sectionGoal": "יעדים ואסטרטגיה",
     "ageLabel": "גיל (שנים)",
     "agePlaceholder": "לדוגמה, 30",
     "sexLabel": "מין",
@@ -438,6 +448,22 @@
     "heightPlaceholder": "לדוגמה, 175",
     "weightLabel": "משקל",
     "weightPlaceholder": "לדוגמה, 70",
+    "bodyFatLabel": "אחוז שומן (אופציונלי)",
+    "bodyFatPlaceholder": "לדוגמה, 15",
+    "sleepLabel": "שעות שינה בממוצע",
+    "sleepPlaceholder": "לדוגמה, 7.5",
+    "jobActivityLabel": "פעילות בעבודה (8 שעות)",
+    "jobActivity": {
+      "select": "בחר רמת פעילות בעבודה...",
+      "sitting": "בעיקר ישיבה (משרד/נהג)",
+      "standing": "עמידה/תנועה קלה",
+      "manual": "עבודה פיזית מתונה",
+      "heavy": "עבודה פיזית מאומצת"
+    },
+    "resistanceHoursLabel": "אימון התנגדות (שעות בשבוע)",
+    "resistanceHoursPlaceholder": "לדוגמה, 3",
+    "cardioHoursLabel": "אימון אירובי (שעות בשבוע)",
+    "cardioHoursPlaceholder": "לדוגמה, 2",
     "activityLevelLabel": "רמת פעילות",
     "activityLevel": {
       "select": "בחר רמת פעילות...",
@@ -470,6 +496,7 @@
       "selectActivityLevel": "אנא בחר את רמת הפעילות שלך.",
       "selectPrimaryGoal": "אנא בחר את המטרה העיקרית שלך.",
       "selectGoalIntensity": "אנא בחר את עצימות המטרה שלך.",
+      "selectJobActivity": "אנא בחר את רמת הפעילות בעבודה.",
       "fixErrors": "אנא תקן את השגיאות למעלה."
     },
     "error": {

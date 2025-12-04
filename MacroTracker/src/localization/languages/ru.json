@@ -211,7 +211,11 @@
     "errorAddMultipleMessage": "Не удалось добавить несколько элементов.",
     "invalidEntryData": "Неверные данные записи",
     "edit": "Изменить",
-    "delete": "Удалить"
+    "delete": "Удалить",
+    "goalPromptTitle": "Настройка целей",
+    "goalPromptMessage": "Вы еще не рассчитали свои дневные цели по макроэлементам. Установка точных целей поможет вам эффективно отслеживать прогресс.",
+    "goalPromptEstimate": "Рассчитать сейчас",
+    "goalPromptDontRemind": "Не напоминать"
   },
   "foodListScreen": {
     "tabTitle": "Продукты",
@@ -426,6 +430,12 @@
   },
   "questionnaireScreen": {
     "title": "Оценка ваших целей",
+    "methodLabel": "Выберите метод",
+    "methodBasic": "Базовый (6 вопросов)",
+    "methodAdvanced": "Продвинутый (13 вопросов)",
+    "sectionBiometrics": "Биометрические данные",
+    "sectionActivity": "Активность и образ жизни",
+    "sectionGoal": "Цели и стратегия",
     "ageLabel": "Возраст (лет)",
     "agePlaceholder": "например, 30",
     "sexLabel": "Пол",
@@ -438,6 +448,22 @@
     "heightPlaceholder": "например, 175",
     "weightLabel": "Вес",
     "weightPlaceholder": "например, 70",
+    "bodyFatLabel": "Процент жира (необязательно)",
+    "bodyFatPlaceholder": "например, 15",
+    "sleepLabel": "Сон (часов в сутки)",
+    "sleepPlaceholder": "например, 7.5",
+    "jobActivityLabel": "Активность на работе (8 ч)",
+    "jobActivity": {
+      "select": "Выберите активность на работе...",
+      "sitting": "Сидячая (офис/водитель)",
+      "standing": "Стоячая/Легкое движение",
+      "manual": "Умеренный физический труд",
+      "heavy": "Тяжелый физический труд"
+    },
+    "resistanceHoursLabel": "Силовые тренировки (часов/нед)",
+    "resistanceHoursPlaceholder": "например, 3",
+    "cardioHoursLabel": "Кардио тренировки (часов/нед)",
+    "cardioHoursPlaceholder": "например, 2",
     "activityLevelLabel": "Уровень активности",
     "activityLevel": {
       "select": "Выберите уровень активности...",
@@ -470,6 +496,7 @@
       "selectActivityLevel": "Пожалуйста, выберите ваш уровень активности.",
       "selectPrimaryGoal": "Пожалуйста, выберите вашу основную цель.",
       "selectGoalIntensity": "Пожалуйста, выберите интенсивность цели.",
+      "selectJobActivity": "Пожалуйста, выберите активность на работе.",
       "fixErrors": "Пожалуйста, исправьте ошибки выше."
     },
     "error": {
