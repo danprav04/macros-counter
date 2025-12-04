@@ -101,8 +101,7 @@ const TermsGate: React.FC<TermsGateProps> = ({ onConsentsChange }) => {
             onPress={() => toggleConsent('notMedicalDeviceAck')}
             title={t('termsGate.notMedical')}
             containerStyle={styles.checkboxContainer}
-            textStyle={[styles.checkboxText, { color: theme.colors.text, fontWeight: 'bold' }]}
-            checkedColor={theme.colors.warning}
+            textStyle={[styles.checkboxText, { color: theme.colors.warning, fontWeight: 'bold' }]}
         />
         
         <View style={styles.disclaimerContainer}>
