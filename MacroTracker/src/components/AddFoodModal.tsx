@@ -311,20 +311,34 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                         isEditing={!!editFood}
                                         disabled={isAnyLoading}
                                     />
+                                    {/* Medical Disclaimer for Manual Mode */}
+                                    <View style={styles.disclaimerContainer}>
+                                        <View style={styles.disclaimerRow}>
+                                            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                                        </View>
+                                    </View>
                                 </View>
                             ) : (
                                 <View style={styles.aiContainer}>
-                                    {/* AI Disclaimer */}
-                                    <View style={styles.aiDisclaimerContainer}>
-                                        <Icon 
-                                            name="information-outline" 
-                                            type="material-community" 
-                                            color={theme.colors.grey3} 
-                                            size={16} 
-                                        />
-                                        <Text style={styles.aiDisclaimerText}>
-                                            {t('disclaimers.aiWarning')}
-                                        </Text>
+                                    {/* AI Disclaimers - Expanded */}
+                                    <View style={styles.aiDisclaimerSection}>
+                                        <View style={styles.disclaimerRow}>
+                                            <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                            <Text style={styles.disclaimerText}>
+                                                {t('disclaimers.aiWarning')}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.disclaimerRow}>
+                                            <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                            <Text style={styles.disclaimerText}>
+                                                {t('disclaimers.sensitiveDataWarning')}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.disclaimerRow}>
+                                            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                                        </View>
                                     </View>
 
                                     {/* Text Analysis Card */}
@@ -567,14 +581,26 @@ const useStyles = makeStyles((theme) => ({
     aiContainer: {
         paddingTop: 5,
     },
-    aiDisclaimerContainer: {
+    disclaimerContainer: {
+        marginTop: 20,
+        paddingHorizontal: 10,
+        opacity: 0.8,
+    },
+    aiDisclaimerSection: {
+        marginBottom: 20,
+        paddingHorizontal: 5,
+        opacity: 0.8,
+    },
+    disclaimerRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        paddingHorizontal: 5,
-        marginBottom: 20,
+        marginBottom: 6,
     },
-    aiDisclaimerText: {
-        marginLeft: 8,
+    disclaimerIcon: {
+        marginRight: 8,
+        marginTop: 1,
+    },
+    disclaimerText: {
         fontSize: 12,
         color: theme.colors.grey3,
         fontStyle: 'italic',

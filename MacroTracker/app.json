@@ -2,7 +2,7 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "4.3.2",
+    "version": "4.3.3",
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -139,7 +139,7 @@
       },
       "env": {
         "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
-        "BACKEND_URL_DEVELOPMENT": "https://v1.macros-vision-ai.xyz"
+        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
       }
     }
   }
