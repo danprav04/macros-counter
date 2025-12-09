@@ -1,6 +1,18 @@
 // src/services/iapService.ts
 import { Platform, Alert } from 'react-native';
-import * as RNIap from 'react-native-iap';
+import {
+  initConnection,
+  endConnection,
+  fetchProducts as getIapProducts, // Renamed from getProducts in newer versions
+  requestPurchase,
+  purchaseUpdatedListener,
+  purchaseErrorListener,
+  finishTransaction,
+  ErrorCode,
+  type Product,
+  type Purchase,
+  type PurchaseError
+} from 'react-native-iap';
 import { verifyPurchase as verifyBackendPurchase } from './backendService';
 import { t } from '../localization/i18n';
 
@@ -31,10 +43,8 @@ export interface ProductDisplay {
 
 export const initIAP = async (): Promise<void> => {
   try {
-    await RNIap.initConnection();
-    if (Platform.OS === 'android') {
-      await RNIap.flushFailedPurchasesCachedAsPendingAndroid();
-    }
+    await initConnection();
+    // Note: flushFailedPurchasesCachedAsPendingAndroid is deprecated/handled automatically in v12+
   } catch (err) {
     console.error('IAP Initialization Error:', err);
   }
@@ -42,7 +52,7 @@ export const initIAP = async (): Promise<void> => {
 
 export const endIAP = async (): Promise<void> => {
   try {
-    await RNIap.endConnection();
+    await endConnection();
   } catch (err) {
     console.error('IAP End Connection Error:', err);
   }
@@ -50,15 +60,41 @@ export const endIAP = async (): Promise<void> => {
 
 export const getProducts = async (): Promise<ProductDisplay[]> => {
   try {
-    const products = await RNIap.getProducts({ skus: productIds });
-    return products.map(p => ({
-        productId: p.productId,
-        title: p.title.replace(/\s?\(.*?\)$/, ''), // Clean up "(App Name)" suffix on Android
-        price: p.price,
-        description: p.description,
-        currency: p.currency,
-        localizedPrice: p.localizedPrice,
-    }));
+    const result = await getIapProducts({ skus: productIds });
+    
+    // Fix: Handle 'products' possibly being null/undefined
+    const products = result || [];
+    
+    return products.map((p) => {
+        // Cast to any to handle property name changes in v12+ (id vs productId)
+        // and platform differences (oneTimePurchaseOfferDetails vs direct properties)
+        const raw = p as any;
+
+        // In v12+, 'id' is often used instead of 'productId'
+        const id = raw.id || raw.productId;
+        
+        // Handle Price Display (displayPrice is common in newer versions)
+        const localizedPrice = 
+            raw.displayPrice || 
+            raw.localizedPrice || 
+            raw.oneTimePurchaseOfferDetails?.formattedPrice || 
+            '';
+
+        const currency = 
+            raw.currency || 
+            raw.priceCurrencyCode || 
+            raw.oneTimePurchaseOfferDetails?.priceCurrencyCode || 
+            '';
+
+        return {
+            productId: id,
+            title: raw.title?.replace(/\s?\(.*?\)$/, '') || '', 
+            price: raw.price?.toString() || '', 
+            description: raw.description || '',
+            currency: currency,
+            localizedPrice: localizedPrice,
+        };
+    });
   } catch (err) {
     console.error('IAP Get Products Error:', err);
     return [];
@@ -67,7 +103,14 @@ export const getProducts = async (): Promise<ProductDisplay[]> => {
 
 export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
-    await RNIap.requestPurchase({ sku: productId });
+    // Construct purchase arguments based on platform
+    // Cast to any to avoid strict type errors if library types are mismatched
+    const purchaseArgs: any = Platform.select({
+      android: { skus: [productId] }, // Android requires 'skus' array
+      ios: { sku: productId }         // iOS typically requires 'sku' string
+    });
+
+    await requestPurchase(purchaseArgs);
   } catch (err) {
     console.error('IAP Purchase Error:', err);
     throw err;
@@ -79,37 +122,41 @@ export const setupPurchaseListener = (
     onPurchaseSuccess: (coinsAdded: number) => void,
     onPurchaseError: (error: string) => void
 ) => {
-    const purchaseUpdateSubscription = RNIap.purchaseUpdatedListener(async (purchase: RNIap.Purchase) => {
-        const receipt = purchase.transactionReceipt;
+    const purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
+        // Cast to any to safely access platform-specific receipt fields
+        const p = purchase as any;
+        const receipt = p.transactionReceipt; // iOS
+        const token = p.purchaseToken;        // Android
         
-        if (receipt) {
+        if (receipt || token) {
             try {
                 // Verify with our backend
                 const result = await verifyBackendPurchase({
                     platform: Platform.OS === 'ios' ? 'ios' : 'android',
                     productId: purchase.productId,
                     transactionId: purchase.transactionId || '',
-                    purchaseToken: Platform.OS === 'android' ? purchase.purchaseToken : undefined,
-                    receiptData: Platform.OS === 'ios' ? receipt : undefined
+                    purchaseToken: token || undefined,
+                    receiptData: receipt || undefined
                 });
 
                 // Finish transaction only after backend verification
-                await RNIap.finishTransaction({ purchase, isConsumable: true });
+                await finishTransaction({ purchase, isConsumable: true });
                 
                 onPurchaseSuccess(result.coins_added);
                 
             } catch (error: any) {
                 console.error('Purchase Verification Error:', error);
-                // If backend error is not retryable (e.g. duplicate), we might still want to finish transaction
-                // For now, we alert.
+                // If backend error is not retryable, we usually still finish transaction to avoid stuck loop.
+                // For now, alerting user.
                 onPurchaseError(error.message || t('iap.errorVerification'));
             }
         }
     });
 
-    const purchaseErrorSubscription = RNIap.purchaseErrorListener((error: RNIap.PurchaseError) => {
+    const purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
         console.warn('IAP Purchase Error Listener:', error);
-        if (error.responseCode !== RNIap.ErrorCode.E_USER_CANCELLED) {
+        // ErrorCode.E_USER_CANCELLED was renamed to ErrorCode.UserCancelled in recent versions
+        if (error.code !== ErrorCode.UserCancelled) {
              onPurchaseError(error.message);
         }
     });
