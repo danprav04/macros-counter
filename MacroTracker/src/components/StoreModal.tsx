@@ -20,6 +20,9 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
   const [products, setProducts] = useState<ProductDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingSku, setPurchasingSku] = useState<string | null>(null);
+  
+  // DEBUG STATE
+  const [logs, setLogs] = useState<string>('');
 
   useEffect(() => {
     let removeListeners: (() => void) | undefined;
@@ -27,6 +30,8 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
     const initialize = async () => {
       if (isVisible) {
         setLoading(true);
+        setLogs('Initializing Store...\n'); // Reset logs
+
         await initIAP();
         
         removeListeners = setupPurchaseListener(
@@ -47,8 +52,12 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
             }
         );
 
-        const items = await getProducts();
-        // Sort by price rough approximation or predefined order
+        // Call getProducts with the logging callback
+        const items = await getProducts((newLog) => {
+            setLogs(prev => prev + newLog);
+        });
+
+        // Simple sort by price estimation or ID
         const sortOrder = ['coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
         items.sort((a, b) => sortOrder.indexOf(a.productId) - sortOrder.indexOf(b.productId));
         
@@ -61,7 +70,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 
     return () => {
         if (removeListeners) removeListeners();
-        if (isVisible) endIAP(); // Cleanup connection on modal close/unmount
+        if (isVisible) endIAP(); 
     };
   }, [isVisible]);
 
@@ -71,7 +80,6 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
           await purchaseProduct(sku);
       } catch (error) {
           setPurchasingSku(null);
-          // Errors handled by listener usually, but request failures come here
       }
   };
 
@@ -126,6 +134,17 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 </TouchableOpacity>
             </View>
             
+            {/* === DEBUG LOG VIEWER START === */}
+            <View style={{ height: 150, backgroundColor: '#000', margin: 10, padding: 5, borderRadius: 5 }}>
+                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold', marginBottom: 5 }}>DEBUG CONSOLE:</Text>
+                <ScrollView nestedScrollEnabled>
+                    <Text style={{ color: '#0F0', fontSize: 10, fontFamily: 'monospace' }}>
+                        {logs}
+                    </Text>
+                </ScrollView>
+            </View>
+            {/* === DEBUG LOG VIEWER END === */}
+            
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -147,7 +166,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 const useStyles = makeStyles((theme) => ({
     overlay: {
         width: '90%',
-        maxHeight: '80%',
+        maxHeight: '90%', // Increased height to fit logs
         borderRadius: 20,
         padding: 0,
         backgroundColor: theme.colors.background,

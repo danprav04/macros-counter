@@ -3,7 +3,7 @@ import { Platform, Alert } from 'react-native';
 import {
   initConnection,
   endConnection,
-  fetchProducts as getIapProducts, // Renamed from getProducts in newer versions
+  fetchProducts as getIapProducts, // UPDATED: v14+ uses fetchProducts
   requestPurchase,
   purchaseUpdatedListener,
   purchaseErrorListener,
@@ -44,7 +44,6 @@ export interface ProductDisplay {
 export const initIAP = async (): Promise<void> => {
   try {
     await initConnection();
-    // Note: flushFailedPurchasesCachedAsPendingAndroid is deprecated/handled automatically in v12+
   } catch (err) {
     console.error('IAP Initialization Error:', err);
   }
@@ -58,75 +57,84 @@ export const endIAP = async (): Promise<void> => {
   }
 };
 
-export const getProducts = async (): Promise<ProductDisplay[]> => {
+/**
+ * Modified getProducts for On-Screen Debugging
+ * Accepts an optional callback to stream logs to the UI.
+ */
+export const getProducts = async (onLog?: (msg: string) => void): Promise<ProductDisplay[]> => {
+  const log = (msg: string) => {
+      console.log(msg); 
+      if (onLog) onLog(msg + '\n'); 
+  };
+
   try {
-    // 1. Log the IDs we are requesting
-    console.log('[IAP Debug] Requesting SKUs:', productIds);
+    log('1. Starting getProducts...');
+    log(`2. IDs: ${JSON.stringify(productIds)}`);
 
-    // 2. Ensure connection is active
+    // STEP A: CONNECTION
+    log('3. Calling initConnection()...');
     try {
-        await initConnection();
-    } catch (e: any) {
-        Alert.alert("IAP Error", `Connection failed: ${e.message}`);
+        const connectionResult = await initConnection();
+        log(`4. Connection Result: ${JSON.stringify(connectionResult)}`);
+    } catch (connErr: any) {
+        log(`4. ERROR: initConnection failed: ${connErr.message}`);
         return [];
     }
 
-    // 3. Fetch products
-    const result = await getIapProducts({ skus: productIds });
-    console.log('[IAP Debug] Result:', result);
+    // STEP B: FETCHING
+    log('5. Calling fetchProducts...');
     
-    // 4. Alert if empty (For debugging only - remove before public launch)
-    if (!result || result.length === 0) {
-        const msg = `Google returned 0 products.\n\nChecked SKUs:\n${productIds.join('\n')}`;
-        Alert.alert("IAP Debug: Empty List", msg);
+    // UPDATED: Using the imported alias 'getIapProducts' which now points to 'fetchProducts'
+    const result = await getIapProducts({ skus: productIds });
+    
+    if (!result) {
+        log('6. Result is NULL or UNDEFINED');
         return [];
     }
 
-    return result.map((p) => {
-        // Cast to any to safely access fields across different library versions
-        const raw = p as any;
-        
-        // Log the raw item to see what Google actually sent
-        console.log('[IAP Debug] Item:', raw);
+    log(`6. Result length: ${result.length}`);
 
-        const id = raw.productId || raw.id;
-        
-        // Robust price extraction
+    if (result.length > 0) {
+        // Cast to 'any' to avoid TypeScript union type errors
+        const firstItem = result[0] as any;
+        log(`7. First Item ID: ${firstItem.productId || firstItem.id}`);
+    } else {
+        log('7. WARNING: Array is empty. Check Google Console Config.');
+    }
+
+    // STEP C: MAPPING
+    // UPDATED: Explicitly typed 'p' as 'any' to resolve TS7006
+    return result.map((p: any) => {
+        const raw = p;
+        const id = raw.id || raw.productId;
         const localizedPrice = 
+            raw.displayPrice || 
             raw.localizedPrice || 
             raw.oneTimePurchaseOfferDetails?.formattedPrice || 
-            raw.price ||
-            'Unavailable';
-
-        const currency = 
-            raw.priceCurrencyCode || 
-            raw.oneTimePurchaseOfferDetails?.priceCurrencyCode || 
-            'USD';
-
+            '';
+            
         return {
             productId: id,
-            title: raw.title?.replace(/\s?\(.*?\)$/, '') || 'Unknown Title', 
+            title: raw.title?.replace(/\s?\(.*?\)$/, '') || '', 
             price: raw.price?.toString() || '', 
             description: raw.description || '',
-            currency: currency,
+            currency: raw.currency || '',
             localizedPrice: localizedPrice,
         };
     });
+
   } catch (err: any) {
-    console.error('[IAP] Get Products Error:', err);
-    // Show the actual error on screen
-    Alert.alert("IAP Fetch Error", `Code: ${err.code}\nMessage: ${err.message}`);
+    log(`CRITICAL CATCH: ${err.message}`);
+    if (err.code) log(`ERROR CODE: ${err.code}`);
     return [];
   }
 };
 
 export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
-    // Construct purchase arguments based on platform
-    // Cast to any to avoid strict type errors if library types are mismatched
     const purchaseArgs: any = Platform.select({
-      android: { skus: [productId] }, // Android requires 'skus' array
-      ios: { sku: productId }         // iOS typically requires 'sku' string
+      android: { skus: [productId] },
+      ios: { sku: productId }
     });
 
     await requestPurchase(purchaseArgs);
@@ -136,20 +144,17 @@ export const purchaseProduct = async (productId: string): Promise<void> => {
   }
 };
 
-// This function handles the purchase lifecycle
 export const setupPurchaseListener = (
     onPurchaseSuccess: (coinsAdded: number) => void,
     onPurchaseError: (error: string) => void
 ) => {
     const purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
-        // Cast to any to safely access platform-specific receipt fields
         const p = purchase as any;
         const receipt = p.transactionReceipt; // iOS
         const token = p.purchaseToken;        // Android
         
         if (receipt || token) {
             try {
-                // Verify with our backend
                 const result = await verifyBackendPurchase({
                     platform: Platform.OS === 'ios' ? 'ios' : 'android',
                     productId: purchase.productId,
@@ -158,15 +163,11 @@ export const setupPurchaseListener = (
                     receiptData: receipt || undefined
                 });
 
-                // Finish transaction only after backend verification
                 await finishTransaction({ purchase, isConsumable: true });
-                
                 onPurchaseSuccess(result.coins_added);
                 
             } catch (error: any) {
                 console.error('Purchase Verification Error:', error);
-                // If backend error is not retryable, we usually still finish transaction to avoid stuck loop.
-                // For now, alerting user.
                 onPurchaseError(error.message || t('iap.errorVerification'));
             }
         }
@@ -174,7 +175,6 @@ export const setupPurchaseListener = (
 
     const purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
         console.warn('IAP Purchase Error Listener:', error);
-        // ErrorCode.E_USER_CANCELLED was renamed to ErrorCode.UserCancelled in recent versions
         if (error.code !== ErrorCode.UserCancelled) {
              onPurchaseError(error.message);
         }
