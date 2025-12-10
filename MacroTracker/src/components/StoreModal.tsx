@@ -24,13 +24,17 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
   // DEBUG STATE
   const [logs, setLogs] = useState<string>('');
 
+  const addLog = (msg: string) => {
+      setLogs(prev => prev + msg + '\n');
+  };
+
   useEffect(() => {
     let removeListeners: (() => void) | undefined;
 
     const initialize = async () => {
       if (isVisible) {
         setLoading(true);
-        setLogs('Initializing Store...\n'); // Reset logs
+        setLogs('Initializing Store...\n'); 
 
         await initIAP();
         
@@ -54,15 +58,19 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 
         // Call getProducts with the logging callback
         const items = await getProducts((newLog) => {
-            setLogs(prev => prev + newLog);
+            // Using the local helper to ensure state updates cleanly
+            addLog(newLog.trim());
         });
 
-        // Simple sort by price estimation or ID
+        addLog(`8. Fetched ${items.length} items. Sorting...`);
+
+        // Simple sort
         const sortOrder = ['coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
         items.sort((a, b) => sortOrder.indexOf(a.productId) - sortOrder.indexOf(b.productId));
         
         setProducts(items);
         setLoading(false);
+        addLog('9. DONE. Loading set to false.');
       }
     };
 
@@ -76,9 +84,11 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 
   const handleBuy = async (sku: string) => {
       setPurchasingSku(sku);
+      addLog(`Buying ${sku}...`);
       try {
           await purchaseProduct(sku);
-      } catch (error) {
+      } catch (error: any) {
+          addLog(`Buy Error: ${error.message}`);
           setPurchasingSku(null);
       }
   };
@@ -119,6 +129,24 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       );
   };
 
+  // Determine what to render in the content area
+  const renderContent = () => {
+      if (products.length > 0) {
+          return products.map(renderProductItem);
+      }
+      
+      if (loading) {
+          return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={{marginTop: 10, color: theme.colors.grey3}}>Loading Products...</Text>
+            </View>
+          );
+      }
+
+      return <Text style={styles.emptyText}>{t('iap.noProducts')}</Text>;
+  };
+
   return (
     <Overlay 
         isVisible={isVisible} 
@@ -134,30 +162,20 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 </TouchableOpacity>
             </View>
             
-            {/* === DEBUG LOG VIEWER START === */}
-            <View style={{ height: 150, backgroundColor: '#000', margin: 10, padding: 5, borderRadius: 5 }}>
-                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold', marginBottom: 5 }}>DEBUG CONSOLE:</Text>
-                <ScrollView nestedScrollEnabled>
-                    <Text style={{ color: '#0F0', fontSize: 10, fontFamily: 'monospace' }}>
-                        {logs}
-                    </Text>
+            {/* === DEBUG LOG VIEWER === */}
+            <View style={styles.debugBox}>
+                <Text style={styles.debugHeader}>DEBUG CONSOLE:</Text>
+                <ScrollView nestedScrollEnabled style={{ flex: 1 }}>
+                    <Text style={styles.debugText}>{logs}</Text>
                 </ScrollView>
             </View>
-            {/* === DEBUG LOG VIEWER END === */}
-            
-            {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
-                </View>
-            ) : (
+
+            {/* === MAIN CONTENT SCROLLVIEW === */}
+            <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    {products.length > 0 ? (
-                        products.map(renderProductItem)
-                    ) : (
-                        <Text style={styles.emptyText}>{t('iap.noProducts')}</Text>
-                    )}
+                    {renderContent()}
                 </ScrollView>
-            )}
+            </View>
         </View>
     </Overlay>
   );
@@ -166,14 +184,15 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 const useStyles = makeStyles((theme) => ({
     overlay: {
         width: '90%',
-        maxHeight: '90%', // Increased height to fit logs
+        height: '90%', // Fixed height to prevent collapse
         borderRadius: 20,
         padding: 0,
         backgroundColor: theme.colors.background,
     },
     container: {
         flex: 1,
-        paddingBottom: 20,
+        display: 'flex',
+        flexDirection: 'column',
     },
     header: {
         flexDirection: 'row',
@@ -182,17 +201,42 @@ const useStyles = makeStyles((theme) => ({
         padding: 20,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.divider,
+        flexShrink: 0,
     },
     headerTitle: {
         color: theme.colors.text,
         fontWeight: 'bold',
     },
+    debugBox: {
+        height: 120, // Reduced height for logs
+        backgroundColor: '#000',
+        margin: 10,
+        padding: 8,
+        borderRadius: 5,
+        flexShrink: 0,
+    },
+    debugHeader: {
+        color: '#FFF', 
+        fontSize: 10, 
+        fontWeight: 'bold', 
+        marginBottom: 5
+    },
+    debugText: {
+        color: '#0F0', 
+        fontSize: 10, 
+        fontFamily: 'monospace'
+    },
+    contentContainer: {
+        flex: 1, // Take remaining space
+        minHeight: 0, // Crucial for nested flex containers
+    },
     loadingContainer: {
-        padding: 50,
+        padding: 30,
         alignItems: 'center',
     },
     scrollContent: {
         padding: 15,
+        paddingBottom: 40,
     },
     productCard: {
         backgroundColor: theme.colors.card,
