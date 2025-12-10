@@ -60,43 +60,62 @@ export const endIAP = async (): Promise<void> => {
 
 export const getProducts = async (): Promise<ProductDisplay[]> => {
   try {
-    const result = await getIapProducts({ skus: productIds });
-    
-    // Fix: Handle 'products' possibly being null/undefined
-    const products = result || [];
-    
-    return products.map((p) => {
-        // Cast to any to handle property name changes in v12+ (id vs productId)
-        // and platform differences (oneTimePurchaseOfferDetails vs direct properties)
-        const raw = p as any;
+    // 1. Log the IDs we are requesting
+    console.log('[IAP Debug] Requesting SKUs:', productIds);
 
-        // In v12+, 'id' is often used instead of 'productId'
-        const id = raw.id || raw.productId;
+    // 2. Ensure connection is active
+    try {
+        await initConnection();
+    } catch (e: any) {
+        Alert.alert("IAP Error", `Connection failed: ${e.message}`);
+        return [];
+    }
+
+    // 3. Fetch products
+    const result = await getIapProducts({ skus: productIds });
+    console.log('[IAP Debug] Result:', result);
+    
+    // 4. Alert if empty (For debugging only - remove before public launch)
+    if (!result || result.length === 0) {
+        const msg = `Google returned 0 products.\n\nChecked SKUs:\n${productIds.join('\n')}`;
+        Alert.alert("IAP Debug: Empty List", msg);
+        return [];
+    }
+
+    return result.map((p) => {
+        // Cast to any to safely access fields across different library versions
+        const raw = p as any;
         
-        // Handle Price Display (displayPrice is common in newer versions)
+        // Log the raw item to see what Google actually sent
+        console.log('[IAP Debug] Item:', raw);
+
+        const id = raw.productId || raw.id;
+        
+        // Robust price extraction
         const localizedPrice = 
-            raw.displayPrice || 
             raw.localizedPrice || 
             raw.oneTimePurchaseOfferDetails?.formattedPrice || 
-            '';
+            raw.price ||
+            'Unavailable';
 
         const currency = 
-            raw.currency || 
             raw.priceCurrencyCode || 
             raw.oneTimePurchaseOfferDetails?.priceCurrencyCode || 
-            '';
+            'USD';
 
         return {
             productId: id,
-            title: raw.title?.replace(/\s?\(.*?\)$/, '') || '', 
+            title: raw.title?.replace(/\s?\(.*?\)$/, '') || 'Unknown Title', 
             price: raw.price?.toString() || '', 
             description: raw.description || '',
             currency: currency,
             localizedPrice: localizedPrice,
         };
     });
-  } catch (err) {
-    console.error('IAP Get Products Error:', err);
+  } catch (err: any) {
+    console.error('[IAP] Get Products Error:', err);
+    // Show the actual error on screen
+    Alert.alert("IAP Fetch Error", `Code: ${err.code}\nMessage: ${err.message}`);
     return [];
   }
 };
