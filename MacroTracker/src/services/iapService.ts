@@ -3,7 +3,7 @@ import { Platform, Alert } from 'react-native';
 import {
   initConnection,
   endConnection,
-  fetchProducts as getIapProducts, // UPDATED: v14+ uses fetchProducts
+  fetchProducts as getIapProducts, 
   requestPurchase,
   purchaseUpdatedListener,
   purchaseErrorListener,
@@ -83,8 +83,6 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
 
     // STEP B: FETCHING
     log('5. Calling fetchProducts...');
-    
-    // UPDATED: Using the imported alias 'getIapProducts' which now points to 'fetchProducts'
     const result = await getIapProducts({ skus: productIds });
     
     if (!result) {
@@ -95,7 +93,6 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
     log(`6. Result length: ${result.length}`);
 
     if (result.length > 0) {
-        // Cast to 'any' to avoid TypeScript union type errors
         const firstItem = result[0] as any;
         log(`7. First Item ID: ${firstItem.productId || firstItem.id}`);
     } else {
@@ -103,7 +100,6 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
     }
 
     // STEP C: MAPPING
-    // UPDATED: Explicitly typed 'p' as 'any' to resolve TS7006
     return result.map((p: any) => {
         const raw = p;
         const id = raw.id || raw.productId;
@@ -132,12 +128,12 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
 
 export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
-    const purchaseArgs: any = Platform.select({
-      android: { skus: [productId] },
-      ios: { sku: productId }
-    });
-
-    await requestPurchase(purchaseArgs);
+    console.log(`[IAP] Requesting purchase for sku: ${productId}`);
+    
+    // FIX: Cast object to 'any' to resolve TypeScript error 2353.
+    // We strictly use 'sku' (singular) here to fix the runtime "Missing purchase request configuration" error.
+    await requestPurchase({ sku: productId } as any);
+    
   } catch (err) {
     console.error('IAP Purchase Error:', err);
     throw err;
@@ -153,8 +149,11 @@ export const setupPurchaseListener = (
         const receipt = p.transactionReceipt; // iOS
         const token = p.purchaseToken;        // Android
         
+        console.log('[IAP] Purchase Updated:', purchase.productId);
+
         if (receipt || token) {
             try {
+                console.log('[IAP] Verifying with backend...');
                 const result = await verifyBackendPurchase({
                     platform: Platform.OS === 'ios' ? 'ios' : 'android',
                     productId: purchase.productId,
@@ -163,11 +162,14 @@ export const setupPurchaseListener = (
                     receiptData: receipt || undefined
                 });
 
+                console.log('[IAP] Backend verification success. Finishing transaction.');
                 await finishTransaction({ purchase, isConsumable: true });
                 onPurchaseSuccess(result.coins_added);
                 
             } catch (error: any) {
                 console.error('Purchase Verification Error:', error);
+                // Even on error, we might want to alert the user but NOT finish the transaction
+                // so they can try to "Restore" or we can retry later.
                 onPurchaseError(error.message || t('iap.errorVerification'));
             }
         }
