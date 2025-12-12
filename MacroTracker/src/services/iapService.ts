@@ -128,11 +128,17 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
 
 export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
-    console.log(`[IAP] Requesting purchase for sku: ${productId}`);
+    console.log(`[IAP] Requesting purchase for: ${productId}`);
     
-    // FIX: Cast object to 'any' to resolve TypeScript error 2353.
-    // We strictly use 'sku' (singular) here to fix the runtime "Missing purchase request configuration" error.
-    await requestPurchase({ sku: productId } as any);
+    // FIX: Correctly handle platform-specific arguments for requestPurchase.
+    // Android requires 'skus' (array), iOS requires 'sku' (string).
+    // We cast to 'any' to resolve the TypeScript error about unknown properties.
+    const purchaseArgs: any = Platform.select({
+      android: { skus: [productId] },
+      ios: { sku: productId }
+    });
+
+    await requestPurchase(purchaseArgs);
     
   } catch (err) {
     console.error('IAP Purchase Error:', err);
@@ -168,8 +174,6 @@ export const setupPurchaseListener = (
                 
             } catch (error: any) {
                 console.error('Purchase Verification Error:', error);
-                // Even on error, we might want to alert the user but NOT finish the transaction
-                // so they can try to "Restore" or we can retry later.
                 onPurchaseError(error.message || t('iap.errorVerification'));
             }
         }
