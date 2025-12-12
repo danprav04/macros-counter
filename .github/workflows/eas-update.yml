@@ -16,6 +16,8 @@ jobs:
   update:
     name: Publish EAS Update
     runs-on: ubuntu-latest
+    environment: Production  # <--- THIS WAS MISSING
+    
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,9 +38,7 @@ jobs:
 
       - name: Publish Update
         working-directory: ./MacroTracker
-        # Publishes the update to the specified branch (mapped to your channels)
         run: eas update --branch ${{ github.event.inputs.branch }} --message "${{ github.event.inputs.message }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          # Ensure the production backend URL is baked into the update
           EXPO_PUBLIC_BACKEND_URL_PRODUCTION: ${{ secrets.EXPO_PUBLIC_BACKEND_URL_PRODUCTION }}
