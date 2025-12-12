@@ -92,12 +92,7 @@
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ],
-      [
-        "expo-document-picker",
-        {
-          "appleTeamId": "YOUR_TEAM_ID"
-        }
-      ],
+      "expo-document-picker",
       [
         "expo-image-picker",
         {
