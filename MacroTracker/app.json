@@ -56,8 +56,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "pathPrefix": "/"
+              "host": "v1.macros-vision-ai.xyz"
             }
           ],
           "category": [
