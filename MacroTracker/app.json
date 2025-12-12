@@ -3,6 +3,9 @@
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
     "version": "4.4.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

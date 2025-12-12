@@ -16,7 +16,7 @@ jobs:
   update:
     name: Publish EAS Update
     runs-on: ubuntu-latest
-    environment: Production  # <--- THIS WAS MISSING
+    environment: Production
     
     steps:
       - name: Check out repository
@@ -35,6 +35,10 @@ jobs:
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
+
+      - name: Check Runtime Version
+        working-directory: ./MacroTracker
+        run: npx expo config --json | grep runtimeVersion || echo "WARNING runtimeVersion not found"
 
       - name: Publish Update
         working-directory: ./MacroTracker
