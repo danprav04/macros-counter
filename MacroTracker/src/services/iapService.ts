@@ -83,6 +83,7 @@ export const getProducts = async (onLog?: (msg: string) => void): Promise<Produc
 
     // STEP B: FETCHING
     log('5. Calling fetchProducts...');
+    // v14 fetchProducts typically accepts { skus: string[] }
     const result = await getIapProducts({ skus: productIds });
     
     if (!result) {
@@ -130,15 +131,20 @@ export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
     console.log(`[IAP] Requesting purchase for: ${productId}`);
     
-    // FIX: Correctly handle platform-specific arguments for requestPurchase.
-    // Android requires 'skus' (array), iOS requires 'sku' (string).
-    // We cast to 'any' to resolve the TypeScript error about unknown properties.
-    const purchaseArgs: any = Platform.select({
-      android: { skus: [productId] },
-      ios: { sku: productId }
+    // FIX: Updated for react-native-iap v14 (Open IAP Standard).
+    // The library now requires a nested 'request' object with platform specific configs
+    // to strictly map to the underlying C++ Nitro structures.
+    await requestPurchase({
+        request: {
+            ios: {
+                sku: productId,
+            },
+            android: {
+                skus: [productId],
+            }
+        },
+        type: 'in-app' // Explicitly strictly defined as in-app (consumable)
     });
-
-    await requestPurchase(purchaseArgs);
     
   } catch (err) {
     console.error('IAP Purchase Error:', err);
@@ -155,7 +161,12 @@ export const setupPurchaseListener = (
         const receipt = p.transactionReceipt; // iOS
         const token = p.purchaseToken;        // Android
         
-        console.log('[IAP] Purchase Updated:', purchase.productId);
+        console.log('[IAP] Purchase Updated:', purchase.productId, 'State:', p.transactionStateAndroid);
+
+        // Note: For a strictly robust implementation, we should check transactionState
+        // e.g. if (Platform.OS === 'android' && p.transactionStateAndroid === 4) { return; } // PENDING
+        // However, we rely on the presence of receipt/token and the backend verification 
+        // to determine validity.
 
         if (receipt || token) {
             try {
@@ -169,7 +180,9 @@ export const setupPurchaseListener = (
                 });
 
                 console.log('[IAP] Backend verification success. Finishing transaction.');
+                // For 'in-app' (consumables like coins), we must consume it.
                 await finishTransaction({ purchase, isConsumable: true });
+                
                 onPurchaseSuccess(result.coins_added);
                 
             } catch (error: any) {

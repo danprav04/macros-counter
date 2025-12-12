@@ -90,6 +90,8 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       } catch (error: any) {
           addLog(`Buy Error: ${error.message}`);
           setPurchasingSku(null);
+          // UX Fix: Alert the user if initiation fails (e.g. network error, validation error)
+          Alert.alert(t('iap.errorTitle'), error.message || 'Failed to initiate purchase.');
       }
   };
 
