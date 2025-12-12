@@ -49,35 +49,12 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "data": [
-            {
-              "scheme": "macrosvisionai",
-              "host": "open-add-food-modal"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        },
-        {
-          "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
               "scheme": "https",
               "host": "v1.macros-vision-ai.xyz",
-              "pathPrefix": "/share/food"
-            },
-            {
-              "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "pathPrefix": "/login"
-            },
-            {
-              "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "path": "/"
+              "pathPrefix": "/"
             }
           ],
           "category": [
