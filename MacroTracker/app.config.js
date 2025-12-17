@@ -10,6 +10,11 @@ export default {
   icon: "./assets/icon.png",
   scheme: "macrosvisionai",
   userInterfaceStyle: "automatic",
+  // --- ADDED THIS SECTION ---
+  updates: {
+    url: "https://u.expo.dev/25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
+  },
+  // --------------------------
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
