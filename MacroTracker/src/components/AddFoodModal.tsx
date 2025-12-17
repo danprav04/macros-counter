@@ -114,7 +114,23 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             createdAt: new Date().toISOString(),
         };
         return calculateBaseFoodGrade(tempFood);
-    }, [newFood, editFood]); // Dependencies are the props that change on input
+    }, [newFood, editFood]); 
+
+    // Determine if form is valid for enabling/disabling the submit button
+    const isFormValid = useMemo(() => {
+        const currentData = getCurrentFoodData();
+        const dataToValidate: Food | FoodFormData = {
+            ...currentData,
+            name: (currentData.name ?? "").trim(),
+            calories: Number(currentData.calories) || 0,
+            protein: Number(currentData.protein) || 0,
+            carbs: Number(currentData.carbs) || 0,
+            fat: Number(currentData.fat) || 0,
+        };
+        // validateFood returns an object with errors if invalid, or null if valid
+        const validationResult = validateFood(dataToValidate);
+        return validationResult === null;
+    }, [newFood, editFood, validateFood]);
 
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
@@ -448,22 +464,24 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         </View>
                     </ScrollView>
 
-                    {/* Footer with action button */}
-                    <View style={styles.footer}>
-                        <Button 
-                            title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
-                            onPress={handleCreateOrUpdate}
-                            buttonStyle={[ 
-                                styles.primaryButton, 
-                                { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
-                            ]}
-                            titleStyle={styles.primaryButtonTitle} 
-                            loading={showLoading} 
-                            disabled={isAnyLoading} 
-                            containerStyle={styles.primaryButtonContainer}
-                            disabledStyle={styles.primaryButtonDisabled}
-                        />
-                    </View>
+                    {/* Footer with action button - Hide if invalid/disabled unless loading */}
+                    {(isFormValid || isAnyLoading) && (
+                        <View style={styles.footer}>
+                            <Button 
+                                title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
+                                onPress={handleCreateOrUpdate}
+                                buttonStyle={[ 
+                                    styles.primaryButton, 
+                                    { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
+                                ]}
+                                titleStyle={styles.primaryButtonTitle} 
+                                loading={showLoading} 
+                                disabled={isAnyLoading || !isFormValid} 
+                                containerStyle={styles.primaryButtonContainer}
+                                disabledStyle={styles.primaryButtonDisabled}
+                            />
+                        </View>
+                    )}
                 </View>
             </KeyboardAvoidingView>
         </Overlay>

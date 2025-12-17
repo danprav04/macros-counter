@@ -485,6 +485,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         buttonColor = theme.colors.primary;
     }
 
+    if (disabled && !loading) return null;
+
     return (
         <View style={styles.footerContainer}>
             <Button
