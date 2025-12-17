@@ -13,6 +13,24 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # --- NEW: Free Disk Space (Fixes "No space left on device" error) ---
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # We don't want to remove installed tools unless necessary, 
+          # but we definitely want to remove large unused runtimes.
+          tool-cache: false
+          
+          # KEEP Android (so setup-android doesn't have to re-download everything)
+          android: false 
+          
+          # DELETE these to free up ~10GB+
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -29,19 +47,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # --- NEW: Cache Gradle Dependencies ---
+      # --- Cache Gradle Dependencies ---
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          # Key includes hash of lock files to invalidate if dependencies change
           key: ${{ runner.os }}-gradle-${{ hashFiles('MacroTracker/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # --- NEW: Cache Android NDK ---
+      # --- Cache Android NDK ---
       - name: Cache Android NDK
         id: cache-ndk
         uses: actions/cache@v4
@@ -71,7 +88,6 @@ jobs:
 
       - name: Build with EAS (Local Production)
         working-directory: ./MacroTracker
-        # Added --no-wait to exit if queueing remotely (not applicable for --local but good habit)
         run: eas build --platform android --profile production --non-interactive --local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
