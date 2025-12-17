@@ -74,7 +74,8 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 setPurchasingSku(null);
                 
                 // Don't show alert for user cancellation events coming from listener
-                if (!errorMessage.includes('cancel')) {
+                // We assume the immediate catch block handles the user interaction feedback
+                if (!errorMessage.toLowerCase().includes('cancel')) {
                     Alert.alert(t('iap.errorTitle'), errorMessage);
                 }
             }
@@ -116,8 +117,8 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
           setPurchasingSku(null);
 
           // 4. Handle Immediate Errors (User Cancellation or Setup Failure)
-          if (error.code === ErrorCode.E_USER_CANCELLED || error.message.includes('cancel')) {
-              // User cancelled the dialog. Just reset UI.
+          // Fixed ErrorCode enum property access based on latest react-native-iap types
+          if (error.code === ErrorCode.UserCancelled || error.message.toLowerCase().includes('cancel')) {
               Toast.show({
                   type: 'info',
                   text1: t('iap.purchaseCancelled'),
