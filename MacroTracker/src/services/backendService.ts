@@ -135,3 +135,25 @@ export const updateUserCompliance = (data: {
     acknowledged_not_medical_device_at?: string;
     agreed_to_human_in_the_loop_at?: string;
 }): Promise<User> => fetchBackend('/users/update-compliance', { method: 'POST', body: JSON.stringify(data) });
+
+// Purchase Verification
+export interface PurchaseVerificationResult {
+    success: boolean;
+    new_balance: number;
+    message: string;
+    coins_added: number;
+}
+
+export const verifyPurchase = (data: {
+    platform: 'android' | 'ios';
+    productId: string;
+    transactionId: string;
+    purchaseToken?: string;
+    receiptData?: string;
+}): Promise<PurchaseVerificationResult> => fetchBackend('/payments/verify-purchase', { method: 'POST', body: JSON.stringify({
+    platform: data.platform,
+    product_id: data.productId,
+    transaction_id: data.transactionId,
+    purchase_token: data.purchaseToken,
+    receipt_data: data.receiptData
+}) });

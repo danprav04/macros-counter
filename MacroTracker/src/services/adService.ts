@@ -1,5 +1,5 @@
 // src/services/adService.ts
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import mobileAds, {
   RewardedAd,
   RewardedAdEventType,
@@ -11,8 +11,7 @@ import { startRewardAdProcess } from './backendService';
 import { t } from '../localization/i18n';
 
 // Use the official test ID for development to prevent policy violations.
-// Replace the placeholder with your actual production Ad Unit ID from AdMob.
-const productionAdUnitId = 'ca-app-pub-5977125521868950/6021803585'; // <-- REPLACE THIS
+const productionAdUnitId = 'ca-app-pub-5977125521868950/6021803585';
 const adUnitId = __DEV__ ? TestIds.REWARDED : productionAdUnitId;
 
 let isAdShowing = false;

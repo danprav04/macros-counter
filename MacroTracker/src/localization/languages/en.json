@@ -351,6 +351,18 @@
     "errorPermission": "Permission Required",
     "errorCameraPermission": "Camera access needed."
   },
+  "iap": {
+    "storeTitle": "Coin Store",
+    "purchaseSuccessTitle": "Purchase Successful",
+    "purchaseSuccessMessage": "Added %{coins} coins to your balance!",
+    "purchasePendingTitle": "Payment Pending",
+    "purchasePendingMessage": "Your payment is being processed. Coins will be added once approved.",
+    "purchaseCancelled": "Purchase cancelled by user.",
+    "purchaseFailedGeneric": "Failed to initiate purchase.",
+    "errorTitle": "Store Error",
+    "errorVerification": "Verification failed. Please contact support.",
+    "noProducts": "No products available."
+  },
   "foodFormFields": {
     "foodName": "Food Name",
     "calories": "Calories (per 100g)",

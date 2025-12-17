@@ -15,6 +15,7 @@ import UserBadge from "./UserBadge";
 import { useCosts } from "../context/CostsContext";
 import PriceTag from "./PriceTag";
 import useDelayedLoading from "../hooks/useDelayedLoading";
+import StoreModal from "./StoreModal";
 
 interface AccountSettingsProps {
   user: User | null;
@@ -35,6 +36,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
   const styles = useStyles();
   const [cooldown, setCooldown] = useState(0);
   const { costs } = useCosts();
+  const [isStoreVisible, setIsStoreVisible] = useState(false);
   
   const showIsLoading = useDelayedLoading(isLoading);
   const showIsAdLoading = useDelayedLoading(isAdLoading);
@@ -122,6 +124,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
 
   return (
     <View>
+      <StoreModal isVisible={isStoreVisible} onClose={() => setIsStoreVisible(false)} />
+      
       <ListItem bottomDivider containerStyle={styles.listItem}>
         <Icon
           name="email-outline"
@@ -195,6 +199,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
             <Text style={[styles.valueText, styles.coinValue]}>
               {user?.coins ?? t("accountSettings.notApplicable")}
             </Text>
+            
+            <TouchableOpacity onPress={() => setIsStoreVisible(true)} style={styles.iconBtn}>
+                <Icon name="cart-plus" type="material-community" color={theme.colors.success} size={24} />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={onWatchAd}
               disabled={isAdLoading}
@@ -321,6 +330,7 @@ const useStyles = makeStyles((theme) => ({
   coinContainer: { flexDirection: "row", alignItems: "center" },
   adButton: { marginLeft: 15, padding: 5 },
   adButtonContent: { flexDirection: "row", alignItems: "center" },
+  iconBtn: { marginLeft: 15, padding: 5 },
   badgesContainer: {
     flexDirection: "row",
     flexWrap: "wrap",

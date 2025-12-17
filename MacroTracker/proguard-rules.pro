@@ -16,7 +16,7 @@
 # Prevent R8 from removing annotations
 -keepattributes *Annotation*
 
-# Keep Javascript an source-code related attributes
+# Keep Javascript and source-code related attributes
 -keepattributes JavascriptInterface,SourceFile,LineNumberTable
 
 # Keep static inner classes with this pattern
@@ -47,4 +47,26 @@
     *;
 }
 
-# Add any other rules for third-party libraries that require them here
+# -------------------------------------------------------------------------
+# React Native IAP & Google Play Billing Rules
+# -------------------------------------------------------------------------
+
+# Keep Google Play Billing Library (Crucial for v6+)
+-keep class com.android.billingclient.** { *; }
+
+# Keep React Native IAP library classes
+-keep class com.dooboolab.rniap.** { *; }
+
+# Keep Google Play Services API (Needed for some billing intents)
+-keep class com.google.android.gms.common.api.** { *; }
+
+# Kotlin Metadata (Required for billing client reflection to work correctly)
+-keep class kotlin.Metadata { *; }
+
+# -------------------------------------------------------------------------
+# React Native Nitro Modules (Required for IAP v14+)
+# -------------------------------------------------------------------------
+
+# Keep Nitro Modules interfaces (prevent stripping of hybrid objects)
+-keep class com.margelo.nitro.** { *; }
+-keep class com.facebook.react.turbo.** { *; }

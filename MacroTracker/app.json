@@ -2,7 +2,10 @@
   "expo": {
     "name": "Macros Vision AI",
     "slug": "MacroTracker",
-    "version": "4.3.3",
+    "version": "4.4.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "owner": "danprav",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,35 +52,11 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "data": [
-            {
-              "scheme": "macrosvisionai",
-              "host": "open-add-food-modal"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        },
-        {
-          "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
               "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "pathPrefix": "/share/food"
-            },
-            {
-              "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "pathPrefix": "/login"
-            },
-            {
-              "scheme": "https",
-              "host": "v1.macros-vision-ai.xyz",
-              "path": "/"
+              "host": "v1.macros-vision-ai.xyz"
             }
           ],
           "category": [
@@ -113,12 +92,7 @@
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ],
-      [
-        "expo-document-picker",
-        {
-          "appleTeamId": "YOUR_TEAM_ID"
-        }
-      ],
+      "expo-document-picker",
       [
         "expo-image-picker",
         {
@@ -141,7 +115,7 @@
       },
       "env": {
         "BACKEND_URL_PRODUCTION": "https://v1.macros-vision-ai.xyz",
-        "BACKEND_URL_DEVELOPMENT": "https://quetzal-glad-lark.ngrok-free.app"
+        "BACKEND_URL_DEVELOPMENT": "https://v1.macros-vision-ai.xyz"
       }
     }
   }

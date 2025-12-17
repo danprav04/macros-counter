@@ -1,4 +1,3 @@
-# .github/workflows/android-production-build.yml
 name: EAS Android Production Build (Local)
 
 on:
@@ -13,6 +12,24 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      # --- NEW: Free Disk Space (Fixes "No space left on device" error) ---
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # We don't want to remove installed tools unless necessary, 
+          # but we definitely want to remove large unused runtimes.
+          tool-cache: false
+          
+          # KEEP Android (so setup-android doesn't have to re-download everything)
+          android: false 
+          
+          # DELETE these to free up ~10GB+
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -29,8 +46,29 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-      
+
+      # --- Cache Gradle Dependencies ---
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('MacroTracker/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # --- Cache Android NDK ---
+      - name: Cache Android NDK
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.0.12077973
+          key: ${{ runner.os }}-ndk-27.0.12077973
+
+      # Only install NDK if cache missed
       - name: Install Android NDK r27
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
         run: sdkmanager "ndk;27.0.12077973"
 
       - name: Install dependencies
@@ -46,7 +84,6 @@ jobs:
         run: |
           KEYSTORE_PATH="${PWD}/production.keystore"
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
-          echo "Keystore decoded to $KEYSTORE_PATH"
           echo "keystore_path=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
 
       - name: Build with EAS (Local Production)
@@ -59,6 +96,8 @@ jobs:
           EAS_BUILD_ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           EAS_BUILD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           EAS_BUILD_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Gradle optimization to use the cached daemon
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3072m"
 
       - name: Find AAB
         id: find_aab
