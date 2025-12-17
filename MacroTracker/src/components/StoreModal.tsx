@@ -44,12 +44,26 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
         removeListeners = setupPurchaseListener(
             (coinsAdded) => {
                 setPurchasingSku(null);
-                Toast.show({
-                    type: 'success',
-                    text1: t('iap.purchaseSuccessTitle'),
-                    text2: t('iap.purchaseSuccessMessage', { coins: coinsAdded }),
-                    position: 'bottom'
-                });
+                
+                // Handle distinctions between Immediate Success and Pending (Slow Card)
+                if (coinsAdded > 0) {
+                    Toast.show({
+                        type: 'success',
+                        text1: t('iap.purchaseSuccessTitle'),
+                        text2: t('iap.purchaseSuccessMessage', { coins: coinsAdded }),
+                        position: 'bottom'
+                    });
+                } else {
+                    // coinsAdded === 0 indicates a Pending transaction (e.g. Slow Test Card)
+                    Toast.show({
+                        type: 'info',
+                        text1: t('iap.purchasePendingTitle'),
+                        text2: t('iap.purchasePendingMessage'),
+                        position: 'bottom',
+                        visibilityTime: 6000 // Show longer for awareness
+                    });
+                }
+                
                 refreshUser();
                 onClose();
             },

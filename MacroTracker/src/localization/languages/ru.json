@@ -351,6 +351,16 @@
     "errorPermission": "Требуется разрешение",
     "errorCameraPermission": "Необходим доступ к камере."
   },
+  "iap": {
+    "storeTitle": "Магазин монет",
+    "purchaseSuccessTitle": "Покупка успешна",
+    "purchaseSuccessMessage": "Добавлено %{coins} монет на ваш баланс!",
+    "purchasePendingTitle": "Ожидание оплаты",
+    "purchasePendingMessage": "Ваш платеж обрабатывается. Монеты будут добавлены после одобрения.",
+    "errorTitle": "Ошибка магазина",
+    "errorVerification": "Ошибка проверки. Пожалуйста, обратитесь в службу поддержки.",
+    "noProducts": "Нет доступных продуктов."
+  },
   "foodFormFields": {
     "foodName": "Название продукта",
     "calories": "Калории (на 100г)",

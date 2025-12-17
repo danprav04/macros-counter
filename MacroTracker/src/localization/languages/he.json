@@ -351,6 +351,16 @@
     "errorPermission": "נדרשת הרשאה",
     "errorCameraPermission": "נדרשת גישה למצלמה."
   },
+  "iap": {
+    "storeTitle": "חנות המטבעות",
+    "purchaseSuccessTitle": "הרכישה בוצעה בהצלחה",
+    "purchaseSuccessMessage": "נוספו %{coins} מטבעות למאזן שלך!",
+    "purchasePendingTitle": "תשלום בהמתנה",
+    "purchasePendingMessage": "התשלום מעובד. המטבעות יתווספו לאחר האישור.",
+    "errorTitle": "שגיאת חנות",
+    "errorVerification": "האימות נכשל. אנא פנה לתמיכה.",
+    "noProducts": "אין מוצרים זמינים."
+  },
   "foodFormFields": {
     "foodName": "שם המאכל",
     "calories": "קלוריות (ל-100 גרם)",
