@@ -1,5 +1,5 @@
 // src/services/iapService.ts
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import {
   initConnection,
   endConnection,
@@ -9,7 +9,6 @@ import {
   purchaseErrorListener,
   finishTransaction,
   ErrorCode,
-  type Product,
   type Purchase,
   type PurchaseError
 } from 'react-native-iap';
@@ -131,9 +130,6 @@ export const purchaseProduct = async (productId: string): Promise<void> => {
   try {
     console.log(`[IAP] Requesting purchase for: ${productId}`);
     
-    // FIX: Updated for react-native-iap v14 (Open IAP Standard).
-    // The library now requires a nested 'request' object with platform specific configs
-    // to strictly map to the underlying C++ Nitro structures.
     await requestPurchase({
         request: {
             ios: {
@@ -154,7 +150,7 @@ export const purchaseProduct = async (productId: string): Promise<void> => {
 
 export const setupPurchaseListener = (
     onPurchaseSuccess: (coinsAdded: number) => void,
-    onPurchaseError: (error: string) => void
+    onPurchaseError: (error: { message: string, code?: string }) => void
 ) => {
     const purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
         const p = purchase as any;
@@ -162,11 +158,6 @@ export const setupPurchaseListener = (
         const token = p.purchaseToken;        // Android
         
         console.log('[IAP] Purchase Updated:', purchase.productId, 'State:', p.transactionStateAndroid);
-
-        // Note: For a strictly robust implementation, we should check transactionState
-        // e.g. if (Platform.OS === 'android' && p.transactionStateAndroid === 4) { return; } // PENDING
-        // However, we rely on the presence of receipt/token and the backend verification 
-        // to determine validity.
 
         if (receipt || token) {
             try {
@@ -187,16 +178,18 @@ export const setupPurchaseListener = (
                 
             } catch (error: any) {
                 console.error('Purchase Verification Error:', error);
-                onPurchaseError(error.message || t('iap.errorVerification'));
+                onPurchaseError({
+                    message: error.message || t('iap.errorVerification'),
+                    code: 'VERIFICATION_ERROR'
+                });
             }
         }
     });
 
     const purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
         console.warn('IAP Purchase Error Listener:', error);
-        if (error.code !== ErrorCode.UserCancelled) {
-             onPurchaseError(error.message);
-        }
+        // We propagate all errors, including UserCancelled, to allow the UI to reset state.
+        onPurchaseError({ message: error.message, code: error.code });
     });
 
     return () => {

@@ -1,6 +1,6 @@
 // src/components/StoreModal.tsx
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Overlay, Text, Button, Icon, useTheme, makeStyles } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { getProducts, purchaseProduct, ProductDisplay, setupPurchaseListener, initIAP, endIAP } from '../services/iapService';
@@ -72,14 +72,17 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                     // but we stop the spinner.
                 }
             },
-            (errorMessage) => {
-                // 3. Async Error Listener (e.g. Card Declined mid-process)
+            (errorObj) => {
+                // 3. Async Error Listener (e.g. Card Declined mid-process or User Cancelled)
                 setPurchasingSku(null);
                 
+                const isCancelled = errorObj.code === ErrorCode.UserCancelled || 
+                                    errorObj.message.toLowerCase().includes('cancel');
+
                 // Don't show alert for user cancellation events coming from listener
-                // We assume the immediate catch block handles the user interaction feedback
-                if (!errorMessage.toLowerCase().includes('cancel')) {
-                    Alert.alert(t('iap.errorTitle'), errorMessage);
+                // We assume the user knows they cancelled.
+                if (!isCancelled) {
+                    Alert.alert(t('iap.errorTitle'), errorObj.message);
                 }
             }
         );
