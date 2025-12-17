@@ -361,7 +361,13 @@
     "purchaseFailedGeneric": "Failed to initiate purchase.",
     "errorTitle": "Store Error",
     "errorVerification": "Verification failed. Please contact support.",
-    "noProducts": "No products available."
+    "noProducts": "No products available.",
+    "currentPrices": "Service Costs (Coins)",
+    "costImageSingle": "Analyze Single Food (Image)",
+    "costImageMulti": "Quick Image Add (per Image)",
+    "costTextMult": "Analyze Text (quick add)",
+    "costTextRecp": "Analyze Recipe",
+    "costPortion": "AI Portion Estimation (text)"
   },
   "foodFormFields": {
     "foodName": "Food Name",

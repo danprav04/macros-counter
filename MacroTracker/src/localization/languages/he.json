@@ -361,7 +361,14 @@
     "purchaseFailedGeneric": "נכשל בייזום הרכישה.",
     "errorTitle": "שגיאת חנות",
     "errorVerification": "האימות נכשל. אנא פנה לתמיכה.",
-    "noProducts": "אין מוצרים זמינים."
+    "noProducts": "אין מוצרים זמינים.",
+    "currentPrices": "עלויות שירות (מטבעות)",
+    "costImageSingle": "ניתוח מאכל יחיד (תמונה)",
+    "costImageMulti": "הוספת תמונה מהירה (מחיר לתמונה)",
+    "costText": "ניתוח טקסט / מתכון",
+    "costTextMult": "ניתוח טקסט (הוספה מהירה)",
+    "costTextRecp": "ניתוח מתכון",
+    "costPortion": "הערכת כמות AI"
   },
   "foodFormFields": {
     "foodName": "שם המאכל",

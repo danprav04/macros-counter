@@ -7,6 +7,8 @@ import { getProducts, purchaseProduct, ProductDisplay, setupPurchaseListener, in
 import Toast from 'react-native-toast-message';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { ErrorCode } from 'react-native-iap';
+import { useCosts } from '../context/CostsContext';
+import PriceTag from './PriceTag';
 
 interface StoreModalProps {
   isVisible: boolean;
@@ -17,6 +19,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
   const { theme } = useTheme();
   const styles = useStyles();
   const { refreshUser } = useAuth() as AuthContextType;
+  const { costs } = useCosts();
   
   const [products, setProducts] = useState<ProductDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +171,32 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       );
   };
 
+  const renderPricingTable = () => {
+      if (!costs) return null;
+
+      const pricingItems = [
+          { label: t('iap.costImageSingle'), amount: costs.cost_macros_image_single },
+          { label: t('iap.costImageMulti'), amount: costs.cost_macros_image_multiple },
+          { label: t('iap.costTextMult'), amount: costs.cost_macros_text_multiple },
+          { label: t('iap.costTextRecp'), amount: costs.cost_macros_recipe },
+          { label: t('iap.costPortion'), amount: costs.cost_grams_natural_language },
+      ];
+
+      return (
+          <View style={styles.pricingContainer}>
+              <Text style={styles.pricingHeader}>{t('iap.currentPrices')}</Text>
+              <View style={styles.pricingGrid}>
+                  {pricingItems.map((item, index) => (
+                      <View key={index} style={styles.pricingItem}>
+                          <Text style={styles.pricingLabel}>{item.label}</Text>
+                          <PriceTag amount={item.amount} type="cost" size="small" />
+                      </View>
+                  ))}
+              </View>
+          </View>
+      );
+  };
+
   const renderContent = () => {
       if (products.length > 0) {
           return products.map(renderProductItem);
@@ -211,6 +240,8 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 
             <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
+                    {renderPricingTable()}
+                    <Text style={styles.productsHeader}>Top Ups</Text>
                     {renderContent()}
                 </ScrollView>
             </View>
@@ -275,6 +306,42 @@ const useStyles = makeStyles((theme) => ({
     scrollContent: {
         padding: 15,
         paddingBottom: 40,
+    },
+    pricingContainer: {
+        backgroundColor: theme.colors.grey0,
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.divider,
+    },
+    pricingHeader: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: 10,
+        textTransform: 'uppercase',
+        opacity: 0.8,
+    },
+    pricingGrid: {
+        gap: 8,
+    },
+    pricingItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    pricingLabel: {
+        color: theme.colors.secondary,
+        fontSize: 14,
+        flex: 1,
+    },
+    productsHeader: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: 15,
+        marginLeft: 5,
     },
     productCard: {
         backgroundColor: theme.colors.card,
