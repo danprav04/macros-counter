@@ -23,6 +23,9 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
   
   // DEBUG STATE
   const [logs, setLogs] = useState<string>('');
+  
+  // Toggle to show/hide debug console (Hidden for production UI)
+  const SHOW_DEBUG_LOGS = false;
 
   const addLog = (msg: string) => {
       setLogs(prev => prev + msg + '\n');
@@ -164,13 +167,15 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 </TouchableOpacity>
             </View>
             
-            {/* === DEBUG LOG VIEWER === */}
-            <View style={styles.debugBox}>
-                <Text style={styles.debugHeader}>DEBUG CONSOLE:</Text>
-                <ScrollView nestedScrollEnabled style={{ flex: 1 }}>
-                    <Text style={styles.debugText}>{logs}</Text>
-                </ScrollView>
-            </View>
+            {/* === DEBUG LOG VIEWER (Hidden unless enabled) === */}
+            {SHOW_DEBUG_LOGS && (
+                <View style={styles.debugBox}>
+                    <Text style={styles.debugHeader}>DEBUG CONSOLE:</Text>
+                    <ScrollView nestedScrollEnabled style={{ flex: 1 }}>
+                        <Text style={styles.debugText}>{logs}</Text>
+                    </ScrollView>
+                </View>
+            )}
 
             {/* === MAIN CONTENT SCROLLVIEW === */}
             <View style={styles.contentContainer}>
