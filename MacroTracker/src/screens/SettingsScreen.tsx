@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, InteractionManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
+import * as Updates from 'expo-updates'; // <--- ADDED IMPORT
+
 import DailyGoalsInput from "../components/DailyGoalsInput";
 import DataManagementButtons from "../components/DataManagementButtons";
 import ThemeSwitch from "../components/ThemeSwitch";
@@ -468,6 +470,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
               <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
           </View>
+
+          {/* --- ADDED: Version & Update Info for Debugging --- */}
+          <View style={styles.versionContainer}>
+            <Text style={styles.versionText}>Runtime: {Updates.runtimeVersion}</Text>
+            <Text style={styles.versionText}>Channel: {Updates.channel || 'dev'}</Text>
+            <Text style={styles.versionText}>Update ID: {Updates.updateId || 'Embedded Binary'}</Text>
+          </View>
+          
       </ScrollView>
       <DeleteAccountModal
         isVisible={isDeleteModalVisible}
@@ -609,6 +619,18 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 12,
     color: theme.colors.grey3,
     fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  // Added Styles for Version info
+  versionContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+    opacity: 0.6,
+  },
+  versionText: {
+    color: theme.colors.grey3,
+    fontSize: 10,
     textAlign: 'center',
   },
 }));
