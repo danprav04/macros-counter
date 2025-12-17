@@ -357,6 +357,8 @@
     "purchaseSuccessMessage": "Added %{coins} coins to your balance!",
     "purchasePendingTitle": "Payment Pending",
     "purchasePendingMessage": "Your payment is being processed. Coins will be added once approved.",
+    "purchaseCancelled": "Purchase cancelled by user.",
+    "purchaseFailedGeneric": "Failed to initiate purchase.",
     "errorTitle": "Store Error",
     "errorVerification": "Verification failed. Please contact support.",
     "noProducts": "No products available."

@@ -6,6 +6,7 @@ import { t } from '../localization/i18n';
 import { getProducts, purchaseProduct, ProductDisplay, setupPurchaseListener, initIAP, endIAP } from '../services/iapService';
 import Toast from 'react-native-toast-message';
 import { useAuth, AuthContextType } from '../context/AuthContext';
+import { ErrorCode } from 'react-native-iap';
 
 interface StoreModalProps {
   isVisible: boolean;
@@ -21,14 +22,13 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [purchasingSku, setPurchasingSku] = useState<string | null>(null);
   
-  // DEBUG STATE
-  const [logs, setLogs] = useState<string>('');
-  
-  // Toggle to show/hide debug console (Hidden for production UI)
+  // DEBUG STATE (Set to true if you need to see logs on screen during development)
   const SHOW_DEBUG_LOGS = false;
+  const [logs, setLogs] = useState<string>('');
 
   const addLog = (msg: string) => {
-      setLogs(prev => prev + msg + '\n');
+      if (SHOW_DEBUG_LOGS) setLogs(prev => prev + msg + '\n');
+      console.log(`[StoreModal] ${msg}`);
   };
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
     const initialize = async () => {
       if (isVisible) {
         setLoading(true);
-        setLogs('Initializing Store...\n'); 
+        addLog('Initializing Store...'); 
 
         await initIAP();
         
@@ -45,7 +45,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
             (coinsAdded) => {
                 setPurchasingSku(null);
                 
-                // Handle distinctions between Immediate Success and Pending (Slow Card)
+                // 1. Success Case (Instant Reward)
                 if (coinsAdded > 0) {
                     Toast.show({
                         type: 'success',
@@ -53,41 +53,45 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                         text2: t('iap.purchaseSuccessMessage', { coins: coinsAdded }),
                         position: 'bottom'
                     });
-                } else {
-                    // coinsAdded === 0 indicates a Pending transaction (e.g. Slow Test Card)
+                    refreshUser();
+                    onClose();
+                } 
+                // 2. Pending Case (Slow Card / Pending Approval)
+                else {
                     Toast.show({
                         type: 'info',
                         text1: t('iap.purchasePendingTitle'),
                         text2: t('iap.purchasePendingMessage'),
                         position: 'bottom',
-                        visibilityTime: 6000 // Show longer for awareness
+                        visibilityTime: 6000 // Show longer so user sees it
                     });
+                    // We do not close the modal immediately so they can see the pending state,
+                    // but we stop the spinner.
                 }
-                
-                refreshUser();
-                onClose();
             },
             (errorMessage) => {
+                // 3. Async Error Listener (e.g. Card Declined mid-process)
                 setPurchasingSku(null);
-                Alert.alert(t('iap.errorTitle'), errorMessage);
+                
+                // Don't show alert for user cancellation events coming from listener
+                if (!errorMessage.includes('cancel')) {
+                    Alert.alert(t('iap.errorTitle'), errorMessage);
+                }
             }
         );
 
-        // Call getProducts with the logging callback
-        const items = await getProducts((newLog) => {
-            // Using the local helper to ensure state updates cleanly
-            addLog(newLog.trim());
-        });
-
-        addLog(`8. Fetched ${items.length} items. Sorting...`);
-
-        // Simple sort
-        const sortOrder = ['coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
-        items.sort((a, b) => sortOrder.indexOf(a.productId) - sortOrder.indexOf(b.productId));
-        
-        setProducts(items);
-        setLoading(false);
-        addLog('9. DONE. Loading set to false.');
+        // Fetch Products
+        try {
+            const items = await getProducts((newLog) => addLog(newLog.trim()));
+            // Sort by price/id
+            const sortOrder = ['coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
+            items.sort((a, b) => sortOrder.indexOf(a.productId) - sortOrder.indexOf(b.productId));
+            setProducts(items);
+        } catch (e) {
+            addLog(`Error fetching products: ${e}`);
+        } finally {
+            setLoading(false);
+        }
       }
     };
 
@@ -101,14 +105,29 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 
   const handleBuy = async (sku: string) => {
       setPurchasingSku(sku);
-      addLog(`Buying ${sku}...`);
+      addLog(`Initiating buy for ${sku}...`);
+      
       try {
           await purchaseProduct(sku);
+          // If successful, the flow continues to the Listener (setupPurchaseListener).
+          // We wait here until the listener fires or an error is thrown.
       } catch (error: any) {
-          addLog(`Buy Error: ${error.message}`);
+          addLog(`Buy Catch: ${error.code} - ${error.message}`);
           setPurchasingSku(null);
-          // UX Fix: Alert the user if initiation fails (e.g. network error, validation error)
-          Alert.alert(t('iap.errorTitle'), error.message || 'Failed to initiate purchase.');
+
+          // 4. Handle Immediate Errors (User Cancellation or Setup Failure)
+          if (error.code === ErrorCode.E_USER_CANCELLED || error.message.includes('cancel')) {
+              // User cancelled the dialog. Just reset UI.
+              Toast.show({
+                  type: 'info',
+                  text1: t('iap.purchaseCancelled'),
+                  position: 'bottom',
+                  visibilityTime: 2000
+              });
+          } else {
+              // Actual error (Network, Invalid ID, etc.)
+              Alert.alert(t('iap.errorTitle'), error.message || t('iap.purchaseFailedGeneric'));
+          }
       }
   };
 
@@ -148,7 +167,6 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       );
   };
 
-  // Determine what to render in the content area
   const renderContent = () => {
       if (products.length > 0) {
           return products.map(renderProductItem);
@@ -181,7 +199,6 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 </TouchableOpacity>
             </View>
             
-            {/* === DEBUG LOG VIEWER (Hidden unless enabled) === */}
             {SHOW_DEBUG_LOGS && (
                 <View style={styles.debugBox}>
                     <Text style={styles.debugHeader}>DEBUG CONSOLE:</Text>
@@ -191,7 +208,6 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
                 </View>
             )}
 
-            {/* === MAIN CONTENT SCROLLVIEW === */}
             <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     {renderContent()}
@@ -205,7 +221,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
 const useStyles = makeStyles((theme) => ({
     overlay: {
         width: '90%',
-        height: '90%', // Fixed height to prevent collapse
+        height: '90%',
         borderRadius: 20,
         padding: 0,
         backgroundColor: theme.colors.background,
@@ -229,7 +245,7 @@ const useStyles = makeStyles((theme) => ({
         fontWeight: 'bold',
     },
     debugBox: {
-        height: 120, // Reduced height for logs
+        height: 120,
         backgroundColor: '#000',
         margin: 10,
         padding: 8,
@@ -248,8 +264,8 @@ const useStyles = makeStyles((theme) => ({
         fontFamily: 'monospace'
     },
     contentContainer: {
-        flex: 1, // Take remaining space
-        minHeight: 0, // Crucial for nested flex containers
+        flex: 1, 
+        minHeight: 0, 
     },
     loadingContainer: {
         padding: 30,
