@@ -72,7 +72,7 @@
   "settingsScreen": {
     "title": "Settings",
     "account": {
-      "title": "Account (test feature)",
+      "title": "Account",
       "actions": "Account Actions",
       "logout": "Logout",
       "logoutConfirmTitle": "Confirm Logout",
