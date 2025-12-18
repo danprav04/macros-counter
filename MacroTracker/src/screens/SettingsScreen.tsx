@@ -474,8 +474,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           {/* --- ADDED: Version & Update Info for Debugging --- */}
           <View style={styles.versionContainer}>
             <Text style={styles.versionText}>Runtime: {Updates.runtimeVersion}</Text>
-            <Text style={styles.versionText}>Channel: {Updates.channel || 'dev'}</Text>
-            <Text style={styles.versionText}>Update ID: {Updates.updateId || 'Embedded Binary'}</Text>
+            {/* <Text style={styles.versionText}>Channel: {Updates.channel || 'dev'}</Text> */}
+            {/* <Text style={styles.versionText}>Update ID: {Updates.updateId || 'Embedded Binary'}</Text> */}
           </View>
           
       </ScrollView>
