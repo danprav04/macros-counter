@@ -33,6 +33,10 @@ export interface Settings {
   hasCompletedEstimation?: boolean;
   isEstimationReminderDismissed?: boolean;
 
+  // Flags for AI Features Promotion and Usage
+  hasTriedAI?: boolean;
+  isAiPromoDismissed?: boolean;
+
   // Draft state for questionnaire
   questionnaireDraft?: QuestionnaireFormData;
 }

@@ -75,7 +75,9 @@ export const loadSettings = async (): Promise<Settings> => {
     language: 'system',
     dailyGoals: { calories: 2000, protein: 50, carbs: 200, fat: 70 },
     foodSortPreference: 'name',
-    settingsHistory: []
+    settingsHistory: [],
+    hasTriedAI: false,
+    isAiPromoDismissed: false
   };
 
   try {
@@ -107,14 +109,19 @@ export const clearAllData = async (): Promise<void> => {
     
     await AsyncStorage.clear();
     
+    // We intentionally keep Client ID, but for Auth Token, if clearing data implies logout,
+    // we might want to clear it. However, the requirement is "Clear All Data" usually refers to user content.
+    // If we want to fully reset including guest state, we clear everything. 
+    // To be safe and consistent with "Delete Account/Reset", we'll keep Client ID but clear Auth if it exists in Async (though it's in SecureStore usually).
+    
     const itemsToKeep: [string, string][] = [];
     if (clientId?.[1]) itemsToKeep.push(clientId as [string, string]);
-    if (authToken?.[1]) itemsToKeep.push(authToken as [string, string]);
+    // if (authToken?.[1]) itemsToKeep.push(authToken as [string, string]); // Uncomment if you want to persist login across data clear
 
     if (itemsToKeep.length > 0) {
         await AsyncStorage.multiSet(itemsToKeep);
     }
-    console.log('Application data cleared (excluding auth/client ID).');
+    console.log('Application data cleared.');
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;

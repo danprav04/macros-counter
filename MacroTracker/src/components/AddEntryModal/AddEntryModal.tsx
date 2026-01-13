@@ -21,6 +21,7 @@ import FoodSelectionList from './FoodSelectionList';
 import AmountInputSection from './AmountInputSection';
 import { useAuth, AuthContextType } from '../../context/AuthContext';
 import useDelayedLoading from '../../hooks/useDelayedLoading';
+import GuestLimitModal from "../GuestLimitModal";
 
 interface AddEntryModalProps {
   isVisible: boolean;
@@ -50,7 +51,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
-  const { user, refreshUser } = useAuth() as AuthContextType;
+  const { user, refreshUser, isGuest, markAiFeatureUsed } = useAuth() as AuthContextType;
 
   const [internalSelectedFood, setInternalSelectedFood] = useState<Food | null>(null);
   const [internalGrams, setInternalGrams] = useState("");
@@ -81,6 +82,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   
   const [quickAddTextInput, setQuickAddTextInput] = useState("");
   const [isTextQuickAddLoading, setIsTextQuickAddLoading] = useState(false);
+  
+  const [isGuestModalVisible, setIsGuestModalVisible] = useState(false);
 
   const isActionDisabled = isAiLoading || quickAddLoading;
 
@@ -164,15 +167,27 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     }));
   }, [internalSelectedFood, recentServings, t]);
 
+  const checkGuest = (): boolean => {
+      if (isGuest) {
+          setIsGuestModalVisible(true);
+          return true;
+      }
+      return false;
+  };
+
   const handleEstimateGrams = useCallback(async () => {
-    Keyboard.dismiss(); if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
+    Keyboard.dismiss(); 
+    if (checkGuest()) return;
+    if (!internalSelectedFood || !autoInput.trim() || isAiLoading) return;
+    
     setIsAiLoading(true);
     try {
       const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput, user?.client_id, refreshUser);
       const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams); setUnitMode("grams"); setAutoInput("");
+      if(markAiFeatureUsed) markAiFeatureUsed();
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', {grams: roundedGrams, foodName: internalSelectedFood.name}), position: "bottom" });
     } catch (error) { /* Handled by getGramsFromNaturalLanguage */ } finally { setIsAiLoading(false); }
-  }, [internalSelectedFood, autoInput, isAiLoading, t, user, refreshUser]);
+  }, [internalSelectedFood, autoInput, isAiLoading, t, user, refreshUser, isGuest, markAiFeatureUsed]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
     Keyboard.dismiss(); if (!internalSelectedFood?.id) return Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
@@ -204,6 +219,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
   const pickImageAndAnalyze = useCallback(async (source: "camera" | "gallery") => {
     if (isEditMode) return;
+    if (checkGuest()) return;
+
     setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
     setModalMode("quickAddSelect"); setQuickAddLoading(true); setIsTextQuickAddLoading(false);
     
@@ -244,6 +261,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       } else {
         setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
         results.forEach(item => resolveAndSetIcon(item.foodName));
+        if(markAiFeatureUsed) markAiFeatureUsed();
       }
     } catch (error: any) {
       if (error.message !== "User cancelled" && error.message !== "Permission denied" && !(error instanceof BackendError)) {
@@ -253,7 +271,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     } finally {
       setQuickAddLoading(false);
     }
-  }, [isEditMode, resolveAndSetIcon, t, user, refreshUser]);
+  }, [isEditMode, resolveAndSetIcon, t, user, refreshUser, isGuest, markAiFeatureUsed]);
 
   const handleQuickAddImage = useCallback(() => {
     Keyboard.dismiss(); if (isEditMode || isActionDisabled) return;
@@ -274,6 +292,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const handleAnalyzeText = async () => {
     const textToAnalyze = quickAddTextInput.trim();
     if (!textToAnalyze || quickAddLoading) return;
+    if (checkGuest()) return;
+
     Keyboard.dismiss();
     setQuickAddLoading(true); setIsTextQuickAddLoading(true);
     try {
@@ -284,6 +304,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             setQuickAddItems(results); setSelectedQuickAddIndices(new Set(results.map((_, i) => i)));
             results.forEach(item => { if (item.foodName) { resolveAndSetIcon(item.foodName); } });
             setModalMode("quickAddSelect");
+            if(markAiFeatureUsed) markAiFeatureUsed();
         }
     } catch (error) { /* Handled in util */ }
     finally { setQuickAddLoading(false); setIsTextQuickAddLoading(false); }
@@ -472,7 +493,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
             onPress = handleConfirmAddMultipleSelected;
             disabled = isMultiAddButtonDisabled;
             
-            // Use primary color instead of success for cleaner look
             buttonColor = theme.colors.primary;
         }
     } else if (modalMode === 'quickAddSelect') {
@@ -481,7 +501,6 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         onPress = handleConfirmQuickAdd;
         disabled = isQuickAddConfirmDisabled;
         loading = showQuickAddLoading;
-        // Use primary color instead of success
         buttonColor = theme.colors.primary;
     }
 
@@ -529,132 +548,134 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   }, [internalSelectedFood, internalGrams, unitMode, autoInput, showAILoading, isAiButtonDisabled, isEditMode, servingSizeSuggestions, isActionDisabled, foodGradeResult]);
 
   return (
-    <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
-        <View style={[styles.overlayStyle, { backgroundColor: theme.colors.background }]}>
-          <ModalHeader 
-            title={modalTitle} 
-            isEditMode={isEditMode} 
-            modalMode={modalMode} 
-            quickAddLoading={showQuickAddLoading} 
-            textQuickAddLoading={showTextQuickAddLoading}
-            editingQuickAddItemIndex={editingQuickAddItemIndex} 
-            isActionDisabled={isActionDisabled} 
-            isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
-            isQuickAddTextButtonDisabled={isQuickAddTextButtonDisabled} 
-            toggleOverlay={toggleOverlay} 
-            onQuickAddImage={handleQuickAddImage} 
-            onQuickAddText={handleQuickAddText}
-            onBackFromQuickAdd={handleBackFromQuickAdd}
-            selectedFoodId={internalSelectedFood?.id}
-            onBackFromFoodSelection={handleBackFromFoodSelection}
-          />
-          
-          <View style={styles.contentContainer}>
-            {modalMode === 'normal' && (
-                <View style={styles.normalModeContentContainer}>
-                    <FoodSelectionList 
-                        search={internalSearch} 
-                        updateSearch={setInternalSearch} 
-                        foods={foods} 
-                        recentFoods={recentFoods} 
-                        selectedFood={internalSelectedFood} 
-                        handleSelectFood={setInternalSelectedFood} 
-                        setGrams={setInternalGrams} 
-                        setSelectedMultipleFoods={setSelectedMultipleFoods} 
-                        selectedMultipleFoods={selectedMultipleFoods} 
-                        handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} 
-                        foodIcons={foodIcons} 
-                        onAddNewFoodRequest={onAddNewFoodRequest} 
-                        isActionDisabled={isActionDisabled} 
-                        isEditMode={isEditMode} 
-                        recentServings={recentServings} 
-                        modalMode={modalMode} 
-                        ListFooterComponent={amountInputSection}
-                    />
-                </View>
-            )}
+    <>
+        <Overlay isVisible={isVisible} onBackdropPress={!isActionDisabled ? toggleOverlay : undefined} animationType="slide" overlayStyle={styles.overlayContainer}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
+            <View style={[styles.overlayStyle, { backgroundColor: theme.colors.background }]}>
+            <ModalHeader 
+                title={modalTitle} 
+                isEditMode={isEditMode} 
+                modalMode={modalMode} 
+                quickAddLoading={showQuickAddLoading} 
+                textQuickAddLoading={showTextQuickAddLoading}
+                editingQuickAddItemIndex={editingQuickAddItemIndex} 
+                isActionDisabled={isActionDisabled} 
+                isQuickAddImageButtonDisabled={isQuickAddImageButtonDisabled}
+                isQuickAddTextButtonDisabled={isQuickAddTextButtonDisabled} 
+                toggleOverlay={toggleOverlay} 
+                onQuickAddImage={handleQuickAddImage} 
+                onQuickAddText={handleQuickAddText}
+                onBackFromQuickAdd={handleBackFromQuickAdd}
+                selectedFoodId={internalSelectedFood?.id}
+                onBackFromFoodSelection={handleBackFromFoodSelection}
+            />
             
-            {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect') && (
-                    <View style={styles.disclaimerSection}>
-                        <View style={styles.disclaimerRow}>
-                            <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} />
-                            <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
-                        </View>
-                        {/* NEW SENSITIVE DATA WARNING */}
-                        <View style={styles.disclaimerRow}>
-                            <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} />
-                            <Text style={styles.disclaimerText}>{t('disclaimers.sensitiveDataWarning')}</Text>
-                        </View>
-                        <View style={styles.disclaimerRow}>
-                            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
-                            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
-                        </View>
+            <View style={styles.contentContainer}>
+                {modalMode === 'normal' && (
+                    <View style={styles.normalModeContentContainer}>
+                        <FoodSelectionList 
+                            search={internalSearch} 
+                            updateSearch={setInternalSearch} 
+                            foods={foods} 
+                            recentFoods={recentFoods} 
+                            selectedFood={internalSelectedFood} 
+                            handleSelectFood={setInternalSelectedFood} 
+                            setGrams={setInternalGrams} 
+                            setSelectedMultipleFoods={setSelectedMultipleFoods} 
+                            selectedMultipleFoods={selectedMultipleFoods} 
+                            handleToggleMultipleFoodSelection={handleToggleMultipleFoodSelection} 
+                            foodIcons={foodIcons} 
+                            onAddNewFoodRequest={onAddNewFoodRequest} 
+                            isActionDisabled={isActionDisabled} 
+                            isEditMode={isEditMode} 
+                            recentServings={recentServings} 
+                            modalMode={modalMode} 
+                            ListFooterComponent={amountInputSection}
+                        />
                     </View>
-            )}
+                )}
+                
+                {(modalMode === 'quickAddText' || modalMode === 'quickAddSelect') && (
+                        <View style={styles.disclaimerSection}>
+                            <View style={styles.disclaimerRow}>
+                                <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                                <Text style={styles.disclaimerText}>{t('disclaimers.aiWarning')}</Text>
+                            </View>
+                            <View style={styles.disclaimerRow}>
+                                <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                                <Text style={styles.disclaimerText}>{t('disclaimers.sensitiveDataWarning')}</Text>
+                            </View>
+                            <View style={styles.disclaimerRow}>
+                                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
+                                <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                            </View>
+                        </View>
+                )}
 
-            {modalMode === 'quickAddText' && (
-                <View style={styles.quickAddTextView}>
-                    <Input 
-                        placeholder={t('addEntryModal.textQuickAdd.placeholder')} 
-                        multiline 
-                        numberOfLines={6} 
-                        value={quickAddTextInput} 
-                        onChangeText={setQuickAddTextInput} 
-                        inputStyle={styles.quickAddTextArea} 
-                        inputContainerStyle={styles.quickAddTextAreaContainer} 
-                        containerStyle={{ paddingHorizontal: 0 }} 
+                {modalMode === 'quickAddText' && (
+                    <View style={styles.quickAddTextView}>
+                        <Input 
+                            placeholder={t('addEntryModal.textQuickAdd.placeholder')} 
+                            multiline 
+                            numberOfLines={6} 
+                            value={quickAddTextInput} 
+                            onChangeText={setQuickAddTextInput} 
+                            inputStyle={styles.quickAddTextArea} 
+                            inputContainerStyle={styles.quickAddTextAreaContainer} 
+                            containerStyle={{ paddingHorizontal: 0 }} 
+                        />
+                        <Button 
+                            title={t('addEntryModal.textQuickAdd.analyzeButton')} 
+                            onPress={handleAnalyzeText} 
+                            loading={showTextQuickAddLoading} 
+                            disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} 
+                            buttonStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.primary, marginBottom: 10}]} 
+                            disabledStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.grey2}]}
+                            disabledTitleStyle={{color: theme.colors.grey3}}
+                        />
+                    </View>
+                )}
+                {modalMode === 'quickAddSelect' && (
+                    <QuickAddList 
+                        items={quickAddItems} 
+                        selectedIndices={selectedQuickAddIndices} 
+                        editingIndex={editingQuickAddItemIndex} 
+                        
+                        editedName={editedFoodName} 
+                        editedGrams={editedGrams}
+                        editedCalories={editedCalories}
+                        editedProtein={editedProtein}
+                        editedCarbs={editedCarbs}
+                        editedFat={editedFat}
+
+                        onToggleItem={handleToggleQuickAddItem} 
+                        onEditItem={handleEditQuickAddItem} 
+                        onSaveEdit={handleSaveQuickAddItemEdit} 
+                        onCancelEdit={handleCancelQuickAddItemEdit} 
+                        
+                        onNameChange={setEditedFoodName} 
+                        onGramsChange={handleQuickAddGramsChange}
+                        onCaloriesChange={(val) => setEditedCalories(val.replace(/[^0-9.]/g, ""))}
+                        onProteinChange={(val) => setEditedProtein(val.replace(/[^0-9.]/g, ""))}
+                        onCarbsChange={(val) => setEditedCarbs(val.replace(/[^0-9.]/g, ""))}
+                        onFatChange={(val) => setEditedFat(val.replace(/[^0-9.]/g, ""))}
+
+                        isLoading={showQuickAddLoading} 
+                        foodIcons={foodIcons} 
+                        style={styles.quickAddListStyle} 
+                        onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} 
+                        foods={foods} 
                     />
-                    <Button 
-                        title={t('addEntryModal.textQuickAdd.analyzeButton')} 
-                        onPress={handleAnalyzeText} 
-                        loading={showTextQuickAddLoading} 
-                        disabled={isTextQuickAddLoading || !quickAddTextInput.trim()} 
-                        buttonStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.primary, marginBottom: 10}]} 
-                        disabledStyle={[{...styles.analyzeButton}, {backgroundColor: theme.colors.grey2}]}
-                        disabledTitleStyle={{color: theme.colors.grey3}}
-                    />
-                </View>
-            )}
-            {modalMode === 'quickAddSelect' && (
-                <QuickAddList 
-                    items={quickAddItems} 
-                    selectedIndices={selectedQuickAddIndices} 
-                    editingIndex={editingQuickAddItemIndex} 
-                    
-                    editedName={editedFoodName} 
-                    editedGrams={editedGrams}
-                    editedCalories={editedCalories}
-                    editedProtein={editedProtein}
-                    editedCarbs={editedCarbs}
-                    editedFat={editedFat}
-
-                    onToggleItem={handleToggleQuickAddItem} 
-                    onEditItem={handleEditQuickAddItem} 
-                    onSaveEdit={handleSaveQuickAddItemEdit} 
-                    onCancelEdit={handleCancelQuickAddItemEdit} 
-                    
-                    onNameChange={setEditedFoodName} 
-                    onGramsChange={handleQuickAddGramsChange}
-                    onCaloriesChange={(val) => setEditedCalories(val.replace(/[^0-9.]/g, ""))}
-                    onProteinChange={(val) => setEditedProtein(val.replace(/[^0-9.]/g, ""))}
-                    onCarbsChange={(val) => setEditedCarbs(val.replace(/[^0-9.]/g, ""))}
-                    onFatChange={(val) => setEditedFat(val.replace(/[^0-9.]/g, ""))}
-
-                    isLoading={showQuickAddLoading} 
-                    foodIcons={foodIcons} 
-                    style={styles.quickAddListStyle} 
-                    onSaveItemToLibrary={handleSaveQuickAddItemToLibrary} 
-                    foods={foods} 
-                />
-            )}
-          </View>
-          
-          {renderFooter()}
-          
-        </View>
-      </KeyboardAvoidingView>
-    </Overlay>
+                )}
+            </View>
+            
+            {renderFooter()}
+            
+            </View>
+        </KeyboardAvoidingView>
+        </Overlay>
+        <GuestLimitModal isVisible={isGuestModalVisible} onClose={() => setIsGuestModalVisible(false)} />
+    </>
   );
 };
 

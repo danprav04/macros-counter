@@ -14,6 +14,7 @@ export interface AuthState {
 
 export interface AuthContextType {
   authState: AuthState;
+  isGuest: boolean;
   settings: Settings;
   user: User | null;
   isLoading: boolean;
@@ -25,6 +26,7 @@ export interface AuthContextType {
   changeFoodSortPreference: (sortPreference: SortOptionValue) => void;
   reloadSettings: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  markAiFeatureUsed: () => void;
 }
 
 export const AuthContext = createContext<Partial<AuthContextType>>({});
@@ -40,19 +42,23 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     language: 'system',
     dailyGoals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
     foodSortPreference: 'name',
+    hasTriedAI: false,
+    isAiPromoDismissed: false
   });
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    try {
-      const status = await getUserStatus();
-      setUser(status);
-    } catch (e) {
-      console.warn("Could not refresh user status in AuthContext", e);
-      // Don't nullify user on a failed refresh, might be a network blip
+    // Only refresh if we have a token
+    if (authState.authenticated && authState.token) {
+        try {
+            const status = await getUserStatus();
+            setUser(status);
+        } catch (e) {
+            console.warn("Could not refresh user status in AuthContext", e);
+        }
     }
-  }, []);
+  }, [authState.authenticated, authState.token]);
 
   const reloadSettings = useCallback(async () => {
     const loadedSettings = await loadSettings();
@@ -64,13 +70,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       setIsLoading(true);
       try {
         const tokenData = await authService.getAuthToken();
-        await reloadSettings(); // Use the new function to load settings
+        await reloadSettings(); 
 
         if (tokenData?.access_token) {
           setAuthState({ authenticated: true, token: tokenData.access_token });
+        } else {
+          // Explicitly set to not authenticated, allowing Guest Mode logic to take over
+          setAuthState({ authenticated: false, token: null });
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
+        setAuthState({ authenticated: false, token: null });
       } finally {
         setIsLoading(false);
       }
@@ -80,10 +90,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   }, [reloadSettings]);
 
   useEffect(() => {
-    if (authState.authenticated && authState.token) {
+    if (authState.authenticated) {
       refreshUser();
+    } else {
+        setUser(null);
     }
-  }, [authState.authenticated, authState.token, refreshUser]);
+  }, [authState.authenticated, refreshUser]);
 
   const login = async (tokenData: Token) => {
     try {
@@ -91,16 +103,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       setAuthState({ authenticated: true, token: tokenData.access_token });
     } catch (error) {
       console.error("Login failed: Could not save the token.", error);
-      // Do not update auth state if token saving fails. The alert from
-      // tokenStorage will inform the user of the critical error.
-      // We clear any potentially lingering bad state here.
       setAuthState({ authenticated: false, token: null });
       setUser(null);
     }
   };
 
   const logout = async () => {
-    await authService.logoutUser();
+    if (authState.authenticated) {
+        await authService.logoutUser();
+    }
     setAuthState({ authenticated: false, token: null });
     setUser(null);
   };
@@ -137,9 +148,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     });
   }, []);
 
+  const markAiFeatureUsed = useCallback(() => {
+      setSettings(prev => {
+          if (prev.hasTriedAI) return prev;
+          const newSettings = { ...prev, hasTriedAI: true };
+          saveSettings(newSettings);
+          return newSettings;
+      });
+  }, []);
+
+  // Derived state: Guest if not loading and not authenticated
+  const isGuest = !isLoading && !authState.authenticated;
 
   const value: AuthContextType = {
     authState,
+    isGuest,
     settings,
     user,
     isLoading,
@@ -151,6 +174,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     changeFoodSortPreference,
     reloadSettings,
     refreshUser,
+    markAiFeatureUsed,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

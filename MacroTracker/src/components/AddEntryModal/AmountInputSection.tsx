@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/AmountInputSection.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, ScrollView, TouchableOpacity, Keyboard } from 'react-native';
 import { Text, Input, Icon, ButtonGroup, Button, useTheme, makeStyles } from '@rneui/themed';
 import { Food } from '../../types/food';
@@ -8,6 +8,8 @@ import { isValidNumberInput } from '../../utils/validationUtils';
 import { t } from '../../localization/i18n';
 import { useCosts } from '../../context/CostsContext';
 import PriceTag from '../PriceTag';
+import { useAuth, AuthContextType } from '../../context/AuthContext';
+import GuestLimitModal from "../GuestLimitModal";
 
 type UnitMode = "grams" | "auto";
 
@@ -48,6 +50,8 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
     const styles = useStyles();
     const gramsInputRef = useRef<any>(null);
     const { costs } = useCosts();
+    const { isGuest } = useAuth() as AuthContextType;
+    const [isGuestModalVisible, setIsGuestModalVisible] = useState(false);
 
     useEffect(() => {
         if (isEditMode && unitMode === "grams") {
@@ -64,117 +68,128 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
         setGrams(cleanedText);
     };
 
+    const handleModeChange = (index: number) => {
+        if (isActionDisabled) return;
+        const newMode = index === 0 ? "grams" : "auto";
+        
+        if (newMode === "auto" && isGuest) {
+            setIsGuestModalVisible(true);
+            return;
+        }
+
+        setUnitMode(newMode);
+        Keyboard.dismiss();
+    };
+
     return (
-        <View style={styles.amountSection}>
-            <View style={styles.headerRow}>
-                <View style={styles.labelContainer}>
-                    <Text style={styles.sectionLabel}>{t('addEntryModal.amount')}</Text>
-                    {foodGradeResult && (
-                        <View style={[styles.gradeBadge, { backgroundColor: foodGradeResult.color }]}>
-                            <Text style={styles.gradeText}>{foodGradeResult.letter}</Text>
+        <>
+            <View style={styles.amountSection}>
+                <View style={styles.headerRow}>
+                    <View style={styles.labelContainer}>
+                        <Text style={styles.sectionLabel}>{t('addEntryModal.amount')}</Text>
+                        {foodGradeResult && (
+                            <View style={[styles.gradeBadge, { backgroundColor: foodGradeResult.color }]}>
+                                <Text style={styles.gradeText}>{foodGradeResult.letter}</Text>
+                            </View>
+                        )}
+                    </View>
+                    
+                    {!isEditMode && (
+                        <View style={styles.controlsRight}>
+                            <ButtonGroup
+                                buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
+                                selectedIndex={unitMode === "grams" ? 0 : 1}
+                                onPress={handleModeChange}
+                                containerStyle={styles.buttonGroupContainer}
+                                selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
+                                textStyle={styles.buttonGroupText}
+                                selectedTextStyle={{ color: theme.colors.white }}
+                                innerBorderStyle={{ color: theme.colors.primary }}
+                                disabled={isActionDisabled ? [0, 1] : []}
+                                disabledStyle={styles.disabledButtonGroup}
+                            />
+                            {unitMode === 'auto' && costs?.cost_grams_natural_language != null && (
+                                <PriceTag amount={costs.cost_grams_natural_language} type="cost" size="small" style={{ marginLeft: 6 }} />
+                            )}
                         </View>
                     )}
                 </View>
-                
-                {!isEditMode && (
-                    <View style={styles.controlsRight}>
-                        <ButtonGroup
-                            buttons={[t('addEntryModal.grams'), t('addEntryModal.autoAi')]}
-                            selectedIndex={unitMode === "grams" ? 0 : 1}
-                            onPress={(index) => {
-                                if (!isActionDisabled) {
-                                    setUnitMode(index === 0 ? "grams" : "auto");
-                                    Keyboard.dismiss();
-                                }
-                            }}
-                            containerStyle={styles.buttonGroupContainer}
-                            selectedButtonStyle={{ backgroundColor: theme.colors.primary }}
-                            textStyle={styles.buttonGroupText}
-                            selectedTextStyle={{ color: theme.colors.white }}
-                            innerBorderStyle={{ color: theme.colors.primary }}
-                            disabled={isActionDisabled ? [0, 1] : []}
-                            disabledStyle={styles.disabledButtonGroup}
+
+                {unitMode === "grams" && (
+                    <View style={styles.inputWrapper}>
+                        <Input
+                            ref={gramsInputRef}
+                            placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
+                            keyboardType="numeric"
+                            value={grams}
+                            onChangeText={handleGramsChange}
+                            inputStyle={styles.textInput}
+                            inputContainerStyle={styles.inputFieldContainer}
+                            containerStyle={styles.containerPadding}
+                            errorMessage={!isValidNumberInput(grams) && grams !== "" && grams !== "." ? t('addEntryModal.gramsError') : ""}
+                            errorStyle={styles.errorText}
+                            rightIcon={<Text style={styles.unitSuffix}>g</Text>}
+                            disabled={isActionDisabled}
+                            autoFocus={!isEditMode}
+                            selectTextOnFocus={true}
                         />
-                        {unitMode === 'auto' && costs?.cost_grams_natural_language != null && (
-                            <PriceTag amount={costs.cost_grams_natural_language} type="cost" size="small" style={{ marginLeft: 6 }} />
+                        
+                        {!isEditMode && servingSizeSuggestions.length > 0 && (
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false} 
+                                contentContainerStyle={styles.suggestionsScroll}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {servingSizeSuggestions.map((suggestion) => (
+                                    <TouchableOpacity
+                                        key={suggestion.label}
+                                        style={[styles.suggestionChip, isActionDisabled && styles.disabledOpacity]}
+                                        onPress={() => {
+                                            if (!isActionDisabled) {
+                                                setGrams(suggestion.value);
+                                                Keyboard.dismiss();
+                                            }
+                                        }}
+                                        disabled={isActionDisabled}
+                                    >
+                                        <Text style={styles.suggestionText}>{suggestion.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         )}
                     </View>
                 )}
-            </View>
 
-            {unitMode === "grams" && (
-                <View style={styles.inputWrapper}>
-                    <Input
-                        ref={gramsInputRef}
-                        placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
-                        keyboardType="numeric"
-                        value={grams}
-                        onChangeText={handleGramsChange}
-                        inputStyle={styles.textInput}
-                        inputContainerStyle={styles.inputFieldContainer}
-                        containerStyle={styles.containerPadding}
-                        errorMessage={!isValidNumberInput(grams) && grams !== "" && grams !== "." ? t('addEntryModal.gramsError') : ""}
-                        errorStyle={styles.errorText}
-                        rightIcon={<Text style={styles.unitSuffix}>g</Text>}
-                        disabled={isActionDisabled}
-                        autoFocus={!isEditMode}
-                        selectTextOnFocus={true}
-                    />
-                    
-                    {!isEditMode && servingSizeSuggestions.length > 0 && (
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false} 
-                            contentContainerStyle={styles.suggestionsScroll}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            {servingSizeSuggestions.map((suggestion) => (
-                                <TouchableOpacity
-                                    key={suggestion.label}
-                                    style={[styles.suggestionChip, isActionDisabled && styles.disabledOpacity]}
-                                    onPress={() => {
-                                        if (!isActionDisabled) {
-                                            setGrams(suggestion.value);
-                                            Keyboard.dismiss();
-                                        }
-                                    }}
-                                    disabled={isActionDisabled}
-                                >
-                                    <Text style={styles.suggestionText}>{suggestion.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    )}
-                </View>
-            )}
-
-            {unitMode === "auto" && !isEditMode && (
-                <View style={styles.autoInputWrapper}>
-                    <View style={styles.autoInputRow}>
-                        <Input
-                            placeholder={t('addEntryModal.autoPlaceholder')}
-                            value={autoInput}
-                            onChangeText={setAutoInput}
-                            inputStyle={styles.textInput}
-                            inputContainerStyle={styles.inputFieldContainer}
-                            containerStyle={[styles.containerPadding, { flex: 1 }]}
-                            onSubmitEditing={handleEstimateGrams}
-                            disabled={isActionDisabled}
-                            autoFocus
-                        />
-                        <Button
-                            onPress={() => { Keyboard.dismiss(); handleEstimateGrams(); }}
-                            disabled={isAiButtonDisabled || isActionDisabled}
-                            loading={isAiLoading}
-                            buttonStyle={styles.aiButton}
-                            icon={isAiLoading ? undefined : (
-                                <Icon name="calculator-variant" type="material-community" size={22} color={theme.colors.white} />
-                            )}
-                        />
+                {unitMode === "auto" && !isEditMode && (
+                    <View style={styles.autoInputWrapper}>
+                        <View style={styles.autoInputRow}>
+                            <Input
+                                placeholder={t('addEntryModal.autoPlaceholder')}
+                                value={autoInput}
+                                onChangeText={setAutoInput}
+                                inputStyle={styles.textInput}
+                                inputContainerStyle={styles.inputFieldContainer}
+                                containerStyle={[styles.containerPadding, { flex: 1 }]}
+                                onSubmitEditing={handleEstimateGrams}
+                                disabled={isActionDisabled}
+                                autoFocus
+                            />
+                            <Button
+                                onPress={() => { Keyboard.dismiss(); handleEstimateGrams(); }}
+                                disabled={isAiButtonDisabled || isActionDisabled}
+                                loading={isAiLoading}
+                                buttonStyle={styles.aiButton}
+                                icon={isAiLoading ? undefined : (
+                                    <Icon name="calculator-variant" type="material-community" size={22} color={theme.colors.white} />
+                                )}
+                            />
+                        </View>
                     </View>
-                </View>
-            )}
-        </View>
+                )}
+            </View>
+            <GuestLimitModal isVisible={isGuestModalVisible} onClose={() => setIsGuestModalVisible(false)} />
+        </>
     );
 };
 
