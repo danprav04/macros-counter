@@ -1,9 +1,10 @@
 // src/components/AiPromotionModal.tsx
 import React from 'react';
-import { View, StyleSheet, Modal, Image } from 'react-native';
+import { View, StyleSheet, Modal } from 'react-native';
 import { Text, Button, Icon, useTheme } from '@rneui/themed';
 import { saveSettings, loadSettings } from '../services/storageService';
 import { Settings } from '../types/settings';
+import { t } from '../localization/i18n';
 
 interface AiPromotionModalProps {
   isVisible: boolean;
@@ -39,15 +40,15 @@ const AiPromotionModal: React.FC<AiPromotionModalProps> = ({ isVisible, onClose,
           </View>
           
           <Text h4 style={[styles.title, { color: theme.colors.text }]}>
-            Try AI Features!
+            {t('aiPromo.title')}
           </Text>
           
           <Text style={[styles.message, { color: theme.colors.grey2 }]}>
-            Instantly analyze food from photos or text descriptions. It's faster and smarter!
+            {t('aiPromo.message')}
           </Text>
 
           <Button
-            title="Try AI Now"
+            title={t('aiPromo.tryNow')}
             onPress={handleTryNow}
             buttonStyle={[styles.button, { backgroundColor: theme.colors.primary }]}
             containerStyle={styles.buttonContainer}
@@ -56,7 +57,7 @@ const AiPromotionModal: React.FC<AiPromotionModalProps> = ({ isVisible, onClose,
           />
           
           <Button
-            title="Don't show again"
+            title={t('aiPromo.dontShowAgain')}
             type="clear"
             onPress={handleDismiss}
             titleStyle={{ color: theme.colors.grey3, fontSize: 13 }}

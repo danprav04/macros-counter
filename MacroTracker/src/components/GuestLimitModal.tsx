@@ -5,6 +5,7 @@ import { Text, Button, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { t } from '../localization/i18n';
 
 interface GuestLimitModalProps {
   isVisible: boolean;
@@ -34,21 +35,21 @@ const GuestLimitModal: React.FC<GuestLimitModalProps> = ({ isVisible, onClose, f
         <View style={[styles.container, { backgroundColor: theme.colors.card }]}>
           <Icon name="shield-account" type="material-community" size={50} color={theme.colors.primary} />
           <Text h4 style={[styles.title, { color: theme.colors.text }]}>
-            Account Required
+            {t('guestLimit.title')}
           </Text>
-          <Text style={[styles.message, { color: theme.colors.secondary }]}>
-            To use {featureName}, you need to create an account. This ensures your data is backed up and allows for secure AI processing.
+          <Text style={[styles.message, { color: theme.colors.grey2 }]}>
+            {t('guestLimit.message', { feature: featureName })}
           </Text>
           
           <Button
-            title="Create Free Account"
+            title={t('guestLimit.createAccount')}
             onPress={handleRegister}
             buttonStyle={styles.registerButton}
             containerStyle={styles.buttonContainer}
           />
           
           <Button
-            title="Log In"
+            title={t('guestLimit.login')}
             type="outline"
             onPress={handleLogin}
             buttonStyle={styles.loginButton}
@@ -56,7 +57,7 @@ const GuestLimitModal: React.FC<GuestLimitModalProps> = ({ isVisible, onClose, f
           />
           
           <Button
-            title="Not Now"
+            title={t('guestLimit.notNow')}
             type="clear"
             onPress={onClose}
             titleStyle={{ color: theme.colors.grey3 }}

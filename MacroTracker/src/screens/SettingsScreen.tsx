@@ -388,10 +388,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
             </>
           ) : (
             <View style={styles.guestContainer}>
-                <Text style={styles.guestText}>You are currently using Guest Mode. Sign up to sync your data and use AI features.</Text>
+                <Text style={styles.guestText}>{t('settingsScreen.guestMode.message')}</Text>
                 <View style={styles.guestButtons}>
-                    <Button title="Log In" onPress={handleLoginPress} type="outline" containerStyle={{flex: 1, marginRight: 5}} />
-                    <Button title="Create Account" onPress={handleRegisterPress} containerStyle={{flex: 1, marginLeft: 5}} />
+                    <Button title={t('settingsScreen.guestMode.login')} onPress={handleLoginPress} type="outline" containerStyle={{flex: 1, marginRight: 5}} />
+                    <Button title={t('settingsScreen.guestMode.createAccount')} onPress={handleRegisterPress} containerStyle={{flex: 1, marginLeft: 5}} />
                 </View>
             </View>
           )}

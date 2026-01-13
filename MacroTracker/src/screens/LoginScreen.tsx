@@ -4,13 +4,14 @@ import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, KeyboardAvoidi
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigation/AppNavigator';
+import { AuthStackParamList, RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
 import { t } from '../localization/i18n';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+// Nav prop can navigate within Auth stack but also reset root stack
+type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList & RootStackParamList, 'Login'>;
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 0 : 0;
 
@@ -34,6 +35,12 @@ const LoginScreen: React.FC = () => {
             const response = await loginUser(email, password);
             if (response.access_token) {
                 await login(response);
+                // Explicitly navigate to Main after successful login to clear Auth screens from stack
+                // Resetting root navigator state
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                });
             }
         } catch (error: any) {
             // Error is handled and alerted by the authService
