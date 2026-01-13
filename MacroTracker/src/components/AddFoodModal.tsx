@@ -34,6 +34,7 @@ import { useCosts } from '../context/CostsContext';
 import PriceTag from './PriceTag';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
+import GuestLimitModal from "./GuestLimitModal";
 
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
@@ -71,7 +72,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
-    const { user, refreshUser } = useAuth() as AuthContextType;
+    const { user, refreshUser, isGuest, markAiFeatureUsed } = useAuth() as AuthContextType;
     const { costs } = useCosts();
 
     const [loading, setLoading] = useState(false);
@@ -79,6 +80,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const [ingredients, setIngredients] = useState("");
     const [aiTextLoading, setAiTextLoading] = useState(false);
     const [aiImageLoading, setAiImageLoading] = useState(false);
+    
+    const [isGuestModalVisible, setIsGuestModalVisible] = useState(false);
 
     const showLoading = useDelayedLoading(loading);
     const showAiTextLoading = useDelayedLoading(aiTextLoading);
@@ -95,6 +98,14 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             setInputMode('manual');
         }
     }, [isVisible, editFood, setErrors]);
+
+    const checkGuest = (): boolean => {
+        if (isGuest) {
+            setIsGuestModalVisible(true);
+            return true;
+        }
+        return false;
+    };
 
     const getCurrentFoodData = (): Partial<FoodFormData> | Partial<Food> => {
         return editFood ? editFood : newFood;
@@ -161,6 +172,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     };
 
     const handleAnalyzeText = async () => {
+        if (checkGuest()) return;
+
         const foodName = (getCurrentFoodData().name ?? "").trim();
         const textToAnalyze = ingredients.trim();
         if (!foodName && !textToAnalyze) {
@@ -182,6 +195,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
             
             setInputMode("manual");
+            if(markAiFeatureUsed) markAiFeatureUsed();
     
             Toast.show({
                 type: 'info',
@@ -197,6 +211,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     };
 
     const handleGetImageAndAnalyze = async () => {
+        if (checkGuest()) return;
         if (aiImageLoading || aiTextLoading || loading) return;
         const processImage = async (pickerResult: ImagePickerResult) => {
             if (pickerResult.canceled) return;
@@ -213,6 +228,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
                      setInputMode("manual");
                      setIngredients("");
+                     if(markAiFeatureUsed) markAiFeatureUsed();
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
                 } catch (analysisError) { console.error("Error during image analysis (modal):", analysisError); }
                 finally { setAiImageLoading(false); }
@@ -230,261 +246,264 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background } ]);
 
     return (
-        <Overlay isVisible={isVisible} onBackdropPress={!isAnyLoading ? toggleOverlay : undefined} animationType="fade" overlayStyle={styles.overlayContainer} >
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
-                <View style={combinedOverlayStyle}>
-                    {/* Header with title and close button */}
-                    <View style={styles.header}>
-                        <View style={styles.titleContainer}>
-                            <Text h4 style={styles.overlayTitle}>
-                                {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')}
-                            </Text>
-                            {/* Live Grading Pill */}
-                            {inputMode === 'manual' && gradeResult && (
-                                <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
-                                    <Text style={styles.gradeText}>{gradeResult.letter}</Text>
-                                </View>
-                            )}
-                        </View>
-                        <Icon 
-                            name="close" 
-                            type="material" 
-                            size={28} 
-                            color={theme.colors.grey3} 
-                            onPress={!isAnyLoading ? toggleOverlay : undefined}
-                            containerStyle={styles.closeIcon} 
-                            disabled={isAnyLoading} 
-                            disabledStyle={{ backgroundColor: 'transparent' }} 
-                        />
-                    </View>
-
-                    <ScrollView 
-                        keyboardShouldPersistTaps="handled" 
-                        contentContainerStyle={styles.scrollContentContainer}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {/* Mode Selection - Only show when adding new food */}
-                        {!editFood && (
-                            <View style={styles.modeSelectionContainer}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modeButton,
-                                        inputMode === 'manual' && styles.modeButtonActive
-                                    ]}
-                                    onPress={() => !isAnyLoading && setInputMode('manual')}
-                                    disabled={isAnyLoading}
-                                    activeOpacity={0.7}
-                                >
-                                    <Icon
-                                        name="keyboard"
-                                        type="material"
-                                        size={22}
-                                        color={inputMode === 'manual' ? theme.colors.primary : theme.colors.grey3}
-                                        containerStyle={styles.modeIcon}
-                                    />
-                                    <Text style={[
-                                        styles.modeButtonText,
-                                        inputMode === 'manual' && styles.modeButtonTextActive
-                                    ]}>
-                                        {t('addFoodModal.manualInput')}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modeButton,
-                                        inputMode === 'ai' && styles.modeButtonActive
-                                    ]}
-                                    onPress={() => !isAnyLoading && setInputMode('ai')}
-                                    disabled={isAnyLoading}
-                                    activeOpacity={0.7}
-                                >
-                                    <Icon
-                                        name="auto-awesome"
-                                        type="material"
-                                        size={22}
-                                        color={inputMode === 'ai' ? theme.colors.primary : theme.colors.secondary}
-                                        containerStyle={styles.modeIcon}
-                                    />
-                                    <Text style={[
-                                        styles.modeButtonText,
-                                        inputMode === 'ai' && styles.modeButtonTextActive
-                                    ]}>
-                                        {t('addFoodModal.aiAssist')}
-                                    </Text>
-                                </TouchableOpacity>
+        <>
+            <Overlay isVisible={isVisible} onBackdropPress={!isAnyLoading ? toggleOverlay : undefined} animationType="fade" overlayStyle={styles.overlayContainer} >
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET} >
+                    <View style={combinedOverlayStyle}>
+                        {/* Header with title and close button */}
+                        <View style={styles.header}>
+                            <View style={styles.titleContainer}>
+                                <Text h4 style={styles.overlayTitle}>
+                                    {editFood ? t('addFoodModal.titleEdit') : t('addFoodModal.titleAdd')}
+                                </Text>
+                                {/* Live Grading Pill */}
+                                {inputMode === 'manual' && gradeResult && (
+                                    <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
+                                        <Text style={styles.gradeText}>{gradeResult.letter}</Text>
+                                    </View>
+                                )}
                             </View>
-                        )}
-
-                        {/* Content Area */}
-                        <View style={styles.contentContainer}>
-                            {inputMode === 'manual' ? (
-                                <View style={styles.manualInputContainer}>
-                                    <FoodFormFields
-                                        values={getCurrentFoodData()}
-                                        errors={errors}
-                                        onInputChange={handleInputChange}
-                                        isEditing={!!editFood}
-                                        disabled={isAnyLoading}
-                                    />
-                                    {/* Medical Disclaimer for Manual Mode */}
-                                    <View style={styles.disclaimerContainer}>
-                                        <View style={styles.disclaimerRow}>
-                                            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
-                                            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            ) : (
-                                <View style={styles.aiContainer}>
-                                    {/* AI Disclaimers - Expanded */}
-                                    <View style={styles.aiDisclaimerSection}>
-                                        <View style={styles.disclaimerRow}>
-                                            <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
-                                            <Text style={styles.disclaimerText}>
-                                                {t('disclaimers.aiWarning')}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.disclaimerRow}>
-                                            <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
-                                            <Text style={styles.disclaimerText}>
-                                                {t('disclaimers.sensitiveDataWarning')}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.disclaimerRow}>
-                                            <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
-                                            <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Text Analysis Card */}
-                                    <View style={styles.aiCard}>
-                                        <View style={styles.aiCardHeader}>
-                                            <Icon
-                                                name="text-box-search-outline"
-                                                type="material-community"
-                                                size={24}
-                                                color={theme.colors.primary}
-                                            />
-                                            <Text style={styles.aiCardTitle}>
-                                                {t('addFoodModal.analyzeTextButton')}
-                                            </Text>
-                                        </View>
-                                        
-                                        <Input
-                                            label={t('addFoodModal.ingredientsLabel')}
-                                            labelStyle={styles.aiInputLabel}
-                                            value={ingredients}
-                                            onChangeText={setIngredients}
-                                            multiline={true}
-                                            numberOfLines={4}
-                                            inputContainerStyle={styles.aiInputContainer}
-                                            inputStyle={styles.aiInput}
-                                            placeholder={t('addFoodModal.ingredientsPlaceholder')}
-                                            placeholderTextColor={theme.colors.grey3}
-                                            disabled={isAnyLoading}
-                                        />
-
-                                        <Button
-                                            onPress={handleAnalyzeText}
-                                            buttonStyle={styles.aiActionButton}
-                                            titleStyle={styles.aiActionButtonTitle}
-                                            disabled={isAnyLoading}
-                                            loading={showAiTextLoading}
-                                            disabledStyle={styles.aiActionButtonDisabled}
-                                        >
-                                            {!showAiTextLoading && (
-                                                <View style={styles.aiActionButtonContent}>
-                                                    <Text style={styles.aiActionButtonTitle}>
-                                                        {t('addFoodModal.analyzeTextButton')}
-                                                    </Text>
-                                                    {costs?.cost_macros_recipe != null && (
-                                                        <PriceTag 
-                                                            amount={costs.cost_macros_recipe} 
-                                                            type="cost" 
-                                                            style={styles.priceTagInButton} 
-                                                        />
-                                                    )}
-                                                </View>
-                                            )}
-                                        </Button>
-                                    </View>
-
-                                    {/* Divider */}
-                                    <View style={styles.dividerContainer}>
-                                        <View style={styles.dividerLine} />
-                                        <Text style={styles.dividerText}>{t('addFoodModal.orDivider')}</Text>
-                                        <View style={styles.dividerLine} />
-                                    </View>
-
-                                    {/* Image Analysis Card */}
-                                    <View style={styles.aiCard}>
-                                        <View style={styles.aiCardHeader}>
-                                            <Icon
-                                                name="camera-enhance-outline"
-                                                type="material-community"
-                                                size={24}
-                                                color={theme.colors.primary}
-                                            />
-                                            <Text style={styles.aiCardTitle}>
-                                                {t('addFoodModal.analyzeImageButton')}
-                                            </Text>
-                                        </View>
-                                        
-                                        <Text style={styles.aiCardDescription}>
-                                            {t('addFoodModal.analyzeImageDescription')}
-                                        </Text>
-
-                                        <Button
-                                            onPress={handleGetImageAndAnalyze}
-                                            buttonStyle={styles.aiActionButton}
-                                            titleStyle={styles.aiActionButtonTitle}
-                                            disabled={isAnyLoading}
-                                            loading={showAiImageLoading}
-                                            disabledStyle={styles.aiActionButtonDisabled}
-                                        >
-                                            {!showAiImageLoading && (
-                                                <View style={styles.aiActionButtonContent}>
-                                                    <Text style={styles.aiActionButtonTitle}>
-                                                        {t('addFoodModal.analyzeImageButton')}
-                                                    </Text>
-                                                    {costs?.cost_macros_image_single != null && (
-                                                        <PriceTag 
-                                                            amount={costs.cost_macros_image_single} 
-                                                            type="cost" 
-                                                            style={styles.priceTagInButton} 
-                                                        />
-                                                    )}
-                                                </View>
-                                            )}
-                                        </Button>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </ScrollView>
-
-                    {/* Footer with action button - Hide if invalid/disabled unless loading */}
-                    {(isFormValid || isAnyLoading) && (
-                        <View style={styles.footer}>
-                            <Button 
-                                title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
-                                onPress={handleCreateOrUpdate}
-                                buttonStyle={[ 
-                                    styles.primaryButton, 
-                                    { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
-                                ]}
-                                titleStyle={styles.primaryButtonTitle} 
-                                loading={showLoading} 
-                                disabled={isAnyLoading || !isFormValid} 
-                                containerStyle={styles.primaryButtonContainer}
-                                disabledStyle={styles.primaryButtonDisabled}
+                            <Icon 
+                                name="close" 
+                                type="material" 
+                                size={28} 
+                                color={theme.colors.grey3} 
+                                onPress={!isAnyLoading ? toggleOverlay : undefined}
+                                containerStyle={styles.closeIcon} 
+                                disabled={isAnyLoading} 
+                                disabledStyle={{ backgroundColor: 'transparent' }} 
                             />
                         </View>
-                    )}
-                </View>
-            </KeyboardAvoidingView>
-        </Overlay>
+
+                        <ScrollView 
+                            keyboardShouldPersistTaps="handled" 
+                            contentContainerStyle={styles.scrollContentContainer}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {/* Mode Selection - Only show when adding new food */}
+                            {!editFood && (
+                                <View style={styles.modeSelectionContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modeButton,
+                                            inputMode === 'manual' && styles.modeButtonActive
+                                        ]}
+                                        onPress={() => !isAnyLoading && setInputMode('manual')}
+                                        disabled={isAnyLoading}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Icon
+                                            name="keyboard"
+                                            type="material"
+                                            size={22}
+                                            color={inputMode === 'manual' ? theme.colors.primary : theme.colors.grey3}
+                                            containerStyle={styles.modeIcon}
+                                        />
+                                        <Text style={[
+                                            styles.modeButtonText,
+                                            inputMode === 'manual' && styles.modeButtonTextActive
+                                        ]}>
+                                            {t('addFoodModal.manualInput')}
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modeButton,
+                                            inputMode === 'ai' && styles.modeButtonActive
+                                        ]}
+                                        onPress={() => !isAnyLoading && setInputMode('ai')}
+                                        disabled={isAnyLoading}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Icon
+                                            name="auto-awesome"
+                                            type="material"
+                                            size={22}
+                                            color={inputMode === 'ai' ? theme.colors.primary : theme.colors.secondary}
+                                            containerStyle={styles.modeIcon}
+                                        />
+                                        <Text style={[
+                                            styles.modeButtonText,
+                                            inputMode === 'ai' && styles.modeButtonTextActive
+                                        ]}>
+                                            {t('addFoodModal.aiAssist')}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {/* Content Area */}
+                            <View style={styles.contentContainer}>
+                                {inputMode === 'manual' ? (
+                                    <View style={styles.manualInputContainer}>
+                                        <FoodFormFields
+                                            values={getCurrentFoodData()}
+                                            errors={errors}
+                                            onInputChange={handleInputChange}
+                                            isEditing={!!editFood}
+                                            disabled={isAnyLoading}
+                                        />
+                                        {/* Medical Disclaimer for Manual Mode */}
+                                        <View style={styles.disclaimerContainer}>
+                                            <View style={styles.disclaimerRow}>
+                                                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                                <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.aiContainer}>
+                                        {/* AI Disclaimers - Expanded */}
+                                        <View style={styles.aiDisclaimerSection}>
+                                            <View style={styles.disclaimerRow}>
+                                                <Icon name="information-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                                <Text style={styles.disclaimerText}>
+                                                    {t('disclaimers.aiWarning')}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.disclaimerRow}>
+                                                <Icon name="shield-account-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                                <Text style={styles.disclaimerText}>
+                                                    {t('disclaimers.sensitiveDataWarning')}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.disclaimerRow}>
+                                                <Icon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} style={styles.disclaimerIcon} />
+                                                <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Text Analysis Card */}
+                                        <View style={styles.aiCard}>
+                                            <View style={styles.aiCardHeader}>
+                                                <Icon
+                                                    name="text-box-search-outline"
+                                                    type="material-community"
+                                                    size={24}
+                                                    color={theme.colors.primary}
+                                                />
+                                                <Text style={styles.aiCardTitle}>
+                                                    {t('addFoodModal.analyzeTextButton')}
+                                                </Text>
+                                            </View>
+                                            
+                                            <Input
+                                                label={t('addFoodModal.ingredientsLabel')}
+                                                labelStyle={styles.aiInputLabel}
+                                                value={ingredients}
+                                                onChangeText={setIngredients}
+                                                multiline={true}
+                                                numberOfLines={4}
+                                                inputContainerStyle={styles.aiInputContainer}
+                                                inputStyle={styles.aiInput}
+                                                placeholder={t('addFoodModal.ingredientsPlaceholder')}
+                                                placeholderTextColor={theme.colors.grey3}
+                                                disabled={isAnyLoading}
+                                            />
+
+                                            <Button
+                                                onPress={handleAnalyzeText}
+                                                buttonStyle={styles.aiActionButton}
+                                                titleStyle={styles.aiActionButtonTitle}
+                                                disabled={isAnyLoading}
+                                                loading={showAiTextLoading}
+                                                disabledStyle={styles.aiActionButtonDisabled}
+                                            >
+                                                {!showAiTextLoading && (
+                                                    <View style={styles.aiActionButtonContent}>
+                                                        <Text style={styles.aiActionButtonTitle}>
+                                                            {t('addFoodModal.analyzeTextButton')}
+                                                        </Text>
+                                                        {costs?.cost_macros_recipe != null && (
+                                                            <PriceTag 
+                                                                amount={costs.cost_macros_recipe} 
+                                                                type="cost" 
+                                                                style={styles.priceTagInButton} 
+                                                            />
+                                                        )}
+                                                    </View>
+                                                )}
+                                            </Button>
+                                        </View>
+
+                                        {/* Divider */}
+                                        <View style={styles.dividerContainer}>
+                                            <View style={styles.dividerLine} />
+                                            <Text style={styles.dividerText}>{t('addFoodModal.orDivider')}</Text>
+                                            <View style={styles.dividerLine} />
+                                        </View>
+
+                                        {/* Image Analysis Card */}
+                                        <View style={styles.aiCard}>
+                                            <View style={styles.aiCardHeader}>
+                                                <Icon
+                                                    name="camera-enhance-outline"
+                                                    type="material-community"
+                                                    size={24}
+                                                    color={theme.colors.primary}
+                                                />
+                                                <Text style={styles.aiCardTitle}>
+                                                    {t('addFoodModal.analyzeImageButton')}
+                                                </Text>
+                                            </View>
+                                            
+                                            <Text style={styles.aiCardDescription}>
+                                                {t('addFoodModal.analyzeImageDescription')}
+                                            </Text>
+
+                                            <Button
+                                                onPress={handleGetImageAndAnalyze}
+                                                buttonStyle={styles.aiActionButton}
+                                                titleStyle={styles.aiActionButtonTitle}
+                                                disabled={isAnyLoading}
+                                                loading={showAiImageLoading}
+                                                disabledStyle={styles.aiActionButtonDisabled}
+                                            >
+                                                {!showAiImageLoading && (
+                                                    <View style={styles.aiActionButtonContent}>
+                                                        <Text style={styles.aiActionButtonTitle}>
+                                                            {t('addFoodModal.analyzeImageButton')}
+                                                        </Text>
+                                                        {costs?.cost_macros_image_single != null && (
+                                                            <PriceTag 
+                                                                amount={costs.cost_macros_image_single} 
+                                                                type="cost" 
+                                                                style={styles.priceTagInButton} 
+                                                            />
+                                                        )}
+                                                    </View>
+                                                )}
+                                            </Button>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        </ScrollView>
+
+                        {/* Footer with action button - Hide if invalid/disabled unless loading */}
+                        {(isFormValid || isAnyLoading) && (
+                            <View style={styles.footer}>
+                                <Button 
+                                    title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
+                                    onPress={handleCreateOrUpdate}
+                                    buttonStyle={[ 
+                                        styles.primaryButton, 
+                                        { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
+                                    ]}
+                                    titleStyle={styles.primaryButtonTitle} 
+                                    loading={showLoading} 
+                                    disabled={isAnyLoading || !isFormValid} 
+                                    containerStyle={styles.primaryButtonContainer}
+                                    disabledStyle={styles.primaryButtonDisabled}
+                                />
+                            </View>
+                        )}
+                    </View>
+                </KeyboardAvoidingView>
+            </Overlay>
+            <GuestLimitModal isVisible={isGuestModalVisible} onClose={() => setIsGuestModalVisible(false)} />
+        </>
     );
 };
 

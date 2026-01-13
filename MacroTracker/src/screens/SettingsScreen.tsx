@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, InteractionManager } from "react-native";
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
-import * as Updates from 'expo-updates'; // <--- ADDED IMPORT
+import * as Updates from 'expo-updates';
 
 import DailyGoalsInput from "../components/DailyGoalsInput";
 import DataManagementButtons from "../components/DataManagementButtons";
@@ -12,7 +12,7 @@ import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import { loadDailyEntries } from "../services/storageService";
-import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
+import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting, SettingsStackParamList } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -25,6 +25,7 @@ import { showRewardedAd } from '../services/adService';
 import { resendVerificationEmail } from "../services/backendService";
 import useDelayedLoading from "../hooks/useDelayedLoading";
 import { AdsConsent, AdsConsentPrivacyOptionsRequirementStatus } from 'react-native-google-mobile-ads';
+import { RootStackParamList } from "../navigation/AppNavigator";
 
 interface SettingsScreenProps {
   onThemeChange: (theme: "light" | "dark" | "system") => void;
@@ -33,14 +34,8 @@ interface SettingsScreenProps {
   onLogout: () => void;
 }
 
-type SettingsStackParamList = {
-  SettingsHome: undefined; 
-  Questionnaire: undefined; 
-  PrivacyPolicy: undefined;
-  TermsOfService: undefined;
-};
-
-type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>;
+// Composite Prop to allow navigation to RootStack routes (Auth, Questionnaire) and SettingsStack routes
+type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList & RootStackParamList, 'SettingsHome'>;
 
 const calculateMovingAverage = (data: MacroData[], windowSize: number): MacroData[] => {
     if (windowSize <= 1) return data;
@@ -74,7 +69,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   const { theme } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation<SettingsNavigationProp>(); 
-  const { user, settings, refreshUser, changeDailyGoals, reloadSettings } = useAuth() as AuthContextType;
+  const { user, settings, refreshUser, changeDailyGoals, reloadSettings, isGuest } = useAuth() as AuthContextType;
 
   const [statistics, setStatistics] = useState<Statistics>({ calories: [], protein: [], carbs: [], fat: [] });
   
@@ -328,8 +323,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }
   };
 
+  // Navigate to Questionnaire via RootStack
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
+  
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
+
+  const handleLoginPress = () => navigation.navigate('Auth', { screen: 'Login' });
+  const handleRegisterPress = () => navigation.navigate('Auth', { screen: 'Register' });
 
   const LANGUAGES = useMemo(() => [
     { code: 'system', label: t('settingsScreen.language.system') },
@@ -351,32 +351,45 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.account.title')}</Text>
-          <AccountSettings
-            user={user}
-            isLoading={isUserRefreshing}
-            isAdLoading={isAdLoading}
-            onWatchAd={handleWatchAd}
-            onResendVerification={handleResendVerification}
-          />
           
-          <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
-              <Icon name="logout" type="material-community" color={theme.colors.primary} />
-              <ListItem.Content>
-                  <ListItem.Title style={styles.actionItemTitle}>
-                      {t('settingsScreen.account.logout')}
-                  </ListItem.Title>
-              </ListItem.Content>
-              <ListItem.Chevron color={theme.colors.primary} />
-          </ListItem>
-          <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
-              <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
-              <ListItem.Content>
-                  <ListItem.Title style={styles.deleteTitle}>
-                      {t('settingsScreen.account.deleteAccount')}
-                  </ListItem.Title>
-              </ListItem.Content>
-              <ListItem.Chevron color={theme.colors.error} />
-          </ListItem>
+          {!isGuest ? (
+            <>
+                <AccountSettings
+                    user={user}
+                    isLoading={isUserRefreshing}
+                    isAdLoading={isAdLoading}
+                    onWatchAd={handleWatchAd}
+                    onResendVerification={handleResendVerification}
+                />
+                
+                <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
+                    <Icon name="logout" type="material-community" color={theme.colors.primary} />
+                    <ListItem.Content>
+                        <ListItem.Title style={styles.actionItemTitle}>
+                            {t('settingsScreen.account.logout')}
+                        </ListItem.Title>
+                    </ListItem.Content>
+                    <ListItem.Chevron color={theme.colors.primary} />
+                </ListItem>
+                <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
+                    <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
+                    <ListItem.Content>
+                        <ListItem.Title style={styles.deleteTitle}>
+                            {t('settingsScreen.account.deleteAccount')}
+                        </ListItem.Title>
+                    </ListItem.Content>
+                    <ListItem.Chevron color={theme.colors.error} />
+                </ListItem>
+            </>
+          ) : (
+            <View style={styles.guestContainer}>
+                <Text style={styles.guestText}>{t('settingsScreen.guestMode.message')}</Text>
+                <View style={styles.guestButtons}>
+                    <Button title={t('settingsScreen.guestMode.login')} onPress={handleLoginPress} type="outline" containerStyle={{flex: 1, marginRight: 5}} />
+                    <Button title={t('settingsScreen.guestMode.createAccount')} onPress={handleRegisterPress} containerStyle={{flex: 1, marginLeft: 5}} />
+                </View>
+            </View>
+          )}
 
           <Text h3 style={styles.sectionTitle}>{t('settingsScreen.general.title')}</Text>
           
@@ -471,11 +484,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
           </View>
 
-          {/* --- ADDED: Version & Update Info for Debugging --- */}
           <View style={styles.versionContainer}>
             <Text style={styles.versionText}>Runtime: {Updates.runtimeVersion}</Text>
-            {/* <Text style={styles.versionText}>Channel: {Updates.channel || 'dev'}</Text> */}
-            {/* <Text style={styles.versionText}>Update ID: {Updates.updateId || 'Embedded Binary'}</Text> */}
           </View>
           
       </ScrollView>
@@ -621,7 +631,6 @@ const useStyles = makeStyles((theme) => ({
     fontStyle: 'italic',
     textAlign: 'center',
   },
-  // Added Styles for Version info
   versionContainer: {
     alignItems: 'center',
     marginTop: 20,
@@ -633,6 +642,21 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 10,
     textAlign: 'center',
   },
+  guestContainer: {
+      padding: 15,
+      backgroundColor: theme.colors.grey0,
+      borderRadius: 10,
+      marginBottom: 10,
+  },
+  guestText: {
+      color: theme.colors.text,
+      marginBottom: 15,
+      textAlign: 'center',
+  },
+  guestButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+  }
 }));
 
 export default SettingsScreen;

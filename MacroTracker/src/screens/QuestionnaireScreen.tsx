@@ -17,13 +17,15 @@ import {
   ExerciseIntensity 
 } from '../types/questionnaire';
 import { Settings, SettingsStackParamList } from '../types/settings';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { loadSettings, saveSettings } from '../services/storageService';
 import i18n, { t } from '../localization/i18n';
 import Toast from 'react-native-toast-message';
 import { useAuth, AuthContextType } from '../context/AuthContext';
 
-type QuestionnaireScreenRouteProp = RouteProp<SettingsStackParamList, 'Questionnaire'>;
-type QuestionnaireNavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Questionnaire'>;
+// Correct RouteProp for the moved screen
+type QuestionnaireScreenRouteProp = RouteProp<RootStackParamList, 'Questionnaire'>;
+type QuestionnaireNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Questionnaire'>;
 
 // MET Values from 2024 Compendium
 const METS = {
@@ -57,7 +59,7 @@ const QuestionnaireScreen: React.FC = () => {
                     type="clear"
                     title={t('confirmationModal.cancel')}
                     titleStyle={{ color: theme.colors.primary }}
-                    onPress={() => navigation.navigate('DailyEntryRoute' as any)} // Cast to any to avoid type issues with crossing stacks
+                    onPress={() => navigation.goBack()} // Just go back to whatever opened the modal
                 />
             ),
         });
@@ -333,7 +335,7 @@ const QuestionnaireScreen: React.FC = () => {
         await saveSettings(updatedSettings);
         Toast.show({ type: 'success', text1: t('questionnaireScreen.toast.goalsCalculated'), position: 'bottom' });
         
-        // Go back. If opened via Prompt, this should correctly return to the caller.
+        // Go back. If opened via Prompt (RootStack Modal), this returns to caller.
         navigation.goBack();
       } else {
         Alert.alert(t('questionnaireScreen.error.calculationFailedTitle'), t('questionnaireScreen.error.calculationFailedMessage'));

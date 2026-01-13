@@ -23,10 +23,13 @@ import { t } from '../localization/i18n';
 import i18n from '../localization/i18n';
 import { Settings as AppSettings } from "../types/settings";
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { MainTabParamList } from "../navigation/AppNavigator";
+import { MainTabParamList, RootStackParamList } from "../navigation/AppNavigator";
 import useDelayedLoading from "../hooks/useDelayedLoading";
+import { useAuth, AuthContextType } from '../context/AuthContext';
+import AiPromotionModal from "../components/AiPromotionModal";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'>;
+type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'> & NativeStackNavigationProp<RootStackParamList>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
 
 const DailyEntryScreen: React.FC = () => {
@@ -54,8 +57,12 @@ const DailyEntryScreen: React.FC = () => {
   // Track if we have already shown the prompt in this session/mount to prevent it reappearing after close
   const hasShownSessionPrompt = useRef(false);
 
+  // AI Promo Modal State
+  const [showAiPromo, setShowAiPromo] = useState(false);
+
   const { theme } = useTheme();
   const styles = useStyles();
+  const { settings, isGuest } = useAuth() as AuthContextType;
 
   const showIsLoadingData = useDelayedLoading(isLoadingData);
   const showIsSaving = useDelayedLoading(isSaving, 300);
@@ -130,6 +137,14 @@ const DailyEntryScreen: React.FC = () => {
         hasShownSessionPrompt.current = true;
       }
 
+      // Check for AI Promo - Only if NOT guest (guests are prompted via GuestLimitModal)
+      if (!isGuest && !loadedSettings.hasTriedAI && !loadedSettings.isAiPromoDismissed) {
+          // Delay slightly to not conflict with goal prompt if both triggered (goal takes precedence here)
+          if (loadedSettings.hasCompletedEstimation || loadedSettings.isEstimationReminderDismissed) {
+              setTimeout(() => setShowAiPromo(true), 1500);
+          }
+      }
+
     } catch (error) {
       console.error("Error in DailyEntryScreen loadData:", error);
       Alert.alert(t('dailyEntryScreen.errorLoad'), t('dailyEntryScreen.errorLoadMessage'));
@@ -137,7 +152,7 @@ const DailyEntryScreen: React.FC = () => {
     } finally {
       setIsLoadingData(false);
     }
-  }, [selectedDate, triggerIconPrefetch, t]);
+  }, [selectedDate, triggerIconPrefetch, t, isGuest]);
 
   useEffect(() => {
     const quickAddFoodParam = route.params?.quickAddFood;
@@ -169,11 +184,8 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleEstimateNow = () => {
     setShowGoalPrompt(false);
-    // Navigate specifically to the Questionnaire in Settings stack with the params to show Cancel button
-    navigation.navigate('SettingsStackRoute', { 
-        screen: 'Questionnaire',
-        params: { fromPrompt: true }
-    });
+    // Navigate specifically to the Questionnaire in RootStack (Modal) with the params to show Cancel button
+    navigation.navigate('Questionnaire', { fromPrompt: true });
   };
 
   const handleDontRemind = async () => {
@@ -591,6 +603,16 @@ const DailyEntryScreen: React.FC = () => {
           />
         </View>
       </Overlay>
+
+      {/* AI Promotion Modal */}
+      <AiPromotionModal 
+        isVisible={showAiPromo} 
+        onClose={() => setShowAiPromo(false)} 
+        onTryNow={() => {
+            setShowAiPromo(false);
+            toggleAddOverlay(); // Open Add Modal
+        }}
+      />
 
     </SafeAreaView>
   );

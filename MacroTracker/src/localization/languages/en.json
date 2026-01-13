@@ -36,6 +36,19 @@
     "humanInTheLoopText": "I agree that I will verify all AI results (macronutrients, food identification) and I assume full responsibility for their accuracy.",
     "buttonAgree": "I Agree & Continue"
   },
+  "guestLimit": {
+    "title": "Account Required",
+    "message": "To use %{feature}, you need to create an account. This ensures your data is backed up and allows for secure AI processing.",
+    "createAccount": "Create Free Account",
+    "login": "Log In",
+    "notNow": "Not Now"
+  },
+  "aiPromo": {
+    "title": "Try AI Features!",
+    "message": "Instantly analyze food from photos or text descriptions. It's faster and smarter!",
+    "tryNow": "Try AI Now",
+    "dontShowAgain": "Don't show again"
+  },
   "registerScreen": {
     "title": "Create Account",
     "emailPlaceholder": "Email",
@@ -71,6 +84,11 @@
   },
   "settingsScreen": {
     "title": "Settings",
+    "guestMode": {
+      "message": "You are currently using Guest Mode. Sign up to sync your data and use AI features.",
+      "login": "Log In",
+      "createAccount": "Create Account"
+    },
     "account": {
       "title": "Account",
       "actions": "Account Actions",

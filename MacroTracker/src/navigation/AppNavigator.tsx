@@ -26,7 +26,7 @@ import AdLoadingModal from '../components/AdLoadingModal';
 import FirstRunModal, { MissingConsents } from '../components/FirstRunModal';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
-import { LanguageCode, SettingsStackParamList } from '../types/settings'; // Import shared type
+import { LanguageCode, SettingsStackParamList } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
 import { setLogoutListener } from '../services/authService';
@@ -50,8 +50,9 @@ export type AuthStackParamList = {
 };
 
 export type RootStackParamList = {
-  Auth: undefined;
+  Auth: { screen: keyof AuthStackParamList }; // Make Auth accessible as a nested stack
   Main: undefined;
+  Questionnaire: { fromPrompt?: boolean } | undefined; // Moved to RootStack for modal behavior
 };
 
 // Create Navigators
@@ -66,7 +67,7 @@ const productionBackendUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODU
 const linking = {
   prefixes: [
       Linking.createURL('/'),
-      productionBackendUrl, // Support HTTPS deep links
+      productionBackendUrl, 
   ],
   config: {
     screens: {
@@ -76,18 +77,16 @@ const linking = {
         },
       },
       Main: {
-          path: '', // Matches the root path '/'
+          path: '', 
           screens: {
-              DailyEntryRoute: '', // Matches root inside Main, effectively '/'
+              DailyEntryRoute: '', 
               FoodListRoute: 'share/food', 
           }
       },
     }
   },
   getStateFromPath: (path: string, options: any) => {
-    // Manually handle the legacy custom scheme path 'open-add-food-modal'
     if (path.includes('open-add-food-modal')) {
-        // Basic parsing to extract query parameters
         const queryIndex = path.indexOf('?');
         let params: Record<string, string> = {};
         if (queryIndex !== -1) {
@@ -100,7 +99,6 @@ const linking = {
                 }
             }
         }
-        // Ensure openAddFoodModal is set if using this legacy path
         params.openAddFoodModal = 'true';
 
         return {
@@ -119,7 +117,6 @@ const linking = {
             ],
         };
     }
-    // Default behavior for other paths (like share/food and login)
     return getStateFromPath(path, options);
   },
 };
@@ -189,7 +186,6 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
         {(props: NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
-      <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
       <SettingsStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: t('settingsScreen.general.privacyPolicy') }} />
       <SettingsStackNav.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ title: t('settingsScreen.general.termsOfService') }} />
     </SettingsStackNav.Navigator>
@@ -237,7 +233,8 @@ function AuthNavigator() {
     const { theme } = useTheme();
     const screenOptions: NativeStackNavigationOptions = {
         headerShown: false,
-        contentStyle: { backgroundColor: theme.colors.background }
+        contentStyle: { backgroundColor: theme.colors.background },
+        presentation: 'modal', // Make Auth screens feel like a separate flow/modal
     };
     return (
         <AuthStack.Navigator screenOptions={screenOptions}>
@@ -250,12 +247,11 @@ function AuthNavigator() {
     )
 }
 
-// 1. Create a navigation ref to use outside of components nested in the navigator
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-// App Content - Determines which stack to show
+// App Content
 function AppContent() {
-  const { authState, settings, user, changeTheme, changeLocale, logout, refreshUser } = useAuth() as AuthContextType;
+  const { authState, settings, user, changeTheme, changeLocale, logout, refreshUser, isGuest } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
   const [isUpdateRequired, setIsUpdateRequired] = useState(false);
   const [storeUrl, setStoreUrl] = useState('');
@@ -274,7 +270,6 @@ function AppContent() {
             const currentVersion = Constants.expoConfig?.version;
             const requiredVersion = remoteConfig.current_version;
             
-            // Store the latest ToS version for use in compliance check
             setLatestTosVersion(remoteConfig.tos_current_version || '1.0.0');
 
             if (currentVersion && requiredVersion && compareVersions(currentVersion, requiredVersion) < 0) {
@@ -294,11 +289,10 @@ function AppContent() {
 
   // --- Logic to Show Compliance / Liability Modal ---
   React.useEffect(() => {
-      if (authState.authenticated && user && latestTosVersion) {
+      // Only show compliance modal for authenticated users (not guests)
+      if (authState.authenticated && user && latestTosVersion && !isGuest) {
           const userAgreedVersion = user.tos_version || '0.0.0';
           
-          // Determine what is missing
-          // The critical change: compare user's agreed version to the REMOTE ToS setting
           const missing = {
               tos: !user.tos_agreed_at || compareVersions(userAgreedVersion, latestTosVersion) < 0,
               health: !user.consent_health_data_at,
@@ -316,19 +310,16 @@ function AppContent() {
       } else {
           setShowComplianceModal(false);
       }
-  }, [authState.authenticated, user, latestTosVersion]);
+  }, [authState.authenticated, user, latestTosVersion, isGuest]);
 
   const handleAgreeToCompliance = async (updatedConsents: MissingConsents) => {
       try {
           const currentIsoTime = new Date().toISOString();
-          
-          // Build payload only for checked items that were missing
-          // Note: FirstRunModal only allows clicking Agree if they checked the boxes for missing items.
           const payload: any = {};
           
           if (missingConsents.tos) {
               payload.tos_agreed_at = currentIsoTime;
-              payload.tos_version = latestTosVersion; // Use the version from remote config
+              payload.tos_version = latestTosVersion; 
           }
           if (missingConsents.health) payload.consent_health_data_at = currentIsoTime;
           if (missingConsents.transfer) payload.consent_data_transfer_at = currentIsoTime;
@@ -336,7 +327,7 @@ function AppContent() {
           if (missingConsents.hitl) payload.agreed_to_human_in_the_loop_at = currentIsoTime;
 
           await updateUserCompliance(payload);
-          await refreshUser?.(); // Update local user state
+          await refreshUser?.(); 
           setShowComplianceModal(false);
       } catch (error) {
           Alert.alert("Error", "Could not save your agreements. Please check your connection.");
@@ -347,7 +338,7 @@ function AppContent() {
     if (logout) {
       setLogoutListener(logout);
     }
-    return () => setLogoutListener(null); // Cleanup on unmount
+    return () => setLogoutListener(null); 
   }, [logout]);
 
   const themeMode = settings.theme;
@@ -393,7 +384,6 @@ function AppContent() {
     <ThemeProvider theme={createTheme(currentThemeConfig)}>
         <View style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
             <StatusBar style={currentThemeConfig.mode === "dark" ? "light" : "dark"} backgroundColor={currentThemeConfig.colors.background} />
-            {/* 3. Attach the ref to the container */}
             <NavigationContainer 
                 ref={navigationRef}
                 linking={linking} 
@@ -401,18 +391,33 @@ function AppContent() {
                 fallback={<LoadingFallback />}
             >
                 <RootStack.Navigator screenOptions={{ headerShown: false }}>
-                    {authState.authenticated ? (
-                         <RootStack.Screen name="Main">
-                             {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
-                         </RootStack.Screen>
-                    ) : (
-                        <RootStack.Screen name="Auth" component={AuthNavigator} />
-                    )}
+                    {/* Main is the default access route now */}
+                    <RootStack.Screen name="Main">
+                        {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
+                    </RootStack.Screen>
+                    
+                    {/* Auth Stack accessible via navigation, especially for guests upgrading */}
+                    <RootStack.Screen name="Auth" component={AuthNavigator} />
+
+                    {/* Questionnaire as a modal in RootStack to avoid navigation issues from multiple tabs */}
+                    <RootStack.Screen 
+                        name="Questionnaire" 
+                        component={QuestionnaireScreen} 
+                        options={{ 
+                            headerShown: true, 
+                            title: t('questionnaireScreen.title'),
+                            presentation: 'modal',
+                            headerStyle: { backgroundColor: currentThemeConfig.colors.background }, 
+                            headerTitleStyle: { color: currentThemeConfig.colors.text }, 
+                            headerTintColor: currentThemeConfig.colors.primary, 
+                            headerTitleAlign: 'center'
+                        }} 
+                    />
                 </RootStack.Navigator>
             </NavigationContainer>
+            
             <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
             <AdLoadingModal />
-            {/* 4. Pass handlers to modal */}
             <FirstRunModal 
                 isVisible={showComplianceModal} 
                 missingConsents={missingConsents} 
@@ -446,7 +451,7 @@ export default function AppNavigator() {
                 </SafeAreaView>
             );
         }
-        return null; // Render nothing during the initial delay
+        return null;
     }
 
     return <AppContent />;
