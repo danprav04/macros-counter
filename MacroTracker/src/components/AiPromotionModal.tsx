@@ -43,7 +43,7 @@ const AiPromotionModal: React.FC<AiPromotionModalProps> = ({ isVisible, onClose,
             {t('aiPromo.title')}
           </Text>
           
-          <Text style={[styles.message, { color: theme.colors.grey2 }]}>
+          <Text style={[styles.message, { color: theme.colors.secondary }]}>
             {t('aiPromo.message')}
           </Text>
 

@@ -189,7 +189,7 @@ const FirstRunModal: React.FC<FirstRunModalProps> = ({
                                 <Text h4 style={[styles.title, { color: theme.colors.text }]}>
                                     {t('firstRunModal.title')}
                                 </Text>
-                                <Text style={[styles.subtitle, { color: theme.colors.grey2 }]}>
+                                <Text style={[styles.subtitle, { color: theme.colors.secondary }]}>
                                     We've updated our legal terms and safety requirements. Please review and agree to continue.
                                 </Text>
                             </View>
