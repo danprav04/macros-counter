@@ -23,12 +23,13 @@ import { t } from '../localization/i18n';
 import i18n from '../localization/i18n';
 import { Settings as AppSettings } from "../types/settings";
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { MainTabParamList } from "../navigation/AppNavigator";
+import { MainTabParamList, RootStackParamList } from "../navigation/AppNavigator";
 import useDelayedLoading from "../hooks/useDelayedLoading";
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import AiPromotionModal from "../components/AiPromotionModal";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'>;
+type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'> & NativeStackNavigationProp<RootStackParamList>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
 
 const DailyEntryScreen: React.FC = () => {
@@ -183,11 +184,8 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleEstimateNow = () => {
     setShowGoalPrompt(false);
-    // Navigate specifically to the Questionnaire in Settings stack with the params to show Cancel button
-    navigation.navigate('SettingsStackRoute', { 
-        screen: 'Questionnaire',
-        params: { fromPrompt: true }
-    });
+    // Navigate specifically to the Questionnaire in RootStack (Modal) with the params to show Cancel button
+    navigation.navigate('Questionnaire', { fromPrompt: true });
   };
 
   const handleDontRemind = async () => {

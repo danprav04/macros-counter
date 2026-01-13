@@ -49,7 +49,7 @@ export interface SettingsScreenProps {
 // Shared ParamList to ensure type safety across screens
 export type SettingsStackParamList = {
   SettingsHome: undefined;
-  Questionnaire: { fromPrompt?: boolean } | undefined;
+  // Questionnaire moved to RootStack to allow modal behavior from multiple tabs
   PrivacyPolicy: undefined;
   TermsOfService: undefined;
 };

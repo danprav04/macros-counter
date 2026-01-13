@@ -12,7 +12,7 @@ import StatisticsChart from "../components/StatisticsChart";
 import AccountSettings from "../components/AccountSettings";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import { loadDailyEntries } from "../services/storageService";
-import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting } from "../types/settings";
+import { Settings, Statistics, MacroType, MacroData, LanguageCode, macros as macroKeysSetting, SettingsStackParamList } from "../types/settings";
 import { parseISO, isValid, startOfDay } from "date-fns";
 import { DailyEntry } from "../types/dailyEntry";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -34,14 +34,7 @@ interface SettingsScreenProps {
   onLogout: () => void;
 }
 
-type SettingsStackParamList = {
-  SettingsHome: undefined; 
-  Questionnaire: undefined; 
-  PrivacyPolicy: undefined;
-  TermsOfService: undefined;
-};
-
-// Composite Prop to allow navigation to RootStack routes (Auth)
+// Composite Prop to allow navigation to RootStack routes (Auth, Questionnaire) and SettingsStack routes
 type SettingsNavigationProp = NativeStackNavigationProp<SettingsStackParamList & RootStackParamList, 'SettingsHome'>;
 
 const calculateMovingAverage = (data: MacroData[], windowSize: number): MacroData[] => {
@@ -330,7 +323,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
     }
   };
 
+  // Navigate to Questionnaire via RootStack
   const handleNavigateToQuestionnaire = () => navigation.navigate('Questionnaire');
+  
   const handleLogout = () => Alert.alert(t('settingsScreen.account.logoutConfirmTitle'), t('settingsScreen.account.logoutConfirmMessage'), [ { text: t('confirmationModal.cancel'), style: 'cancel' }, { text: t('settingsScreen.account.logout'), style: 'destructive', onPress: onLogout } ], { cancelable: true });
 
   const handleLoginPress = () => navigation.navigate('Auth', { screen: 'Login' });

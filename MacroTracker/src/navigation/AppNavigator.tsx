@@ -52,6 +52,7 @@ export type AuthStackParamList = {
 export type RootStackParamList = {
   Auth: { screen: keyof AuthStackParamList }; // Make Auth accessible as a nested stack
   Main: undefined;
+  Questionnaire: { fromPrompt?: boolean } | undefined; // Moved to RootStack for modal behavior
 };
 
 // Create Navigators
@@ -185,7 +186,6 @@ function SettingsStackNavigatorComponent({ onThemeChange, onLocaleChange, onData
       <SettingsStackNav.Screen name="SettingsHome" options={{ title: t('settingsScreen.title') }}>
         {(props: NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>) => <SettingsScreen {...props} onThemeChange={onThemeChange} onLocaleChange={onLocaleChange} onDataOperation={onDataOperation} onLogout={onLogout} />}
       </SettingsStackNav.Screen>
-      <SettingsStackNav.Screen name="Questionnaire" component={QuestionnaireScreen} options={{ title: t('questionnaireScreen.title') }} />
       <SettingsStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: t('settingsScreen.general.privacyPolicy') }} />
       <SettingsStackNav.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ title: t('settingsScreen.general.termsOfService') }} />
     </SettingsStackNav.Navigator>
@@ -398,6 +398,21 @@ function AppContent() {
                     
                     {/* Auth Stack accessible via navigation, especially for guests upgrading */}
                     <RootStack.Screen name="Auth" component={AuthNavigator} />
+
+                    {/* Questionnaire as a modal in RootStack to avoid navigation issues from multiple tabs */}
+                    <RootStack.Screen 
+                        name="Questionnaire" 
+                        component={QuestionnaireScreen} 
+                        options={{ 
+                            headerShown: true, 
+                            title: t('questionnaireScreen.title'),
+                            presentation: 'modal',
+                            headerStyle: { backgroundColor: currentThemeConfig.colors.background }, 
+                            headerTitleStyle: { color: currentThemeConfig.colors.text }, 
+                            headerTintColor: currentThemeConfig.colors.primary, 
+                            headerTitleAlign: 'center'
+                        }} 
+                    />
                 </RootStack.Navigator>
             </NavigationContainer>
             

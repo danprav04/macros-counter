@@ -6,12 +6,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { AuthStackParamList, RootStackParamList } from '../navigation/AppNavigator';
-import { registerUser } from '../services/authService';
+import { registerUser, loginUser } from '../services/authService';
 import { getAppConfig } from '../services/backendService';
 import { t } from '../localization/i18n';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { formatDateISO } from '../utils/dateUtils';
 import TermsGate, { Consents } from '../components/TermsGate';
+import { useAuth, AuthContextType } from '../context/AuthContext';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList & RootStackParamList, 'Register'>;
 
@@ -38,6 +39,7 @@ const RegisterScreen: React.FC = () => {
     
     const navigation = useNavigation<RegisterScreenNavigationProp>();
     const { theme } = useTheme();
+    const { login } = useAuth() as AuthContextType;
     const showIsLoading = useDelayedLoading(isLoading);
 
     const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -107,6 +109,25 @@ const RegisterScreen: React.FC = () => {
                 consent_data_transfer_at: currentIsoTime,
                 acknowledged_not_medical_device_at: currentIsoTime
             });
+
+            // Attempt Auto Login
+            try {
+                const tokenData = await loginUser(email, password);
+                if (tokenData && tokenData.access_token) {
+                    await login(tokenData);
+                    
+                    // Reset to Main to clear Auth stack
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Main' }],
+                    });
+                    return; // End here, no need to show alert
+                }
+            } catch (loginErr) {
+                console.log("Auto-login failed:", loginErr);
+                // Fall through to success alert (email verification likely needed)
+            }
+
             Alert.alert(
                 t('registerScreen.alert.successTitle'),
                 response.message,
