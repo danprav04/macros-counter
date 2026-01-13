@@ -37,7 +37,7 @@ const GuestLimitModal: React.FC<GuestLimitModalProps> = ({ isVisible, onClose, f
           <Text h4 style={[styles.title, { color: theme.colors.text }]}>
             {t('guestLimit.title')}
           </Text>
-          <Text style={[styles.message, { color: theme.colors.grey2 }]}>
+          <Text style={[styles.message, { color: theme.colors.secondary }]}>
             {t('guestLimit.message', { feature: featureName })}
           </Text>
           

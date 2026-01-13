@@ -47,7 +47,7 @@ const ForgotPasswordScreen: React.FC = () => {
                 <Text h3 style={[styles.title, { color: theme.colors.text }]}>
                     {t('forgotPasswordScreen.title')}
                 </Text>
-                <Text style={[styles.instructions, { color: theme.colors.grey2 }]}>
+                <Text style={[styles.instructions, { color: theme.colors.secondary }]}>
                     {t('forgotPasswordScreen.instructions')}
                 </Text>
                 <Input
