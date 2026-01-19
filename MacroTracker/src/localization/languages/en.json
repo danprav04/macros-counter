@@ -455,7 +455,8 @@
       "sdkFailed": "The ad service could not be initialized. Please try again later.",
       "loadFailed": "No ads are available at the moment. Please try again in a while.",
       "showFailed": "The ad could not be shown. Please try again.",
-      "unknown": "An unexpected error occurred with the ad service."
+      "unknown": "An unexpected error occurred with the ad service.",
+      "blocked": "You are currently blocked from watching ads."
     }
   },
   "statisticsChart": {

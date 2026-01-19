@@ -204,34 +204,45 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
                 <Icon name="cart-plus" type="material-community" color={theme.colors.success} size={24} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={onWatchAd}
-              disabled={isAdLoading}
-              style={styles.adButton}
-            >
-              {showIsAdLoading ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : (
-                <View style={styles.adButtonContent}>
-                  <Icon
-                    name="movie-play-outline"
-                    type="material-community"
-                    color={theme.colors.primary}
-                    size={26}
-                  />
-                  <PriceTag
-                    amount={rewardNow}
-                    type="reward"
-                    style={{ marginLeft: 8 }}
-                  />
+            {user?.is_blocked_from_ads ? (
+                <View style={[styles.adButton, styles.blockedButton]}>
+                    <Icon
+                        name="block-helper"
+                        type="material-community"
+                        color={theme.colors.grey3}
+                        size={26}
+                    />
                 </View>
-              )}
-            </TouchableOpacity>
+            ) : (
+                <TouchableOpacity
+                  onPress={onWatchAd}
+                  disabled={isAdLoading}
+                  style={styles.adButton}
+                >
+                  {showIsAdLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : (
+                    <View style={styles.adButtonContent}>
+                      <Icon
+                        name="movie-play-outline"
+                        type="material-community"
+                        color={theme.colors.primary}
+                        size={26}
+                      />
+                      <PriceTag
+                        amount={rewardNow}
+                        type="reward"
+                        style={{ marginLeft: 8 }}
+                      />
+                    </View>
+                  )}
+                </TouchableOpacity>
+            )}
           </View>
         )}
       </ListItem>
 
-      {user && costs && (
+      {user && costs && !user.is_blocked_from_ads && (
         <ListItem
           bottomDivider
           containerStyle={
@@ -329,6 +340,7 @@ const useStyles = makeStyles((theme) => ({
   coinValue: { color: theme.colors.primary, fontWeight: "bold", fontSize: 16 },
   coinContainer: { flexDirection: "row", alignItems: "center" },
   adButton: { marginLeft: 15, padding: 5 },
+  blockedButton: { opacity: 0.5 },
   adButtonContent: { flexDirection: "row", alignItems: "center" },
   iconBtn: { marginLeft: 15, padding: 5 },
   badgesContainer: {

@@ -239,6 +239,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
   
   const handleWatchAd = async () => {
     if (!user?.client_id || isAdLoading) return;
+    
+    if (user.is_blocked_from_ads) {
+        Toast.show({
+            type: 'error',
+            text1: t('ads.error.blocked')
+        });
+        return;
+    }
+
     setIsAdLoading(true);
 
     const rewardEarned = await showRewardedAd(user.client_id);

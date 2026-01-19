@@ -17,6 +17,7 @@ export interface User {
   badges: Badge[];
   ad_streak_count: number;
   ads_watched_today: number;
+  is_blocked_from_ads: boolean;
   
   // Compliance & Liability Fields
   tos_agreed_at?: string;
