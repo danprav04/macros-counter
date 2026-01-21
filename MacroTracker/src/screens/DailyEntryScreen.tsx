@@ -32,6 +32,15 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'> & NativeStackNavigationProp<RootStackParamList>;
 type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
 
+// Helper for food comparison (Strict match of name and macros)
+const isSameFood = (f1: Food, f2: Food) => {
+    return f1.name.trim().toLowerCase() === f2.name.trim().toLowerCase() &&
+           Math.abs(f1.calories - f2.calories) < 0.5 &&
+           Math.abs(f1.protein - f2.protein) < 0.5 &&
+           Math.abs(f1.carbs - f2.carbs) < 0.5 &&
+           Math.abs(f1.fat - f2.fat) < 0.5;
+};
+
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
@@ -450,20 +459,14 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleSaveEntryFoodToLibrary = useCallback(async (food: Food) => {
       if (isSaving) return;
-      const exists = foods.some(f => f.id === food.id);
+      const exists = foods.some(f => isSameFood(f, food));
       
       if (exists) {
-          // If it exists by ID, it's already in the library. 
-          // We could potentially update it, but the button implies "Saving a new thing".
-          // For now, let's just inform the user.
-          Toast.show({ type: 'info', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: food.name }), position: 'bottom' });
-          // If we wanted to enforce update, we'd call handleCommitFoodItemToMainLibrary(food, true);
+          Toast.show({ type: 'info', text1: "Food already saved in library", position: 'bottom' });
           return;
       }
 
       // If it doesn't exist (e.g. from Quick Add with generated ID not in library), create it.
-      // We strip ID to let createFood generate a new consistent one, or we can keep it if we want to sync.
-      // Usually creating a new entry in library from an ephemeral entry is safer as a new create.
       const { id, createdAt, ...foodData } = food;
       
       const savedFood = await handleCommitFoodItemToMainLibrary(foodData, false);
@@ -474,7 +477,8 @@ const DailyEntryScreen: React.FC = () => {
 
   const isSelectedEntryInLibrary = useMemo(() => {
       if (!selectedEntryForDetails) return false;
-      return foods.some(f => f.id === selectedEntryForDetails.item.food.id);
+      const entryFood = selectedEntryForDetails.item.food;
+      return foods.some(f => isSameFood(f, entryFood));
   }, [selectedEntryForDetails, foods]);
 
   const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDateValue?: Date) => {

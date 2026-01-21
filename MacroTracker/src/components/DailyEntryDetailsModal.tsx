@@ -132,7 +132,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({
               <TouchableOpacity 
                 onPress={handleLibraryAction} 
                 style={styles.actionIcon}
-                disabled={isLibraryActionLoading}
+                disabled={isLibraryActionLoading || isFoodSaved}
               >
                 {isLibraryActionLoading ? (
                     <ActivityIndicator size="small" color={theme.colors.primary} />
