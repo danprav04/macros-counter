@@ -448,6 +448,35 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [isSaving, resolveAndSetIcon, t]);
 
+  const handleSaveEntryFoodToLibrary = useCallback(async (food: Food) => {
+      if (isSaving) return;
+      const exists = foods.some(f => f.id === food.id);
+      
+      if (exists) {
+          // If it exists by ID, it's already in the library. 
+          // We could potentially update it, but the button implies "Saving a new thing".
+          // For now, let's just inform the user.
+          Toast.show({ type: 'info', text1: t('addEntryModal.toastFoodUpdatedInLibrary', { foodName: food.name }), position: 'bottom' });
+          // If we wanted to enforce update, we'd call handleCommitFoodItemToMainLibrary(food, true);
+          return;
+      }
+
+      // If it doesn't exist (e.g. from Quick Add with generated ID not in library), create it.
+      // We strip ID to let createFood generate a new consistent one, or we can keep it if we want to sync.
+      // Usually creating a new entry in library from an ephemeral entry is safer as a new create.
+      const { id, createdAt, ...foodData } = food;
+      
+      const savedFood = await handleCommitFoodItemToMainLibrary(foodData, false);
+      if (savedFood) {
+          Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: savedFood.name }), position: 'bottom' });
+      }
+  }, [foods, isSaving, handleCommitFoodItemToMainLibrary, t]);
+
+  const isSelectedEntryInLibrary = useMemo(() => {
+      if (!selectedEntryForDetails) return false;
+      return foods.some(f => f.id === selectedEntryForDetails.item.food.id);
+  }, [selectedEntryForDetails, foods]);
+
   const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDateValue?: Date) => {
     const isAndroidDismiss = Platform.OS === "android" && event.type === "dismissed";
     setShowDatePicker(Platform.OS === "ios");
@@ -574,6 +603,8 @@ const DailyEntryScreen: React.FC = () => {
             }
         }}
         onDelete={handleDeleteFromDetails}
+        onSaveToLibrary={handleSaveEntryFoodToLibrary}
+        isFoodSaved={isSelectedEntryInLibrary}
         item={selectedEntryForDetails?.item || null}
         dailyGoals={dailyGoals}
       />

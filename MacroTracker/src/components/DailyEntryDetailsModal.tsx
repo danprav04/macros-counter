@@ -1,8 +1,9 @@
 // src/components/DailyEntryDetailsModal.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Overlay, Text, Icon, useTheme, makeStyles, Divider, ListItem, Input, Button } from '@rneui/themed';
 import { DailyEntryItem } from '../types/dailyEntry';
+import { Food } from '../types/food';
 import { t } from '../localization/i18n';
 import { getFoodIconUrl } from '../utils/iconUtils';
 import { calculateDailyEntryGrade, FoodGradeResult } from '../utils/gradingUtils';
@@ -14,15 +15,27 @@ interface DailyEntryDetailsModalProps {
   onClose: () => void;
   onSave: (newGrams: number) => void;
   onDelete: () => void;
+  onSaveToLibrary: (food: Food) => void;
+  isFoodSaved: boolean;
   item: DailyEntryItem | null;
   dailyGoals: Settings['dailyGoals'];
 }
 
-const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisible, onClose, onSave, onDelete, item, dailyGoals }) => {
+const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ 
+  isVisible, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  onSaveToLibrary,
+  isFoodSaved,
+  item, 
+  dailyGoals 
+}) => {
   const { theme } = useTheme();
   const styles = useStyles();
   const [grams, setGrams] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLibraryActionLoading, setIsLibraryActionLoading] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -31,6 +44,7 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
       setGrams('');
     }
     setIsSaving(false);
+    setIsLibraryActionLoading(false);
   }, [item]);
 
   const food = item?.food;
@@ -57,6 +71,13 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
   
   const handleDelete = () => {
     onDelete();
+  };
+
+  const handleLibraryAction = async () => {
+      if (!food) return;
+      setIsLibraryActionLoading(true);
+      await onSaveToLibrary(food);
+      setIsLibraryActionLoading(false);
   };
 
   if (!item || !food) {
@@ -95,16 +116,39 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({ isVisib
             ) : (
               <Icon name="fast-food-outline" type="ionicon" size={32} color={theme.colors.text} />
             )}
-            <Text h4 h4Style={styles.title}>
-              {food.name}
-            </Text>
+            <View style={styles.textContainer}>
+                <Text h4 h4Style={styles.title}>
+                {food.name}
+                </Text>
+            </View>
             {gradeResult && (
               <View style={[styles.gradePill, { backgroundColor: gradeResult.color }]}>
                 <Text style={styles.gradeText}>{gradeResult.letter}</Text>
               </View>
             )}
           </View>
-          <Icon name="close" type="material" size={28} color={theme.colors.grey3} onPress={onClose} containerStyle={styles.closeIcon} />
+          
+          <View style={styles.headerActions}>
+              <TouchableOpacity 
+                onPress={handleLibraryAction} 
+                style={styles.actionIcon}
+                disabled={isLibraryActionLoading}
+              >
+                {isLibraryActionLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                    <Icon 
+                        name={isFoodSaved ? "bookmark" : "bookmark-plus-outline"} 
+                        type="material-community" 
+                        size={28} 
+                        color={isFoodSaved ? theme.colors.primary : theme.colors.grey3} 
+                    />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.actionIcon}>
+                <Icon name="close" type="material" size={28} color={theme.colors.grey3} />
+              </TouchableOpacity>
+          </View>
         </View>
 
         <Divider style={styles.divider} />
@@ -185,7 +229,10 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
+    marginRight: 5,
+  },
+  textContainer: {
+      flexShrink: 1,
   },
   iconEmoji: {
     fontSize: 32,
@@ -194,22 +241,29 @@ const useStyles = makeStyles((theme) => ({
   title: {
     color: theme.colors.text,
     fontWeight: 'bold',
-    flexShrink: 1,
     textAlign: 'left',
   },
   gradePill: {
-    marginLeft: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 15,
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gradeText: {
     color: theme.colors.white,
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
   },
-  closeIcon: {
-    marginLeft: 10,
+  headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  actionIcon: {
+      marginLeft: 15,
+      padding: 4,
   },
   divider: {
     marginBottom: 15,
