@@ -27,6 +27,8 @@ import { MainTabParamList, RootStackParamList } from "../navigation/AppNavigator
 import useDelayedLoading from "../hooks/useDelayedLoading";
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import AiPromotionModal from "../components/AiPromotionModal";
+import RatingRequestModal from "../components/RatingRequestModal";
+import { shouldShowRatingPrompt } from '../services/ratingService';
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 type DailyEntryScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'DailyEntryRoute'> & NativeStackNavigationProp<RootStackParamList>;
@@ -68,6 +70,9 @@ const DailyEntryScreen: React.FC = () => {
 
   // AI Promo Modal State
   const [showAiPromo, setShowAiPromo] = useState(false);
+
+  // Rating Request Modal State
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
 
   const { theme } = useTheme();
   const styles = useStyles();
@@ -152,6 +157,13 @@ const DailyEntryScreen: React.FC = () => {
           if (loadedSettings.hasCompletedEstimation || loadedSettings.isEstimationReminderDismissed) {
               setTimeout(() => setShowAiPromo(true), 1500);
           }
+      }
+
+      // Check for Rating Prompt - Show after other prompts
+      const shouldShowRating = await shouldShowRatingPrompt();
+      if (shouldShowRating && !loadedSettings.hasTriedAI) {
+        // Delay to not conflict with other prompts
+        setTimeout(() => setShowRatingPrompt(true), 2500);
       }
 
     } catch (error) {
@@ -647,6 +659,12 @@ const DailyEntryScreen: React.FC = () => {
             setShowAiPromo(false);
             toggleAddOverlay(); // Open Add Modal
         }}
+      />
+
+      {/* Rating Request Modal */}
+      <RatingRequestModal
+        isVisible={showRatingPrompt}
+        onClose={() => setShowRatingPrompt(false)}
       />
 
     </SafeAreaView>

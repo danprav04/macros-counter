@@ -49,6 +49,13 @@
     "tryNow": "Попробовать ИИ",
     "dontShowAgain": "Больше не показывать"
   },
+  "ratingRequest": {
+    "title": "Вам нравится приложение?",
+    "message": "Если Macros Vision AI вам полезен, пожалуйста, найдите минуту, чтобы оценить нас в Google Play. Ваш отзыв помогает нам улучшаться!",
+    "rateNow": "Оценить сейчас",
+    "remindLater": "Напомнить позже",
+    "dismiss": "Нет, спасибо"
+  },
   "registerScreen": {
     "title": "Создать аккаунт",
     "emailPlaceholder": "Электронная почта",

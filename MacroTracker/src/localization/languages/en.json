@@ -49,6 +49,13 @@
     "tryNow": "Try AI Now",
     "dontShowAgain": "Don't show again"
   },
+  "ratingRequest": {
+    "title": "Enjoying the App?",
+    "message": "If you find Macros Vision AI helpful, please take a moment to rate us on Google Play. Your feedback helps us improve!",
+    "rateNow": "Rate Now",
+    "remindLater": "Remind Me Later",
+    "dismiss": "No Thanks"
+  },
   "registerScreen": {
     "title": "Create Account",
     "emailPlaceholder": "Email",

@@ -49,6 +49,13 @@
     "tryNow": "נסה AI עכשיו",
     "dontShowAgain": "אל תציג שוב"
   },
+  "ratingRequest": {
+    "title": "נהנה מהאפליקציה?",
+    "message": "אם Macros Vision AI עוזר לך, אנא הקדש רגע לדרג אותנו ב-Google Play. המשוב שלך עוזר לנו להשתפר!",
+    "rateNow": "דרג עכשיו",
+    "remindLater": "הזכר לי מאוחר יותר",
+    "dismiss": "לא תודה"
+  },
   "registerScreen": {
     "title": "יצירת חשבון",
     "emailPlaceholder": "אימייל",
