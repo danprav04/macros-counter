@@ -142,7 +142,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       switch(productId) {
           case 'coin_pack_starter': return 150;
           case 'coin_pack_weekender': return 500;
-          case 'coin_pack_winter': return 600;
+          case 'coin_pack_winter': return 300;
           case 'coin_pack_pro': return 1200;
           case 'coin_pack_whale': return 3000;
           default: return 0;
