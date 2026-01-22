@@ -21,13 +21,15 @@ const productIds = Platform.select({
     'coin_pack_starter', 
     'coin_pack_weekender', 
     'coin_pack_pro', 
-    'coin_pack_whale'
+    'coin_pack_whale',
+    'coin_pack_winter'
   ],
   ios: [
     'coin_pack_starter', 
     'coin_pack_weekender', 
     'coin_pack_pro', 
-    'coin_pack_whale'
+    'coin_pack_whale',
+    'coin_pack_winter'
   ], 
 }) || [];
 

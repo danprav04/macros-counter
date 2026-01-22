@@ -392,7 +392,9 @@
     "costImageMulti": "Quick Image Add (per Image)",
     "costTextMult": "Analyze Text (quick add)",
     "costTextRecp": "Analyze Recipe",
-    "costPortion": "AI Portion Estimation (text)"
+    "costPortion": "AI Portion Estimation (text)",
+    "limitedTime": "Limited Time",
+    "winterArcHint": "Best value per coin!"
   },
   "foodFormFields": {
     "foodName": "Food Name",

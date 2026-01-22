@@ -91,7 +91,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
         try {
             const items = await getProducts((newLog) => addLog(newLog.trim()));
             // Sort by price/id
-            const sortOrder = ['coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
+            const sortOrder = ['coin_pack_winter', 'coin_pack_starter', 'coin_pack_weekender', 'coin_pack_pro', 'coin_pack_whale'];
             items.sort((a, b) => sortOrder.indexOf(a.productId) - sortOrder.indexOf(b.productId));
             setProducts(items);
         } catch (e) {
@@ -142,32 +142,47 @@ const StoreModal: React.FC<StoreModalProps> = ({ isVisible, onClose }) => {
       switch(productId) {
           case 'coin_pack_starter': return 150;
           case 'coin_pack_weekender': return 500;
+          case 'coin_pack_winter': return 600;
           case 'coin_pack_pro': return 1200;
           case 'coin_pack_whale': return 3000;
           default: return 0;
       }
   };
 
+  const isLimitedTimePack = (productId: string): boolean => {
+      return productId === 'coin_pack_winter';
+  };
+
   const renderProductItem = (item: ProductDisplay) => {
       const coins = getCoinAmount(item.productId);
       const isBuying = purchasingSku === item.productId;
+      const isLimited = isLimitedTimePack(item.productId);
 
       return (
-          <View key={item.productId} style={styles.productCard}>
+          <View key={item.productId} style={[styles.productCard, isLimited && styles.limitedProductCard]}>
+              {isLimited && (
+                  <View style={styles.limitedBadge}>
+                      <Icon name="snowflake" type="font-awesome-5" color="#fff" size={10} />
+                      <Text style={styles.limitedBadgeText}>{t('iap.limitedTime')}</Text>
+                  </View>
+              )}
               <View style={styles.productInfo}>
                   <View style={styles.coinHeader}>
-                      <Icon name="database" type="material-community" color={theme.colors.primary} size={20} />
-                      <Text style={styles.coinText}>{coins} Coins</Text>
+                      <Icon name="database" type="material-community" color={isLimited ? '#00BFFF' : theme.colors.primary} size={20} />
+                      <Text style={[styles.coinText, isLimited && styles.limitedCoinText]}>{coins} Coins</Text>
                   </View>
                   <Text style={styles.productTitle}>{item.title}</Text>
                   <Text style={styles.productDesc}>{item.description}</Text>
+                  {isLimited && (
+                      <Text style={styles.limitedHint}>{t('iap.winterArcHint')}</Text>
+                  )}
               </View>
               <Button
                 title={isBuying ? "" : item.localizedPrice}
                 onPress={() => handleBuy(item.productId)}
                 disabled={purchasingSku !== null}
                 loading={isBuying}
-                buttonStyle={styles.buyButton}
+                buttonStyle={[styles.buyButton, isLimited && styles.limitedBuyButton]}
                 containerStyle={styles.buyButtonContainer}
               />
           </View>
@@ -400,7 +415,57 @@ const useStyles = makeStyles((theme) => ({
         textAlign: 'center',
         color: theme.colors.grey3,
         marginTop: 20,
-    }
+    },
+    // Winter Arc Limited Time Pack Styles
+    limitedProductCard: {
+        borderColor: '#00BFFF',
+        borderWidth: 2,
+        backgroundColor: theme.mode === 'dark' ? '#0a1929' : '#f0f8ff',
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    limitedBadge: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        backgroundColor: '#00BFFF',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderBottomLeftRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    limitedBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    limitedCoinText: {
+        color: '#00BFFF',
+    },
+    discountBadge: {
+        backgroundColor: '#ff4444',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    discountText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    limitedHint: {
+        color: '#00BFFF',
+        fontSize: 11,
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
+    limitedBuyButton: {
+        backgroundColor: '#00BFFF',
+    },
 }));
 
 export default StoreModal;
