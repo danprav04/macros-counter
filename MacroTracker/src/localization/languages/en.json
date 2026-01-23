@@ -376,6 +376,11 @@
     "errorPermission": "Permission Required",
     "errorCameraPermission": "Camera access needed."
   },
+  "foodDetailsModal": {
+    "viewRecipe": "View Recipe",
+    "copyRecipe": "Copy Recipe",
+    "recipeCopied": "Recipe copied to clipboard!"
+  },
   "iap": {
     "storeTitle": "Coin Store",
     "purchaseSuccessTitle": "Purchase Successful",

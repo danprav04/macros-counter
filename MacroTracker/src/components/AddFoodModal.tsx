@@ -54,6 +54,7 @@ interface AddFoodModalProps {
     handleUpdateFood: () => Promise<void>;
     validateFood: (food: FoodFormData | Food) => { [key: string]: string } | null;
     setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+    onRecipeChange?: (recipe: string | undefined) => void; // Optional: for saving recipe text from AI analysis
 }
 
 const KEYBOARD_VERTICAL_OFFSET = Platform.OS === "ios" ? 60 : 0;
@@ -69,6 +70,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     handleUpdateFood,
     validateFood,
     setErrors,
+    onRecipeChange,
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -194,6 +196,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
             handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
             
+            // Save the recipe text (ingredients) for later viewing
+            if (onRecipeChange && textToAnalyze) {
+                onRecipeChange(textToAnalyze);
+            }
+            
             setInputMode("manual");
             if(markAiFeatureUsed) markAiFeatureUsed();
     
@@ -228,6 +235,8 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                      handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
                      setInputMode("manual");
                      setIngredients("");
+                     // Clear recipe when using image analysis (no recipe text for images)
+                     if (onRecipeChange) onRecipeChange(undefined);
                      if(markAiFeatureUsed) markAiFeatureUsed();
                      Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
                 } catch (analysisError) { console.error("Error during image analysis (modal):", analysisError); }

@@ -83,6 +83,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [selectedFoodForDetails, setSelectedFoodForDetails] = useState<Food | null>(null);
     const [search, setSearch] = useState("");
     const [newFood, setNewFood] = useState<Omit<Food, "id" | "createdAt">>({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, });
+    const [pendingRecipe, setPendingRecipe] = useState<string | undefined>(undefined); // Recipe from AI text analysis
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isSortMenuVisible, setIsSortMenuVisible] = useState(false);
@@ -203,6 +204,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const toggleAddOverlay = useCallback(() => {
         if (isSaving) return;
         setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+        setPendingRecipe(undefined); // Reset recipe when opening/closing modal
         setErrors({});
         setIsAddModalVisible(prev => !prev);
     }, [isSaving]);
@@ -316,7 +318,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     };
 
     const handleCreateFood = async () => {
-        const trimmedFood = { ...newFood, name: newFood.name.trim() };
+        const trimmedFood = { ...newFood, name: newFood.name.trim(), recipe: pendingRecipe };
         if (validateFood(trimmedFood)) { Toast.show({ type: 'error', text1: t('foodListScreen.fixErrors'), position: 'bottom' }); return; }
         setIsSaving(true);
         try {
@@ -326,6 +328,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             setIsAddModalVisible(false); onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
+            setPendingRecipe(undefined); // Reset recipe after creating food
         } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
         } finally { setIsSaving(false); }
     };
@@ -478,6 +481,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 handleUpdateFood={async () => {}} // No-op for create
                 validateFood={validateFood}
                 setErrors={setErrors}
+                onRecipeChange={setPendingRecipe}
             />}
             <FoodDetailsModal
                 isVisible={isDetailsModalVisible}

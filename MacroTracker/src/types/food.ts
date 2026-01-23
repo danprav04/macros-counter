@@ -7,6 +7,7 @@ export interface Food {
   carbs: number;
   fat: number;
   createdAt: string; // ISO 8601 date string
+  recipe?: string; // Optional: stores ingredients text from AI recipe analysis
 }
 
 // Data structure for sharing food items. ID and createdAt are omitted.

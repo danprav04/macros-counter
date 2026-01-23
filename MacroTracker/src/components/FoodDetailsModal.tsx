@@ -1,6 +1,7 @@
 // src/components/FoodDetailsModal.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, Alert, I18nManager } from 'react-native';
+import { View, ScrollView, Alert, I18nManager, TouchableOpacity } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Overlay, Text, Icon, useTheme, makeStyles, Divider, Button, Input, ListItem } from '@rneui/themed';
 import Toast from 'react-native-toast-message';
 import { Food } from '../types/food';
@@ -27,6 +28,7 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
   const [formState, setFormState] = useState<Partial<FoodFormData>>({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isRecipeVisible, setIsRecipeVisible] = useState(false);
 
   useEffect(() => {
     if (food) {
@@ -38,6 +40,7 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
         fat: food.fat,
       });
       setErrors({});
+      setIsRecipeVisible(false); // Reset recipe visibility when food changes
     }
   }, [food]);
 
@@ -91,7 +94,8 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
         fat: parseFloat(String(formState.fat)) || 0,
     };
     setIsSaving(true);
-    await onSave({ ...food, ...finalFormState });
+    // Preserve the recipe when saving
+    await onSave({ ...food, ...finalFormState, recipe: food.recipe });
     setIsSaving(false);
   };
   
@@ -190,6 +194,49 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
             </View>
         </View>
 
+        {/* View Recipe Section - Only show if food has a recipe */}
+        {food?.recipe && (
+          <View style={styles.recipeSection}>
+            <TouchableOpacity 
+              style={styles.recipeToggle} 
+              onPress={() => setIsRecipeVisible(!isRecipeVisible)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.recipeToggleLeft}>
+                <MaterialCommunityIcons name="note-text-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.recipeToggleText}>{t('foodDetailsModal.viewRecipe')}</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name={isRecipeVisible ? "chevron-up" : "chevron-down"} 
+                size={24} 
+                color={theme.colors.grey2} 
+              />
+            </TouchableOpacity>
+            
+            {isRecipeVisible && (
+              <View style={styles.recipeContent}>
+                <Text style={styles.recipeText}>{food.recipe}</Text>
+                <TouchableOpacity 
+                  style={styles.copyButton}
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(food.recipe || '');
+                    Toast.show({ 
+                      type: 'success', 
+                      text1: t('foodDetailsModal.recipeCopied'), 
+                      position: 'bottom',
+                      visibilityTime: 2000 
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="content-copy" size={16} color={theme.colors.primary} />
+                  <Text style={styles.copyButtonText}>{t('foodDetailsModal.copyRecipe')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.buttonContainer}>
             <Button
                 title={t('foodListScreen.delete')}
@@ -270,6 +317,58 @@ const useStyles = makeStyles((theme) => ({
   button: { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20, flex: 1, marginHorizontal: 5, },
   deleteButton: { borderColor: theme.colors.error, flex: 0.8, },
   deleteButtonTitle: { color: theme.colors.error, },
+  // Recipe section styles
+  recipeSection: {
+    marginTop: 16,
+    paddingHorizontal: 10,
+  },
+  recipeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.grey5,
+    borderRadius: 10,
+  },
+  recipeToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recipeToggleText: {
+    color: theme.colors.primary,
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  recipeContent: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: theme.colors.grey5,
+    borderRadius: 10,
+  },
+  recipeText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
+  },
+  copyButtonText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
 }));
 
 export default FoodDetailsModal;

@@ -376,6 +376,11 @@
     "errorPermission": "נדרשת הרשאה",
     "errorCameraPermission": "נדרשת גישה למצלמה."
   },
+  "foodDetailsModal": {
+    "viewRecipe": "הצג מתכון",
+    "copyRecipe": "העתק מתכון",
+    "recipeCopied": "המתכון הועתק ללוח!"
+  },
   "iap": {
     "storeTitle": "חנות המטבעות",
     "purchaseSuccessTitle": "הרכישה בוצעה בהצלחה",

@@ -376,6 +376,11 @@
     "errorPermission": "Требуется разрешение",
     "errorCameraPermission": "Необходим доступ к камере."
   },
+  "foodDetailsModal": {
+    "viewRecipe": "Посмотреть рецепт",
+    "copyRecipe": "Скопировать рецепт",
+    "recipeCopied": "Рецепт скопирован в буфер обмена!"
+  },
   "iap": {
     "storeTitle": "Магазин монет",
     "purchaseSuccessTitle": "Покупка успешна",
