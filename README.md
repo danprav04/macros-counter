@@ -15,10 +15,11 @@ The app is fully offline-first for core data (daily entries, food library), whil
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/2395d27a-92f0-4b2b-a8e3-03b6cf2b1009" alt="Home Screen - Daily Overview" width="189" height="422" />
-  <img src="https://github.com/user-attachments/assets/bfb9b16b-5539-4d25-9e42-1a90f40dc6a4" alt="Food Logging" width="189" height="422" />
-  <img src="https://github.com/user-attachments/assets/abea2728-9a9a-41f2-a597-c48b876a8267" alt="Statistics & Charts" width="189" height="422" />
-  <img src="https://github.com/user-attachments/assets/9621f56a-ad57-4146-b37e-80fcc84972cd" alt="Settings & Goals" width="189" height="422" />
+  <img src="https://github.com/user-attachments/assets/f8c1abca-5e20-4668-b96b-2979ef947423" alt="Home Screen - Daily Overview" width="189" height="422" />
+  <img src="https://github.com/user-attachments/assets/5479b752-2236-4072-93a1-d1a3a63b6dae" alt="Statistics & Charts" width="189" height="422" />
+  <img src="https://github.com/user-attachments/assets/f8f8ba8b-c4da-4c57-9f85-04ceae1300a3" alt="Settings - Account" width="189" height="422" />
+  <img src="https://github.com/user-attachments/assets/9f50201a-bb07-45c3-a712-791487bbe548" alt="Settings - Goals & Statistics" width="189" height="422" />
+  <img src="https://github.com/user-attachments/assets/91b4e584-ce4d-40f8-be29-ba82975d3094" alt="Food Library" width="189" height="422" />
 </div>
 
 ---
