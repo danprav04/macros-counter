@@ -7,6 +7,20 @@
       "restartNow": "Restart Now"
     }
   },
+  "common": {
+    "dismiss": "Dismiss",
+    "completed": "Completed",
+    "processing": "Processing",
+    "view": "View Result",
+    "error": "Error",
+    "runInBackground": "Run in Background"
+  },
+  "taskList": {
+    "title": "Background Tasks",
+    "result": "Result",
+    "gramsResult": "Estimated: %{grams}g",
+    "noActiveTasks": "No active tasks"
+  },
   "errors": {
     "estimationFailedTitle": "Estimation Failed",
     "analysisFailedTitle": "Analysis Failed",
@@ -563,90 +577,675 @@
     }
   },
   "foodIconTags": {
-    "apple": ["apple", "red apple", "green apple", "gala", "fuji", "granny smith", "apples"],
-    "banana": ["banana", "plantain", "bananas"],
-    "grapes": ["grape", "grapes"],
-    "strawberry": ["strawberry", "strawberries"],
-    "blueberry": ["blueberry", "blueberries"],
-    "orange": ["orange", "mandarin", "tangerine", "clementine", "oranges"],
-    "lemonLime": ["lemon", "lime", "lemons"],
-    "watermelon": ["watermelon"],
-    "pineapple": ["pineapple"],
-    "mango": ["mango", "mangoes"],
-    "kiwi": ["kiwi", "kiwifruit"],
-    "peachNectarine": ["peach", "nectarine", "peaches"],
-    "cherry": ["cherry", "cherries"],
-    "pear": ["pear", "pears"],
-    "avocado": ["avocado", "avocados"],
-    "coconut": ["coconut", "coconuts"],
-    "tomato": ["tomato", "tomatoes", "roma tomato", "cherry tomato", "heirloom tomato"],
-    "carrot": ["carrot", "carrots"],
-    "broccoli": ["broccoli", "broccolini"],
-    "leafyGreen": ["lettuce", "spinach", "kale", "greens", "leafy green", "romaine", "arugula", "swiss chard", "collard greens"],
-    "cucumber": ["cucumber", "cucumbers", "pickle", "pickles", "gherkin"],
-    "pepperGeneral": ["pepper", "chili", "chilli", "jalapeno", "capsicum", "pimiento"],
-    "bellPepper": ["bell pepper", "green pepper", "red pepper", "yellow pepper", "orange pepper"],
-    "corn": ["corn", "maize", "sweet corn", "corn on the cob"],
-    "potato": ["potato", "potatoes", "sweet potato", "yam", "russet", "red potato", "yukon gold"],
-    "onion": ["onion", "shallot", "spring onion", "scallion", "red onion", "yellow onion", "white onion", "onions"],
-    "garlic": ["garlic", "garlic clove"],
-    "eggplant": ["eggplant", "aubergine"],
-    "mushroom": ["mushroom", "mushrooms", "portobello", "shiitake", "champignon", "cremini", "oyster mushroom"],
-    "poultry": ["chicken", "chicken breast", "chicken thigh", "chicken leg", "drumstick", "turkey", "duck", "poultry", "roast chicken", "grilled chicken"],
-    "redMeat": ["beef", "steak", "mince", "ground beef", "pork", "lamb", "veal", "red meat", "patty", "roast beef", "pork chop", "loin"],
-    "bacon": ["bacon", "pancetta"],
-    "processedMeat": ["ham", "sausage", "hot dog", "frankfurter", "chorizo", "salami", "pepperoni", "bologna", "bratwurst", "processed meat"],
-    "fish": ["fish", "salmon", "tuna", "cod", "tilapia", "mackerel", "sardine", "halibut", "white fish", "trout", "sea bass", "grilled fish", "baked fish"],
-    "shrimpPrawn": ["shrimp", "prawn", "prawns", "shellfish"],
-    "lobster": ["lobster", "crayfish", "shellfish"],
-    "crab": ["crab", "shellfish"],
-    "sushi": ["sushi", "sashimi", "raw fish", "nigiri", "maki", "uramaki"],
-    "egg": ["egg", "eggs", "scrambled eggs", "fried egg", "omelette", "boiled egg", "poached egg"],
-    "milk": ["milk", "dairy milk", "cow milk", "soy milk", "almond milk", "oat milk", "plant milk", "rice milk", "coconut milk", "goat milk"],
-    "cheese": ["cheese", "cheddar", "mozzarella", "parmesan", "gouda", "brie", "feta", "cottage cheese", "swiss cheese", "provolone", "blue cheese", "goat cheese", "cream cheese"],
-    "butter": ["butter", "margarine"],
-    "iceCream": ["ice cream", "gelato", "sorbet", "frozen yogurt", "sherbet"],
-    "yogurt": ["yogurt", "yoghurt", "greek yogurt", "plain yogurt", "flavored yogurt", "dairy"],
-    "bread": ["bread", "toast", "bagel", "croissant", "bun", "roll", "sourdough", "whole wheat bread", "white bread", "rye bread", "multigrain bread", "baguette"],
-    "rice": ["rice", "white rice", "brown rice", "basmati rice", "jasmine rice", "wild rice", "grain"],
-    "pasta": ["pasta", "spaghetti", "macaroni", "noodles", "fettuccine", "lasagna", "ramen", "penne", "linguine"],
-    "cerealOats": ["cereal", "oats", "oatmeal", "granola", "muesli", "porridge", "corn flakes", "bran flakes"],
-    "otherGrains": ["quinoa", "couscous", "barley", "bulgur", "farro", "spelt", "millet", "ancient grain"],
-    "flatbread": ["tortilla", "wrap", "pita", "naan", "flatbread", "chapati", "roti"],
-    "beansLegumes": ["beans", "black beans", "kidney beans", "chickpeas", "garbanzo beans", "lentils", "peas", "legume", "edamame", "soybeans", "lima beans", "pinto beans"],
-    "peanut": ["peanut", "peanuts"],
-    "nuts": ["nuts", "almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "brazil nut", "macadamia nut", "mixed nuts"],
-    "seeds": ["seeds", "sunflower seeds", "pumpkin seeds", "chia seeds", "flax seeds", "sesame seeds", "hemp seeds"],
-    "donut": ["donut", "doughnut", "pastry", "fritter"],
-    "cookie": ["cookie", "biscuit", "shortbread", "macaroon"],
-    "chocolate": ["chocolate", "chocolate bar", "dark chocolate", "milk chocolate", "white chocolate", "cocoa", "cacao"],
-    "cake": ["cake", "cupcake", "muffin", "brownie", "cheesecake", "pound cake"],
-    "candy": ["candy", "sweets", "gummy", "lollipop", "jelly beans", "taffy", "fudge", "marshmallow"],
-    "popcorn": ["popcorn"],
-    "pretzel": ["pretzel", "pretzels"],
-    "friesChips": ["fries", "french fries", "chips", "potato chips", "crisps", "potato wedges", "sweet potato fries"],
-    "coffee": ["coffee", "espresso", "latte", "cappuccino", "americano", "mocha", "cold brew"],
-    "tea": ["tea", "green tea", "black tea", "herbal tea", "chai", "oolong tea", "white tea"],
-    "softDrinkJuice": ["soda", "coke", "pepsi", "soft drink", "juice", "orange juice", "apple juice", "smoothie", "protein shake", "lemonade", "iced tea (sweetened)"],
-    "water": ["water", "bottled water", "mineral water", "sparkling water", "still water"],
-    "wine": ["wine", "red wine", "white wine", "rosé wine", "sparkling wine", "champagne", "alcohol"],
-    "beer": ["beer", "lager", "ale", "stout", "ipa", "pilsner", "craft beer", "alcohol"],
-    "cocktail": ["cocktail", "spirit", "liquor", "vodka", "gin", "rum", "whiskey", "tequila", "margarita", "martini", "alcohol"],
-    "pizza": ["pizza", "margherita pizza", "pepperoni pizza", "hawaiian pizza", "vegetarian pizza", "deep dish pizza"],
-    "burger": ["burger", "hamburger", "cheeseburger", "veggie burger", "chicken burger", "slider"],
-    "tacoBurrito": ["taco", "burrito", "quesadilla", "fajita", "enchilada", "mexican food"],
-    "sandwich": ["sandwich", "sub", "blt", "club sandwich", "panini", "grilled cheese", "wrap sandwich", "wrap", "baguette", "toastie", "hoagie"],
-    "soupStew": ["soup", "stew", "broth", "chowder", "consomme", "cream soup", "clear soup", "puree soup", "goulash", "chili"],
-    "salad": ["salad", "caesar salad", "greek salad", "garden salad", "cobb salad", "fruit salad", "pasta salad", "potato salad"],
-    "noodleDish": ["ramen noodles", "pho noodles", "noodle soup", "pad thai", "chow mein", "lo mein", "soba", "udon"],
-    "genericFruit": ["fruit", "tropical fruit", "stone fruit", "citrus fruit", "berries"],
-    "genericVegetable": ["vegetable", "veg", "root vegetable", "cruciferous", "greens"],
-    "genericMeal": ["food", "meal", "dish", "plate", "entrée", "main course", "snack", "lunch", "dinner", "breakfast", "generic food", "cooked food", "leftovers"],
-    "unknownFood": ["unknown", "unidentified"],
-    "tofu": ["tofu", "soy protein", "bean curd", "tempeh"],
-    "pancakeWaffle": ["pancake", "waffle", "crepe", "flapjack", "blini"],
-    "sauce": ["sauce", "dressing", "ketchup", "mayonnaise", "mustard", "marinara", "gravy", "salsa", "pesto", "hummus"],
-    "dessert": ["dessert", "sweet", "pudding", "pie", "tart", "pastry", "gelatin", "custard"],
-    "nutButter": ["nut butter", "peanut butter", "almond butter", "cashew butter", "tahini", "spread"]
+    "apple": [
+      "apple",
+      "red apple",
+      "green apple",
+      "gala",
+      "fuji",
+      "granny smith",
+      "apples"
+    ],
+    "banana": [
+      "banana",
+      "plantain",
+      "bananas"
+    ],
+    "grapes": [
+      "grape",
+      "grapes"
+    ],
+    "strawberry": [
+      "strawberry",
+      "strawberries"
+    ],
+    "blueberry": [
+      "blueberry",
+      "blueberries"
+    ],
+    "orange": [
+      "orange",
+      "mandarin",
+      "tangerine",
+      "clementine",
+      "oranges"
+    ],
+    "lemonLime": [
+      "lemon",
+      "lime",
+      "lemons"
+    ],
+    "watermelon": [
+      "watermelon"
+    ],
+    "pineapple": [
+      "pineapple"
+    ],
+    "mango": [
+      "mango",
+      "mangoes"
+    ],
+    "kiwi": [
+      "kiwi",
+      "kiwifruit"
+    ],
+    "peachNectarine": [
+      "peach",
+      "nectarine",
+      "peaches"
+    ],
+    "cherry": [
+      "cherry",
+      "cherries"
+    ],
+    "pear": [
+      "pear",
+      "pears"
+    ],
+    "avocado": [
+      "avocado",
+      "avocados"
+    ],
+    "coconut": [
+      "coconut",
+      "coconuts"
+    ],
+    "tomato": [
+      "tomato",
+      "tomatoes",
+      "roma tomato",
+      "cherry tomato",
+      "heirloom tomato"
+    ],
+    "carrot": [
+      "carrot",
+      "carrots"
+    ],
+    "broccoli": [
+      "broccoli",
+      "broccolini"
+    ],
+    "leafyGreen": [
+      "lettuce",
+      "spinach",
+      "kale",
+      "greens",
+      "leafy green",
+      "romaine",
+      "arugula",
+      "swiss chard",
+      "collard greens"
+    ],
+    "cucumber": [
+      "cucumber",
+      "cucumbers",
+      "pickle",
+      "pickles",
+      "gherkin"
+    ],
+    "pepperGeneral": [
+      "pepper",
+      "chili",
+      "chilli",
+      "jalapeno",
+      "capsicum",
+      "pimiento"
+    ],
+    "bellPepper": [
+      "bell pepper",
+      "green pepper",
+      "red pepper",
+      "yellow pepper",
+      "orange pepper"
+    ],
+    "corn": [
+      "corn",
+      "maize",
+      "sweet corn",
+      "corn on the cob"
+    ],
+    "potato": [
+      "potato",
+      "potatoes",
+      "sweet potato",
+      "yam",
+      "russet",
+      "red potato",
+      "yukon gold"
+    ],
+    "onion": [
+      "onion",
+      "shallot",
+      "spring onion",
+      "scallion",
+      "red onion",
+      "yellow onion",
+      "white onion",
+      "onions"
+    ],
+    "garlic": [
+      "garlic",
+      "garlic clove"
+    ],
+    "eggplant": [
+      "eggplant",
+      "aubergine"
+    ],
+    "mushroom": [
+      "mushroom",
+      "mushrooms",
+      "portobello",
+      "shiitake",
+      "champignon",
+      "cremini",
+      "oyster mushroom"
+    ],
+    "poultry": [
+      "chicken",
+      "chicken breast",
+      "chicken thigh",
+      "chicken leg",
+      "drumstick",
+      "turkey",
+      "duck",
+      "poultry",
+      "roast chicken",
+      "grilled chicken"
+    ],
+    "redMeat": [
+      "beef",
+      "steak",
+      "mince",
+      "ground beef",
+      "pork",
+      "lamb",
+      "veal",
+      "red meat",
+      "patty",
+      "roast beef",
+      "pork chop",
+      "loin"
+    ],
+    "bacon": [
+      "bacon",
+      "pancetta"
+    ],
+    "processedMeat": [
+      "ham",
+      "sausage",
+      "hot dog",
+      "frankfurter",
+      "chorizo",
+      "salami",
+      "pepperoni",
+      "bologna",
+      "bratwurst",
+      "processed meat"
+    ],
+    "fish": [
+      "fish",
+      "salmon",
+      "tuna",
+      "cod",
+      "tilapia",
+      "mackerel",
+      "sardine",
+      "halibut",
+      "white fish",
+      "trout",
+      "sea bass",
+      "grilled fish",
+      "baked fish"
+    ],
+    "shrimpPrawn": [
+      "shrimp",
+      "prawn",
+      "prawns",
+      "shellfish"
+    ],
+    "lobster": [
+      "lobster",
+      "crayfish",
+      "shellfish"
+    ],
+    "crab": [
+      "crab",
+      "shellfish"
+    ],
+    "sushi": [
+      "sushi",
+      "sashimi",
+      "raw fish",
+      "nigiri",
+      "maki",
+      "uramaki"
+    ],
+    "egg": [
+      "egg",
+      "eggs",
+      "scrambled eggs",
+      "fried egg",
+      "omelette",
+      "boiled egg",
+      "poached egg"
+    ],
+    "milk": [
+      "milk",
+      "dairy milk",
+      "cow milk",
+      "soy milk",
+      "almond milk",
+      "oat milk",
+      "plant milk",
+      "rice milk",
+      "coconut milk",
+      "goat milk"
+    ],
+    "cheese": [
+      "cheese",
+      "cheddar",
+      "mozzarella",
+      "parmesan",
+      "gouda",
+      "brie",
+      "feta",
+      "cottage cheese",
+      "swiss cheese",
+      "provolone",
+      "blue cheese",
+      "goat cheese",
+      "cream cheese"
+    ],
+    "butter": [
+      "butter",
+      "margarine"
+    ],
+    "iceCream": [
+      "ice cream",
+      "gelato",
+      "sorbet",
+      "frozen yogurt",
+      "sherbet"
+    ],
+    "yogurt": [
+      "yogurt",
+      "yoghurt",
+      "greek yogurt",
+      "plain yogurt",
+      "flavored yogurt",
+      "dairy"
+    ],
+    "bread": [
+      "bread",
+      "toast",
+      "bagel",
+      "croissant",
+      "bun",
+      "roll",
+      "sourdough",
+      "whole wheat bread",
+      "white bread",
+      "rye bread",
+      "multigrain bread",
+      "baguette"
+    ],
+    "rice": [
+      "rice",
+      "white rice",
+      "brown rice",
+      "basmati rice",
+      "jasmine rice",
+      "wild rice",
+      "grain"
+    ],
+    "pasta": [
+      "pasta",
+      "spaghetti",
+      "macaroni",
+      "noodles",
+      "fettuccine",
+      "lasagna",
+      "ramen",
+      "penne",
+      "linguine"
+    ],
+    "cerealOats": [
+      "cereal",
+      "oats",
+      "oatmeal",
+      "granola",
+      "muesli",
+      "porridge",
+      "corn flakes",
+      "bran flakes"
+    ],
+    "otherGrains": [
+      "quinoa",
+      "couscous",
+      "barley",
+      "bulgur",
+      "farro",
+      "spelt",
+      "millet",
+      "ancient grain"
+    ],
+    "flatbread": [
+      "tortilla",
+      "wrap",
+      "pita",
+      "naan",
+      "flatbread",
+      "chapati",
+      "roti"
+    ],
+    "beansLegumes": [
+      "beans",
+      "black beans",
+      "kidney beans",
+      "chickpeas",
+      "garbanzo beans",
+      "lentils",
+      "peas",
+      "legume",
+      "edamame",
+      "soybeans",
+      "lima beans",
+      "pinto beans"
+    ],
+    "peanut": [
+      "peanut",
+      "peanuts"
+    ],
+    "nuts": [
+      "nuts",
+      "almond",
+      "walnut",
+      "cashew",
+      "pecan",
+      "pistachio",
+      "hazelnut",
+      "brazil nut",
+      "macadamia nut",
+      "mixed nuts"
+    ],
+    "seeds": [
+      "seeds",
+      "sunflower seeds",
+      "pumpkin seeds",
+      "chia seeds",
+      "flax seeds",
+      "sesame seeds",
+      "hemp seeds"
+    ],
+    "donut": [
+      "donut",
+      "doughnut",
+      "pastry",
+      "fritter"
+    ],
+    "cookie": [
+      "cookie",
+      "biscuit",
+      "shortbread",
+      "macaroon"
+    ],
+    "chocolate": [
+      "chocolate",
+      "chocolate bar",
+      "dark chocolate",
+      "milk chocolate",
+      "white chocolate",
+      "cocoa",
+      "cacao"
+    ],
+    "cake": [
+      "cake",
+      "cupcake",
+      "muffin",
+      "brownie",
+      "cheesecake",
+      "pound cake"
+    ],
+    "candy": [
+      "candy",
+      "sweets",
+      "gummy",
+      "lollipop",
+      "jelly beans",
+      "taffy",
+      "fudge",
+      "marshmallow"
+    ],
+    "popcorn": [
+      "popcorn"
+    ],
+    "pretzel": [
+      "pretzel",
+      "pretzels"
+    ],
+    "friesChips": [
+      "fries",
+      "french fries",
+      "chips",
+      "potato chips",
+      "crisps",
+      "potato wedges",
+      "sweet potato fries"
+    ],
+    "coffee": [
+      "coffee",
+      "espresso",
+      "latte",
+      "cappuccino",
+      "americano",
+      "mocha",
+      "cold brew"
+    ],
+    "tea": [
+      "tea",
+      "green tea",
+      "black tea",
+      "herbal tea",
+      "chai",
+      "oolong tea",
+      "white tea"
+    ],
+    "softDrinkJuice": [
+      "soda",
+      "coke",
+      "pepsi",
+      "soft drink",
+      "juice",
+      "orange juice",
+      "apple juice",
+      "smoothie",
+      "protein shake",
+      "lemonade",
+      "iced tea (sweetened)"
+    ],
+    "water": [
+      "water",
+      "bottled water",
+      "mineral water",
+      "sparkling water",
+      "still water"
+    ],
+    "wine": [
+      "wine",
+      "red wine",
+      "white wine",
+      "rosé wine",
+      "sparkling wine",
+      "champagne",
+      "alcohol"
+    ],
+    "beer": [
+      "beer",
+      "lager",
+      "ale",
+      "stout",
+      "ipa",
+      "pilsner",
+      "craft beer",
+      "alcohol"
+    ],
+    "cocktail": [
+      "cocktail",
+      "spirit",
+      "liquor",
+      "vodka",
+      "gin",
+      "rum",
+      "whiskey",
+      "tequila",
+      "margarita",
+      "martini",
+      "alcohol"
+    ],
+    "pizza": [
+      "pizza",
+      "margherita pizza",
+      "pepperoni pizza",
+      "hawaiian pizza",
+      "vegetarian pizza",
+      "deep dish pizza"
+    ],
+    "burger": [
+      "burger",
+      "hamburger",
+      "cheeseburger",
+      "veggie burger",
+      "chicken burger",
+      "slider"
+    ],
+    "tacoBurrito": [
+      "taco",
+      "burrito",
+      "quesadilla",
+      "fajita",
+      "enchilada",
+      "mexican food"
+    ],
+    "sandwich": [
+      "sandwich",
+      "sub",
+      "blt",
+      "club sandwich",
+      "panini",
+      "grilled cheese",
+      "wrap sandwich",
+      "wrap",
+      "baguette",
+      "toastie",
+      "hoagie"
+    ],
+    "soupStew": [
+      "soup",
+      "stew",
+      "broth",
+      "chowder",
+      "consomme",
+      "cream soup",
+      "clear soup",
+      "puree soup",
+      "goulash",
+      "chili"
+    ],
+    "salad": [
+      "salad",
+      "caesar salad",
+      "greek salad",
+      "garden salad",
+      "cobb salad",
+      "fruit salad",
+      "pasta salad",
+      "potato salad"
+    ],
+    "noodleDish": [
+      "ramen noodles",
+      "pho noodles",
+      "noodle soup",
+      "pad thai",
+      "chow mein",
+      "lo mein",
+      "soba",
+      "udon"
+    ],
+    "genericFruit": [
+      "fruit",
+      "tropical fruit",
+      "stone fruit",
+      "citrus fruit",
+      "berries"
+    ],
+    "genericVegetable": [
+      "vegetable",
+      "veg",
+      "root vegetable",
+      "cruciferous",
+      "greens"
+    ],
+    "genericMeal": [
+      "food",
+      "meal",
+      "dish",
+      "plate",
+      "entrée",
+      "main course",
+      "snack",
+      "lunch",
+      "dinner",
+      "breakfast",
+      "generic food",
+      "cooked food",
+      "leftovers"
+    ],
+    "unknownFood": [
+      "unknown",
+      "unidentified"
+    ],
+    "tofu": [
+      "tofu",
+      "soy protein",
+      "bean curd",
+      "tempeh"
+    ],
+    "pancakeWaffle": [
+      "pancake",
+      "waffle",
+      "crepe",
+      "flapjack",
+      "blini"
+    ],
+    "sauce": [
+      "sauce",
+      "dressing",
+      "ketchup",
+      "mayonnaise",
+      "mustard",
+      "marinara",
+      "gravy",
+      "salsa",
+      "pesto",
+      "hummus"
+    ],
+    "dessert": [
+      "dessert",
+      "sweet",
+      "pudding",
+      "pie",
+      "tart",
+      "pastry",
+      "gelatin",
+      "custard"
+    ],
+    "nutButter": [
+      "nut butter",
+      "peanut butter",
+      "almond butter",
+      "cashew butter",
+      "tahini",
+      "spread"
+    ]
   }
 }

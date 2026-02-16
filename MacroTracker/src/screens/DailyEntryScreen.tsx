@@ -36,25 +36,25 @@ type DailyEntryScreenRouteProp = RouteProp<MainTabParamList, 'DailyEntryRoute'>;
 
 // Helper for food comparison (Strict match of name and macros)
 const isSameFood = (f1: Food, f2: Food) => {
-    return f1.name.trim().toLowerCase() === f2.name.trim().toLowerCase() &&
-           Math.abs(f1.calories - f2.calories) < 0.5 &&
-           Math.abs(f1.protein - f2.protein) < 0.5 &&
-           Math.abs(f1.carbs - f2.carbs) < 0.5 &&
-           Math.abs(f1.fat - f2.fat) < 0.5;
+  return f1.name.trim().toLowerCase() === f2.name.trim().toLowerCase() &&
+    Math.abs(f1.calories - f2.calories) < 0.5 &&
+    Math.abs(f1.protein - f2.protein) < 0.5 &&
+    Math.abs(f1.carbs - f2.carbs) < 0.5 &&
+    Math.abs(f1.fat - f2.fat) < 0.5;
 };
 
 const DailyEntryScreen: React.FC = () => {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [foods, setFoods] = useState<Food[]>([]);
-  
+
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
   const [selectedEntryForDetails, setSelectedEntryForDetails] = useState<{ item: DailyEntryItem; reversedIndex: number } | null>(null);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyGoals, setDailyGoals] = useState<AppSettings['dailyGoals']>({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
-  
+
   const [foodForAddModal, setFoodForAddModal] = useState<Food | null>(null);
 
   const [foodIcons, setFoodIcons] = useState<{ [foodName: string]: string | null; }>({});
@@ -107,23 +107,23 @@ const DailyEntryScreen: React.FC = () => {
 
   const triggerIconPrefetch = useCallback((entries: DailyEntry[], currentSelectedDate: string) => {
     const uniqueFoodNames = new Set<string>();
-    entries.forEach(entry => { 
-      if (entry.date === currentSelectedDate && entry.items) { 
-        entry.items.forEach(item => { 
-          if (item.food?.name) uniqueFoodNames.add(item.food.name); 
-        }); 
-      } 
+    entries.forEach(entry => {
+      if (entry.date === currentSelectedDate && entry.items) {
+        entry.items.forEach(item => {
+          if (item.food?.name) uniqueFoodNames.add(item.food.name);
+        });
+      }
     });
 
     if (uniqueFoodNames.size > 0) {
       const newIconsStateBatch: { [key: string]: string | null } = {};
       Array.from(uniqueFoodNames).forEach(name => {
         if (foodIcons[name] === undefined) {
-           newIconsStateBatch[name] = getFoodIconUrl(name);
+          newIconsStateBatch[name] = getFoodIconUrl(name);
         }
       });
       if (Object.keys(newIconsStateBatch).length > 0) {
-          setFoodIcons(prev => ({ ...prev, ...newIconsStateBatch }));
+        setFoodIcons(prev => ({ ...prev, ...newIconsStateBatch }));
       }
     }
   }, [foodIcons]);
@@ -153,10 +153,10 @@ const DailyEntryScreen: React.FC = () => {
 
       // Check for AI Promo - Only if NOT guest (guests are prompted via GuestLimitModal)
       if (!isGuest && !loadedSettings.hasTriedAI && !loadedSettings.isAiPromoDismissed) {
-          // Delay slightly to not conflict with goal prompt if both triggered (goal takes precedence here)
-          if (loadedSettings.hasCompletedEstimation || loadedSettings.isEstimationReminderDismissed) {
-              setTimeout(() => setShowAiPromo(true), 1500);
-          }
+        // Delay slightly to not conflict with goal prompt if both triggered (goal takes precedence here)
+        if (loadedSettings.hasCompletedEstimation || loadedSettings.isEstimationReminderDismissed) {
+          setTimeout(() => setShowAiPromo(true), 1500);
+        }
       }
 
       // Check for Rating Prompt - Show after other prompts
@@ -179,7 +179,7 @@ const DailyEntryScreen: React.FC = () => {
     const quickAddFoodParam = route.params?.quickAddFood;
     if (quickAddFoodParam) {
       setPendingQuickAddFood(quickAddFoodParam);
-      navigation.setParams({ quickAddFood: undefined }); 
+      navigation.setParams({ quickAddFood: undefined });
     }
   }, [route.params, navigation]);
 
@@ -187,20 +187,20 @@ const DailyEntryScreen: React.FC = () => {
     if (pendingQuickAddFood && !isLoadingData && !isAddModalVisible && foods.length > 0) {
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);
       const foodToUse = foodExistsInLibrary || pendingQuickAddFood;
-  
+
       setFoodForAddModal(foodToUse);
-  
+
       if (foodToUse.name) resolveAndSetIcon(foodToUse.name);
-      setIsAddModalVisible(true);      
-      setPendingQuickAddFood(null);   
+      setIsAddModalVisible(true);
+      setPendingQuickAddFood(null);
     }
   }, [pendingQuickAddFood, isLoadingData, isAddModalVisible, foods, resolveAndSetIcon]);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-      return () => {};
-    }, [loadData]) 
+      return () => { };
+    }, [loadData])
   );
 
   const handleEstimateNow = () => {
@@ -240,9 +240,9 @@ const DailyEntryScreen: React.FC = () => {
 
     let newEntriesForStateAndSave: DailyEntry[];
     if (typeof updaterOrNewEntries === 'function') {
-        newEntriesForStateAndSave = updaterOrNewEntries(previousEntriesState);
+      newEntriesForStateAndSave = updaterOrNewEntries(previousEntriesState);
     } else {
-        newEntriesForStateAndSave = updaterOrNewEntries;
+      newEntriesForStateAndSave = updaterOrNewEntries;
     }
 
     setDailyEntries(newEntriesForStateAndSave);
@@ -260,51 +260,51 @@ const DailyEntryScreen: React.FC = () => {
   const handleSingleEntryActionFinal = useCallback(async (foodToAdd: Food, gramsToAdd: number) => {
     if (isSaving) return;
     const entryItem: DailyEntryItem = { food: foodToAdd, grams: gramsToAdd };
-    
+
     await updateAndSaveEntries((prevDailyEntries) => {
-        const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
-        let updatedEntriesArray: DailyEntry[];
-        if (existingEntryIndex > -1) {
-            const existingEntry = prevDailyEntries[existingEntryIndex];
-            const updatedItems = [entryItem, ...(existingEntry.items ?? [])];
-            const updatedEntry = { ...existingEntry, items: updatedItems };
-            updatedEntriesArray = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
-        } else {
-            const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
-            updatedEntriesArray = [...prevDailyEntries, newDailyEntry];
-            updatedEntriesArray.sort((a, b) => a.date.localeCompare(b.date));
-        }
-        return updatedEntriesArray;
+      const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
+      let updatedEntriesArray: DailyEntry[];
+      if (existingEntryIndex > -1) {
+        const existingEntry = prevDailyEntries[existingEntryIndex];
+        const updatedItems = [entryItem, ...(existingEntry.items ?? [])];
+        const updatedEntry = { ...existingEntry, items: updatedItems };
+        updatedEntriesArray = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
+      } else {
+        const newDailyEntry: DailyEntry = { date: selectedDate, items: [entryItem] };
+        updatedEntriesArray = [...prevDailyEntries, newDailyEntry];
+        updatedEntriesArray.sort((a, b) => a.date.localeCompare(b.date));
+      }
+      return updatedEntriesArray;
     });
 
     if (foodToAdd?.name) resolveAndSetIcon(foodToAdd.name);
-    
+
     setIsAddModalVisible(false);
     setFoodForAddModal(null);
 
     Toast.show({ type: "success", text1: t('dailyEntryScreen.entryAdded'), position: "bottom", visibilityTime: 2000, });
-  }, [ isSaving, selectedDate, updateAndSaveEntries, resolveAndSetIcon, t ]);
+  }, [isSaving, selectedDate, updateAndSaveEntries, resolveAndSetIcon, t]);
 
   const handleUpdateGrams = useCallback(async (reversedItemIndex: number, newGrams: number) => {
     if (isSaving) return;
     const originalIndex = getOriginalIndex(reversedItemIndex);
     if (originalIndex === -1) {
-        console.error("Update error: original index not found for reversed index:", reversedItemIndex);
-        return;
+      console.error("Update error: original index not found for reversed index:", reversedItemIndex);
+      return;
     }
 
     await updateAndSaveEntries(prev => {
-        const entryIndex = prev.findIndex(e => e.date === selectedDate);
-        if (entryIndex === -1) return prev;
-        
-        const newEntries = [...prev];
-        const newItems = [...newEntries[entryIndex].items];
-        const itemToUpdate = newItems[originalIndex];
-        
-        newItems[originalIndex] = { ...itemToUpdate, grams: newGrams };
-        newEntries[entryIndex] = { ...newEntries[entryIndex], items: newItems };
-        
-        return newEntries;
+      const entryIndex = prev.findIndex(e => e.date === selectedDate);
+      if (entryIndex === -1) return prev;
+
+      const newEntries = [...prev];
+      const newItems = [...newEntries[entryIndex].items];
+      const itemToUpdate = newItems[originalIndex];
+
+      newItems[originalIndex] = { ...itemToUpdate, grams: newGrams };
+      newEntries[entryIndex] = { ...newEntries[entryIndex], items: newItems };
+
+      return newEntries;
     });
 
     setIsDetailsModalVisible(false);
@@ -317,28 +317,28 @@ const DailyEntryScreen: React.FC = () => {
     try {
       if (!entriesToAdd || entriesToAdd.length === 0) return;
       const newItems: DailyEntryItem[] = entriesToAdd.map((entry) => ({ food: entry.food, grams: entry.grams }));
-      
+
       await updateAndSaveEntries((prevDailyEntries) => {
-          const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
-          let updatedEntriesArray: DailyEntry[];
-          if (existingEntryIndex > -1) {
-            const existingEntry = prevDailyEntries[existingEntryIndex];
-            const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
-            const updatedEntry = { ...existingEntry, items: updatedItems };
-            updatedEntriesArray = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
-          } else {
-            const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
-            updatedEntriesArray = [...prevDailyEntries, newDailyEntry];
-            updatedEntriesArray.sort((a, b) => a.date.localeCompare(b.date));
-          }
-          return updatedEntriesArray;
+        const existingEntryIndex = prevDailyEntries.findIndex((entry) => entry.date === selectedDate);
+        let updatedEntriesArray: DailyEntry[];
+        if (existingEntryIndex > -1) {
+          const existingEntry = prevDailyEntries[existingEntryIndex];
+          const updatedItems = [...newItems, ...(existingEntry.items ?? [])];
+          const updatedEntry = { ...existingEntry, items: updatedItems };
+          updatedEntriesArray = prevDailyEntries.map((entry, index) => index === existingEntryIndex ? updatedEntry : entry);
+        } else {
+          const newDailyEntry: DailyEntry = { date: selectedDate, items: newItems };
+          updatedEntriesArray = [...prevDailyEntries, newDailyEntry];
+          updatedEntriesArray.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        return updatedEntriesArray;
       });
 
       newItems.forEach(item => { if (item.food?.name) resolveAndSetIcon(item.food.name); });
-      
+
       Toast.show({ type: "success", text1: t('dailyEntryScreen.itemsAdded', { count: entriesToAdd.length }), text2: t('dailyEntryScreen.toDateFormat', { date: readableDate }), position: "bottom", visibilityTime: 3000, });
-      
-      setIsAddModalVisible(false); 
+
+      setIsAddModalVisible(false);
       setFoodForAddModal(null);
     } catch (error) { Alert.alert(t('dailyEntryScreen.errorAddMultiple'), t('dailyEntryScreen.errorAddMultipleMessage')); setIsAddModalVisible(false); }
   }, [selectedDate, isSaving, updateAndSaveEntries, readableDate, resolveAndSetIcon, t]);
@@ -346,22 +346,22 @@ const DailyEntryScreen: React.FC = () => {
 
   const handleUndoRemoveEntry = useCallback(async (itemToRestore: DailyEntryItem, entryDate: string, originalIndexToRestoreAt: number) => {
     if (isSaving) return;
-    Toast.hide(); 
+    Toast.hide();
     await updateAndSaveEntries((prevDailyEntries) => {
-        const entryIdx = prevDailyEntries.findIndex(e => e.date === entryDate);
-        let finalEntries: DailyEntry[];
-        if (entryIdx > -1) {
-            const entryToUpdate = prevDailyEntries[entryIdx];
-            const currentItems = [...entryToUpdate.items];
-            currentItems.splice(originalIndexToRestoreAt, 0, itemToRestore);
-            const restoredEntry = { ...entryToUpdate, items: currentItems };
-            finalEntries = prevDailyEntries.map((entry, i) => i === entryIdx ? restoredEntry : entry);
-        } else {
-            const newDailyEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
-            finalEntries = [...prevDailyEntries, newDailyEntry];
-            finalEntries.sort((a, b) => a.date.localeCompare(b.date));
-        }
-        return finalEntries;
+      const entryIdx = prevDailyEntries.findIndex(e => e.date === entryDate);
+      let finalEntries: DailyEntry[];
+      if (entryIdx > -1) {
+        const entryToUpdate = prevDailyEntries[entryIdx];
+        const currentItems = [...entryToUpdate.items];
+        currentItems.splice(originalIndexToRestoreAt, 0, itemToRestore);
+        const restoredEntry = { ...entryToUpdate, items: currentItems };
+        finalEntries = prevDailyEntries.map((entry, i) => i === entryIdx ? restoredEntry : entry);
+      } else {
+        const newDailyEntry: DailyEntry = { date: entryDate, items: [itemToRestore] };
+        finalEntries = [...prevDailyEntries, newDailyEntry];
+        finalEntries.sort((a, b) => a.date.localeCompare(b.date));
+      }
+      return finalEntries;
     });
     Toast.show({ type: "success", text1: t('dailyEntryScreen.entryRestored'), visibilityTime: 1500, position: "bottom" });
   }, [isSaving, updateAndSaveEntries, t]);
@@ -392,7 +392,7 @@ const DailyEntryScreen: React.FC = () => {
       }
       const currentEntry = prevDailyEntries[currentEntryIndex];
       const updatedItems = currentEntry.items.filter((_, i) => i !== originalItemIndex);
-      
+
       if (updatedItems.length === 0) {
         return prevDailyEntries.filter((entry) => entry.date !== selectedDate);
       } else {
@@ -402,19 +402,19 @@ const DailyEntryScreen: React.FC = () => {
     });
 
     Toast.show({
-        type: "info",
-        text1: t('dailyEntryScreen.itemRemoved', { itemName: itemToRemoveForToast.food.name }),
-        text2: t('dailyEntryScreen.undo'),
-        position: "bottom",
-        bottomOffset: 80,
-        visibilityTime: 4000,
-        onPress: () => undoHandlerRef.current(itemToRemoveForToast, selectedDate, originalItemIndex),
+      type: "info",
+      text1: t('dailyEntryScreen.itemRemoved', { itemName: itemToRemoveForToast.food.name }),
+      text2: t('dailyEntryScreen.undo'),
+      position: "bottom",
+      bottomOffset: 80,
+      visibilityTime: 4000,
+      onPress: () => undoHandlerRef.current(itemToRemoveForToast, selectedDate, originalItemIndex),
     });
   }, [dailyEntries, selectedDate, isSaving, getOriginalIndex, updateAndSaveEntries, t]);
 
   const handleDeleteFromDetails = useCallback(() => {
     if (selectedEntryForDetails) {
-        handleRemoveEntry(selectedEntryForDetails.reversedIndex);
+      handleRemoveEntry(selectedEntryForDetails.reversedIndex);
     }
     setIsDetailsModalVisible(false);
     setSelectedEntryForDetails(null);
@@ -424,17 +424,20 @@ const DailyEntryScreen: React.FC = () => {
     if (isSaving) return;
     setFoodForAddModal(null);
     setIsAddModalVisible((current) => !current);
-  }, [isSaving]);
+    if (route.params?.backgroundResults) {
+      navigation.setParams({ backgroundResults: undefined });
+    }
+  }, [isSaving, route.params, navigation]);
 
   const handleViewOrEditEntry = (item: DailyEntryItem, reversedIndex: number) => {
     if (isSaving) return;
     setSelectedEntryForDetails({ item, reversedIndex });
     setIsDetailsModalVisible(true);
   };
-  
+
   const handleAddNewFoodRequestFromModal = useCallback(() => {
     if (isSaving) return;
-    setIsAddModalVisible(false); 
+    setIsAddModalVisible(false);
     setFoodForAddModal(null);
     navigation.navigate('FoodListRoute', { openAddFoodModal: true });
   }, [isSaving, navigation]);
@@ -458,11 +461,11 @@ const DailyEntryScreen: React.FC = () => {
       } else {
         throw new Error("Invalid data for commitFoodItemToMainLibrary");
       }
-      if(committedFood.name) resolveAndSetIcon(committedFood.name);
+      if (committedFood.name) resolveAndSetIcon(committedFood.name);
       return committedFood;
     } catch (error) {
       console.error("Error committing food to library:", error);
-      Alert.alert( t('foodListScreen.errorLoad'), error instanceof Error ? error.message : t(isUpdate ? 'foodListScreen.errorUpdateMessage' : 'foodListScreen.errorCreateMessage') );
+      Alert.alert(t('foodListScreen.errorLoad'), error instanceof Error ? error.message : t(isUpdate ? 'foodListScreen.errorUpdateMessage' : 'foodListScreen.errorCreateMessage'));
       return null;
     } finally {
       setIsSaving(false);
@@ -470,27 +473,27 @@ const DailyEntryScreen: React.FC = () => {
   }, [isSaving, resolveAndSetIcon, t]);
 
   const handleSaveEntryFoodToLibrary = useCallback(async (food: Food) => {
-      if (isSaving) return;
-      const exists = foods.some(f => isSameFood(f, food));
-      
-      if (exists) {
-          Toast.show({ type: 'info', text1: "Food already saved in library", position: 'bottom' });
-          return;
-      }
+    if (isSaving) return;
+    const exists = foods.some(f => isSameFood(f, food));
 
-      // If it doesn't exist (e.g. from Quick Add with generated ID not in library), create it.
-      const { id, createdAt, ...foodData } = food;
-      
-      const savedFood = await handleCommitFoodItemToMainLibrary(foodData, false);
-      if (savedFood) {
-          Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: savedFood.name }), position: 'bottom' });
-      }
+    if (exists) {
+      Toast.show({ type: 'info', text1: "Food already saved in library", position: 'bottom' });
+      return;
+    }
+
+    // If it doesn't exist (e.g. from Quick Add with generated ID not in library), create it.
+    const { id, createdAt, ...foodData } = food;
+
+    const savedFood = await handleCommitFoodItemToMainLibrary(foodData, false);
+    if (savedFood) {
+      Toast.show({ type: 'success', text1: t('addEntryModal.toastFoodSavedToLibrary', { foodName: savedFood.name }), position: 'bottom' });
+    }
   }, [foods, isSaving, handleCommitFoodItemToMainLibrary, t]);
 
   const isSelectedEntryInLibrary = useMemo(() => {
-      if (!selectedEntryForDetails) return false;
-      const entryFood = selectedEntryForDetails.item.food;
-      return foods.some(f => isSameFood(f, entryFood));
+    if (!selectedEntryForDetails) return false;
+    const entryFood = selectedEntryForDetails.item.food;
+    return foods.some(f => isSameFood(f, entryFood));
   }, [selectedEntryForDetails, foods]);
 
   const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDateValue?: Date) => {
@@ -500,14 +503,14 @@ const DailyEntryScreen: React.FC = () => {
       if (isValid(selectedDateValue)) {
         const formattedDate = formatISO(selectedDateValue, { representation: "date" });
         if (formattedDate !== selectedDate) {
-           setSelectedDate(formattedDate);
+          setSelectedDate(formattedDate);
         }
       } else {
         Alert.alert(t('dailyEntryScreen.errorInvalidDate'), t('dailyEntryScreen.errorInvalidDateMessage'));
       }
     }
     if (Platform.OS === "android") {
-        setShowDatePicker(false);
+      setShowDatePicker(false);
     }
   }, [selectedDate, t]);
 
@@ -551,8 +554,8 @@ const DailyEntryScreen: React.FC = () => {
       {showDatePicker && (<DateTimePicker value={isValid(parseISO(selectedDate)) ? parseISO(selectedDate) : new Date()} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleDateChange} />)}
       <View style={styles.progressContainer}><DailyProgress calories={calculateTotals.totalCalories} protein={calculateTotals.totalProtein} carbs={calculateTotals.totalCarbs} fat={calculateTotals.totalFat} goals={dailyGoals} /></View>
       <View style={styles.disclaimerContainer}>
-          <RNEIcon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
-          <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
+        <RNEIcon name="alert-circle-outline" type="material-community" color={theme.colors.grey3} size={16} />
+        <Text style={styles.disclaimerText}>{t('disclaimers.medicalDisclaimer')}</Text>
       </View>
       <Divider style={styles.divider} />
       {showIsSaving && (<View style={styles.savingIndicator}><ActivityIndicator size="small" color={theme.colors.primary} /><Text style={styles.savingText}>{t('dailyEntryScreen.saving')}</Text></View>)}
@@ -592,31 +595,32 @@ const DailyEntryScreen: React.FC = () => {
         disabled={isSaving || isLoadingData}
         key={`fab-${isSaving || isLoadingData}`}
       />
-      
+
       {isAddModalVisible && (
-          <AddEntryModal
-            isVisible={isAddModalVisible}
-            toggleOverlay={toggleAddOverlay}
-            handleAddEntry={handleSingleEntryActionFinal}
-            handleAddMultipleEntries={handleAddMultipleEntriesFinal}
-            foods={foods} 
-            isEditMode={false} // This modal is now only for adding
-            initialSelectedFoodForEdit={foodForAddModal}
-            onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
-            onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
-            dailyGoals={dailyGoals}
-          />
+        <AddEntryModal
+          isVisible={isAddModalVisible}
+          toggleOverlay={toggleAddOverlay}
+          handleAddEntry={handleSingleEntryActionFinal}
+          handleAddMultipleEntries={handleAddMultipleEntriesFinal}
+          foods={foods}
+          isEditMode={false} // This modal is now only for adding
+          initialSelectedFoodForEdit={foodForAddModal}
+          onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
+          onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
+          dailyGoals={dailyGoals}
+          backgroundResults={route.params?.backgroundResults}
+        />
       )}
       <DailyEntryDetailsModal
         isVisible={isDetailsModalVisible}
         onClose={() => {
-            setIsDetailsModalVisible(false);
-            setSelectedEntryForDetails(null);
+          setIsDetailsModalVisible(false);
+          setSelectedEntryForDetails(null);
         }}
         onSave={(newGrams) => {
-            if (selectedEntryForDetails) {
-                handleUpdateGrams(selectedEntryForDetails.reversedIndex, newGrams);
-            }
+          if (selectedEntryForDetails) {
+            handleUpdateGrams(selectedEntryForDetails.reversedIndex, newGrams);
+          }
         }}
         onDelete={handleDeleteFromDetails}
         onSaveToLibrary={handleSaveEntryFoodToLibrary}
@@ -635,7 +639,7 @@ const DailyEntryScreen: React.FC = () => {
           <RNEIcon name="calculator-variant" type="material-community" size={48} color={theme.colors.primary} />
           <Text h4 style={styles.promptTitle}>{t('dailyEntryScreen.goalPromptTitle')}</Text>
           <Text style={styles.promptMessage}>{t('dailyEntryScreen.goalPromptMessage')}</Text>
-          
+
           <Button
             title={t('dailyEntryScreen.goalPromptEstimate')}
             onPress={handleEstimateNow}
@@ -652,12 +656,12 @@ const DailyEntryScreen: React.FC = () => {
       </Overlay>
 
       {/* AI Promotion Modal */}
-      <AiPromotionModal 
-        isVisible={showAiPromo} 
-        onClose={() => setShowAiPromo(false)} 
+      <AiPromotionModal
+        isVisible={showAiPromo}
+        onClose={() => setShowAiPromo(false)}
         onTryNow={() => {
-            setShowAiPromo(false);
-            toggleAddOverlay(); // Open Add Modal
+          setShowAiPromo(false);
+          toggleAddOverlay(); // Open Add Modal
         }}
       />
 

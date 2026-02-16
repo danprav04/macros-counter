@@ -23,31 +23,31 @@ import { SortOptionValue } from '../types/settings';
 import useDelayedLoading from "../hooks/useDelayedLoading";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
+    UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 // Polyfill for atob/btoa if not available, crucial for deep link data decoding.
 if (typeof atob === 'undefined') {
-  global.atob = (str: string): string => {
-    try {
-      const { Buffer } = require('buffer');
-      return Buffer.from(str, 'base64').toString('binary');
-    } catch (e) {
-      console.error("Failed to polyfill atob:", e);
-      return '';
-    }
-  };
+    global.atob = (str: string): string => {
+        try {
+            const { Buffer } = require('buffer');
+            return Buffer.from(str, 'base64').toString('binary');
+        } catch (e) {
+            console.error("Failed to polyfill atob:", e);
+            return '';
+        }
+    };
 }
 if (typeof btoa === 'undefined') {
-  global.btoa = (str: string): string => {
-     try {
-       const { Buffer } = require('buffer');
-       return Buffer.from(str, 'binary').toString('base64');
-     } catch (e) {
-       console.error("Failed to polyfill btoa:", e);
-       return '';
-     }
-  };
+    global.btoa = (str: string): string => {
+        try {
+            const { Buffer } = require('buffer');
+            return Buffer.from(str, 'binary').toString('base64');
+        } catch (e) {
+            console.error("Failed to polyfill btoa:", e);
+            return '';
+        }
+    };
 }
 
 interface FoodListScreenProps { onFoodChange?: () => void; }
@@ -87,7 +87,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isSortMenuVisible, setIsSortMenuVisible] = useState(false);
-    
+
     const { theme } = useTheme();
     const styles = useStyles();
     const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,7 +99,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     const route = useRoute<FoodListScreenRouteProp>();
     const navigation = useNavigation<FoodListScreenNavigationProp>();
 
-    const sortOptions = useMemo<{label: string, value: SortOptionValue}[]>(() => [
+    const sortOptions = useMemo<{ label: string, value: SortOptionValue }[]>(() => [
         { label: t('foodListScreen.sortByName'), value: 'name' },
         { label: t('foodListScreen.sortByNewest'), value: 'newest' },
         { label: t('foodListScreen.sortByOldest'), value: 'oldest' },
@@ -117,7 +117,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         changeFoodSortPreference(newSortOption);
         setIsSortMenuVisible(false);
     };
-    
+
     const toggleSortMenu = () => {
         sortButtonRef.current?.measure((_fx: number, _fy: number, width: number, height: number, px: number, py: number) => {
             setSortButtonPosition({ x: px, y: py, width, height });
@@ -139,49 +139,49 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     }, [foodIcons]);
 
     useFocusEffect(
-      useCallback(() => {
-        let isActive = true;
-        const loadAllFoods = async () => {
-          setIsLoading(true);
-          try {
-            const { items } = await getFoods();
-            if (isActive) {
-              setMasterFoods(items);
-              triggerIconPrefetch(items);
-            }
-          } catch (error) {
-            if (isActive) Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
-          } finally {
-            if (isActive) setIsLoading(false);
-          }
-        };
-        loadAllFoods();
-        return () => { isActive = false; };
-      }, [triggerIconPrefetch, t])
+        useCallback(() => {
+            let isActive = true;
+            const loadAllFoods = async () => {
+                setIsLoading(true);
+                try {
+                    const { items } = await getFoods();
+                    if (isActive) {
+                        setMasterFoods(items);
+                        triggerIconPrefetch(items);
+                    }
+                } catch (error) {
+                    if (isActive) Alert.alert(t('foodListScreen.errorLoad'), t('foodListScreen.errorLoadMessage'));
+                } finally {
+                    if (isActive) setIsLoading(false);
+                }
+            };
+            loadAllFoods();
+            return () => { isActive = false; };
+        }, [triggerIconPrefetch, t])
     );
 
     const displayedFoods = useMemo(() => {
         let items: Food[];
         const lowercasedSearchTerm = search.toLowerCase().trim();
-    
+
         if (lowercasedSearchTerm) {
             const combined = new Map<string, Food>();
-    
+
             // 1. Primary search: by name
             const nameMatchedFoods = masterFoods.filter(food =>
                 food.name.toLowerCase().includes(lowercasedSearchTerm)
             );
             nameMatchedFoods.forEach(food => combined.set(food.id, food));
-    
+
             // 2. Secondary search: by tags
             const tagMatchedFoods = findFoodsByTagSearch(lowercasedSearchTerm, masterFoods);
             tagMatchedFoods.forEach(food => combined.set(food.id, food));
-            
+
             items = Array.from(combined.values());
         } else {
             items = [...masterFoods];
         }
-        
+
         // Apply sorting to the final list
         if (sortOption === 'name') {
             items.sort((a, b) => a.name.localeCompare(b.name));
@@ -210,60 +210,79 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
     }, [isSaving]);
 
     useEffect(() => {
-      const params = route.params;
-      if (params) {
-        if (params.openAddFoodModal && !isAddModalVisible) {
-          toggleAddOverlay();
-          navigation.setParams({ openAddFoodModal: undefined });
-        }
-
-        const rawData = params.foodData || params.data;
-
-        if (rawData && typeof rawData === 'string') {
-          try {
-            let b64 = rawData.replace(/-/g, '+').replace(/_/g, '/');
-            const binaryString = atob(b64);
-            const utf8Bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
-            const decodedJson = new TextDecoder().decode(utf8Bytes);
-            const potentialFood: any = JSON.parse(decodedJson);
-            
-            const sanitizedFood: Omit<Food, "id" | "createdAt"> = {
-                name: String(potentialFood.name || "").substring(0, 100).trim(),
-                calories: Math.max(0, Number(potentialFood.calories) || 0),
-                protein: Math.max(0, Number(potentialFood.protein) || 0),
-                carbs: Math.max(0, Number(potentialFood.carbs) || 0),
-                fat: Math.max(0, Number(potentialFood.fat) || 0),
-            };
-
-            if (sanitizedFood.name) {
-              setNewFood(sanitizedFood);
-              setIsAddModalVisible(true);
-            } else { 
-              Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData')); 
+        const params = route.params;
+        if (params) {
+            if (params.openAddFoodModal && !isAddModalVisible) {
+                toggleAddOverlay();
+                navigation.setParams({ openAddFoodModal: undefined });
             }
-          } catch (e) { 
-            Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
-          } finally { 
-            navigation.setParams({ foodData: undefined, data: undefined }); 
-          }
+
+            // Handle background task result
+            if (params.backgroundFoodResult) {
+                const result = params.backgroundFoodResult;
+                // Mapper from result to FoodFormData
+                // If result is Food (from getMacros...), it works directly
+                const mappedFood: Omit<Food, "id" | "createdAt"> = {
+                    name: result.foodName || result.name || "",
+                    calories: result.calories || 0,
+                    protein: result.protein || 0,
+                    carbs: result.carbs || 0,
+                    fat: result.fat || 0,
+                };
+                setNewFood(mappedFood);
+                setIsAddModalVisible(true);
+                // Clear params
+                navigation.setParams({ backgroundFoodResult: undefined });
+                return;
+            }
+
+            const rawData = params.foodData || params.data;
+
+            if (rawData && typeof rawData === 'string') {
+                try {
+                    let b64 = rawData.replace(/-/g, '+').replace(/_/g, '/');
+                    const binaryString = atob(b64);
+                    const utf8Bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
+                    const decodedJson = new TextDecoder().decode(utf8Bytes);
+                    const potentialFood: any = JSON.parse(decodedJson);
+
+                    const sanitizedFood: Omit<Food, "id" | "createdAt"> = {
+                        name: String(potentialFood.name || "").substring(0, 100).trim(),
+                        calories: Math.max(0, Number(potentialFood.calories) || 0),
+                        protein: Math.max(0, Number(potentialFood.protein) || 0),
+                        carbs: Math.max(0, Number(potentialFood.carbs) || 0),
+                        fat: Math.max(0, Number(potentialFood.fat) || 0),
+                    };
+
+                    if (sanitizedFood.name) {
+                        setNewFood(sanitizedFood);
+                        setIsAddModalVisible(true);
+                    } else {
+                        Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
+                    }
+                } catch (e) {
+                    Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
+                } finally {
+                    navigation.setParams({ foodData: undefined, data: undefined });
+                }
+            }
         }
-      }
     }, [route.params, isAddModalVisible, toggleAddOverlay, navigation, t]);
 
     const handleUndoDelete = useCallback((foodToRestore: Food) => {
         Toast.hide();
-        if (deleteTimeoutRef.current) { 
-            clearTimeout(deleteTimeoutRef.current); 
-            deleteTimeoutRef.current = null; 
+        if (deleteTimeoutRef.current) {
+            clearTimeout(deleteTimeoutRef.current);
+            deleteTimeoutRef.current = null;
         }
-        
+
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setMasterFoods(prev => [...prev, foodToRestore]);
         Toast.show({
-            type: 'success', 
+            type: 'success',
             text1: t('foodListScreen.foodRestored', { foodName: foodToRestore.name }),
-            position: 'bottom', 
+            position: 'bottom',
             visibilityTime: 2000,
         });
     }, [t]);
@@ -274,31 +293,31 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
         setIsDetailsModalVisible(false);
         setSelectedFoodForDetails(null);
-        
+
         if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
-        
+
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setMasterFoods(prev => prev.filter(f => f.id !== foodId));
 
         deleteTimeoutRef.current = setTimeout(() => {
             deleteFoodService(foodId)
-              .then(() => { 
-                  onFoodChange?.(); 
-                  console.log(`Permanently deleted ${foodId}`); 
-              })
-              .catch(error => {
-                  Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
-                  setMasterFoods(prev => [...prev, foodToDelete]);
-              });
+                .then(() => {
+                    onFoodChange?.();
+                    console.log(`Permanently deleted ${foodId}`);
+                })
+                .catch(error => {
+                    Alert.alert(t('foodListScreen.errorDelete'), t('foodListScreen.errorDeleteMessage'));
+                    setMasterFoods(prev => [...prev, foodToDelete]);
+                });
         }, 4000);
 
         Toast.show({
-            type: 'info', 
+            type: 'info',
             text1: t('foodListScreen.foodDeleted', { foodName: foodToDelete.name }),
-            text2: t('dailyEntryScreen.undo'), 
-            position: 'bottom', 
+            text2: t('dailyEntryScreen.undo'),
+            position: 'bottom',
             visibilityTime: 4000,
-            onPress: () => handleUndoDelete(foodToDelete), 
+            onPress: () => handleUndoDelete(foodToDelete),
             bottomOffset: 80,
         });
     }, [masterFoods, onFoodChange, t, handleUndoDelete]);
@@ -329,7 +348,8 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             Toast.show({ type: 'success', text1: t('foodListScreen.foodAdded', { foodName: created.name }), position: 'bottom' });
             setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 });
             setPendingRecipe(undefined); // Reset recipe after creating food
-        } catch (error: any) { Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
+        } catch (error: any) {
+            Alert.alert(t('foodListScreen.errorCreate'), error.message || t('foodListScreen.errorCreateMessage'));
         } finally { setIsSaving(false); }
     };
 
@@ -344,10 +364,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             onFoodChange?.();
             Toast.show({ type: 'success', text1: t('foodListScreen.foodUpdated', { foodName: updated.name }), position: 'bottom' });
             setSelectedFoodForDetails(null);
-        } catch (error: any) { Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
+        } catch (error: any) {
+            Alert.alert(t('foodListScreen.errorUpdate'), error.message || t('foodListScreen.errorUpdateMessage'));
         } finally { setIsSaving(false); }
     };
-    
+
     const handleShareFood = useCallback(async (foodToShare: Food) => {
         const foodDataPayload: SharedFoodData = {
             name: foodToShare.name, calories: foodToShare.calories, protein: foodToShare.protein,
@@ -361,7 +382,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             const base64Data = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
             const backendBaseUrl = getBackendShareBaseUrl();
             const shareUrl = `${backendBaseUrl}/share/food?data=${base64Data}`;
-            await Share.share({ message: shareUrl, title: t('foodListScreen.shareFoodTitle', {foodName: foodToShare.name}), });
+            await Share.share({ message: shareUrl, title: t('foodListScreen.shareFoodTitle', { foodName: foodToShare.name }), });
         } catch (error) { Alert.alert(t('foodListScreen.shareErrorTitle'), t('foodListScreen.shareErrorMessage')); }
     }, [t]);
 
@@ -370,8 +391,10 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         let processedValue: string | number = value;
         if (numericKeys.includes(key)) {
             if (value === "" || value === ".") { processedValue = value; }
-            else { const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                   if (cleaned === "" || !isNaN(parseFloat(cleaned))) processedValue = cleaned; else return; }
+            else {
+                const cleaned = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                if (cleaned === "" || !isNaN(parseFloat(cleaned))) processedValue = cleaned; else return;
+            }
         }
         const updateState = (prevState: any) => {
             let finalValue: string | number = numericKeys.includes(key) ? ((processedValue === "" || processedValue === ".") ? 0 : parseFloat(processedValue as string) || 0) : processedValue;
@@ -379,7 +402,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
         };
         setNewFood(updateState);
     };
-    
+
     const setFoodIconForName = useCallback((name: string, icon: string | null) => {
         setFoodIcons(prev => {
             if (prev[name] === icon) return prev;
@@ -395,7 +418,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             </SafeAreaView>
         );
     }
-    
+
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <SearchBar
@@ -412,7 +435,7 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             />
             <View style={styles.controlsContainer}>
                 <Text style={styles.resultsCount}>{t('foodListScreen.foodsCount', { count: displayedFoods.length })}</Text>
-                
+
                 <TouchableOpacity ref={sortButtonRef} style={styles.sortButton} onPress={toggleSortMenu}>
                     <RNEIcon name="sort" type="material-community" size={18} color={theme.colors.primary} />
                     <Text style={styles.sortButtonText}>{sortOptions[sortIndex].label}</Text>
@@ -472,13 +495,13 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
             />
             {isAddModalVisible && <AddFoodModal
                 isVisible={isAddModalVisible}
-                toggleOverlay={() => !isSaving && setIsAddModalVisible(false)} 
+                toggleOverlay={() => !isSaving && setIsAddModalVisible(false)}
                 newFood={newFood}
                 editFood={null} // Add modal is only for new food
                 errors={errors}
                 handleInputChange={handleInputChange}
                 handleCreateFood={handleCreateFood}
-                handleUpdateFood={async () => {}} // No-op for create
+                handleUpdateFood={async () => { }} // No-op for create
                 validateFood={validateFood}
                 setErrors={setErrors}
                 onRecipeChange={setPendingRecipe}

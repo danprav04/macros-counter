@@ -5,6 +5,8 @@ import { Text, Icon, useTheme, makeStyles } from '@rneui/themed';
 import { useCosts } from '../../context/CostsContext';
 import PriceTag from '../PriceTag';
 
+import { t } from '../../localization/i18n';
+
 type ModalMode = 'normal' | 'quickAddSelect' | 'quickAddText';
 
 interface ModalHeaderProps {
@@ -23,6 +25,8 @@ interface ModalHeaderProps {
     onBackFromQuickAdd: () => void;
     selectedFoodId: string | undefined;
     onBackFromFoodSelection: () => void;
+    isBackgroundOptionAvailable?: boolean;
+    onBackground?: () => void;
 }
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({
@@ -30,7 +34,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
     editingQuickAddItemIndex, isActionDisabled,
     isQuickAddImageButtonDisabled, isQuickAddTextButtonDisabled,
     toggleOverlay, onQuickAddImage, onQuickAddText, onBackFromQuickAdd,
-    selectedFoodId, onBackFromFoodSelection
+    selectedFoodId, onBackFromFoodSelection, isBackgroundOptionAvailable, onBackground
 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
@@ -40,7 +44,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         Keyboard.dismiss();
         toggleOverlay();
     };
-    
+
     // Logic for showing back button
     const isQuickAddBack = (modalMode === 'quickAddSelect' || modalMode === 'quickAddText') && editingQuickAddItemIndex === null;
     const isFoodSelectionBack = modalMode === 'normal' && !isEditMode && !!selectedFoodId;
@@ -61,19 +65,19 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         <View style={styles.header}>
             <View style={styles.leftContainer}>
                 {isBackButtonVisible ? (
-                    <TouchableOpacity 
-                        onPress={handleBackPress} 
-                        style={styles.iconButton} 
+                    <TouchableOpacity
+                        onPress={handleBackPress}
+                        style={styles.iconButton}
                         disabled={isActionDisabled}
                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     >
                         <Icon name="arrow-back" type="ionicon" size={30} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity 
-                        onPress={handleClose} 
-                        style={styles.iconButton} 
-                        disabled={isActionDisabled} 
+                    <TouchableOpacity
+                        onPress={handleClose}
+                        style={styles.iconButton}
+                        disabled={isActionDisabled}
                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     >
                         <Icon name="close" type="material" size={30} color={isActionDisabled ? theme.colors.grey3 : theme.colors.text} />
@@ -82,9 +86,9 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
             </View>
 
             <View style={styles.titleContainer}>
-                <Text 
-                    style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]} 
-                    numberOfLines={2} 
+                <Text
+                    style={[styles.overlayTitle, isEditMode && modalMode === 'normal' && styles.editModeTitle]}
+                    numberOfLines={2}
                     adjustsFontSizeToFit
                     minimumFontScale={0.8}
                 >
@@ -93,12 +97,18 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
             </View>
 
             <View style={styles.rightContainer}>
-                {modalMode === 'normal' && !isEditMode && !selectedFoodId && (
+                {isBackgroundOptionAvailable && (
+                    <TouchableOpacity onPress={onBackground} style={styles.backgroundButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Icon name="content-save-move-outline" type="material-community" size={16} color={theme.colors.white} style={{ marginRight: 4 }} />
+                        <Text style={styles.backgroundButtonText}>{t('common.runInBackground')}</Text>
+                    </TouchableOpacity>
+                )}
+                {modalMode === 'normal' && !isEditMode && !selectedFoodId && !isBackgroundOptionAvailable && (
                     <View style={styles.quickAddGroup}>
                         <View style={styles.actionWrapper}>
-                            <TouchableOpacity 
-                                onPress={onQuickAddText} 
-                                disabled={isQuickAddTextButtonDisabled} 
+                            <TouchableOpacity
+                                onPress={onQuickAddText}
+                                disabled={isQuickAddTextButtonDisabled}
                                 style={[styles.quickActionButton, isQuickAddTextButtonDisabled && styles.disabledButton]}
                             >
                                 {quickAddLoading && textQuickAddLoading ? (
@@ -112,9 +122,9 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
                             )}
                         </View>
                         <View style={styles.actionWrapper}>
-                            <TouchableOpacity 
-                                onPress={onQuickAddImage} 
-                                disabled={isQuickAddImageButtonDisabled} 
+                            <TouchableOpacity
+                                onPress={onQuickAddImage}
+                                disabled={isQuickAddImageButtonDisabled}
                                 style={[styles.quickActionButton, isQuickAddImageButtonDisabled && styles.disabledButton]}
                             >
                                 {quickAddLoading && !textQuickAddLoading ? (
@@ -135,11 +145,11 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
-    header: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        marginBottom: 10, 
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
         paddingHorizontal: 0,
         minHeight: 56,
         borderBottomWidth: 1,
@@ -159,14 +169,14 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    overlayTitle: { 
-        color: theme.colors.text, 
-        fontWeight: '800', 
-        fontSize: 22, 
+    overlayTitle: {
+        color: theme.colors.text,
+        fontWeight: '800',
+        fontSize: 22,
         textAlign: 'center',
     },
-    editModeTitle: { 
-        color: theme.colors.warning 
+    editModeTitle: {
+        color: theme.colors.warning
     },
     rightContainer: {
         flexDirection: 'row',
@@ -208,6 +218,20 @@ const useStyles = makeStyles((theme) => ({
         paddingVertical: 1,
         borderRadius: 6,
         elevation: 2,
+    },
+    backgroundButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    backgroundButtonText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: theme.colors.white,
     },
 }));
 

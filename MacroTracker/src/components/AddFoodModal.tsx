@@ -35,6 +35,7 @@ import PriceTag from './PriceTag';
 import useDelayedLoading from '../hooks/useDelayedLoading';
 import { calculateBaseFoodGrade, FoodGradeResult } from "../utils/gradingUtils";
 import GuestLimitModal from "./GuestLimitModal";
+import { useBackgroundTask } from "../hooks/useBackgroundTask";
 
 type FoodFormData = Omit<Food, "id" | "createdAt">;
 type InputMode = 'manual' | 'ai';
@@ -76,13 +77,14 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const styles = useStyles();
     const { user, refreshUser, isGuest, markAiFeatureUsed } = useAuth() as AuthContextType;
     const { costs } = useCosts();
+    const { runBackgroundTask, isBackgroundOptionAvailable, backgroundTask } = useBackgroundTask();
 
     const [loading, setLoading] = useState(false);
     const [inputMode, setInputMode] = useState<InputMode>('manual');
     const [ingredients, setIngredients] = useState("");
     const [aiTextLoading, setAiTextLoading] = useState(false);
     const [aiImageLoading, setAiImageLoading] = useState(false);
-    
+
     const [isGuestModalVisible, setIsGuestModalVisible] = useState(false);
 
     const showLoading = useDelayedLoading(loading);
@@ -127,7 +129,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             createdAt: new Date().toISOString(),
         };
         return calculateBaseFoodGrade(tempFood);
-    }, [newFood, editFood]); 
+    }, [newFood, editFood]);
 
     // Determine if form is valid for enabling/disabling the submit button
     const isFormValid = useMemo(() => {
@@ -148,7 +150,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const handleCreateOrUpdate = async () => {
         const isUpdate = !!editFood;
         const currentData = isUpdate ? editFood : newFood;
-        
+
         const dataToValidate: Food | FoodFormData = {
             ...currentData,
             name: (currentData.name ?? "").trim(),
@@ -182,12 +184,18 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             Alert.alert(t('addFoodModal.alertInputNeeded'), t('addFoodModal.alertInputNeededMessage'));
             return;
         }
-    
+
         setAiTextLoading(true);
         try {
-            const macros = await getMacrosFromText(foodName, textToAnalyze, user?.client_id, refreshUser);
+            const { result } = await runBackgroundTask(
+                t('addFoodModal.analyzeTextButton'),
+                'ai_text',
+                () => getMacrosFromText(foodName, textToAnalyze, user?.client_id, refreshUser),
+                { targetScreen: 'FoodListRoute' }
+            );
+            const macros = result;
             const isUpdate = !!editFood;
-    
+
             if (macros.foodName) {
                 handleInputChange("name", macros.foodName, isUpdate);
             }
@@ -195,15 +203,15 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             handleInputChange("protein", String(Math.round(macros.protein)), isUpdate);
             handleInputChange("carbs", String(Math.round(macros.carbs)), isUpdate);
             handleInputChange("fat", String(Math.round(macros.fat)), isUpdate);
-            
+
             // Save the recipe text (ingredients) for later viewing
             if (onRecipeChange && textToAnalyze) {
                 onRecipeChange(textToAnalyze);
             }
-            
+
             setInputMode("manual");
-            if(markAiFeatureUsed) markAiFeatureUsed();
-    
+            if (markAiFeatureUsed) markAiFeatureUsed();
+
             Toast.show({
                 type: 'info',
                 text1: foodName ? t('addFoodModal.macrosEstimatedText') : t('addFoodModal.foodIdentified'),
@@ -225,34 +233,39 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             if (pickerResult.assets && pickerResult.assets.length > 0) {
                 const originalAsset = pickerResult.assets[0]; setAiImageLoading(true);
                 try {
-                     const compressedResult = await compressImageIfNeeded(originalAsset);
-                     const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
-                     const result = await getMacrosForImageFile(assetForAnalysis, user?.client_id, refreshUser);
-                     const isUpdate = !!editFood;
-                     handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
-                     handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
-                     handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
-                     handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
-                     setInputMode("manual");
-                     setIngredients("");
-                     // Clear recipe when using image analysis (no recipe text for images)
-                     if (onRecipeChange) onRecipeChange(undefined);
-                     if(markAiFeatureUsed) markAiFeatureUsed();
-                     Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
+                    const compressedResult = await compressImageIfNeeded(originalAsset);
+                    const assetForAnalysis = compressedResult ? { ...originalAsset, uri: compressedResult.uri, width: compressedResult.width, height: compressedResult.height, mimeType: 'image/jpeg' } : originalAsset;
+                    const { result } = await runBackgroundTask(
+                        t('addFoodModal.analyzeImageButton'),
+                        'ai_image',
+                        () => getMacrosForImageFile(assetForAnalysis, user?.client_id, refreshUser),
+                        { targetScreen: 'FoodListRoute' }
+                    );
+                    const isUpdate = !!editFood;
+                    handleInputChange("name", result.foodName, isUpdate); handleInputChange("calories", String(Math.round(result.calories)), isUpdate);
+                    handleInputChange("protein", String(Math.round(result.protein)), isUpdate);
+                    handleInputChange("carbs", String(Math.round(result.carbs)), isUpdate);
+                    handleInputChange("fat", String(Math.round(result.fat)), isUpdate);
+                    setInputMode("manual");
+                    setIngredients("");
+                    // Clear recipe when using image analysis (no recipe text for images)
+                    if (onRecipeChange) onRecipeChange(undefined);
+                    if (markAiFeatureUsed) markAiFeatureUsed();
+                    Toast.show({ type: 'success', text1: t('addFoodModal.foodIdentified'), text2: t('addFoodModal.foodIdentifiedMessage', { foodName: result.foodName }), position: 'bottom', });
                 } catch (analysisError) { console.error("Error during image analysis (modal):", analysisError); }
                 finally { setAiImageLoading(false); }
             } else { Alert.alert(t('addFoodModal.errorGetImage'), t('addEntryModal.alertQuickAddCouldNotSelect')); setAiImageLoading(false); }
         };
         Alert.alert(t('addFoodModal.errorGetImage'), t('addFoodModal.errorGetImageMessage'),
-            [ { text: t('addEntryModal.cancel'), style: "cancel" },
-              { text: t('addEntryModal.camera'), onPress: async () => { try { const perm = await ImagePicker.requestCameraPermissionsAsync(); if (!perm.granted) { Alert.alert(t('addFoodModal.errorPermission'), t('addFoodModal.errorCameraPermission')); return; } const res = await ImagePicker.launchCameraAsync({ quality: 1, exif: false }); await processImage(res); } catch (e) { console.error(e); Alert.alert(t('addFoodModal.errorCamera')); } } },
-              { text: t('addEntryModal.gallery'), onPress: async () => { try { const perm = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!perm.granted) { Alert.alert(t('addFoodModal.errorPermission'), t('addEntryModal.alertQuickAddGalleryPermission')); return; } const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 }); await processImage(res); } catch (e) { console.error(e); Alert.alert(t('addFoodModal.errorGallery')); } } }, ],
+            [{ text: t('addEntryModal.cancel'), style: "cancel" },
+            { text: t('addEntryModal.camera'), onPress: async () => { try { const perm = await ImagePicker.requestCameraPermissionsAsync(); if (!perm.granted) { Alert.alert(t('addFoodModal.errorPermission'), t('addFoodModal.errorCameraPermission')); return; } const res = await ImagePicker.launchCameraAsync({ quality: 1, exif: false }); await processImage(res); } catch (e) { console.error(e); Alert.alert(t('addFoodModal.errorCamera')); } } },
+            { text: t('addEntryModal.gallery'), onPress: async () => { try { const perm = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!perm.granted) { Alert.alert(t('addFoodModal.errorPermission'), t('addEntryModal.alertQuickAddGalleryPermission')); return; } const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 }); await processImage(res); } catch (e) { console.error(e); Alert.alert(t('addFoodModal.errorGallery')); } } },],
             { cancelable: true }
         );
     };
 
     const isAnyLoading = loading || aiTextLoading || aiImageLoading;
-    const combinedOverlayStyle = StyleSheet.flatten([ styles.overlayStyle, { backgroundColor: theme.colors.background } ]);
+    const combinedOverlayStyle = StyleSheet.flatten([styles.overlayStyle, { backgroundColor: theme.colors.background }]);
 
     return (
         <>
@@ -272,20 +285,25 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                     </View>
                                 )}
                             </View>
-                            <Icon 
-                                name="close" 
-                                type="material" 
-                                size={28} 
-                                color={theme.colors.grey3} 
+                            {isBackgroundOptionAvailable && (
+                                <TouchableOpacity onPress={backgroundTask} style={styles.backgroundButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Icon name="content-save-move-outline" type="material-community" size={24} color={theme.colors.grey3} />
+                                </TouchableOpacity>
+                            )}
+                            <Icon
+                                name="close"
+                                type="material"
+                                size={28}
+                                color={theme.colors.grey3}
                                 onPress={!isAnyLoading ? toggleOverlay : undefined}
-                                containerStyle={styles.closeIcon} 
-                                disabled={isAnyLoading} 
-                                disabledStyle={{ backgroundColor: 'transparent' }} 
+                                containerStyle={styles.closeIcon}
+                                disabled={isAnyLoading}
+                                disabledStyle={{ backgroundColor: 'transparent' }}
                             />
                         </View>
 
-                        <ScrollView 
-                            keyboardShouldPersistTaps="handled" 
+                        <ScrollView
+                            keyboardShouldPersistTaps="handled"
                             contentContainerStyle={styles.scrollContentContainer}
                             showsVerticalScrollIndicator={false}
                         >
@@ -396,7 +414,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                                     {t('addFoodModal.analyzeTextButton')}
                                                 </Text>
                                             </View>
-                                            
+
                                             <Input
                                                 label={t('addFoodModal.ingredientsLabel')}
                                                 labelStyle={styles.aiInputLabel}
@@ -425,10 +443,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                                             {t('addFoodModal.analyzeTextButton')}
                                                         </Text>
                                                         {costs?.cost_macros_recipe != null && (
-                                                            <PriceTag 
-                                                                amount={costs.cost_macros_recipe} 
-                                                                type="cost" 
-                                                                style={styles.priceTagInButton} 
+                                                            <PriceTag
+                                                                amount={costs.cost_macros_recipe}
+                                                                type="cost"
+                                                                style={styles.priceTagInButton}
                                                             />
                                                         )}
                                                     </View>
@@ -456,7 +474,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                                     {t('addFoodModal.analyzeImageButton')}
                                                 </Text>
                                             </View>
-                                            
+
                                             <Text style={styles.aiCardDescription}>
                                                 {t('addFoodModal.analyzeImageDescription')}
                                             </Text>
@@ -475,10 +493,10 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                                                             {t('addFoodModal.analyzeImageButton')}
                                                         </Text>
                                                         {costs?.cost_macros_image_single != null && (
-                                                            <PriceTag 
-                                                                amount={costs.cost_macros_image_single} 
-                                                                type="cost" 
-                                                                style={styles.priceTagInButton} 
+                                                            <PriceTag
+                                                                amount={costs.cost_macros_image_single}
+                                                                type="cost"
+                                                                style={styles.priceTagInButton}
                                                             />
                                                         )}
                                                     </View>
@@ -493,16 +511,16 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                         {/* Footer with action button - Hide if invalid/disabled unless loading */}
                         {(isFormValid || isAnyLoading) && (
                             <View style={styles.footer}>
-                                <Button 
-                                    title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')} 
+                                <Button
+                                    title={editFood ? t('addFoodModal.buttonUpdate') : t('addFoodModal.buttonAdd')}
                                     onPress={handleCreateOrUpdate}
-                                    buttonStyle={[ 
-                                        styles.primaryButton, 
-                                        { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary } 
+                                    buttonStyle={[
+                                        styles.primaryButton,
+                                        { backgroundColor: editFood ? theme.colors.warning : theme.colors.primary }
                                     ]}
-                                    titleStyle={styles.primaryButtonTitle} 
-                                    loading={showLoading} 
-                                    disabled={isAnyLoading || !isFormValid} 
+                                    titleStyle={styles.primaryButtonTitle}
+                                    loading={showLoading}
+                                    disabled={isAnyLoading || !isFormValid}
                                     containerStyle={styles.primaryButtonContainer}
                                     disabledStyle={styles.primaryButtonDisabled}
                                 />
@@ -517,41 +535,41 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
 };
 
 const useStyles = makeStyles((theme) => ({
-    overlayContainer: { 
-        backgroundColor: 'transparent', 
-        width: '92%', 
-        maxWidth: 520, 
-        padding: 0, 
-        borderRadius: 20, 
-        shadowColor: "#000", 
-        shadowOffset: { width: 0, height: 4 }, 
-        shadowOpacity: 0.3, 
-        shadowRadius: 8, 
-        elevation: 8, 
+    overlayContainer: {
+        backgroundColor: 'transparent',
+        width: '92%',
+        maxWidth: 520,
+        padding: 0,
+        borderRadius: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
         overflow: 'hidden',
         maxHeight: '95%',
     },
-    overlayStyle: { 
-        width: '100%', 
-        borderRadius: 20, 
+    overlayStyle: {
+        width: '100%',
+        borderRadius: 20,
         padding: 0,
-        maxHeight: '100%', 
+        maxHeight: '100%',
         backgroundColor: theme.colors.background,
         display: 'flex',
         flexDirection: 'column',
     },
-    keyboardAvoidingView: { 
-        width: "100%", 
-        maxHeight: '100%' 
+    keyboardAvoidingView: {
+        width: "100%",
+        maxHeight: '100%'
     },
-    header: { 
-        flexDirection: "row", 
-        justifyContent: "space-between", 
-        alignItems: "center", 
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 15,
-        borderBottomWidth: 1, 
+        borderBottomWidth: 1,
         borderBottomColor: theme.colors.divider,
     },
     titleContainer: {
@@ -559,11 +577,11 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         flex: 1,
     },
-    overlayTitle: { 
-        color: theme.colors.text, 
-        fontWeight: "700", 
-        fontSize: 22, 
-        textAlign: 'left' 
+    overlayTitle: {
+        color: theme.colors.text,
+        fontWeight: "700",
+        fontSize: 22,
+        textAlign: 'left'
     },
     gradePill: {
         marginLeft: 10,
@@ -578,10 +596,14 @@ const useStyles = makeStyles((theme) => ({
         fontWeight: 'bold',
         fontSize: 14,
     },
-    closeIcon: { 
+    closeIcon: {
         padding: 4,
     },
-    scrollContentContainer: { 
+    backgroundButton: {
+        marginRight: 8,
+        padding: 4,
+    },
+    scrollContentContainer: {
         paddingHorizontal: 20,
         paddingBottom: 10,
     },

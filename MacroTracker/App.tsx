@@ -6,11 +6,13 @@ import React, { useEffect, useState } from "react"; // Added useState
 import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 // 1. Add LogBox to imports
-import { Text, TextInput, LogBox } from "react-native"; 
+import { Text, TextInput, LogBox } from "react-native";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CostsProvider } from "./src/context/CostsContext";
 import { initializeAds } from './src/services/adService';
 import { AdsConsent, AdsConsentStatus } from 'react-native-google-mobile-ads'; // Added Import
+import { BackgroundTaskProvider } from "./src/context/BackgroundTaskContext";
+import { BackgroundTaskBubble } from "./src/components/BackgroundTaskBubble";
 
 // --- FONT SCALING PATCH ---
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
@@ -46,7 +48,7 @@ const App = () => {
       } finally {
         // 3. Initialize the Ads SDK (only after consent flow is done!)
         await initializeAds();
-        setIsMobileAdsStart(true); 
+        setIsMobileAdsStart(true);
       }
     };
 
@@ -60,10 +62,13 @@ const App = () => {
   return (
     <AuthProvider>
       <CostsProvider>
-        <SafeAreaProvider>
-          <AppNavigator />
-          <Toast />
-        </SafeAreaProvider>
+        <BackgroundTaskProvider>
+          <SafeAreaProvider>
+            <AppNavigator />
+            <BackgroundTaskBubble />
+            <Toast />
+          </SafeAreaProvider>
+        </BackgroundTaskProvider>
       </CostsProvider>
     </AuthProvider>
   );
