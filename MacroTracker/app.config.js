@@ -1,5 +1,5 @@
 export default {
-  name: "Macros Vision AI",
+  name: "DEV Macros Vision AI",
   slug: "MacroTracker",
   version: "4.4.1",
   runtimeVersion: {
@@ -43,7 +43,7 @@ export default {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff"
     },
-    package: "com.macrosvisionai.app",
+    package: "com.macrosvisionai.app.dev",
     versionCode: 22,
     userInterfaceStyle: "automatic",
     permissions: [
