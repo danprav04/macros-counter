@@ -363,7 +363,9 @@
       "analyzeButton": "Analyze Text (Beta)",
       "alertInputEmpty": "Input Empty",
       "alertInputEmptyMessage": "Please type or say what you ate to analyze."
-    }
+    },
+    "taskMovedToBackground": "Analysis moved to background",
+    "taskMovedToBackgroundMessage": "You'll be notified when it's done. Check the tasks bubble."
   },
   "addFoodModal": {
     "titleAdd": "Add New Food",

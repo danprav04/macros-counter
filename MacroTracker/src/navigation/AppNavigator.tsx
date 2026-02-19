@@ -24,6 +24,7 @@ import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import AdLoadingModal from '../components/AdLoadingModal';
 import FirstRunModal, { MissingConsents } from '../components/FirstRunModal';
+import { BackgroundTaskBubble } from '../components/BackgroundTaskBubble'; // Added import
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode, SettingsStackParamList } from '../types/settings';
@@ -390,39 +391,42 @@ function AppContent() {
           theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
           fallback={<LoadingFallback />}
         >
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            {/* Main is the default access route now */}
-            <RootStack.Screen name="Main">
-              {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
-            </RootStack.Screen>
+          <View style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
+            <RootStack.Navigator screenOptions={{ headerShown: false }}>
+              {/* Main is the default access route now */}
+              <RootStack.Screen name="Main">
+                {() => <MainTabNavigator onThemeChange={changeTheme} onLocaleChange={handleLocaleChange} onLogout={logout!} />}
+              </RootStack.Screen>
 
-            {/* Auth Stack accessible via navigation, especially for guests upgrading */}
-            <RootStack.Screen name="Auth" component={AuthNavigator} />
+              {/* Auth Stack accessible via navigation, especially for guests upgrading */}
+              <RootStack.Screen name="Auth" component={AuthNavigator} />
 
-            {/* Questionnaire as a modal in RootStack to avoid navigation issues from multiple tabs */}
-            <RootStack.Screen
-              name="Questionnaire"
-              component={QuestionnaireScreen}
-              options={{
-                headerShown: true,
-                title: t('questionnaireScreen.title'),
-                presentation: 'modal',
-                headerStyle: { backgroundColor: currentThemeConfig.colors.background },
-                headerTitleStyle: { color: currentThemeConfig.colors.text },
-                headerTintColor: currentThemeConfig.colors.primary,
-                headerTitleAlign: 'center'
-              }}
+              {/* Questionnaire as a modal in RootStack to avoid navigation issues from multiple tabs */}
+              <RootStack.Screen
+                name="Questionnaire"
+                component={QuestionnaireScreen}
+                options={{
+                  headerShown: true,
+                  title: t('questionnaireScreen.title'),
+                  presentation: 'modal',
+                  headerStyle: { backgroundColor: currentThemeConfig.colors.background },
+                  headerTitleStyle: { color: currentThemeConfig.colors.text },
+                  headerTintColor: currentThemeConfig.colors.primary,
+                  headerTitleAlign: 'center'
+                }}
+              />
+            </RootStack.Navigator>
+
+            <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
+            <BackgroundTaskBubble />
+            <AdLoadingModal />
+            <FirstRunModal
+              isVisible={showComplianceModal}
+              missingConsents={missingConsents}
+              onAgree={handleAgreeToCompliance}
             />
-          </RootStack.Navigator>
+          </View>
         </NavigationContainer>
-
-        <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
-        <AdLoadingModal />
-        <FirstRunModal
-          isVisible={showComplianceModal}
-          missingConsents={missingConsents}
-          onAgree={handleAgreeToCompliance}
-        />
       </View>
     </ThemeProvider>
   );

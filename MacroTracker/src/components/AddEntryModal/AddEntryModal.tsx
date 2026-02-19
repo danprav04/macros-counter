@@ -1,5 +1,5 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { View, KeyboardAvoidingView, Platform, Alert, Keyboard } from "react-native";
 import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
 import { Food } from "../../types/food";
@@ -94,6 +94,35 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const showAILoading = useDelayedLoading(isAiLoading, 500);
   const showQuickAddLoading = useDelayedLoading(quickAddLoading, 500);
   const showTextQuickAddLoading = useDelayedLoading(isTextQuickAddLoading, 500);
+
+  // Auto-close modal after 3 seconds if AI query is still loading
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (quickAddLoading || isTextQuickAddLoading) {
+      autoCloseTimerRef.current = setTimeout(() => {
+        backgroundTask();
+        toggleOverlay();
+        Toast.show({
+          type: 'info',
+          text1: t('addEntryModal.taskMovedToBackground'),
+          text2: t('addEntryModal.taskMovedToBackgroundMessage'),
+          position: 'bottom',
+          visibilityTime: 3000,
+        });
+      }, 3000);
+    } else {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+    };
+  }, [quickAddLoading, isTextQuickAddLoading, backgroundTask, toggleOverlay, t]);
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName || foodIcons[foodName] !== undefined) return;

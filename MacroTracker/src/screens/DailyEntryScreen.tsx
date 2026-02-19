@@ -183,6 +183,13 @@ const DailyEntryScreen: React.FC = () => {
     }
   }, [route.params, navigation]);
 
+  // Auto-open AddEntryModal when backgroundResults arrive via navigation (e.g. from "View Result")
+  useEffect(() => {
+    if (route.params?.backgroundResults && !isLoadingData) {
+      setIsAddModalVisible(true);
+    }
+  }, [route.params?.backgroundResults, isLoadingData]);
+
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isAddModalVisible && foods.length > 0) {
       const foodExistsInLibrary = foods.find(f => f.id === pendingQuickAddFood.id);

@@ -12,7 +12,7 @@ import { CostsProvider } from "./src/context/CostsContext";
 import { initializeAds } from './src/services/adService';
 import { AdsConsent, AdsConsentStatus } from 'react-native-google-mobile-ads'; // Added Import
 import { BackgroundTaskProvider } from "./src/context/BackgroundTaskContext";
-import { BackgroundTaskBubble } from "./src/components/BackgroundTaskBubble";
+// import { BackgroundTaskBubble } from "./src/components/BackgroundTaskBubble";
 
 // --- FONT SCALING PATCH ---
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
@@ -65,7 +65,7 @@ const App = () => {
         <BackgroundTaskProvider>
           <SafeAreaProvider>
             <AppNavigator />
-            <BackgroundTaskBubble />
+            {/* <BackgroundTaskBubble /> Moved to AppNavigator */}
             <Toast />
           </SafeAreaProvider>
         </BackgroundTaskProvider>
