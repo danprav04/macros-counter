@@ -44,7 +44,6 @@ export const BackgroundTaskBubble: React.FC = () => {
             <Animated.View style={[
                 styles.container,
                 {
-                    bottom: 40 + insets.bottom, // Matches FAB bottom (10) + margin (16)
                     transform: [{ scale }]
                 }
             ]}>
@@ -88,7 +87,8 @@ const ActivityIndicatorBubble = ({ color }: { color: string }) => {
 const useStyles = makeStyles((theme) => ({
     container: {
         position: 'absolute',
-        left: 20,
+        left: 26,
+        bottom: 122,
         zIndex: 1000,
         elevation: 10,
         shadowColor: "#000",
