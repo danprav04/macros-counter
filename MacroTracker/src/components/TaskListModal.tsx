@@ -67,28 +67,32 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
 
         return (
             <View style={styles.taskRow}>
-                <View style={styles.taskStatusIcon}>
-                    {getStatusIcon(item.status)}
-                </View>
-                <View style={styles.taskInfo}>
-                    <Text style={styles.taskTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.taskMeta}>
-                        {item.status === 'success' ? t('common.completed') : item.status === 'error' ? t('common.error') : t('common.processing')}
-                        {' · '}
-                        {formatDistanceToNow(item.startTime, { addSuffix: true })}
-                    </Text>
-                    {item.error && <Text style={styles.errorText} numberOfLines={1}>{item.error}</Text>}
-                </View>
-                <View style={styles.taskActions}>
+                <TouchableOpacity 
+                    style={styles.taskContentValues} 
+                    onPress={() => isSuccess && handleTaskAction(item)}
+                    disabled={!isSuccess}
+                >
+                    <View style={styles.taskStatusIcon}>
+                        {getStatusIcon(item.status)}
+                    </View>
+                    <View style={styles.taskInfo}>
+                        <Text style={styles.taskTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={styles.taskMeta}>
+                            {item.status === 'success' ? t('common.completed') : item.status === 'error' ? t('common.error') : t('common.processing')}
+                            {' · '}
+                            {formatDistanceToNow(item.startTime, { addSuffix: true })}
+                        </Text>
+                        {item.error && <Text style={styles.errorText} numberOfLines={1}>{item.error}</Text>}
+                    </View>
                     {isSuccess && (
-                        <TouchableOpacity onPress={() => handleTaskAction(item)} style={styles.actionButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <View style={styles.actionButton}>
                             <Icon name="open-in-new" type="material" size={18} color={theme.colors.primary} />
-                        </TouchableOpacity>
+                        </View>
                     )}
-                    <TouchableOpacity onPress={() => dismissTask(item.id)} style={styles.actionButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Icon name="close" type="material" size={18} color={theme.colors.grey3} />
-                    </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => dismissTask(item.id)} style={styles.dismissButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Icon name="close" type="material" size={18} color={theme.colors.grey3} />
+                </TouchableOpacity>
             </View>
         );
     };
@@ -159,8 +163,15 @@ const useStyles = makeStyles((theme) => ({
     taskRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
+        paddingHorizontal: 0, // Padding moved to inner touchable
+        paddingVertical: 0,
+    },
+    taskContentValues: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingVertical: 10,
+        paddingLeft: 14,
     },
     taskStatusIcon: {
         width: 24,
@@ -186,13 +197,13 @@ const useStyles = makeStyles((theme) => ({
         color: theme.colors.error,
         marginTop: 2,
     },
-    taskActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
     actionButton: {
         padding: 4,
+        marginRight: 4,
+    },
+    dismissButton: {
+        padding: 10,
+        paddingRight: 14,
     },
     separator: {
         height: StyleSheet.hairlineWidth,

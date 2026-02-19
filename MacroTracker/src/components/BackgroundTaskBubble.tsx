@@ -13,6 +13,8 @@ export const BackgroundTaskBubble: React.FC = () => {
     const { hasActiveBackgroundTasks, hasUnreadCompletedTasks, activeBackgroundTasksCount, tasks } = useBackgroundTaskContext();
     const [isModalVisible, setIsModalVisible] = useState(false);
 
+    const badgeCount = activeBackgroundTasksCount + (hasUnreadCompletedTasks ? 1 : 0); // Simplified logic, ideally context provides total unread count
+
     // Simple entry animation
     const [scale] = useState(new Animated.Value(0));
 
@@ -42,7 +44,7 @@ export const BackgroundTaskBubble: React.FC = () => {
             <Animated.View style={[
                 styles.container,
                 {
-                    bottom: 80 + insets.bottom, // Above tab bar
+                    bottom: 40 + insets.bottom, // Matches FAB bottom (10) + margin (16)
                     transform: [{ scale }]
                 }
             ]}>
@@ -57,8 +59,13 @@ export const BackgroundTaskBubble: React.FC = () => {
                         <Icon name="layers" type="material" color={theme.colors.white} size={28} />
                     )}
 
-                    {hasUnreadCompletedTasks && (
-                        <View style={styles.badge} />
+                    {(hasActiveBackgroundTasks || hasUnreadCompletedTasks) && (
+                        <Badge
+                            status="error"
+                            value={tasks.length}
+                            containerStyle={styles.badgeContainer}
+                            badgeStyle={styles.badge}
+                        />
                     )}
                 </TouchableOpacity>
             </Animated.View>
@@ -97,16 +104,14 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    badge: {
+    badgeContainer: {
         position: 'absolute',
-        top: 12,
-        right: 12,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: theme.colors.error,
+        top: -4,
+        right: -4,
+    },
+    badge: {
         borderWidth: 1.5,
-        borderColor: theme.colors.primary,
+        borderColor: theme.colors.background,
     }
 }));
 
