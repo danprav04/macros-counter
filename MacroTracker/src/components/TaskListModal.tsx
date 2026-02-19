@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Linking, Alert } from 'react-native';
-import { Overlay, Text, Icon, Button, useTheme, makeStyles, Badge, ListItem } from '@rneui/themed';
+import { View, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { Overlay, Text, Icon, useTheme, makeStyles } from '@rneui/themed';
 import { useBackgroundTaskContext, BackgroundTask } from '../context/BackgroundTaskContext';
 import { t } from '../localization/i18n';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
-import { EstimatedFoodItem } from '../types/macros';
+import { Alert } from 'react-native';
 
 interface TaskListModalProps {
     isVisible: boolean;
@@ -26,7 +26,6 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
 
     const handleTaskAction = (task: BackgroundTask) => {
         if (task.status === 'success' && task.result?.data) {
-            // Handle navigation based on task type
             if (task.type === 'ai_text' || task.type === 'ai_image') {
                 const targetScreen = task.metadata?.targetScreen;
 
@@ -35,7 +34,6 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
                         backgroundFoodResult: task.result.data
                     });
                 } else {
-                    // Default to DailyEntryRoute if not specified or specified as such
                     navigation.navigate('DailyEntryRoute', {
                         backgroundResults: {
                             type: task.type,
@@ -46,54 +44,52 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
 
                 onClose();
             } else if (task.type === 'ai_grams') {
-                // For grams, it's usually tied to a specific food edit session. 
-                // Restoring that session is hard. 
-                // Maybe just show an alert with the result?
                 Alert.alert(t('taskList.result'), t('taskList.gramsResult', { grams: task.result.data }));
             }
         }
     };
 
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'loading':
+                return <ActivityIndicator size="small" color={theme.colors.primary} />;
+            case 'success':
+                return <Icon name="check-circle" type="material" size={20} color={theme.colors.success} />;
+            case 'error':
+                return <Icon name="error" type="material" size={20} color={theme.colors.error} />;
+            default:
+                return null;
+        }
+    };
+
     const renderItem = ({ item }: { item: BackgroundTask }) => {
-        const isFinished = item.status !== 'loading';
         const isSuccess = item.status === 'success';
 
         return (
-            <ListItem.Swipeable
-                rightContent={(reset) => (
-                    <Button
-                        title={t('common.dismiss')}
-                        onPress={() => { dismissTask(item.id); reset(); }}
-                        icon={{ name: 'delete', color: 'white' }}
-                        buttonStyle={{ minHeight: '100%', backgroundColor: 'red' }}
-                    />
-                )}
-                containerStyle={styles.itemContainer}
-            >
-                <View style={styles.iconContainer}>
-                    {item.status === 'loading' && <ActivityIndicator size="small" color={theme.colors.primary} />}
-                    {item.status === 'success' && <Icon name="check-circle" color={theme.colors.success} />}
-                    {item.status === 'error' && <Icon name="error" color={theme.colors.error} />}
+            <View style={styles.taskRow}>
+                <View style={styles.taskStatusIcon}>
+                    {getStatusIcon(item.status)}
                 </View>
-                <ListItem.Content>
-                    <ListItem.Title style={styles.itemTitle}>{item.title}</ListItem.Title>
-                    <ListItem.Subtitle style={styles.itemSubtitle}>
-                        {isFinished
-                            ? (item.status === 'success' ? t('common.completed') : t('common.error'))
-                            : t('common.processing')}
-                        {' • '}
+                <View style={styles.taskInfo}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.taskMeta}>
+                        {item.status === 'success' ? t('common.completed') : item.status === 'error' ? t('common.error') : t('common.processing')}
+                        {' · '}
                         {formatDistanceToNow(item.startTime, { addSuffix: true })}
-                    </ListItem.Subtitle>
-                    {item.error && <Text style={styles.errorText}>{item.error}</Text>}
-                </ListItem.Content>
-                {isSuccess && (
-                    <Button
-                        title={t('common.view')}
-                        type="clear"
-                        onPress={() => handleTaskAction(item)}
-                    />
-                )}
-            </ListItem.Swipeable>
+                    </Text>
+                    {item.error && <Text style={styles.errorText} numberOfLines={1}>{item.error}</Text>}
+                </View>
+                <View style={styles.taskActions}>
+                    {isSuccess && (
+                        <TouchableOpacity onPress={() => handleTaskAction(item)} style={styles.actionButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Icon name="open-in-new" type="material" size={18} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => dismissTask(item.id)} style={styles.actionButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Icon name="close" type="material" size={18} color={theme.colors.grey3} />
+                    </TouchableOpacity>
+                </View>
+            </View>
         );
     };
 
@@ -102,18 +98,18 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
             isVisible={isVisible}
             onBackdropPress={onClose}
             overlayStyle={styles.overlay}
-            animationType="slide"
+            animationType="fade"
         >
             <View style={styles.header}>
-                <Text h4 style={styles.title}>{t('taskList.title')}</Text>
-                <TouchableOpacity onPress={onClose}>
-                    <Icon name="close" size={24} color={theme.colors.grey3} />
+                <Text style={styles.title}>{t('taskList.title')}</Text>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Icon name="close" size={20} color={theme.colors.grey3} />
                 </TouchableOpacity>
             </View>
 
             {tasks.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <Icon name="playlist-remove" type="material-community" size={48} color={theme.colors.grey4} />
+                    <Icon name="check-circle-outline" type="material" size={32} color={theme.colors.grey4} />
                     <Text style={styles.emptyText}>{t('taskList.noActiveTasks')}</Text>
                 </View>
             ) : (
@@ -122,6 +118,7 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
                     keyExtractor={item => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
                 />
             )}
         </Overlay>
@@ -130,56 +127,87 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
 
 const useStyles = makeStyles((theme) => ({
     overlay: {
-        width: '90%',
-        maxHeight: '80%',
-        borderRadius: 16,
+        width: '80%',
+        maxWidth: 360,
+        maxHeight: '50%',
+        borderRadius: 14,
         padding: 0,
         backgroundColor: theme.colors.background,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.colors.divider,
     },
     title: {
+        fontSize: 16,
+        fontWeight: '700',
         color: theme.colors.text,
     },
     listContent: {
-        paddingBottom: 20,
+        paddingVertical: 4,
     },
-    itemContainer: {
-        backgroundColor: theme.colors.background,
+    taskRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
     },
-    iconContainer: {
-        marginRight: 12,
-        justifyContent: 'center',
+    taskStatusIcon: {
+        width: 24,
+        alignItems: 'center',
+        marginRight: 10,
     },
-    itemTitle: {
+    taskInfo: {
+        flex: 1,
+        marginRight: 8,
+    },
+    taskTitle: {
+        fontSize: 14,
         fontWeight: '600',
         color: theme.colors.text,
     },
-    itemSubtitle: {
-        fontSize: 12,
+    taskMeta: {
+        fontSize: 11,
         color: theme.colors.grey3,
         marginTop: 2,
     },
     errorText: {
-        fontSize: 12,
+        fontSize: 11,
         color: theme.colors.error,
         marginTop: 2,
     },
+    taskActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    actionButton: {
+        padding: 4,
+    },
+    separator: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: theme.colors.divider,
+        marginHorizontal: 14,
+    },
     emptyContainer: {
-        padding: 40,
+        padding: 30,
         alignItems: 'center',
         justifyContent: 'center',
     },
     emptyText: {
-        marginTop: 10,
+        marginTop: 8,
         color: theme.colors.grey3,
-        fontSize: 16,
+        fontSize: 14,
     },
 }));
 

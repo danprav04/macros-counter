@@ -390,7 +390,9 @@
     "errorCamera": "Camera Error",
     "errorGallery": "Gallery Error",
     "errorPermission": "Permission Required",
-    "errorCameraPermission": "Camera access needed."
+    "errorCameraPermission": "Camera access needed.",
+    "taskMovedToBackground": "Analysis moved to background",
+    "taskMovedToBackgroundMessage": "You'll be notified when it's done. Check the tasks bubble."
   },
   "foodDetailsModal": {
     "viewRecipe": "View Recipe",

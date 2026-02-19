@@ -1,5 +1,5 @@
 // src/components/AddFoodModal.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
     View,
     KeyboardAvoidingView,
@@ -90,6 +90,35 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const showLoading = useDelayedLoading(loading);
     const showAiTextLoading = useDelayedLoading(aiTextLoading);
     const showAiImageLoading = useDelayedLoading(aiImageLoading);
+
+    // Auto-close modal after 3 seconds if AI query is still loading
+    const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+    useEffect(() => {
+        if (aiTextLoading || aiImageLoading) {
+            autoCloseTimerRef.current = setTimeout(() => {
+                backgroundTask();
+                toggleOverlay();
+                Toast.show({
+                    type: 'info',
+                    text1: t('addFoodModal.taskMovedToBackground'),
+                    text2: t('addFoodModal.taskMovedToBackgroundMessage'),
+                    position: 'bottom',
+                    visibilityTime: 3000,
+                });
+            }, 3000);
+        } else {
+            if (autoCloseTimerRef.current) {
+                clearTimeout(autoCloseTimerRef.current);
+                autoCloseTimerRef.current = null;
+            }
+        }
+        return () => {
+            if (autoCloseTimerRef.current) {
+                clearTimeout(autoCloseTimerRef.current);
+                autoCloseTimerRef.current = null;
+            }
+        };
+    }, [aiTextLoading, aiImageLoading, backgroundTask, toggleOverlay, t]);
 
     useEffect(() => {
         if (isVisible) {

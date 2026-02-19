@@ -81,7 +81,7 @@ const ActivityIndicatorBubble = ({ color }: { color: string }) => {
 const useStyles = makeStyles((theme) => ({
     container: {
         position: 'absolute',
-        right: 20,
+        left: 20,
         zIndex: 1000,
         elevation: 10,
         shadowColor: "#000",

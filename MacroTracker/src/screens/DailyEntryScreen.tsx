@@ -62,6 +62,7 @@ const DailyEntryScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
+  const [pendingBackgroundResults, setPendingBackgroundResults] = useState<{ type: string, items: any[] } | undefined>(undefined);
 
   // Goal Estimation Prompt
   const [showGoalPrompt, setShowGoalPrompt] = useState(false);
@@ -185,10 +186,12 @@ const DailyEntryScreen: React.FC = () => {
 
   // Auto-open AddEntryModal when backgroundResults arrive via navigation (e.g. from "View Result")
   useEffect(() => {
-    if (route.params?.backgroundResults && !isLoadingData) {
+    if (route.params?.backgroundResults && !isLoadingData && !isAddModalVisible) {
+      setPendingBackgroundResults(route.params.backgroundResults);
+      navigation.setParams({ backgroundResults: undefined });
       setIsAddModalVisible(true);
     }
-  }, [route.params?.backgroundResults, isLoadingData]);
+  }, [route.params?.backgroundResults, isLoadingData, isAddModalVisible, navigation]);
 
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isAddModalVisible && foods.length > 0) {
@@ -430,11 +433,9 @@ const DailyEntryScreen: React.FC = () => {
   const toggleAddOverlay = useCallback(() => {
     if (isSaving) return;
     setFoodForAddModal(null);
+    setPendingBackgroundResults(undefined);
     setIsAddModalVisible((current) => !current);
-    if (route.params?.backgroundResults) {
-      navigation.setParams({ backgroundResults: undefined });
-    }
-  }, [isSaving, route.params, navigation]);
+  }, [isSaving]);
 
   const handleViewOrEditEntry = (item: DailyEntryItem, reversedIndex: number) => {
     if (isSaving) return;
@@ -615,7 +616,7 @@ const DailyEntryScreen: React.FC = () => {
           onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
           onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
           dailyGoals={dailyGoals}
-          backgroundResults={route.params?.backgroundResults}
+          backgroundResults={pendingBackgroundResults}
         />
       )}
       <DailyEntryDetailsModal
