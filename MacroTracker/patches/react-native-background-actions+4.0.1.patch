@@ -1,0 +1,17 @@
+diff --git a/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java b/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
+index 9900fc0..bf7d64a 100644
+--- a/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
++++ b/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
+@@ -90,7 +90,11 @@ final public class RNBackgroundActionsTask extends HeadlessJsTaskService {
+         // Create the notification
+         final Notification notification = buildNotification(this, bgOptions);
+ 
+-        startForeground(SERVICE_NOTIFICATION_ID, notification);
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++            startForeground(SERVICE_NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
++        } else {
++            startForeground(SERVICE_NOTIFICATION_ID, notification);
++        }
+         return super.onStartCommand(intent, flags, startId);
+     }
+ 
