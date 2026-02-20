@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from 'uuid';
+import BackgroundService from 'react-native-background-actions';
 
 export type TaskStatus = 'loading' | 'success' | 'error';
 export type TaskType = 'ai_text' | 'ai_image' | 'ai_grams';
@@ -42,6 +43,52 @@ const BackgroundTaskContext = createContext<BackgroundTaskContextType | undefine
 export const BackgroundTaskProvider = ({ children }: { children: ReactNode }) => {
     const [tasks, setTasks] = useState<BackgroundTask[]>([]);
     const [hasUnreadCompletedTasks, setHasUnreadCompletedTasks] = useState(false);
+
+    const fullActiveTasksCount = tasks.filter(t => t.status === 'loading').length;
+
+    useEffect(() => {
+        const manageBackgroundService = async () => {
+            if (fullActiveTasksCount > 0 && !BackgroundService.isRunning()) {
+                const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
+                
+                const backgroundTaskFn = async () => {
+                    await new Promise<void>(async (resolve) => {
+                        for (let i = 0; BackgroundService.isRunning(); i++) {
+                            await sleep(1000);
+                        }
+                    });
+                };
+
+                const options = {
+                    taskName: 'AITask',
+                    taskTitle: 'Processing AI Task',
+                    taskDesc: 'Your request is being processed...',
+                    taskIcon: {
+                        name: 'ic_launcher',
+                        type: 'mipmap',
+                    },
+                    color: '#ff00ff',
+                    parameters: {
+                        delay: 1000,
+                    },
+                };
+
+                try {
+                    await BackgroundService.start(backgroundTaskFn, options);
+                } catch (e) {
+                    console.log('Failed to start background service', e);
+                }
+            } else if (fullActiveTasksCount === 0 && BackgroundService.isRunning()) {
+                try {
+                    await BackgroundService.stop();
+                } catch (e) {
+                    console.log('Failed to stop background service', e);
+                }
+            }
+        };
+
+        manageBackgroundService();
+    }, [fullActiveTasksCount]);
 
     const startTask = useCallback((title: string, type: TaskType, metadata?: any) => {
         const id = uuidv4();

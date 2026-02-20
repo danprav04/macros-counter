@@ -1,7 +1,7 @@
 export default {
   name: "Macros Vision AI",
   slug: "MacroTracker",
-  version: "4.4.1",
+  version: "4.5.0",
   runtimeVersion: {
     policy: "appVersion"
   },
@@ -10,11 +10,9 @@ export default {
   icon: "./assets/icon.png",
   scheme: "macrosvisionai",
   userInterfaceStyle: "automatic",
-  // --- ADDED THIS SECTION ---
   updates: {
     url: "https://u.expo.dev/25ac2bcf-78a3-4f2c-a635-4fcaae7b93f1"
   },
-  // --------------------------
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
@@ -51,6 +49,8 @@ export default {
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.WAKE_LOCK",
       "com.android.vending.BILLING"
     ],
     intentFilters: [
