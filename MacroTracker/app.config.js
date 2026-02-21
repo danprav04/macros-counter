@@ -108,7 +108,8 @@ export default {
     ],
     "expo-secure-store",
     "expo-localization",
-    "react-native-iap"
+    "react-native-iap",
+    "./plugins/withBackgroundActions.js"
   ],
   extra: {
     eas: {
