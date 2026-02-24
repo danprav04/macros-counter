@@ -117,12 +117,15 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
         
         if (!matchFoundInDefinition && localizedTags.length > 0) {
             for (const localizedTag of localizedTags) {
-                const tagWords = localizedTag.toLowerCase().trim().split(/\s+/).filter(tw => tw.length > 1);
+                const tagWords = localizedTag.toLowerCase().trim().split(/\s+/).filter(tw => tw.length > 2);
                 
-                const isAnyTagWordMatch = tagWords.some(tw => 
-                    new RegExp(`(^|\\s)${escapeRegExp(tw)}(\\s|$)`).test(normalizedFoodNameQuery) || 
-                    (tw.length > 3 && foodNameWords.some(fw => fw.includes(tw) && fw.length - tw.length <= 2))
-                );
+                const isAnyTagWordMatch = tagWords.some(tw => {
+                    if (new RegExp(`(^|\\s)${escapeRegExp(tw)}(\\s|$)`).test(normalizedFoodNameQuery)) return true;
+                    return foodNameWords.some(fw => {
+                        return (tw.length > 4 && fw.includes(tw) && Math.abs(fw.length - tw.length) <= 3) ||
+                               (tw.length > 3 && fw.startsWith(tw) && fw.length - tw.length <= 2);
+                    });
+                });
 
                 if (isAnyTagWordMatch) {
                     if (50 > currentScore) {

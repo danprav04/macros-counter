@@ -678,7 +678,9 @@
       "romaine",
       "arugula",
       "swiss chard",
-      "collard greens"
+      "collard greens",
+      "cabbage",
+      "celery"
     ],
     "cucumber": [
       "cucumber",
@@ -784,7 +786,10 @@
       "pepperoni",
       "bologna",
       "bratwurst",
-      "processed meat"
+      "processed meat",
+      "prosciutto",
+      "meatball",
+      "meatballs"
     ],
     "fish": [
       "fish",
@@ -858,7 +863,8 @@
       "provolone",
       "blue cheese",
       "goat cheese",
-      "cream cheese"
+      "cream cheese",
+      "tvorog"
     ],
     "butter": [
       "butter",
@@ -940,7 +946,10 @@
       "naan",
       "flatbread",
       "chapati",
-      "roti"
+      "roti",
+      "focaccia",
+      "fucacho",
+      "burekas"
     ],
     "beansLegumes": [
       "beans",
@@ -958,7 +967,8 @@
     ],
     "peanut": [
       "peanut",
-      "peanuts"
+      "peanuts",
+      "bamba"
     ],
     "nuts": [
       "nuts",
@@ -991,7 +1001,8 @@
       "cookie",
       "biscuit",
       "shortbread",
-      "macaroon"
+      "macaroon",
+      "biscuits"
     ],
     "chocolate": [
       "chocolate",
@@ -1180,7 +1191,11 @@
       "tropical fruit",
       "stone fruit",
       "citrus fruit",
-      "berries"
+      "berries",
+      "persimmon",
+      "melon",
+      "pomelo",
+      "honeydew melon"
     ],
     "genericVegetable": [
       "vegetable",
@@ -1202,7 +1217,11 @@
       "breakfast",
       "generic food",
       "cooked food",
-      "leftovers"
+      "leftovers",
+      "dumpling",
+      "dumplings",
+      "falafel",
+      "arais"
     ],
     "unknownFood": [
       "unknown",
@@ -1219,7 +1238,8 @@
       "waffle",
       "crepe",
       "flapjack",
-      "blini"
+      "blini",
+      "crepes"
     ],
     "sauce": [
       "sauce",
@@ -1241,7 +1261,9 @@
       "tart",
       "pastry",
       "gelatin",
-      "custard"
+      "custard",
+      "crumble",
+      "strudel"
     ],
     "nutButter": [
       "nut butter",
@@ -1264,6 +1286,14 @@
       "cereal bar",
       "granola bar",
       "nut bar"
+    ],
+    "sweet": [
+      "candy",
+      "candies",
+      "silan"
+    ],
+    "vegetable": [
+      "radish"
     ]
   }
 }
