@@ -103,7 +103,14 @@ export const showRewardedAd = (userId: string): Promise<boolean> => {
             const unsubscribeError = rewardedAd.addAdEventListener(AdEventType.ERROR, (error) => {
                 console.error('Ad failed to load or show:', error);
                 notifyLoading(false); // Stop loading indicator on error
-                const errorMessage = error?.message || t('ads.error.loadFailed');
+                
+                let errorMessage = t('ads.error.loadFailed');
+                if (error?.message && !error.message.includes('no-fill')) {
+                    // Only use the raw error message if it's not a generic no-fill error
+                    // to prevent ugly SDK strings from showing to the user.
+                    errorMessage = error.message;
+                }
+                
                 Alert.alert(t('ads.error.title'), errorMessage);
                 isAdShowing = false;
                 unsubscribeAll();
