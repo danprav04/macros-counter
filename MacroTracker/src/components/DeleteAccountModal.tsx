@@ -1,6 +1,7 @@
 // src/components/DeleteAccountModal.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Alert } from './CustomAlert';
 import { Overlay, Button, Input, Text, useTheme, Icon } from '@rneui/themed';
 import { deleteCurrentUserAccount } from '../services/backendService';
 import { BackendError } from '../services/backendService';

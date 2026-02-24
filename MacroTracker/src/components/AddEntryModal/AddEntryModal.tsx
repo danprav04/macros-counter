@@ -1,6 +1,7 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { View, KeyboardAvoidingView, Platform, Alert, Keyboard } from "react-native";
+import { View, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { Alert } from '../CustomAlert';
 import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";

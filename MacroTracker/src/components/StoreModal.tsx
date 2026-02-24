@@ -1,6 +1,7 @@
 // src/components/StoreModal.tsx
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Alert } from './CustomAlert';
 import { Overlay, Text, Button, Icon, useTheme, makeStyles } from '@rneui/themed';
 import { t } from '../localization/i18n';
 import { getProducts, purchaseProduct, ProductDisplay, setupPurchaseListener, initIAP, endIAP } from '../services/iapService';

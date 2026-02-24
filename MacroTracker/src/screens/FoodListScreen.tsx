@@ -1,6 +1,7 @@
 // src/screens/FoodListScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager, TouchableOpacity } from "react-native";
+import { View, FlatList, Platform, ActivityIndicator, StyleSheet, I18nManager, Share, LayoutAnimation, UIManager, TouchableOpacity } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { createFood, getFoods, updateFood, deleteFood as deleteFoodService } from "../services/foodService";
 import { Food, SharedFoodData } from "../types/food";
 import { isNotEmpty } from "../utils/validationUtils";

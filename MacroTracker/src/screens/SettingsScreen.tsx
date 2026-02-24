@@ -1,6 +1,7 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, ScrollView, Alert, StyleSheet, ActivityIndicator, Platform, I18nManager, InteractionManager } from "react-native";
+import { View, ScrollView, StyleSheet, ActivityIndicator, Platform, I18nManager, InteractionManager } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { Text, makeStyles, Button, Icon, useTheme, ListItem } from "@rneui/themed";
 import { Picker } from '@react-native-picker/picker';
 import * as Updates from 'expo-updates';

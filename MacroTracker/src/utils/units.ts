@@ -1,5 +1,5 @@
 // src/utils/units.ts
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { estimateGramsNaturalLanguage, BackendError } from '../services/backendService';
 import { t } from '../localization/i18n';
 import { showRewardedAd } from '../services/adService';

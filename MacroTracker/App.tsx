@@ -1,7 +1,6 @@
 // MacroTracker/App.tsx
 
 import "react-native-get-random-values"; // MUST BE FIRST
-import Toast from "react-native-toast-message";
 import React, { useEffect, useState } from "react"; // Added useState
 import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -66,7 +65,6 @@ const App = () => {
           <SafeAreaProvider>
             <AppNavigator />
             {/* <BackgroundTaskBubble /> Moved to AppNavigator */}
-            <Toast />
           </SafeAreaProvider>
         </BackgroundTaskProvider>
       </CostsProvider>

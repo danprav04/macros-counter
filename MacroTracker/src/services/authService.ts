@@ -1,5 +1,5 @@
 // src/services/authService.ts
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import Constants from 'expo-constants';
 import { Token } from '../types/token';
 import { t } from '../localization/i18n';

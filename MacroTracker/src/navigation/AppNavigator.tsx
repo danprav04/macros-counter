@@ -1,6 +1,7 @@
 // src/navigation/AppNavigator.tsx
 import React, { useState } from 'react';
-import { Platform, useColorScheme, Alert, I18nManager, Text, View, ActivityIndicator } from 'react-native';
+import { Platform, useColorScheme, I18nManager, Text, View, ActivityIndicator } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme, DarkTheme, RouteProp, getStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
@@ -25,6 +26,8 @@ import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import AdLoadingModal from '../components/AdLoadingModal';
 import FirstRunModal, { MissingConsents } from '../components/FirstRunModal';
 import { BackgroundTaskBubble } from '../components/BackgroundTaskBubble'; // Added import
+import { CustomToast } from '../components/CustomToast';
+import { CustomAlertComponent } from '../components/CustomAlert';
 
 import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode, SettingsStackParamList } from '../types/settings';
@@ -425,6 +428,8 @@ function AppContent() {
               missingConsents={missingConsents}
               onAgree={handleAgreeToCompliance}
             />
+            <CustomToast />
+            <CustomAlertComponent />
           </View>
         </NavigationContainer>
       </View>

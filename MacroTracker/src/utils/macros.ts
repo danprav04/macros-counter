@@ -1,5 +1,5 @@
 // src/utils/macros.ts
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { getMacrosForRecipe, getMacrosForImageSingle, getMacrosForImageMultiple, getMacrosForTextMultiple, getMacrosForImageMultipleBatch, BackendError } from '../services/backendService';
 import { Macros, MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';
 import { ImagePickerAsset } from 'expo-image-picker';

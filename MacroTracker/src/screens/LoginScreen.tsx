@@ -1,6 +1,7 @@
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { Input, Button, Text, Icon, useTheme } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

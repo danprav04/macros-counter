@@ -1,5 +1,5 @@
 // src/services/adService.ts
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import mobileAds, {
   RewardedAd,
   RewardedAdEventType,

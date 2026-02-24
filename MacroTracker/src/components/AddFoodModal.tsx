@@ -1,14 +1,7 @@
 // src/components/AddFoodModal.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import {
-    View,
-    KeyboardAvoidingView,
-    Platform,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-} from "react-native";
+import { View, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert } from './CustomAlert';
 import {
     Button,
     Input,
