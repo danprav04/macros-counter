@@ -428,10 +428,10 @@ function AppContent() {
               missingConsents={missingConsents}
               onAgree={handleAgreeToCompliance}
             />
-            <CustomToast />
             <CustomAlertComponent />
           </View>
         </NavigationContainer>
+        <CustomToast />
       </View>
     </ThemeProvider>
   );

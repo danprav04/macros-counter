@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import { useTheme, Icon } from '@rneui/themed';
 
@@ -59,5 +60,9 @@ export const CustomToast = () => {
     )
   };
 
-  return <Toast config={toastConfig} />;
+  return (
+    <View style={{ zIndex: 9999, elevation: 9999 }} pointerEvents="box-none">
+      <Toast config={toastConfig} bottomOffset={80} topOffset={60} position="bottom" visibilityTime={3000} autoHide={true} keyboardOffset={10} />
+    </View>
+  );
 };
