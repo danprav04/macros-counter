@@ -76,7 +76,7 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
         // }
 
         for (const localizedTag of localizedTags) {
-            const lowerLocalizedTag = localizedTag.toLowerCase().trim();
+            const lowerLocalizedTag = normalizeFoodNameForMatching(localizedTag);
             if (!lowerLocalizedTag) continue;
 
             const isExactMatch = lowerLocalizedTag === normalizedFoodNameQuery;
@@ -102,7 +102,12 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
             
             const tagWords = lowerLocalizedTag.split(/\s+/);
             const isPartialWordMatch = foodNameWords.some(foodWord => 
-                foodWord.length > 1 && tagWords.some(tagWord => tagWord === foodWord || (foodWord.length > 3 && tagWord.includes(foodWord)))
+                foodWord.length > 1 && tagWords.some(tagWord => {
+                    const diff = Math.abs(foodWord.length - tagWord.length);
+                    const isSub = foodWord.includes(tagWord) || tagWord.includes(foodWord);
+                    const samePrefix = foodWord[0] === tagWord[0] && foodWord[1] === tagWord[1];
+                    return tagWord === foodWord || (tagWord.length >= 3 && isSub && samePrefix && diff <= 3);
+                })
             );
             if (isPartialWordMatch) {
                 if (60 > currentScore) {
@@ -124,8 +129,10 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
                 const isAnyTagWordMatch = ((tagJoined.length > 3 && foodJoined.includes(tagJoined)) || tagWords.some(tw => {
                     if (new RegExp(`(^|\\s)${escapeRegExp(tw)}(\\s|$)`).test(normalizedFoodNameQuery)) return true;
                     return foodNameWords.some(fw => {
-                        return (tw.length > 3 && fw.includes(tw) && Math.abs(fw.length - tw.length) <= 3) ||
-                               (tw.length > 2 && fw.startsWith(tw) && fw.length - tw.length <= 2);
+                        const diff = Math.abs(fw.length - tw.length);
+                        const isSub = fw.includes(tw) || tw.includes(fw);
+                        const samePrefix = fw[0] === tw[0] && fw[1] === tw[1];
+                        return (tw.length >= 3 && isSub && samePrefix && diff <= 3);
                     });
                 }));
 

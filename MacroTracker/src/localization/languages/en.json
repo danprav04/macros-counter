@@ -1020,7 +1020,9 @@
       "cacao",
       "m and m",
       "mozartkugeln",
-      "mr. goodbar"
+      "mr. goodbar",
+      "kit kat",
+      "kinder"
     ],
     "cake": [
       "cake",
@@ -1038,7 +1040,11 @@
       "jelly beans",
       "taffy",
       "fudge",
-      "marshmallow"
+      "marshmallow",
+      "candies",
+      "bim bom",
+      "m and m",
+      "silan"
     ],
     "popcorn": [
       "popcorn"
@@ -1085,7 +1091,14 @@
       "smoothie",
       "protein shake",
       "lemonade",
-      "iced tea (sweetened)"
+      "iced tea (sweetened)",
+      "coca-cola",
+      "mogu mogu",
+      "coca-cola zero",
+      "guava drink",
+      "monster energy",
+      "energy drink",
+      "cola"
     ],
     "water": [
       "water",
@@ -1148,7 +1161,8 @@
       "quesadilla",
       "fajita",
       "enchilada",
-      "mexican food"
+      "mexican food",
+      "shawarma"
     ],
     "sandwich": [
       "sandwich",
@@ -1216,7 +1230,9 @@
       "veg",
       "root vegetable",
       "cruciferous",
-      "greens"
+      "greens",
+      "radish",
+      "cabbage"
     ],
     "genericMeal": [
       "food",
@@ -1267,7 +1283,8 @@
       "gravy",
       "salsa",
       "pesto",
-      "hummus"
+      "hummus",
+      "za'atar"
     ],
     "dessert": [
       "dessert",
@@ -1279,7 +1296,8 @@
       "gelatin",
       "custard",
       "crumble",
-      "strudel"
+      "strudel",
+      "baklava"
     ],
     "nutButter": [
       "nut butter",
@@ -1287,7 +1305,8 @@
       "almond butter",
       "cashew butter",
       "tahini",
-      "spread"
+      "spread",
+      "tehina"
     ],
     "casserolePan": [
       "casserole",
@@ -1301,27 +1320,8 @@
       "snack bar",
       "cereal bar",
       "granola bar",
-      "nut bar"
-    ],
-    "sweet": [
-      "candy",
-      "candies",
-      "silan",
-      "bim bom",
-      "m and m"
-    ],
-    "vegetable": [
-      "radish",
-      "cabbage"
-    ],
-    "meat": [
-      "shawarma"
-    ],
-    "softDrink": [
-      "coca-cola",
-      "mogu mogu",
-      "coca-cola zero",
-      "guava drink"
+      "nut bar",
+      "fiber bar"
     ]
   }
 }
