@@ -1,5 +1,5 @@
 // src/services/backendService.ts
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import * as authService from './authService';
 import { getClientId } from './clientIDService';
 import { MacrosWithFoodName, EstimatedFoodItem } from '../types/macros';

@@ -1,6 +1,7 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { View, KeyboardAvoidingView, Platform, Alert, Keyboard } from "react-native";
+import { View, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { Alert } from '../CustomAlert';
 import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
 import { Food } from "../../types/food";
 import { isValidNumberInput } from "../../utils/validationUtils";
@@ -102,13 +103,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       autoCloseTimerRef.current = setTimeout(() => {
         backgroundTask();
         toggleOverlay();
-        Toast.show({
-          type: 'info',
-          text1: t('addEntryModal.taskMovedToBackground'),
-          text2: t('addEntryModal.taskMovedToBackgroundMessage'),
-          position: 'bottom',
-          visibilityTime: 3000,
-        });
+        Alert.alert(
+          t('addEntryModal.taskMovedToBackground'),
+          t('addEntryModal.taskMovedToBackgroundMessage'),
+          [{ text: t('common.dismiss'), style: 'cancel' }]
+        );
       }, 3000);
     } else {
       if (autoCloseTimerRef.current) {

@@ -1,6 +1,7 @@
 // src/components/FoodDetailsModal.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, Alert, I18nManager, TouchableOpacity } from 'react-native';
+import { View, ScrollView, I18nManager, TouchableOpacity } from 'react-native';
+import { Alert } from './CustomAlert';
 import * as Clipboard from 'expo-clipboard';
 import { Overlay, Text, Icon, useTheme, makeStyles, Divider, Button, Input, ListItem } from '@rneui/themed';
 import Toast from 'react-native-toast-message';

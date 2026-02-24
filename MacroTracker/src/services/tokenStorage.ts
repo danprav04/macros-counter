@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Token } from '../types/token';
-import { Alert } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 
 // FIX: The key has been changed to a valid format that SecureStore accepts.
 // It no longer contains invalid characters like '@' or ':'.

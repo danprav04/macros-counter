@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TouchableOpacity, View, StyleSheet, Animated } from 'react-native';
 import { Icon, useTheme, makeStyles, Badge } from '@rneui/themed';
 import { useBackgroundTaskContext } from '../context/BackgroundTaskContext';
@@ -21,21 +21,46 @@ export const BackgroundTaskBubble: React.FC = () => {
     const shouldShow = hasActiveBackgroundTasks || hasUnreadCompletedTasks || (tasks.length > 0);
 
     const [animationFinished, setAnimationFinished] = useState(true);
+    const prevTasksCountRef = useRef(tasks.length);
 
     useEffect(() => {
         if (!shouldShow) {
             setAnimationFinished(false);
         }
-        Animated.spring(scale, {
-            toValue: shouldShow ? 1 : 0,
-            useNativeDriver: true,
-            friction: 6,
-        }).start(({ finished }) => {
-            if (finished && !shouldShow) {
-                setAnimationFinished(true);
-            }
-        });
-    }, [shouldShow]);
+
+        if (shouldShow && tasks.length > prevTasksCountRef.current && prevTasksCountRef.current >= 0) {
+            // New task added, pulse animation
+            Animated.sequence([
+                Animated.timing(scale, {
+                    toValue: 1.3,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(scale, {
+                    toValue: 1,
+                    friction: 4,
+                    useNativeDriver: true,
+                })
+            ]).start(({ finished }) => {
+                if (finished && !shouldShow) {
+                    setAnimationFinished(true);
+                }
+            });
+        } else {
+            // Normal show/hide animation
+            Animated.spring(scale, {
+                toValue: shouldShow ? 1 : 0,
+                useNativeDriver: true,
+                friction: 6,
+            }).start(({ finished }) => {
+                if (finished && !shouldShow) {
+                    setAnimationFinished(true);
+                }
+            });
+        }
+
+        prevTasksCountRef.current = tasks.length;
+    }, [shouldShow, tasks.length]);
 
     if (!shouldShow && !isModalVisible && animationFinished) return null;
 

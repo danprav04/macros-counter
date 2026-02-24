@@ -1,6 +1,7 @@
 // src/components/DataManagementButtons.tsx
 import React, { useState } from "react";
-import { Alert, Platform, View } from "react-native"; // Added View import
+import { Platform, View } from 'react-native';
+import { Alert } from './CustomAlert'; // Added View import
 import { Button, Icon } from "@rneui/themed";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy"; // FIXED: Use legacy import

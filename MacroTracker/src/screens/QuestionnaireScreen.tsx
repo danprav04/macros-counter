@@ -1,6 +1,7 @@
 // src/screens/QuestionnaireScreen.tsx
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, ScrollView, StyleSheet, I18nManager, Platform, LayoutAnimation, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, I18nManager, Platform, LayoutAnimation } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { Input, Button, Text, useTheme, makeStyles, ButtonGroup, Icon } from '@rneui/themed';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';

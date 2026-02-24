@@ -1,14 +1,7 @@
 // src/components/AddFoodModal.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import {
-    View,
-    KeyboardAvoidingView,
-    Platform,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-} from "react-native";
+import { View, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert } from './CustomAlert';
 import {
     Button,
     Input,
@@ -98,13 +91,11 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
             autoCloseTimerRef.current = setTimeout(() => {
                 backgroundTask();
                 toggleOverlay();
-                Toast.show({
-                    type: 'info',
-                    text1: t('addFoodModal.taskMovedToBackground'),
-                    text2: t('addFoodModal.taskMovedToBackgroundMessage'),
-                    position: 'bottom',
-                    visibilityTime: 3000,
-                });
+                Alert.alert(
+                    t('addFoodModal.taskMovedToBackground'),
+                    t('addFoodModal.taskMovedToBackgroundMessage'),
+                    [{ text: t('common.dismiss'), style: 'cancel' }]
+                );
             }, 3000);
         } else {
             if (autoCloseTimerRef.current) {

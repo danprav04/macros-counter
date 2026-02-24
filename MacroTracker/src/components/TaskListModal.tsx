@@ -5,7 +5,7 @@ import { useBackgroundTaskContext, BackgroundTask } from '../context/BackgroundT
 import { t } from '../localization/i18n';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
-import { Alert } from 'react-native';
+import { Alert } from './CustomAlert';
 
 interface TaskListModalProps {
     isVisible: boolean;

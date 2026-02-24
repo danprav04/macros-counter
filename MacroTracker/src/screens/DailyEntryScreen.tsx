@@ -1,6 +1,7 @@
 // src/screens/DailyEntryScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, FlatList, Alert, Platform, StyleSheet, ActivityIndicator, I18nManager, TouchableOpacity } from "react-native";
+import { View, FlatList, Platform, StyleSheet, ActivityIndicator, I18nManager, TouchableOpacity } from 'react-native';
+import { Alert } from '../components/CustomAlert';
 import { DailyEntry, DailyEntryItem } from "../types/dailyEntry";
 import { Food } from "../types/food";
 import { getFoods, createFood, updateFood as updateFoodService } from "../services/foodService";
