@@ -258,6 +258,7 @@ function AppContent() {
   const { authState, settings, user, changeTheme, changeLocale, logout, refreshUser, isGuest } = useAuth() as AuthContextType;
   const colorScheme = useColorScheme();
   const [isUpdateRequired, setIsUpdateRequired] = useState(false);
+  const [currentRouteName, setCurrentRouteName] = useState<string | undefined>(undefined);
   const [storeUrl, setStoreUrl] = useState('');
 
   // Compliance State
@@ -393,6 +394,13 @@ function AppContent() {
           linking={linking}
           theme={currentThemeConfig.mode === 'dark' ? navigationTheme.dark : navigationTheme.light}
           fallback={<LoadingFallback />}
+          onStateChange={() => {
+            const state = navigationRef.current?.getRootState();
+            const mainRoute = state?.routes?.find(r => r.name === 'Main');
+            const tabState = mainRoute?.state;
+            const activeTab = tabState?.routes?.[tabState.index ?? 0];
+            setCurrentRouteName(activeTab?.name);
+          }}
         >
           <View style={{ flex: 1, backgroundColor: currentThemeConfig.colors.background }}>
             <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -421,7 +429,7 @@ function AppContent() {
             </RootStack.Navigator>
 
             <UpdateRequiredModal isVisible={isUpdateRequired} storeUrl={storeUrl} />
-            <BackgroundTaskBubble />
+            {currentRouteName !== 'SettingsStackRoute' && <BackgroundTaskBubble />}
             <AdLoadingModal />
             <FirstRunModal
               isVisible={showComplianceModal}
