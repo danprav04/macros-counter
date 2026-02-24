@@ -1250,6 +1250,20 @@
       "cashew butter",
       "tahini",
       "spread"
+    ],
+    "casserolePan": [
+      "casserole",
+      "paella",
+      "hotdish",
+      "bake"
+    ],
+    "proteinBar": [
+      "protein bar",
+      "energy bar",
+      "snack bar",
+      "cereal bar",
+      "granola bar",
+      "nut bar"
     ]
   }
 }

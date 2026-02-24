@@ -37,10 +37,12 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
 
     // console.log(`[findBestIcon START] Food: "${foodName}", NormQuery: "${normalizedFoodNameQuery}", Words: [${foodNameWords.join(', ')}], FoodNameLocale: ${foodNameLocale}`);
 
-    let bestMatch: { icon: string; score: number; priority: number } | null = null;
+
+    let bestMatch: { icon: string; score: number; priority: number; matchLength: number } | null = null;
 
     for (const definition of foodIconDefinitions) {
         let currentScore = 0;
+        let bestMatchLength = 0;
         let matchFoundInDefinition = false;
         const fullTagKey = `foodIconTags.${definition.tagKey}` as TranslationKey;
         let localizedTags: string[] = [];
@@ -79,14 +81,22 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
 
             const isExactMatch = lowerLocalizedTag === normalizedFoodNameQuery;
             if (isExactMatch) {
-                currentScore = Math.max(currentScore, 100);
+                if (100 > currentScore) {
+                    currentScore = 100;
+                    bestMatchLength = lowerLocalizedTag.length;
+                }
                 matchFoundInDefinition = true;
                 break;
             }
 
             const isWordMatch = new RegExp(`(^|\\s)${escapeRegExp(lowerLocalizedTag)}(\\s|$)`).test(normalizedFoodNameQuery);
             if (isWordMatch) {
-                currentScore = Math.max(currentScore, 70 + lowerLocalizedTag.length);
+                if (70 > currentScore) {
+                    currentScore = 70;
+                    bestMatchLength = lowerLocalizedTag.length;
+                } else if (70 === currentScore) {
+                    bestMatchLength = Math.max(bestMatchLength, lowerLocalizedTag.length);
+                }
                 matchFoundInDefinition = true;
             }
             
@@ -95,7 +105,12 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
                 foodWord.length > 1 && tagWords.some(tagWord => tagWord === foodWord || (foodWord.length > 3 && tagWord.includes(foodWord)))
             );
             if (isPartialWordMatch) {
-                currentScore = Math.max(currentScore, 60);
+                if (60 > currentScore) {
+                    currentScore = 60;
+                    bestMatchLength = lowerLocalizedTag.length;
+                } else if (60 === currentScore) {
+                    bestMatchLength = Math.max(bestMatchLength, lowerLocalizedTag.length);
+                }
                 matchFoundInDefinition = true;
             }
         }
@@ -110,7 +125,10 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
                 );
 
                 if (isAnyTagWordMatch) {
-                    currentScore = Math.max(currentScore, 50);
+                    if (50 > currentScore) {
+                        currentScore = 50;
+                        bestMatchLength = tagWords.join(' ').length;
+                    }
                     matchFoundInDefinition = true;
                     break;
                 }
@@ -119,8 +137,12 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
 
         if (matchFoundInDefinition) {
             const priority = definition.priority || 0;
-            if (!bestMatch || currentScore > bestMatch.score || (currentScore === bestMatch.score && priority > bestMatch.priority)) {
-                bestMatch = { icon: definition.icon, score: currentScore, priority };
+            const isBetterScore = !bestMatch || currentScore > bestMatch.score;
+            const isSameScoreBetterPriority = bestMatch && currentScore === bestMatch.score && priority > bestMatch.priority;
+            const isSameScoreSamePriorityBetterLength = bestMatch && currentScore === bestMatch.score && priority === bestMatch.priority && bestMatchLength > bestMatch.matchLength;
+            
+            if (isBetterScore || isSameScoreBetterPriority || isSameScoreSamePriorityBetterLength) {
+                bestMatch = { icon: definition.icon, score: currentScore, priority, matchLength: bestMatchLength };
             }
         }
     }
