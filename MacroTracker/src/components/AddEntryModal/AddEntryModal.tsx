@@ -102,13 +102,11 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       autoCloseTimerRef.current = setTimeout(() => {
         backgroundTask();
         toggleOverlay();
-        Toast.show({
-          type: 'info',
-          text1: t('addEntryModal.taskMovedToBackground'),
-          text2: t('addEntryModal.taskMovedToBackgroundMessage'),
-          position: 'bottom',
-          visibilityTime: 3000,
-        });
+        Alert.alert(
+          t('addEntryModal.taskMovedToBackground'),
+          t('addEntryModal.taskMovedToBackgroundMessage'),
+          [{ text: t('common.dismiss'), style: 'cancel' }]
+        );
       }, 3000);
     } else {
       if (autoCloseTimerRef.current) {
