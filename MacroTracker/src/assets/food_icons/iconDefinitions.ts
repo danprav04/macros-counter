@@ -113,5 +113,13 @@ export const foodIconDefinitions: FoodIconDefinition[] = [
   { icon: '🍓', tagKey: 'genericFruit', priority: 2 },
   { icon: '🥬', tagKey: 'genericVegetable', priority: 2 },
   { icon: '🍽️', tagKey: 'genericMeal', priority: 1 },
+
+  // Extra definitions added from translations
+  { icon: '🧊', tagKey: 'tofu', priority: 5 },
+  { icon: '🥞', tagKey: 'pancakeWaffle', priority: 8 },
+  { icon: '🥫', tagKey: 'sauce', priority: 6 },
+  { icon: '🍰', tagKey: 'dessert', priority: 5 },
+  { icon: '🥜', tagKey: 'nutButter', priority: 8 },
+
   { icon: '❓', tagKey: 'unknownFood', priority: 0 }, // Lowest priority
 ];

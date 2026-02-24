@@ -17,6 +17,10 @@ const getNormalizedWords = (name: string): string[] => {
         .filter(word => word.length > 1 && !commonFilterWords.includes(word.toLowerCase()));
 };
 
+const escapeRegExp = (text: string): string => {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+};
+
 /**
  * Finds the best matching icon for a given food name based on localized tags.
  * @param foodName The name of the food.
@@ -73,18 +77,24 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
             const lowerLocalizedTag = localizedTag.toLowerCase().trim();
             if (!lowerLocalizedTag) continue;
 
-            if (lowerLocalizedTag === normalizedFoodNameQuery) {
+            const isExactMatch = lowerLocalizedTag === normalizedFoodNameQuery;
+            if (isExactMatch) {
                 currentScore = Math.max(currentScore, 100);
                 matchFoundInDefinition = true;
                 break;
             }
 
-            if (normalizedFoodNameQuery.includes(lowerLocalizedTag)) {
+            const isWordMatch = new RegExp(`(^|\\s)${escapeRegExp(lowerLocalizedTag)}(\\s|$)`).test(normalizedFoodNameQuery);
+            if (isWordMatch) {
                 currentScore = Math.max(currentScore, 70 + lowerLocalizedTag.length);
                 matchFoundInDefinition = true;
             }
             
-            if (foodNameWords.some(foodWord => foodWord.length > 1 && lowerLocalizedTag.includes(foodWord))) {
+            const tagWords = lowerLocalizedTag.split(/\s+/);
+            const isPartialWordMatch = foodNameWords.some(foodWord => 
+                foodWord.length > 1 && tagWords.some(tagWord => tagWord === foodWord || (foodWord.length > 3 && tagWord.includes(foodWord)))
+            );
+            if (isPartialWordMatch) {
                 currentScore = Math.max(currentScore, 60);
                 matchFoundInDefinition = true;
             }
@@ -93,7 +103,13 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
         if (!matchFoundInDefinition && localizedTags.length > 0) {
             for (const localizedTag of localizedTags) {
                 const tagWords = localizedTag.toLowerCase().trim().split(/\s+/).filter(tw => tw.length > 1);
-                if (tagWords.some(tw => normalizedFoodNameQuery.includes(tw))) {
+                
+                const isAnyTagWordMatch = tagWords.some(tw => 
+                    new RegExp(`(^|\\s)${escapeRegExp(tw)}(\\s|$)`).test(normalizedFoodNameQuery) || 
+                    (tw.length > 3 && foodNameWords.some(fw => fw.includes(tw) && fw.length - tw.length <= 2))
+                );
+
+                if (isAnyTagWordMatch) {
                     currentScore = Math.max(currentScore, 50);
                     matchFoundInDefinition = true;
                     break;
@@ -119,8 +135,14 @@ export const findBestIcon = (foodName: string, foodNameLocale: LanguageCode): st
         const genericMealKey = `foodIconTags.${genericMealDefinition.tagKey}` as TranslationKey;
         // Use foodNameLocale for generic meal tags as well.
         const genericMealTagsResult = i18n.t(genericMealKey, { locale: foodNameLocale, returnObjects: true, defaultValue: [] });
-        if (Array.isArray(genericMealTagsResult) && genericMealTagsResult.some(tag => normalizedFoodNameQuery.includes(tag.toLowerCase().trim()))) {
-            return genericMealDefinition.icon;
+        if (Array.isArray(genericMealTagsResult)) {
+            const hasGenericTagMatch = genericMealTagsResult.some(tag => {
+                const lowerTag = tag.toLowerCase().trim();
+                return new RegExp(`(^|\\s)${escapeRegExp(lowerTag)}(\\s|$)`).test(normalizedFoodNameQuery);
+            });
+            if (hasGenericTagMatch) {
+                return genericMealDefinition.icon;
+            }
         }
     }
     

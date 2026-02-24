@@ -74,4 +74,55 @@ describe('findBestIcon', () => {
     // 'סטייק' is in the 'redMeat' tag list in he.json
     expect(findBestIcon('סטייק אנטריקוט', 'he')).toBe('🥩');
   });
+
+  describe('Edge cases and user data', () => {
+    it('should correctly identify specific user data in English', () => {
+      expect(findBestIcon('Cherry tomatoes', 'en')).toBe('🍅');
+      expect(findBestIcon('Baked salmon ', 'en')).toBe('🐟');
+      expect(findBestIcon('White rice', 'en')).toBe('🍚');
+      expect(findBestIcon('Grilled Steak', 'en')).toBe('🥩');
+      expect(findBestIcon('Coffee with milk', 'en')).toBe('☕'); // coffee tag length > milk tag length
+    });
+
+    it('should correctly identify specific user data in Russian', () => {
+      i18n.locale = 'ru';
+      expect(findBestIcon('Курица в Ninja ', 'ru')).toBe('🍗'); 
+      expect(findBestIcon('Бутерброд с сыром', 'ru')).toBe('🥪'); 
+      expect(findBestIcon('Овсяный пирог', 'ru')).toBe('🍰'); // пирог
+    });
+
+    it('should correctly identify specific user data in Hebrew', () => {
+      i18n.locale = 'he';
+      expect(findBestIcon('לחם חיטה מלאה ', 'he')).toBe('🍞'); 
+      expect(findBestIcon('מיץ לימון פריגת', 'he')).toBe('🍋');
+      expect(findBestIcon('חומוס', 'he')).toBe('🫘'); // חומוס -> beansLegumes 🫘
+      expect(findBestIcon('לחם עם ממרח שוקולד', 'he')).toBe('🍫'); // שוקולד tag length > לחם tag length
+    });
+
+    it('should handle unmatchable or complex food names gracefully', () => {
+      const iconMonster = findBestIcon('Monster energy no sugar', 'en');
+      expect(['❓', '🍽️', '🥤']).toContain(iconMonster); // Accept reasonable fallbacks
+
+      const iconDanone = findBestIcon('Danone pro No sugar', 'en');
+      expect(['❓', '🍽️', '🍧']).toContain(iconDanone); 
+
+      const iconGuava = findBestIcon('Guava Drink', 'en');
+      expect(['❓', '🍽️', '🥤']).toContain(iconGuava); 
+
+      i18n.locale = 'ru';
+      const iconCabbage = findBestIcon('Тушёная Капуста', 'ru');
+      expect(['❓', '🍽️', '🥬']).toContain(iconCabbage); 
+    });
+    
+    it('should not match partial words inside other words', () => {
+      // "pea" shouldn't match "peach". It returns unknown or generic 
+      expect(findBestIcon('pea', 'en')).toBe('❓');
+      expect(findBestIcon('peas', 'en')).toBe('🫘'); // "peas" is the actual tag
+      expect(findBestIcon('peach', 'en')).toBe('🍑');
+      
+      i18n.locale = 'ru';
+      // "бел" in "белый хлеб" shouldn't just match generic protein/meat if such thing existed.
+      expect(findBestIcon('белый хлеб', 'ru')).toBe('🍞');
+    });
+  });
 });
