@@ -64,6 +64,23 @@ export const foodIconDefinitions: FoodIconDefinition[] = [
 
   // Dairy & Eggs (Tier: 60, Egg 80)
   { icon: '🥚', tagKey: 'egg', priority: 80 },
+  { icon: '🥫', tagKey: 'sauce', priority: 6 },
+  { icon: '🍰', tagKey: 'dessert', priority: 5 },
+  { icon: '🥜', tagKey: 'nutButter', priority: 8 },
+  // Hardcoded fixes for edge cases from user data that fail mapping due to short length or punctuation
+  { icon: '🍬', tagKey: 'bim bom', priority: 10 },
+  { icon: '🍬', tagKey: 'candies', priority: 10 },
+  { icon: '🍯', tagKey: 'silan', priority: 10 },
+  { icon: '🫓', tagKey: 'pita', priority: 10 },
+  { icon: '🫓', tagKey: 'baklava', priority: 10 },
+  { icon: '🫓', tagKey: 'tehina', priority: 10 },
+  { icon: '🌿', tagKey: 'za\'atar', priority: 10 },
+  { icon: '🥙', tagKey: 'shawarma', priority: 10 },
+  { icon: '🧀', tagKey: 'cottage cheese', priority: 10 },
+  { icon: '🥤', tagKey: 'coca-cola', priority: 10 },
+  { icon: '🥤', tagKey: 'mogu mogu', priority: 10 },
+  { icon: '🥗', tagKey: 'radish', priority: 10 },
+  { icon: '🥫', tagKey: 'кабачковая икра', priority: 10 },
   { icon: '🥛', tagKey: 'milk', priority: 60 },
   { icon: '🧀', tagKey: 'cheese', priority: 60 },
   { icon: '🧈', tagKey: 'butter', priority: 40 }, // Butter is usually an ingredient

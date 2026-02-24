@@ -883,7 +883,9 @@
       "greek yogurt",
       "plain yogurt",
       "flavored yogurt",
-      "dairy"
+      "dairy",
+      "danone",
+      "go vanil"
     ],
     "bread": [
       "bread",
@@ -897,7 +899,9 @@
       "white bread",
       "rye bread",
       "multigrain bread",
-      "baguette"
+      "baguette",
+      "croutons",
+      "breadstick"
     ],
     "rice": [
       "rice",
@@ -949,7 +953,9 @@
       "roti",
       "focaccia",
       "fucacho",
-      "burekas"
+      "burekas",
+      "arais",
+      "pizza"
     ],
     "beansLegumes": [
       "beans",
@@ -1011,7 +1017,10 @@
       "milk chocolate",
       "white chocolate",
       "cocoa",
-      "cacao"
+      "cacao",
+      "m and m",
+      "mozartkugeln",
+      "mr. goodbar"
     ],
     "cake": [
       "cake",
@@ -1195,7 +1204,12 @@
       "persimmon",
       "melon",
       "pomelo",
-      "honeydew melon"
+      "honeydew melon",
+      "plums",
+      "apricots",
+      "cantaloupe",
+      "fig",
+      "figs"
     ],
     "genericVegetable": [
       "vegetable",
@@ -1221,7 +1235,9 @@
       "dumpling",
       "dumplings",
       "falafel",
-      "arais"
+      "arais",
+      "syrniki",
+      "liver"
     ],
     "unknownFood": [
       "unknown",
@@ -1290,10 +1306,22 @@
     "sweet": [
       "candy",
       "candies",
-      "silan"
+      "silan",
+      "bim bom",
+      "m and m"
     ],
     "vegetable": [
-      "radish"
+      "radish",
+      "cabbage"
+    ],
+    "meat": [
+      "shawarma"
+    ],
+    "softDrink": [
+      "coca-cola",
+      "mogu mogu",
+      "coca-cola zero",
+      "guava drink"
     ]
   }
 }
