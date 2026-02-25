@@ -128,22 +128,49 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
 
     const triggerIconPrefetch = useCallback((foodsToFetch: Food[]) => {
         if (!foodsToFetch || foodsToFetch.length === 0) return;
-        const iconsToResolve: { [key: string]: string | null } = {};
-        foodsToFetch.forEach(food => {
-            if (food.name && foodIcons[food.name] === undefined) {
-                iconsToResolve[food.name] = getFoodIconUrl(food.name);
+        
+        // Chunk processing to avoid blocking JS thread
+        const chunkSize = 50;
+        let index = 0;
+
+        const processChunk = () => {
+            const chunk = foodsToFetch.slice(index, index + chunkSize);
+            if (chunk.length === 0) return;
+
+            setFoodIcons(prevIcons => {
+                const iconsToResolve: { [key: string]: string | null } = {};
+                let hasChanges = false;
+                
+                chunk.forEach(food => {
+                    if (food.name && prevIcons[food.name] === undefined) {
+                        iconsToResolve[food.name] = getFoodIconUrl(food.name);
+                        hasChanges = true;
+                    }
+                });
+
+                if (hasChanges) {
+                    return { ...prevIcons, ...iconsToResolve };
+                }
+                return prevIcons;
+            });
+
+            index += chunkSize;
+            if (index < foodsToFetch.length) {
+                setTimeout(processChunk, 10);
             }
-        });
-        if (Object.keys(iconsToResolve).length > 0) {
-            setFoodIcons(prevIcons => ({ ...prevIcons, ...iconsToResolve }));
-        }
-    }, [foodIcons]);
+        };
+
+        processChunk();
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
             let isActive = true;
             const loadAllFoods = async () => {
                 setIsLoading(true);
+                // Allow the UI thread to flush the spinner state
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
                 try {
                     const { items } = await getFoods();
                     if (isActive) {
@@ -484,6 +511,11 @@ const FoodListScreen: React.FC<FoodListScreenProps> = ({ onFoodChange }) => {
                 contentContainerStyle={displayedFoods.length === 0 ? styles.listContentContainerEmpty : styles.listContentContainer}
                 keyboardShouldPersistTaps="handled"
                 extraData={{ foodIcons, masterFoodsLength: masterFoods.length, sortOption }}
+                initialNumToRender={12}
+                maxToRenderPerBatch={8}
+                windowSize={11}
+                updateCellsBatchingPeriod={50}
+                removeClippedSubviews={Platform.OS === 'android'}
             />
             <FAB
                 icon={<RNEIcon name="add" color={theme.colors.white} />}

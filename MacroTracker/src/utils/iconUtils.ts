@@ -4,7 +4,7 @@ import { detectLanguageFromText } from './languageUtils'; // Import new utility
 import { LanguageCode } from '../types/settings';
 
 const syncMemoryCache = new Map<string, string | null>();
-const MAX_CACHE_SIZE = 300;
+const MAX_CACHE_SIZE = 2000;
 
 /**
  * Synchronously gets the icon identifier (e.g., emoji) for a food item.
