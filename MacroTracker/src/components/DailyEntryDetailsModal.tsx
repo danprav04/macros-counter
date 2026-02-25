@@ -95,12 +95,12 @@ const DailyEntryDetailsModal: React.FC<DailyEntryDetailsModalProps> = ({
 
   const renderMacroItem = (label: string, value: number, unit: string, iconName: string, iconType: string) => (
     <ListItem bottomDivider containerStyle={styles.macroItem}>
-      <Icon name={iconName} type={iconType} color={theme.colors.secondary} size={20}/>
-      <ListItem.Content>
+      <Icon key="icon" name={iconName} type={iconType} color={theme.colors.secondary} size={20}/>
+      <ListItem.Content key="content">
         <ListItem.Title style={styles.macroLabel}>{label}</ListItem.Title>
         <ListItem.Subtitle style={styles.macroSubtitle}>{`${Math.round(food[label.toLowerCase() as keyof typeof food] as number)} ${unit}/100g`}</ListItem.Subtitle>
       </ListItem.Content>
-      <Text style={styles.macroValue}>{`${Math.round(value)} ${unit}`}</Text>
+      <Text key="text" style={styles.macroValue}>{`${Math.round(value)} ${unit}`}</Text>
     </ListItem>
   );
   

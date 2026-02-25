@@ -112,18 +112,18 @@ const FoodDetailsModal: React.FC<FoodDetailsModalProps> = ({ isVisible, onClose,
           { cancelable: true }
       );
   };
-
   const renderEditableMacroItem = (
     label: string,
     key: keyof FoodFormData,
     iconName: any,
   ) => (
     <ListItem containerStyle={styles.macroItem} bottomDivider>
-      <MaterialCommunityIcons name={iconName} size={24} color={theme.colors.secondary} />
-      <ListItem.Content>
+      <MaterialCommunityIcons key="icon" name={iconName} size={24} color={theme.colors.secondary} />
+      <ListItem.Content key="content">
         <ListItem.Title style={styles.macroLabel}>{label}</ListItem.Title>
       </ListItem.Content>
       <Input
+        key="input"
         value={String(formState[key])}
         onChangeText={(text) => handleInputChange(key, text)}
         keyboardType="numeric"

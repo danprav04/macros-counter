@@ -373,22 +373,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
                 />
                 
                 <ListItem bottomDivider onPress={handleLogout} containerStyle={styles.actionItem}>
-                    <Icon name="logout" type="material-community" color={theme.colors.primary} />
-                    <ListItem.Content>
+                    <Icon key="icon" name="logout" type="material-community" color={theme.colors.primary} />
+                    <ListItem.Content key="content">
                         <ListItem.Title style={styles.actionItemTitle}>
                             {t('settingsScreen.account.logout')}
                         </ListItem.Title>
                     </ListItem.Content>
-                    <ListItem.Chevron color={theme.colors.primary} />
+                    <ListItem.Chevron key="chevron" color={theme.colors.primary} />
                 </ListItem>
                 <ListItem onPress={() => setIsDeleteModalVisible(true)} containerStyle={styles.actionItem}>
-                    <Icon name="account-remove-outline" type="material-community" color={theme.colors.error} />
-                    <ListItem.Content>
+                    <Icon key="icon" name="account-remove-outline" type="material-community" color={theme.colors.error} />
+                    <ListItem.Content key="content">
                         <ListItem.Title style={styles.deleteTitle}>
                             {t('settingsScreen.account.deleteAccount')}
                         </ListItem.Title>
                     </ListItem.Content>
-                    <ListItem.Chevron color={theme.colors.error} />
+                    <ListItem.Chevron key="chevron" color={theme.colors.error} />
                 </ListItem>
             </>
           ) : (
@@ -406,7 +406,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
           <ThemeSwitch currentTheme={settings.theme} onToggle={onThemeChange} />
 
           <ListItem bottomDivider containerStyle={{ backgroundColor: theme.colors.background }}>
-              <ListItem.Content>
+              <ListItem.Content key="content">
                   <ListItem.Title style={styles.listItemTitle}>{t('settingsScreen.language.title')}</ListItem.Title>
               </ListItem.Content>
           </ListItem>
@@ -424,34 +424,34 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onThemeChange, onLocale
               </Picker>
           </View>
           <ListItem bottomDivider onPress={handlePrivacyPolicyPress} containerStyle={styles.actionItem}>
-                <Icon name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
-                <ListItem.Content>
+                <Icon key="icon" name="shield-check-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content key="content">
                     <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
                         {t('settingsScreen.general.privacyPolicy')}
                     </ListItem.Title>
                 </ListItem.Content>
-                <ListItem.Chevron color={theme.colors.secondary} />
+                <ListItem.Chevron key="chevron" color={theme.colors.secondary} />
             </ListItem>
             
             <ListItem bottomDivider onPress={handleTermsOfServicePress} containerStyle={styles.actionItem}>
-                <Icon name="file-document-outline" type="material-community" color={theme.colors.secondary} />
-                <ListItem.Content>
+                <Icon key="icon" name="file-document-outline" type="material-community" color={theme.colors.secondary} />
+                <ListItem.Content key="content">
                     <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
                         {t('settingsScreen.general.termsOfService')}
                     </ListItem.Title>
                 </ListItem.Content>
-                <ListItem.Chevron color={theme.colors.secondary} />
+                <ListItem.Chevron key="chevron" color={theme.colors.secondary} />
             </ListItem>
 
           {isPrivacyButtonVisible && (
             <ListItem bottomDivider onPress={handlePrivacySettingsPress} containerStyle={styles.actionItem}>
-                  <Icon name="cog-outline" type="material-community" color={theme.colors.secondary} />
-                  <ListItem.Content>
+                  <Icon key="icon" name="cog-outline" type="material-community" color={theme.colors.secondary} />
+                  <ListItem.Content key="content">
                       <ListItem.Title style={[styles.listItemTitle, {color: theme.colors.secondary}]}>
                           Privacy Settings
                       </ListItem.Title>
                   </ListItem.Content>
-                  <ListItem.Chevron color={theme.colors.secondary} />
+                  <ListItem.Chevron key="chevron" color={theme.colors.secondary} />
             </ListItem>
           )}
 
