@@ -6,6 +6,8 @@ import { t } from '../localization/i18n';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { Alert } from './CustomAlert';
+import * as Clipboard from 'expo-clipboard';
+import Toast from 'react-native-toast-message';
 
 interface TaskListModalProps {
     isVisible: boolean;
@@ -67,8 +69,8 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
 
         return (
             <View style={styles.taskRow}>
-                <TouchableOpacity 
-                    style={styles.taskContentValues} 
+                <TouchableOpacity
+                    style={styles.taskContentValues}
                     onPress={() => isSuccess && handleTaskAction(item)}
                     disabled={!isSuccess}
                 >
@@ -83,6 +85,18 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
                             {formatDistanceToNow(item.startTime, { addSuffix: true })}
                         </Text>
                         {item.error && <Text style={styles.errorText} numberOfLines={1}>{item.error}</Text>}
+                        {item.status === 'error' && item.type === 'ai_text' && item.metadata?.originalText && (
+                            <TouchableOpacity
+                                onPress={async () => {
+                                    await Clipboard.setStringAsync(item.metadata.originalText);
+                                    Toast.show({ type: 'success', text1: t('common.copied', { defaultValue: 'Copied!' }), position: 'bottom' });
+                                }}
+                                style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Icon name="content-copy" type="material" size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />
+                                <Text style={{ fontSize: 12, color: theme.colors.primary }}>{t('common.copyOriginalText', { defaultValue: 'Copy original text' })}</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                     {isSuccess && (
                         <View style={styles.actionButton}>

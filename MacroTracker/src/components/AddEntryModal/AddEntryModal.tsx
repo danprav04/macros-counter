@@ -1,5 +1,6 @@
 // src/components/AddEntryModal/AddEntryModal.tsx
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { Alert } from '../CustomAlert';
 import { Overlay, makeStyles, useTheme, Button, Input, Text, Icon } from "@rneui/themed";
@@ -100,14 +101,24 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (quickAddLoading || isTextQuickAddLoading) {
-      autoCloseTimerRef.current = setTimeout(() => {
+      autoCloseTimerRef.current = setTimeout(async () => {
         backgroundTask();
         toggleOverlay();
-        Alert.alert(
-          t('addEntryModal.taskMovedToBackground'),
-          t('addEntryModal.taskMovedToBackgroundMessage'),
-          [{ text: t('common.dismiss'), style: 'cancel' }]
-        );
+
+        const dontShowPopup = await AsyncStorage.getItem('dontShowBackgroundPopup');
+        if (dontShowPopup !== 'true') {
+          Alert.alert(
+            t('addEntryModal.taskMovedToBackground'),
+            t('addEntryModal.taskMovedToBackgroundMessage'),
+            [
+              { text: t('common.dismiss'), style: 'cancel' },
+              {
+                text: t('common.dontShowAgain', { defaultValue: "Don't show again" }),
+                onPress: () => AsyncStorage.setItem('dontShowBackgroundPopup', 'true')
+              }
+            ]
+          );
+        }
       }, 3000);
     } else {
       if (autoCloseTimerRef.current) {
@@ -350,7 +361,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         t('addEntryModal.titleQuickAddSelect'),
         'ai_text',
         () => getMultipleFoodsFromText(textToAnalyze, user?.client_id, refreshUser),
-        { targetScreen: 'DailyEntryRoute' }
+        { targetScreen: 'DailyEntryRoute', originalText: textToAnalyze }
       );
 
       const results = result;

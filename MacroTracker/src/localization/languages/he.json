@@ -417,6 +417,17 @@
     "emptyMessage": "לא נמצאו מאכלים הניתנים לזיהוי בתמונה.",
     "emptyHint": "נסה תמונה אחרת או הוסף ידנית."
   },
+  "common": {
+    "dismiss": "סגור",
+    "completed": "הושלם",
+    "processing": "מעבד",
+    "view": "הצג תוצאה",
+    "error": "שגיאה",
+    "runInBackground": "הפעל ברקע",
+    "dontShowAgain": "אל תציג שוב",
+    "copyOriginalText": "העתק טקסט מקורי",
+    "copied": "הועתק!"
+  },
   "dailyProgress": {
     "calories": "קלוריות",
     "protein": "חלבון",

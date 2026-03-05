@@ -13,7 +13,10 @@
     "processing": "Processing",
     "view": "View Result",
     "error": "Error",
-    "runInBackground": "Run in Background"
+    "runInBackground": "Run in Background",
+    "dontShowAgain": "Don't show again",
+    "copyOriginalText": "Copy original text",
+    "copied": "Copied!"
   },
   "taskList": {
     "title": "Background Tasks",

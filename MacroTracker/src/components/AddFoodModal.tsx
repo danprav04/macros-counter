@@ -1,5 +1,6 @@
 // src/components/AddFoodModal.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Alert } from './CustomAlert';
 import {
@@ -88,14 +89,24 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
     const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
         if (aiTextLoading || aiImageLoading) {
-            autoCloseTimerRef.current = setTimeout(() => {
+            autoCloseTimerRef.current = setTimeout(async () => {
                 backgroundTask();
                 toggleOverlay();
-                Alert.alert(
-                    t('addFoodModal.taskMovedToBackground'),
-                    t('addFoodModal.taskMovedToBackgroundMessage'),
-                    [{ text: t('common.dismiss'), style: 'cancel' }]
-                );
+                
+                const dontShowPopup = await AsyncStorage.getItem('dontShowBackgroundPopup');
+                if (dontShowPopup !== 'true') {
+                    Alert.alert(
+                        t('addFoodModal.taskMovedToBackground'),
+                        t('addFoodModal.taskMovedToBackgroundMessage'),
+                        [
+                            { text: t('common.dismiss'), style: 'cancel' },
+                            { 
+                                text: t('common.dontShowAgain', { defaultValue: "Don't show again" }), 
+                                onPress: () => AsyncStorage.setItem('dontShowBackgroundPopup', 'true') 
+                            }
+                        ]
+                    );
+                }
             }, 3000);
         } else {
             if (autoCloseTimerRef.current) {
@@ -211,7 +222,7 @@ const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 t('addFoodModal.analyzeTextButton'),
                 'ai_text',
                 () => getMacrosFromText(foodName, textToAnalyze, user?.client_id, refreshUser),
-                { targetScreen: 'FoodListRoute' }
+                { targetScreen: 'FoodListRoute', originalText: textToAnalyze }
             );
             const macros = result;
             const isUpdate = !!editFood;

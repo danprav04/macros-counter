@@ -426,6 +426,17 @@
   "dateNavigator": {
     "invalidDate": "Неверная дата"
   },
+  "common": {
+    "dismiss": "Закрыть",
+    "completed": "Завершено",
+    "processing": "В обработке",
+    "view": "Посмотреть результат",
+    "error": "Ошибка",
+    "runInBackground": "Работать в фоне",
+    "dontShowAgain": "Больше не показывать",
+    "copyOriginalText": "Копировать текст",
+    "copied": "Скопировано!"
+  },
   "utils": {
     "macros": {
       "errorTitle": "Ошибка анализа ИИ",
