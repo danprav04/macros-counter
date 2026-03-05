@@ -85,7 +85,7 @@ const TaskListModal: React.FC<TaskListModalProps> = ({ isVisible, onClose }) => 
                             {formatDistanceToNow(item.startTime, { addSuffix: true })}
                         </Text>
                         {item.error && <Text style={styles.errorText} numberOfLines={1}>{item.error}</Text>}
-                        {item.status === 'error' && item.type === 'ai_text' && item.metadata?.originalText && (
+                        {item.type === 'ai_text' && item.metadata?.originalText && (
                             <TouchableOpacity
                                 onPress={async () => {
                                     await Clipboard.setStringAsync(item.metadata.originalText);
