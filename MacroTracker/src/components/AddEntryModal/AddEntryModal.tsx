@@ -100,7 +100,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
   // Auto-close modal after 3 seconds if AI query is still loading
   const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (quickAddLoading || isTextQuickAddLoading) {
+    if (quickAddLoading || isTextQuickAddLoading || isAiLoading) {
       autoCloseTimerRef.current = setTimeout(async () => {
         backgroundTask();
         toggleOverlay();
@@ -132,7 +132,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         autoCloseTimerRef.current = null;
       }
     };
-  }, [quickAddLoading, isTextQuickAddLoading, backgroundTask, toggleOverlay, t]);
+  }, [quickAddLoading, isTextQuickAddLoading, isAiLoading, backgroundTask, toggleOverlay, t]);
 
   const resolveAndSetIcon = useCallback((foodName: string) => {
     if (!foodName || foodIcons[foodName] !== undefined) return;
@@ -235,12 +235,17 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
 
     setIsAiLoading(true);
     try {
-      const estimatedGrams = await getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput, user?.client_id, refreshUser);
+      const { result: estimatedGrams } = await runBackgroundTask(
+        t('addEntryModal.alertGramsEstimated'),
+        'ai_grams',
+        () => getGramsFromNaturalLanguage(internalSelectedFood.name, autoInput, user?.client_id, refreshUser),
+        { targetScreen: 'DailyEntryRoute' }
+      );
       const roundedGrams = String(Math.round(estimatedGrams)); setInternalGrams(roundedGrams); setUnitMode("grams"); setAutoInput("");
       if (markAiFeatureUsed) markAiFeatureUsed();
       Toast.show({ type: "success", text1: t('addEntryModal.alertGramsEstimated'), text2: t('addEntryModal.alertGramsEstimatedMessage', { grams: roundedGrams, foodName: internalSelectedFood.name }), position: "bottom" });
     } catch (error) { /* Handled by getGramsFromNaturalLanguage */ } finally { setIsAiLoading(false); }
-  }, [internalSelectedFood, autoInput, isAiLoading, t, user, refreshUser, isGuest, markAiFeatureUsed]);
+  }, [internalSelectedFood, autoInput, isAiLoading, t, user, refreshUser, isGuest, markAiFeatureUsed, runBackgroundTask]);
 
   const handleAddOrUpdateSingleEntry = useCallback(async () => {
     Keyboard.dismiss(); if (!internalSelectedFood?.id) return Alert.alert(t('addEntryModal.alertFoodNotSelected'), t('addEntryModal.alertFoodNotSelectedMessage'));
@@ -361,7 +366,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
         t('addEntryModal.titleQuickAddSelect'),
         'ai_text',
         () => getMultipleFoodsFromText(textToAnalyze, user?.client_id, refreshUser),
-        { targetScreen: 'DailyEntryRoute', originalText: textToAnalyze }
+        { targetScreen: 'DailyEntryRoute' }
       );
 
       const results = result;
