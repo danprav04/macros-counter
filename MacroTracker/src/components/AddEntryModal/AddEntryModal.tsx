@@ -280,7 +280,7 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     if (checkGuest()) return;
 
     setQuickAddItems([]); setSelectedQuickAddIndices(new Set()); setEditingQuickAddItemIndex(null);
-    setModalMode("quickAddSelect"); setQuickAddLoading(true); setIsTextQuickAddLoading(false);
+    setModalMode("quickAddSelect"); setIsTextQuickAddLoading(false);
 
     let permissionResult, pickerResult: ImagePicker.ImagePickerResult;
     try {
@@ -299,6 +299,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
       }
 
       if (pickerResult.canceled) throw new Error("User cancelled");
+
+      setQuickAddLoading(true);
 
       const assets = pickerResult.assets;
       if (!assets || assets.length === 0) throw new Error(t('addEntryModal.alertQuickAddCouldNotSelect'));
