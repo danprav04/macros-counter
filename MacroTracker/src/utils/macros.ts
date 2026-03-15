@@ -17,6 +17,23 @@ export function determineMimeType(asset: { uri: string; mimeType?: string | null
     }
 }
 
+export function areMacrosSimilar(
+    food1: { calories: number; protein: number; carbs: number; fat: number },
+    food2: { calories: number; protein: number; carbs: number; fat: number }
+): boolean {
+    const isSimilar = (a: number, b: number, margin = 0.15, minDiff = 5) => {
+        const diff = Math.abs(a - b);
+        return diff <= minDiff || diff <= Math.max(a, b) * margin;
+    };
+
+    return (
+        isSimilar(food1.calories, food2.calories, 0.15, 20) &&
+        isSimilar(food1.protein, food2.protein, 0.15, 5) &&
+        isSimilar(food1.carbs, food2.carbs, 0.15, 5) &&
+        isSimilar(food1.fat, food2.fat, 0.15, 5)
+    );
+}
+
 const handleError = (error: unknown, title: string, userId?: string | null, onReward?: () => void) => {
     if (error instanceof BackendError && error.status === 402 && userId && onReward) {
         Alert.alert(

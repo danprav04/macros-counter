@@ -11,7 +11,7 @@ import { getFoodIconUrl } from "../../utils/iconUtils";
 import { getGramsFromNaturalLanguage } from "../../utils/units";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
-import { EstimatedFoodItem, getMultipleFoodsFromMultipleImages, getMultipleFoodsFromText, BackendError, determineMimeType } from "../../utils/macros";
+import { EstimatedFoodItem, getMultipleFoodsFromMultipleImages, getMultipleFoodsFromText, BackendError, determineMimeType, areMacrosSimilar } from "../../utils/macros";
 import { compressImageIfNeeded, getBase64FromUri } from "../../utils/imageUtils";
 import { v4 as uuidv4 } from "uuid";
 import QuickAddList from "../QuickAddList";
@@ -463,7 +463,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     Keyboard.dismiss(); if (isEditMode || isActionDisabled || editingQuickAddItemIndex !== null || selectedQuickAddIndices.size === 0) return;
     const entriesToAdd = Array.from(selectedQuickAddIndices).map(index => {
       const item = quickAddItems[index];
-      const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
+      const expectedMacros = { calories: item.calories_per_100g, protein: item.protein_per_100g, carbs: item.carbs_per_100g, fat: item.fat_per_100g };
+      const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase() && areMacrosSimilar(f, expectedMacros));
       const foodToAdd: Food = existingFood || { id: uuidv4(), name: item.foodName, calories: Math.round(item.calories_per_100g || 0), protein: Math.round(item.protein_per_100g || 0), carbs: Math.round(item.carbs_per_100g || 0), fat: Math.round(item.fat_per_100g || 0), createdAt: new Date().toISOString() };
       return { food: foodToAdd, grams: Math.max(1, Math.round(item.estimatedWeightGrams || 1)) };
     });
@@ -498,7 +499,8 @@ const AddEntryModal: React.FC<AddEntryModalProps> = ({
     setSavingState(true);
     try {
       const foodData: Omit<Food, 'id' | 'createdAt'> = { name: item.foodName, calories: Math.round(item.calories_per_100g), protein: Math.round(item.protein_per_100g), carbs: Math.round(item.carbs_per_100g), fat: Math.round(item.fat_per_100g) };
-      const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase());
+      const expectedMacros = { calories: item.calories_per_100g, protein: item.protein_per_100g, carbs: item.carbs_per_100g, fat: item.fat_per_100g };
+      const existingFood = foods.find(f => f.name.toLowerCase() === item.foodName.toLowerCase() && areMacrosSimilar(f, expectedMacros));
       if (existingFood) {
         Alert.alert(t('addEntryModal.alertOverwriteFoodTitle'), t('addEntryModal.alertOverwriteFoodMessage', { foodName: item.foodName }), [
           { text: t('addEntryModal.cancel'), style: 'cancel', onPress: () => setSavingState(false) },
