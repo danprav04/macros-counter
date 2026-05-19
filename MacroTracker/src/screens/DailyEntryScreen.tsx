@@ -64,6 +64,8 @@ const DailyEntryScreen: React.FC = () => {
   const [readableDate, setReadableDate] = useState('');
   const [pendingQuickAddFood, setPendingQuickAddFood] = useState<Food | null>(null);
   const [pendingBackgroundResults, setPendingBackgroundResults] = useState<{ type: string, items: any[] } | undefined>(undefined);
+  const [initialGramsForAddModal, setInitialGramsForAddModal] = useState<string | undefined>(undefined);
+  const [pendingSharedEntry, setPendingSharedEntry] = useState<{ food: Food, grams: number } | null>(null);
 
   // Goal Estimation Prompt
   const [showGoalPrompt, setShowGoalPrompt] = useState(false);
@@ -193,6 +195,61 @@ const DailyEntryScreen: React.FC = () => {
       setIsAddModalVisible(true);
     }
   }, [route.params?.backgroundResults, isLoadingData, isAddModalVisible, navigation]);
+
+  // Handle deep link data for sharing entries
+  useEffect(() => {
+    const params = route.params;
+    if (params?.data) {
+      try {
+        let b64 = params.data.replace(/-/g, '+').replace(/_/g, '/');
+        const binaryString = atob(b64);
+        const utf8Bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) utf8Bytes[i] = binaryString.charCodeAt(i);
+        const decodedJson = new TextDecoder().decode(utf8Bytes);
+        const potentialEntry: any = JSON.parse(decodedJson);
+
+        if (potentialEntry.food && typeof potentialEntry.grams === 'number') {
+          const sanitizedFood: Omit<Food, "id" | "createdAt"> = {
+            name: String(potentialEntry.food.name || "").substring(0, 100).trim(),
+            calories: Math.max(0, Number(potentialEntry.food.calories) || 0),
+            protein: Math.max(0, Number(potentialEntry.food.protein) || 0),
+            carbs: Math.max(0, Number(potentialEntry.food.carbs) || 0),
+            fat: Math.max(0, Number(potentialEntry.food.fat) || 0),
+          };
+          const grams = Math.max(0, Number(potentialEntry.grams) || 0);
+
+          if (sanitizedFood.name && grams > 0) {
+            const fakeId = "shared-" + Date.now();
+            const foodWithId: Food = { ...sanitizedFood, id: fakeId, createdAt: new Date().toISOString() };
+            setPendingSharedEntry({ food: foodWithId, grams });
+          } else {
+            Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
+          }
+        } else {
+          Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkInvalidData'));
+        }
+      } catch (e) {
+        Alert.alert(t('foodListScreen.deepLinkErrorTitle'), t('foodListScreen.deepLinkParseError'));
+      } finally {
+        navigation.setParams({ data: undefined });
+      }
+    }
+  }, [route.params?.data, navigation, t]);
+
+  // Open AddEntryModal when shared entry is pending
+  useEffect(() => {
+    if (pendingSharedEntry && !isLoadingData && !isAddModalVisible && foods.length > 0) {
+      const existingFood = foods.find(f => isSameFood(f, pendingSharedEntry.food));
+      const foodToUse = existingFood || pendingSharedEntry.food;
+
+      setFoodForAddModal(foodToUse);
+      setInitialGramsForAddModal(pendingSharedEntry.grams.toString());
+
+      if (foodToUse.name) resolveAndSetIcon(foodToUse.name);
+      setIsAddModalVisible(true);
+      setPendingSharedEntry(null);
+    }
+  }, [pendingSharedEntry, isLoadingData, isAddModalVisible, foods, resolveAndSetIcon]);
 
   useEffect(() => {
     if (pendingQuickAddFood && !isLoadingData && !isAddModalVisible && foods.length > 0) {
@@ -434,6 +491,7 @@ const DailyEntryScreen: React.FC = () => {
   const toggleAddOverlay = useCallback(() => {
     if (isSaving) return;
     setFoodForAddModal(null);
+    setInitialGramsForAddModal(undefined);
     setPendingBackgroundResults(undefined);
     setIsAddModalVisible((current) => !current);
   }, [isSaving]);
@@ -614,6 +672,7 @@ const DailyEntryScreen: React.FC = () => {
           foods={foods}
           isEditMode={false} // This modal is now only for adding
           initialSelectedFoodForEdit={foodForAddModal}
+          initialGrams={initialGramsForAddModal}
           onAddNewFoodRequest={handleAddNewFoodRequestFromModal}
           onCommitFoodToLibrary={handleCommitFoodItemToMainLibrary}
           dailyGoals={dailyGoals}

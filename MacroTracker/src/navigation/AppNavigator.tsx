@@ -40,7 +40,7 @@ import useDelayedLoading from '../hooks/useDelayedLoading';
 
 // Define ParamLists
 export type MainTabParamList = {
-  DailyEntryRoute: { quickAddFood?: Food, backgroundResults?: { type: string, items: any[] } };
+  DailyEntryRoute: { quickAddFood?: Food, backgroundResults?: { type: string, items: any[] }, data?: string };
   FoodListRoute: { openAddFoodModal?: boolean, foodData?: string, data?: string, backgroundFoodResult?: any };
   SettingsStackRoute: { screen: keyof SettingsStackParamList, params?: any };
 };
@@ -113,6 +113,35 @@ const linking = {
               routes: [
                 {
                   name: 'FoodListRoute',
+                  params: params,
+                },
+              ],
+            },
+          },
+        ],
+      };
+    }
+    if (path.includes('share/entry')) {
+      const queryIndex = path.indexOf('?');
+      let params: Record<string, string> = {};
+      if (queryIndex !== -1) {
+        const queryString = path.slice(queryIndex + 1);
+        const pairs = queryString.split('&');
+        for (const pair of pairs) {
+          const [key, value] = pair.split('=');
+          if (key && value) {
+            params[key] = decodeURIComponent(value);
+          }
+        }
+      }
+      return {
+        routes: [
+          {
+            name: 'Main',
+            state: {
+              routes: [
+                {
+                  name: 'DailyEntryRoute',
                   params: params,
                 },
               ],
