@@ -166,3 +166,23 @@ export const requestPasswordReset = async (email: string): Promise<{message: str
         body: JSON.stringify({ email }),
     });
 };
+
+export const verifyEmailWithToken = async (token: string): Promise<boolean> => {
+    const url = `${getApiUrl()}/auth/verify-email?token=${encodeURIComponent(token)}`;
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'text/html' }
+        });
+        
+        if (!response.ok) {
+            console.error('Email verification failed with status:', response.status);
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Email verification request failed:', error);
+        return false;
+    }
+};

@@ -33,7 +33,7 @@ import { useAuth, AuthContextType } from '../context/AuthContext';
 import { LanguageCode, SettingsStackParamList } from '../types/settings';
 import i18n, { setLocale, t } from '../localization/i18n';
 import { Food } from '../types/food';
-import { setLogoutListener } from '../services/authService';
+import { setLogoutListener, verifyEmailWithToken } from '../services/authService';
 import { getAppConfig, updateUserCompliance } from '../services/backendService';
 import { compareVersions } from '../utils/versionUtils';
 import useDelayedLoading from '../hooks/useDelayedLoading';
@@ -68,11 +68,54 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 // Linking configuration
 const productionBackendUrl = Constants.expoConfig?.extra?.env?.BACKEND_URL_PRODUCTION || 'https://v1.macros-vision-ai.xyz';
 
+const handleVerifyEmailDeepLink = async (url: string): Promise<boolean> => {
+  if (url && url.includes('api/v1/auth/verify-email')) {
+    const tokenMatch = url.match(/token=([^&]+)/);
+    if (tokenMatch && tokenMatch[1]) {
+      const token = decodeURIComponent(tokenMatch[1]);
+      try {
+        const success = await verifyEmailWithToken(token);
+        if (success) {
+          Alert.alert('Success', 'Your email has been verified successfully!');
+        } else {
+          Alert.alert('Error', 'Failed to verify email. The link may be invalid or expired.');
+        }
+      } catch (e) {
+        Alert.alert('Error', 'An error occurred while verifying your email.');
+      }
+      return true; // handled
+    }
+  }
+  return false; // not handled
+};
+
 const linking = {
   prefixes: [
     Linking.createURL('/'),
     productionBackendUrl,
   ],
+  async getInitialURL() {
+    const url = await Linking.getInitialURL();
+    if (url) {
+      const handled = await handleVerifyEmailDeepLink(url);
+      if (handled) {
+        return null; // Prevent React Navigation from handling this URL
+      }
+    }
+    return url;
+  },
+  subscribe(listener: (url: string) => void) {
+    const onReceiveURL = async ({ url }: { url: string }) => {
+      const handled = await handleVerifyEmailDeepLink(url);
+      if (!handled) {
+        listener(url);
+      }
+    };
+    const subscription = Linking.addEventListener('url', onReceiveURL);
+    return () => {
+      subscription.remove();
+    };
+  },
   config: {
     screens: {
       Auth: {
