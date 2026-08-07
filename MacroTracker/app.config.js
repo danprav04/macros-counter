@@ -1,7 +1,7 @@
 export default {
   name: "Macros Vision AI",
   slug: "MacroTracker",
-  version: "4.5.7",
+  version: "4.5.8",
   runtimeVersion: {
     policy: "appVersion"
   },
@@ -42,7 +42,7 @@ export default {
       backgroundColor: "#ffffff"
     },
     package: "com.macrosvisionai.app",
-    versionCode: 22,
+    versionCode: 23,
     userInterfaceStyle: "automatic",
     permissions: [
       "android.permission.CAMERA",
@@ -80,8 +80,8 @@ export default {
       {
         android: {
           kotlinVersion: "2.1.20",
-          compileSdkVersion: 35,
-          targetSdkVersion: 35,
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
           ndkVersion: "27.0.12077973"
         }
       }
