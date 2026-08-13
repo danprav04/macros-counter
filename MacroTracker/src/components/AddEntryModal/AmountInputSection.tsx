@@ -53,6 +53,12 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
     const { isGuest } = useAuth() as AuthContextType;
     const [isGuestModalVisible, setIsGuestModalVisible] = useState(false);
 
+    const [localGrams, setLocalGrams] = useState(grams);
+
+    useEffect(() => {
+        setLocalGrams(grams);
+    }, [grams]);
+
     useEffect(() => {
         if (isEditMode && unitMode === "grams") {
             const timer = setTimeout(() => {
@@ -65,6 +71,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
 
     const handleGramsChange = (text: string) => {
         const cleanedText = text.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1");
+        setLocalGrams(cleanedText);
         setGrams(cleanedText);
     };
 
@@ -121,17 +128,17 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                             ref={gramsInputRef}
                             placeholder={isEditMode ? t('addEntryModal.gramsPlaceholderEdit') : t('addEntryModal.gramsPlaceholder')}
                             keyboardType="numeric"
-                            value={grams}
+                            value={localGrams}
                             onChangeText={handleGramsChange}
                             inputStyle={styles.textInput}
                             inputContainerStyle={styles.inputFieldContainer}
                             containerStyle={styles.containerPadding}
-                            errorMessage={!isValidNumberInput(grams) && grams !== "" && grams !== "." ? t('addEntryModal.gramsError') : ""}
+                            errorMessage={!isValidNumberInput(localGrams) && localGrams !== "" && localGrams !== "." ? t('addEntryModal.gramsError') : ""}
                             errorStyle={styles.errorText}
                             rightIcon={<Text style={styles.unitSuffix}>g</Text>}
                             disabled={isActionDisabled}
                             autoFocus={!isEditMode}
-                            selectTextOnFocus={true}
+                            selectTextOnFocus={Boolean(grams)}
                         />
                         
                         {!isEditMode && servingSizeSuggestions.length > 0 && (
