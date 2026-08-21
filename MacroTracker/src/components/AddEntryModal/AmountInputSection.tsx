@@ -138,7 +138,7 @@ const AmountInputSection: React.FC<AmountInputSectionProps> = ({
                             rightIcon={<Text style={styles.unitSuffix}>g</Text>}
                             disabled={isActionDisabled}
                             autoFocus={!isEditMode}
-                            selectTextOnFocus={Boolean(grams)}
+                            selectTextOnFocus={true}
                         />
                         
                         {!isEditMode && servingSizeSuggestions.length > 0 && (
